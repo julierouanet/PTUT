@@ -24,33 +24,39 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final lowStock = mockInventory.where((i) => i.status == StockStatus.low).length;
     final outOfStock = mockInventory.where((i) => i.status == StockStatus.outOfStock).length;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          const Text(
-            'Inventaire',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            const Text(
+              'Inventaire',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            'Gestion des stocks de consommables',
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 4),
+            const Text(
+              'Gestion des stocks de consommables',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 20),
 
-          // Alerts for low stock
-          if (outOfStock > 0 || lowStock > 0)
-            Card(
-              color: AppColors.errorLight,
-              child: Padding(
+            // Alerts for low stock
+            if (outOfStock > 0 || lowStock > 0)
+              Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.errorLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
                 child: Row(
                   children: [
                     const Icon(Icons.warning_amber_rounded, color: AppColors.error),
@@ -76,65 +82,75 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   ],
                 ),
               ),
-            ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
-          // Filter
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  _buildFilterChip('Tous', mockInventory.length),
-                  _buildFilterChip('Consommable médical', mockInventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
-                  _buildFilterChip('Hygiène', mockInventory.where((i) => i.category == InventoryCategory.hygiene).length),
-                  _buildFilterChip('Bureautique', mockInventory.where((i) => i.category == InventoryCategory.bureautique).length),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Inventory table
-          Card(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(AppColors.background),
-                columns: const [
-                  DataColumn(label: Text('Article')),
-                  DataColumn(label: Text('Catégorie')),
-                  DataColumn(label: Text('Stock actuel'), numeric: true),
-                  DataColumn(label: Text('Stock min'), numeric: true),
-                  DataColumn(label: Text('Unité')),
-                  DataColumn(label: Text('Statut')),
-                  DataColumn(label: Text('Dernier réappro')),
-                ],
-                rows: _filteredItems.map((item) => DataRow(
-                  cells: [
-                    DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                    DataCell(Text(item.category.displayName)),
-                    DataCell(Text(
-                      '${item.currentStock}',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: item.status == StockStatus.outOfStock 
-                          ? AppColors.error 
-                          : item.status == StockStatus.low 
-                            ? AppColors.warning 
-                            : AppColors.textPrimary,
-                      ),
-                    )),
-                    DataCell(Text('${item.minStock}')),
-                    DataCell(Text(item.unit)),
-                    DataCell(_buildStockStatusBadge(item.status)),
-                    DataCell(Text(item.lastRestocked)),
+            // Filter
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    const Text('Filtrer: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                    const SizedBox(width: 12),
+                    _buildFilterChip('Tous', mockInventory.length),
+                    _buildFilterChip('Consommable médical', mockInventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
+                    _buildFilterChip('Hygiène', mockInventory.where((i) => i.category == InventoryCategory.hygiene).length),
+                    _buildFilterChip('Bureautique', mockInventory.where((i) => i.category == InventoryCategory.bureautique).length),
+                    const Spacer(),
+                    Text('${_filteredItems.length} articles', style: const TextStyle(color: AppColors.textSecondary)),
                   ],
-                )).toList(),
+                ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+
+            // Inventory table - FULL WIDTH
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
+                    child: DataTable(
+                      headingRowColor: WidgetStateProperty.all(AppColors.background),
+                      columns: const [
+                        DataColumn(label: Text('Article')),
+                        DataColumn(label: Text('Catégorie')),
+                        DataColumn(label: Text('Stock actuel'), numeric: true),
+                        DataColumn(label: Text('Stock min'), numeric: true),
+                        DataColumn(label: Text('Unité')),
+                        DataColumn(label: Text('Statut')),
+                        DataColumn(label: Text('Dernier réappro')),
+                      ],
+                      rows: _filteredItems.map((item) => DataRow(
+                        cells: [
+                          DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                          DataCell(Text(item.category.displayName)),
+                          DataCell(Text(
+                            '${item.currentStock}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: item.status == StockStatus.outOfStock 
+                                ? AppColors.error 
+                                : item.status == StockStatus.low 
+                                  ? AppColors.warning 
+                                  : AppColors.textPrimary,
+                            ),
+                          )),
+                          DataCell(Text('${item.minStock}')),
+                          DataCell(Text(item.unit)),
+                          DataCell(_buildStockStatusBadge(item.status)),
+                          DataCell(Text(item.lastRestocked)),
+                        ],
+                      )).toList(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

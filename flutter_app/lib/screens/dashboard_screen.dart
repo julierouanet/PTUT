@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
 import '../models/equipment.dart';
-import '../widgets/stat_card.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
@@ -51,93 +50,75 @@ class DashboardScreen extends StatelessWidget {
             "Vue d'ensemble de la gestion des équipements",
             style: TextStyle(color: AppColors.textSecondary),
           ),
+          const SizedBox(height: 16),
+
+          // Quick Actions - NOW AT TOP
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => onNavigate(1),
+                icon: const Icon(Icons.inventory_2, size: 18),
+                label: const Text('Voir les équipements'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => onNavigate(3),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.warning,
+                ),
+                icon: const Icon(Icons.report_problem_outlined, size: 18),
+                label: const Text('Signaler un problème'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => onNavigate(2),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                ),
+                icon: const Icon(Icons.list_alt, size: 18),
+                label: const Text('Voir les incidents'),
+              ),
+            ],
+          ),
           const SizedBox(height: 24),
 
-          // Stats Cards
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 800 ? 4 : 2;
-              return GridView.count(
-                crossAxisCount: crossAxisCount,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.3,
-                children: [
-                  StatCard(
-                    title: 'Total Équipements',
-                    value: '$total',
-                    icon: Icons.inventory_2_outlined,
-                    color: AppColors.primary,
-                  ),
-                  StatCard(
-                    title: 'Disponibles',
-                    value: '$disponible',
-                    icon: Icons.check_circle_outline,
-                    color: AppColors.success,
-                  ),
-                  StatCard(
-                    title: 'En Maintenance',
-                    value: '$enMaintenance',
-                    icon: Icons.build_outlined,
-                    color: AppColors.warning,
-                  ),
-                  StatCard(
-                    title: 'Hors Service',
-                    value: '$horsService',
-                    icon: Icons.cancel_outlined,
-                    color: AppColors.error,
-                  ),
-                ],
-              );
-            },
+          // Stats Cards - COMPACT
+          Row(
+            children: [
+              Expanded(child: _buildCompactStatCard('Total', '$total', Icons.inventory_2_outlined, AppColors.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard('Disponibles', '$disponible', Icons.check_circle_outline, AppColors.success)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard('Maintenance', '$enMaintenance', Icons.build_outlined, AppColors.warning)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard('Hors Service', '$horsService', Icons.cancel_outlined, AppColors.error)),
+            ],
           ),
           const SizedBox(height: 24),
 
           // Status Overview
           Card(
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Statut des équipements',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  LabeledProgressBar(
-                    label: 'Disponible',
-                    current: disponible,
-                    total: total,
-                    color: AppColors.success,
-                  ),
                   const SizedBox(height: 16),
-                  LabeledProgressBar(
-                    label: 'En usage',
-                    current: enUsage,
-                    total: total,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 16),
-                  LabeledProgressBar(
-                    label: 'En maintenance',
-                    current: enMaintenance,
-                    total: total,
-                    color: AppColors.warning,
-                  ),
-                  const SizedBox(height: 16),
-                  LabeledProgressBar(
-                    label: 'Hors service',
-                    current: horsService,
-                    total: total,
-                    color: AppColors.error,
-                  ),
+                  LabeledProgressBar(label: 'Disponible', current: disponible, total: total, color: AppColors.success),
+                  const SizedBox(height: 12),
+                  LabeledProgressBar(label: 'En usage', current: enUsage, total: total, color: AppColors.primary),
+                  const SizedBox(height: 12),
+                  LabeledProgressBar(label: 'En maintenance', current: enMaintenance, total: total, color: AppColors.warning),
+                  const SizedBox(height: 12),
+                  LabeledProgressBar(label: 'Hors service', current: horsService, total: total, color: AppColors.error),
                 ],
               ),
             ),
@@ -166,46 +147,50 @@ class DashboardScreen extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(height: 24),
-
-          // Quick Actions
-          const Text(
-            'Actions rapides',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => onNavigate(1),
-                icon: const Icon(Icons.add),
-                label: const Text('Voir les équipements'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => onNavigate(3),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.warning,
-                ),
-                icon: const Icon(Icons.report_problem_outlined),
-                label: const Text('Signaler un problème'),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => onNavigate(2),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                ),
-                icon: const Icon(Icons.list_alt),
-                label: const Text('Voir les incidents'),
-              ),
-            ],
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStatCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -213,52 +198,51 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildRecentIssues(List recentIssues) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Derniers incidents signalés',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (recentIssues.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Aucun incident en cours'),
-              )
+              const Text('Aucun incident en cours', style: TextStyle(color: AppColors.textSecondary))
             else
               ...recentIssues.map((issue) => ListTile(
+                dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: issue.status.displayName == 'Ouvert' 
                       ? AppColors.errorLight 
                       : AppColors.warningLight,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Icon(
                     Icons.warning_amber_rounded,
                     color: issue.status.displayName == 'Ouvert' 
                       ? AppColors.error 
                       : AppColors.warning,
-                    size: 20,
+                    size: 16,
                   ),
                 ),
-                title: Text(issue.equipmentName),
+                title: Text(issue.equipmentName, style: const TextStyle(fontSize: 14)),
                 subtitle: Text(
                   issue.description,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12),
                 ),
                 trailing: IssueStatusBadge(status: issue.status.displayName),
               )),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
@@ -275,24 +259,21 @@ class DashboardScreen extends StatelessWidget {
   Widget _buildCriticalAlerts(List<Equipment> criticalEquipment) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Alertes urgentes',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (criticalEquipment.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Aucune alerte urgente'),
-              )
+              const Text('Aucune alerte urgente', style: TextStyle(color: AppColors.textSecondary))
             else
               ...criticalEquipment.map((eq) => AlertCard(
                 title: 'Panne critique',
