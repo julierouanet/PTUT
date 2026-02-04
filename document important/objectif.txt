@@ -1,0 +1,36 @@
+﻿I. HOSPITAL EQUIPMENT & MAINTENANCE MANAGEMENT SYSTEM MODULE
+Ce module gère le suivi, le signalement et la maintenance des matériaux et équipements.
+Gestion des Équipements
+* Gérer l'Inventaire des Équipements (Administrateur/Technicien)
+   * Enregistrer et catégoriser un nouvel équipement (par département, type, numéro de série, état, localisation, et fournisseur).
+   * Mettre à jour l'état d'un équipement (Disponible, En Utilisation, Sous Maintenance, Hors Service).
+   * Enregistrer les plannings de maintenance et l'historique d'entretien.
+* Consulter le Statut des Matériaux (Personnel Hospitalier)
+   * Afficher les matériaux disponibles et leur statut.
+* Gérer les Stocks de Consommables (Administrateur/Personnel)
+   * Suivre les quantités de matériaux d'hygiène et de consommables.
+   * Définir des alertes de réapprovisionnement lorsque les niveaux de stock sont bas.
+Signalement et Suivi des Problèmes
+* Signaler un Problème d'Équipement (Personnel Hospitalier)
+   * Soumettre rapidement un rapport d'anomalie pour un équipement défectueux.
+   * Le rapport doit inclure : l'ID de l'équipement/nom, le type de problème, la description, le téléchargement d'une photo optionnelle, et la capture automatique du nom du rapporteur, du département et de l'horodatage.
+   * Suivre l'état de résolution de son propre rapport.
+* Notifier les Problèmes (Système)
+   * Notifier automatiquement le superviseur du département et l'équipe de maintenance lorsqu'un problème est signalé.
+   * Envoyer des alertes via des notifications intégrées ou SMS/email (si intégré).
+   * Escalader les problèmes non résolus à la direction supérieure après une période définie.
+* Gérer le Suivi des Problèmes (Superviseur/Technicien)
+   * Les superviseurs peuvent visualiser les problèmes ouverts, en cours et résolus.
+   * Approuver les demandes et assigner des tâches de maintenance.
+* Mettre à Jour le Statut de Réparation (Technicien)
+   * Mettre à jour la progression de la réparation (diagnostiqué, pièces commandées, réparé, testé).
+   * Enregistrer les pièces remplacées et les notes de maintenance.
+* Clôturer un Problème (Superviseur)
+   * Vérifier et clôturer le ticket après vérification.
+Rapports et Analyses
+* Générer des Rapports d'Inventaire et de Maintenance (Administrateur)
+   * Générer des listes d'inventaire d'équipement par département.
+   * Produire des rapports de maintenance, d'analyse des temps d'arrêt, et des rapports de coûts (si liés aux finances).
+   * Générer des rapports sur l'utilisation et les pertes de consommables par département.
+* Exporter des Données (Administrateur)
+   * Exporter les données vers Excel ou PDF.
