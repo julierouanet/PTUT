@@ -8,6 +8,7 @@ import 'screens/technician_update_screen.dart';
 import 'screens/inventory_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/user_management_screen.dart';
+import 'screens/settings_screen.dart';
 import 'services/auth_service.dart';
 import 'data/mock_data.dart';
 import 'models/user_role.dart';
@@ -96,6 +97,12 @@ class _MainScaffoldState extends State<MainScaffold> {
       label: 'Utilisateurs',
       requiredPermission: Permission.manageUsers, // Admin only
     ),
+    _NavItem(
+      icon: Icons.settings_outlined,
+      activeIcon: Icons.settings,
+      label: 'Paramètres',
+      requiredPermission: Permission.manageDepartments, // Admin only
+    ),
   ];
 
   /// Get only nav items the current user has permission to access
@@ -139,6 +146,8 @@ class _MainScaffoldState extends State<MainScaffold> {
         return const ReportsScreen();
       case 'Utilisateurs':
         return const UserManagementScreen();
+      case 'Paramètres':
+        return const SettingsScreen();
       default:
         return DashboardScreen(onNavigate: _navigateByLabel);
     }
@@ -147,7 +156,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   /// Navigate by finding the index of a specific screen type
   void _navigateByLabel(int targetIndex, {String? equipmentId, String? issueId}) {
     // Map old indexes to labels
-    final targetLabels = ['Tableau de bord', 'Équipements', 'Suivi incidents', 'Signaler', 'Technicien', 'Inventaire', 'Rapports', 'Utilisateurs'];
+    final targetLabels = ['Tableau de bord', 'Équipements', 'Suivi incidents', 'Signaler', 'Technicien', 'Inventaire', 'Rapports', 'Utilisateurs', 'Paramètres'];
     if (targetIndex >= targetLabels.length) return;
     
     final targetLabel = targetLabels[targetIndex];
