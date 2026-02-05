@@ -1,6 +1,8 @@
 import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../models/inventory_item.dart';
+import '../models/user.dart';
+import '../models/user_role.dart';
 
 /// Mock equipment data for testing
 final List<Equipment> mockEquipment = [
@@ -211,5 +213,93 @@ final List<InventoryItem> mockInventory = [
     unit: 'bouteilles',
     status: StockStatus.low,
     lastRestocked: '2024-11-10',
+  ),
+];
+
+/// Mock users data for testing
+final List<User> mockUsers = [
+  // Admin
+  User(
+    id: 'usr-001',
+    name: 'Admin Système',
+    email: 'admin@kabutare.rw',
+    department: 'IT',
+    role: UserRole.admin,
+    permissions: getPermissionsForRole(UserRole.admin),
+    phone: '+250 788 123 001',
+    createdAt: '2024-01-01',
+  ),
+  // Supervisors
+  User(
+    id: 'usr-002',
+    name: 'Dr. Habimana Jean',
+    email: 'j.habimana@kabutare.rw',
+    department: 'Radiologie',
+    role: UserRole.supervisor,
+    permissions: getPermissionsForRole(UserRole.supervisor),
+    phone: '+250 788 123 002',
+    createdAt: '2024-02-15',
+  ),
+  User(
+    id: 'usr-003',
+    name: 'Mme. Uwimana Claire',
+    email: 'c.uwimana@kabutare.rw',
+    department: 'Réanimation',
+    role: UserRole.supervisor,
+    permissions: getPermissionsForRole(UserRole.supervisor),
+    phone: '+250 788 123 003',
+    createdAt: '2024-03-10',
+  ),
+  // Technicians
+  User(
+    id: 'usr-004',
+    name: 'Tech. Baldé Moussa',
+    email: 'm.balde@kabutare.rw',
+    department: 'Maintenance',
+    role: UserRole.technician,
+    permissions: getPermissionsForRole(UserRole.technician),
+    phone: '+250 788 123 004',
+    createdAt: '2024-01-20',
+  ),
+  User(
+    id: 'usr-005',
+    name: 'Tech. Cissé Amadou',
+    email: 'a.cisse@kabutare.rw',
+    department: 'Maintenance',
+    role: UserRole.technician,
+    permissions: getPermissionsForRole(UserRole.technician),
+    phone: '+250 788 123 005',
+    createdAt: '2024-04-05',
+  ),
+  // Hospital Staff
+  User(
+    id: 'usr-006',
+    name: 'Dr. Traoré Ibrahim',
+    email: 'i.traore@kabutare.rw',
+    department: 'Réanimation',
+    role: UserRole.hospitalStaff,
+    permissions: getPermissionsForRole(UserRole.hospitalStaff),
+    phone: '+250 788 123 006',
+    createdAt: '2024-05-01',
+  ),
+  User(
+    id: 'usr-007',
+    name: 'Inf. Keita Fatou',
+    email: 'f.keita@kabutare.rw',
+    department: 'Stérilisation',
+    role: UserRole.hospitalStaff,
+    permissions: getPermissionsForRole(UserRole.hospitalStaff),
+    phone: '+250 788 123 007',
+    createdAt: '2024-06-15',
+  ),
+  User(
+    id: 'usr-008',
+    name: 'Lab. Diallo Oumar',
+    email: 'o.diallo@kabutare.rw',
+    department: 'Laboratoire',
+    role: UserRole.hospitalStaff,
+    permissions: getPermissionsForRole(UserRole.hospitalStaff),
+    phone: '+250 788 123 008',
+    createdAt: '2024-07-20',
   ),
 ];
