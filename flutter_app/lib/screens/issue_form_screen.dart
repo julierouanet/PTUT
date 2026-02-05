@@ -1,7 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
 import '../models/equipment.dart';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 
 /// Issue form screen - report a new equipment problem
 class IssueFormScreen extends StatefulWidget {
@@ -19,6 +22,10 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   String _problemType = 'Panne';
   final _descriptionController = TextEditingController();
   final _reporterController = TextEditingController();
+  
+  // Photo handling
+  final List<_PhotoItem> _photos = [];
+  static const int _maxPhotos = 5;
 
   final List<String> _problemTypes = [
     'Panne',
@@ -45,6 +52,51 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   Equipment? get _selectedEquipment {
     if (_selectedEquipmentId == null) return null;
     return mockEquipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
+  }
+
+  void _pickPhoto() async {
+    if (_photos.length >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Maximum $_maxPhotos photos autorisées'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Create file input for web
+    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
+    uploadInput.click();
+
+    uploadInput.onChange.listen((event) {
+      final files = uploadInput.files;
+      if (files != null && files.isNotEmpty) {
+        final file = files[0];
+        final reader = html.FileReader();
+        
+        reader.onLoadEnd.listen((event) {
+          if (reader.result != null) {
+            final bytes = reader.result as Uint8List;
+            setState(() {
+              _photos.add(_PhotoItem(
+                name: file.name,
+                bytes: bytes,
+              ));
+            });
+          }
+        });
+        
+        reader.readAsArrayBuffer(file);
+      }
+    });
+  }
+
+  void _removePhoto(int index) {
+    setState(() {
+      _photos.removeAt(index);
+    });
   }
 
   @override
@@ -175,6 +227,37 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     ),
                     const SizedBox(height: 24),
 
+                    // Photo upload section
+                    const Text(
+                      'Photos (optionnel)',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ajoutez jusqu\'à $_maxPhotos photos pour illustrer le problème',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Photo grid
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        // Existing photos
+                        ..._photos.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final photo = entry.value;
+                          return _buildPhotoThumbnail(photo, index);
+                        }),
+                        
+                        // Add photo button
+                        if (_photos.length < _maxPhotos)
+                          _buildAddPhotoButton(),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
                     // Reporter name
                     const Text(
                       'Votre nom *',
@@ -201,7 +284,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                       child: ElevatedButton.icon(
                         onPressed: _submitForm,
                         icon: const Icon(Icons.send),
-                        label: const Text('Soumettre le signalement'),
+                        label: Text('Soumettre le signalement${_photos.isNotEmpty ? ' (${_photos.length} photo${_photos.length > 1 ? 's' : ''})' : ''}'),
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
@@ -217,16 +300,83 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
+  Widget _buildPhotoThumbnail(_PhotoItem photo, int index) {
+    return Stack(
+      children: [
+        Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Image.memory(
+              photo.bytes,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                color: AppColors.background,
+                child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          top: 4,
+          right: 4,
+          child: GestureDetector(
+            onTap: () => _removePhoto(index),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: AppColors.error,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.close, color: Colors.white, size: 14),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddPhotoButton() {
+    return GestureDetector(
+      onTap: _pickPhoto,
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary, style: BorderStyle.solid, width: 2),
+          color: AppColors.primaryLight,
+        ),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
+            SizedBox(height: 4),
+            Text(
+              'Ajouter',
+              style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _submitForm() {
     if (_formKey.currentState!.validate()) {
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Row(
+          content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Signalement envoyé avec succès!'),
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Text('Signalement envoyé avec succès!${_photos.isNotEmpty ? ' (${_photos.length} photo${_photos.length > 1 ? 's' : ''} jointe${_photos.length > 1 ? 's' : ''})' : ''}'),
             ],
           ),
           backgroundColor: AppColors.success,
@@ -240,7 +390,16 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
         _problemType = 'Panne';
         _descriptionController.clear();
         _reporterController.clear();
+        _photos.clear();
       });
     }
   }
+}
+
+/// Photo item model
+class _PhotoItem {
+  final String name;
+  final Uint8List bytes;
+
+  _PhotoItem({required this.name, required this.bytes});
 }
