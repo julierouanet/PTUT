@@ -30,9 +30,8 @@ pipeline {
             }
             steps {
                 sh 'docker run --rm -v $PWD:/app -w /app ghcr.io/cirruslabs/flutter:stable flutter build web --release'
-                sh "sudo rm -rf ${DEPLOY_DIR}/*"
-                sh "sudo cp -r build/web/* ${DEPLOY_DIR}/"
-                sh "sudo chown -R www-data:www-data ${DEPLOY_DIR}"
+                sh "rm -rf ${DEPLOY_DIR}/*"
+                sh "cp -r build/web/* ${DEPLOY_DIR}/"
             }
         }
     }
