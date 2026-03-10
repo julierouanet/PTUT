@@ -3,8 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
 import '../models/equipment.dart';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import '../utils/file_picker.dart';
 
 /// Issue form screen - report a new equipment problem
 class IssueFormScreen extends StatefulWidget {
@@ -54,7 +53,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     return mockEquipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
   }
 
-  void _pickPhoto() async {
+  void _pickPhoto() {
     if (_photos.length >= _maxPhotos) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -66,30 +65,13 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       return;
     }
 
-    // Create file input for web
-    final uploadInput = html.FileUploadInputElement()..accept = 'image/*';
-    uploadInput.click();
-
-    uploadInput.onChange.listen((event) {
-      final files = uploadInput.files;
-      if (files != null && files.isNotEmpty) {
-        final file = files[0];
-        final reader = html.FileReader();
-        
-        reader.onLoadEnd.listen((event) {
-          if (reader.result != null) {
-            final bytes = reader.result as Uint8List;
-            setState(() {
-              _photos.add(_PhotoItem(
-                name: file.name,
-                bytes: bytes,
-              ));
-            });
-          }
-        });
-        
-        reader.readAsArrayBuffer(file);
-      }
+    pickImageFile((String fileName, Uint8List bytes) {
+      setState(() {
+        _photos.add(_PhotoItem(
+          name: fileName,
+          bytes: bytes,
+        ));
+      });
     });
   }
 

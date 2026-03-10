@@ -8,6 +8,9 @@
 # The following line activates a set of recommended lints for Flutter apps,
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
+# Note: If you see 'include_file_not_found' warning, consider replacing
+# flutter_lints with the newer 'flutter_lints' package or verify the
+# package version supports this include path.
 
 linter:
   # The lint rules applied to this project can be customized in the
