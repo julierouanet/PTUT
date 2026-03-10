@@ -33,12 +33,8 @@ pipeline {
             }
             steps {
                 sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter build web --release"
-                sh """
-                    DEPLOY_TMP="${DEPLOY_DIR}_tmp_\${BUILD_NUMBER}"
-                    cp -r build/web "\$DEPLOY_TMP"
-                    rm -rf ${DEPLOY_DIR}
-                    mv "\$DEPLOY_TMP" ${DEPLOY_DIR}
-                """
+                sh "rm -rf ${DEPLOY_DIR}/*"
+                sh "cp -r build/web/* ${DEPLOY_DIR}/"
             }
         }
     }
