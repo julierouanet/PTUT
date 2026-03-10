@@ -441,6 +441,9 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   Widget _buildBottomNav() {
     final visibleItems = _navItems.take(5).toList();
+    if (visibleItems.length < 2) {
+      return const SizedBox.shrink();
+    }
     return NavigationBar(
       selectedIndex: _currentIndex < visibleItems.length ? _currentIndex : 0,
       onDestinationSelected: _navigateTo,
