@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         DEPLOY_DIR = '/var/www/flutter-app'
-        FLUTTER_IMAGE = 'ghcr.io/cirruslabs/flutter:3.29.3'
+        FLUTTER_IMAGE = 'ghcr.io/cirruslabs/flutter:3.41.4'
         HOST_WORKSPACE = "${sh(script: 'echo $WORKSPACE | sed \"s|/var/jenkins_home|/var/lib/docker/volumes/jenkins_home/_data|\"', returnStdout: true).trim()}"
     }
 
@@ -51,7 +51,7 @@ pipeline {
             echo '✅ Build réussi'
         }
         always {
-            echo "Build #\${BUILD_NUMBER} terminé - Branche: \${BRANCH_NAME}"
+            echo "Build #${BUILD_NUMBER} terminé - Branche: ${BRANCH_NAME}"
         }
     }
 }
