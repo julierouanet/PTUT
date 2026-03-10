@@ -359,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           return;
                         }
                         if (isEdit) {
-                          _configService.updateDepartment(dept!.id, nameController.text, shortNameController.text);
+                          _configService.updateDepartment(dept.id, nameController.text, shortNameController.text);
                         } else {
                           _configService.addDepartment(nameController.text, shortNameController.text);
                         }
@@ -447,7 +447,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           return;
                         }
                         if (isEdit) {
-                          _configService.updateCategory(cat!.id, nameController.text, shortNameController.text);
+                          _configService.updateCategory(cat.id, nameController.text, shortNameController.text);
                         } else {
                           _configService.addCategory(nameController.text, shortNameController.text);
                         }

@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:equipment_management/services/auth_service.dart';
-import 'package:equipment_management/models/user.dart';
 import 'package:equipment_management/models/user_role.dart';
 import 'package:equipment_management/data/mock_data.dart';
 
