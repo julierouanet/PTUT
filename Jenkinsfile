@@ -2,52 +2,178 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_DIR = '/var/www/flutter-app'
-        FLUTTER_IMAGE = 'ghcr.io/cirruslabs/flutter:3.41.4'
-        HOST_WORKSPACE = "${sh(script: 'echo $WORKSPACE | sed \"s|/var/jenkins_home|/var/lib/docker/volumes/jenkins_home/_data|\"', returnStdout: true).trim()}"
+        FLUTTER_IMAGE   = 'ghcr.io/cirruslabs/flutter:3.41.4'
+        HOST_WORKSPACE  = "${sh(script: 'echo $WORKSPACE | sed "s|/var/jenkins_home|/var/lib/docker/volumes/jenkins_home/_data|"', returnStdout: true).trim()}"
+
+        // Chemins de déploiement (sur le VPS hôte)
+        DEPLOY_DIR_PROD = '/var/www/flutter-app'
+        DEPLOY_DIR_DEV  = '/var/www/flutter-app-dev'
+
+        // Domaines
+        IS_MAIN = "${env.BRANCH_NAME == 'main' ? 'true' : 'false'}"
+        IS_DEV  = "${env.BRANCH_NAME == 'dev'  ? 'true' : 'false'}"
     }
 
     stages {
-        stage('Install') {
+
+        // ── 1. Flutter : Install ──────────────────────────────────────────────
+        stage('Flutter Install') {
             steps {
-                sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter pub get"
+                dir('flutter-app') {
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -w /app \
+                            ${FLUTTER_IMAGE} \
+                            flutter pub get
+                    """
+                }
             }
         }
 
-        stage('Analyze') {
+        // ── 2. Flutter : Analyze ──────────────────────────────────────────────
+        stage('Flutter Analyze') {
             steps {
-                sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter analyze --no-fatal-infos"
+                dir('flutter-app') {
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -w /app \
+                            ${FLUTTER_IMAGE} \
+                            flutter analyze
+                    """
+                }
             }
         }
 
-        stage('Test') {
+        // ── 3. Flutter : Test ─────────────────────────────────────────────────
+        stage('Flutter Test') {
             steps {
-                sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter test --reporter json > test-results.json || true"
-                sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter test"
+                dir('flutter-app') {
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -w /app \
+                            ${FLUTTER_IMAGE} \
+                            flutter test
+                    """
+                }
             }
         }
 
-        stage('Build & Deploy') {
-            when {
-                branch 'main'
-            }
+        // ── 4. Flutter : Build & Deploy (main → prod) ─────────────────────────
+        stage('Flutter Build & Deploy PROD') {
+            when { branch 'main' }
             steps {
-                sh "docker run --rm -v ${HOST_WORKSPACE}:/app -v flutter_pub_cache:/root/.pub-cache -w /app ${FLUTTER_IMAGE} flutter build web --release"
-                sh "rm -rf ${DEPLOY_DIR}/*"
-                sh "cp -r build/web/* ${DEPLOY_DIR}/"
+                dir('flutter-app') {
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -w /app \
+                            ${FLUTTER_IMAGE} \
+                            flutter build web --release \
+                                --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
+                                --dart-define=DB_URL=https://DB.lucaslopvet.fr
+
+                        rm -rf ${DEPLOY_DIR_PROD}/*
+                        cp -r build/web/* ${DEPLOY_DIR_PROD}/
+                    """
+                }
+            }
+        }
+
+        // ── 5. Flutter : Build & Deploy (dev → dev) ───────────────────────────
+        stage('Flutter Build & Deploy DEV') {
+            when { branch 'dev' }
+            steps {
+                dir('flutter-app') {
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -w /app \
+                            ${FLUTTER_IMAGE} \
+                            flutter build web --release \
+                                --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
+                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
+
+                        rm -rf ${DEPLOY_DIR_DEV}/*
+                        cp -r build/web/* ${DEPLOY_DIR_DEV}/
+                    """
+                }
+            }
+        }
+
+        // ── 6. Docker : Build & démarrer services (main → prod) ───────────────
+        stage('Services Deploy PROD') {
+            when { branch 'main' }
+            steps {
+                sh """
+                    cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
+
+                    # Charger les secrets depuis /etc/kabutare/.env sur le VPS
+                    export \$(grep -v '^#' /etc/kabutare/.env | xargs)
+
+                    docker compose -f docker-compose.yml pull 2>/dev/null || true
+                    docker compose -f docker-compose.yml up -d --build
+
+                    # Seed si première installation (ne plante pas si déjà fait)
+                    docker exec auth-service-prod node seed.js 2>/dev/null || true
+                    docker exec db-service-prod  node seed.js 2>/dev/null || true
+                """
+            }
+        }
+
+        // ── 7. Docker : Build & démarrer services (dev) ───────────────────────
+        stage('Services Deploy DEV') {
+            when { branch 'dev' }
+            steps {
+                sh """
+                    cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
+
+                    export \$(grep -v '^#' /etc/kabutare/.env | xargs)
+
+                    docker compose -f docker-compose.dev.yml pull 2>/dev/null || true
+                    docker compose -f docker-compose.dev.yml up -d --build
+
+                    docker exec auth-service-dev node seed.js 2>/dev/null || true
+                    docker exec db-service-dev  node seed.js 2>/dev/null || true
+                """
+            }
+        }
+
+        // ── 8. Healthcheck ────────────────────────────────────────────────────
+        stage('Healthcheck') {
+            steps {
+                script {
+                    if (env.BRANCH_NAME == 'main') {
+                        sh """
+                            sleep 5
+                            curl -sf https://auth.lucaslopvet.fr/health || (echo 'auth-service PROD KO' && exit 1)
+                            curl -sf https://DB.lucaslopvet.fr/health   || (echo 'db-service PROD KO'  && exit 1)
+                            echo 'Tous les services PROD sont opérationnels'
+                        """
+                    } else if (env.BRANCH_NAME == 'dev') {
+                        sh """
+                            sleep 5
+                            curl -sf https://dev.auth.lucaslopvet.fr/health || (echo 'auth-service DEV KO' && exit 1)
+                            curl -sf https://dev.DB.lucaslopvet.fr/health   || (echo 'db-service DEV KO'  && exit 1)
+                            echo 'Tous les services DEV sont opérationnels'
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
-        failure {
-            echo '❌ Build échoué'
-        }
         success {
-            echo '✅ Build réussi'
+            script {
+                def env_label = (env.BRANCH_NAME == 'main') ? 'PRODUCTION' : 'DEV'
+                echo "✅ Pipeline ${env_label} terminé avec succès — branche: ${env.BRANCH_NAME}"
+            }
         }
-        always {
-            echo "Build #${BUILD_NUMBER} terminé - Branche: ${BRANCH_NAME}"
+        failure {
+            echo "❌ Pipeline échoué — branche: ${env.BRANCH_NAME}"
         }
     }
 }

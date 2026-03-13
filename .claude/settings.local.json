@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/Perso/Desktop/PTUT-1/auth-service/src -type f -name *.js)"
+    ]
+  }
+}

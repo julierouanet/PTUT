@@ -2,25 +2,29 @@ import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
 import '../data/mock_data.dart';
+import 'auth_api_service.dart';
 
-/// Authentication service for managing current user and permissions
+/// Service d'authentification — utilise l'API réelle en priorité,
+/// avec fallback sur les données mock si le serveur est inaccessible.
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
 
   User? _currentUser;
+  bool _isLoading = false;
+  String? _lastError;
 
-  /// Get current logged in user
-  User? get currentUser => _currentUser;
+  User?   get currentUser => _currentUser;
+  bool    get isLoggedIn  => _currentUser != null;
+  bool    get isLoading   => _isLoading;
+  String? get lastError   => _lastError;
 
-  /// Check if a user is logged in
-  bool get isLoggedIn => _currentUser != null;
-
-  /// Get current user's role
   UserRole? get currentRole => _currentUser?.role;
 
-  /// Initialize with default admin user for demo
+  // ── Initialisation ─────────────────────────────────────────────────────────
+
+  /// Démarre avec l'admin en mode démo (données mock).
   void initDemo() {
     if (_currentUser == null) {
       _currentUser = mockUsers.firstWhere((u) => u.role == UserRole.admin);
@@ -28,13 +32,38 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Switch to a different user (for demo purposes)
-  void switchUser(User user) {
-    _currentUser = user;
+  // ── Connexion ──────────────────────────────────────────────────────────────
+
+  /// Connexion via l'API réelle.
+  /// Retourne true si réussi, false sinon (consulter [lastError]).
+  Future<bool> loginWithApi(String email, String password) async {
+    _isLoading = true;
+    _lastError = null;
     notifyListeners();
+
+    try {
+      final result = await AuthApiService.instance.login(email, password);
+
+      if (result.success && result.user != null) {
+        _currentUser = _userFromApiResponse(result.user!);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+
+      _lastError = result.error;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _lastError = 'Erreur réseau: $e';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
-  /// Log in user by email (simplified for demo)
+  /// Connexion simplifiée par email (données mock — pour la démo).
   bool login(String email) {
     final user = mockUsers.where((u) => u.email == email).firstOrNull;
     if (user != null) {
@@ -45,35 +74,66 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
-  /// Log out current user
+  /// Changer d'utilisateur (démo).
+  void switchUser(User user) {
+    _currentUser = user;
+    notifyListeners();
+  }
+
+  // ── Déconnexion ────────────────────────────────────────────────────────────
+
+  Future<void> logoutApi() async {
+    await AuthApiService.instance.logout();
+    _currentUser = null;
+    notifyListeners();
+  }
+
+  /// Déconnexion simple (mock).
   void logout() {
     _currentUser = null;
     notifyListeners();
   }
 
-  /// Check if current user has a specific permission
-  bool hasPermission(Permission permission) {
-    return _currentUser?.hasPermission(permission) ?? false;
-  }
+  // ── Permissions ────────────────────────────────────────────────────────────
 
-  /// Check multiple permissions (all required)
-  bool hasAllPermissions(List<Permission> permissions) {
-    return permissions.every((p) => hasPermission(p));
-  }
+  bool hasPermission(Permission permission)            => _currentUser?.hasPermission(permission) ?? false;
+  bool hasAllPermissions(List<Permission> permissions) => permissions.every(hasPermission);
+  bool hasAnyPermission(List<Permission> permissions)  => permissions.any(hasPermission);
 
-  /// Check multiple permissions (any required)
-  bool hasAnyPermission(List<Permission> permissions) {
-    return permissions.any((p) => hasPermission(p));
-  }
-
-  /// Convenience permission checks
-  bool get canViewEquipment => hasPermission(Permission.viewEquipment);
-  bool get canReportIssue => hasPermission(Permission.reportIssue);
-  bool get canTrackIssues => hasPermission(Permission.trackIssues);
+  bool get canViewEquipment   => hasPermission(Permission.viewEquipment);
+  bool get canReportIssue     => hasPermission(Permission.reportIssue);
+  bool get canTrackIssues     => hasPermission(Permission.trackIssues);
   bool get canApproveRequests => hasPermission(Permission.approveRequests);
-  bool get canAssignTasks => hasPermission(Permission.assignTasks);
-  bool get canUpdateRepairs => hasPermission(Permission.updateRepairs);
-  bool get canManageUsers => hasPermission(Permission.manageUsers);
+  bool get canAssignTasks     => hasPermission(Permission.assignTasks);
+  bool get canUpdateRepairs   => hasPermission(Permission.updateRepairs);
+  bool get canManageUsers     => hasPermission(Permission.manageUsers);
   bool get canGenerateReports => hasPermission(Permission.generateReports);
-  bool get canViewInventory => hasPermission(Permission.viewInventory);
+  bool get canViewInventory   => hasPermission(Permission.viewInventory);
+
+  // ── Conversion API → modèle ────────────────────────────────────────────────
+
+  User _userFromApiResponse(Map<String, dynamic> data) {
+    final roleStr = data['role'] as String? ?? 'hospitalStaff';
+    final role    = _parseRole(roleStr);
+
+    return User(
+      id:          data['id']         as String? ?? '',
+      name:        data['name']       as String? ?? '',
+      email:       data['email']      as String? ?? '',
+      department:  data['department'] as String? ?? '',
+      role:        role,
+      permissions: getPermissionsForRole(role),
+      phone:       data['phone']      as String?,
+      createdAt:   data['created_at'] as String? ?? '',
+    );
+  }
+
+  UserRole _parseRole(String role) {
+    switch (role) {
+      case 'admin':      return UserRole.admin;
+      case 'supervisor': return UserRole.supervisor;
+      case 'technician': return UserRole.technician;
+      default:           return UserRole.hospitalStaff;
+    }
+  }
 }
