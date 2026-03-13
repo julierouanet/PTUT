@@ -71,9 +71,9 @@ pipeline {
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
                             -w /app \
                             ${FLUTTER_IMAGE} \
-                            flutter build web --release \
+                            sh -c "flutter pub get && flutter build web --release \
                                 --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://DB.lucaslopvet.fr
+                                --dart-define=DB_URL=https://DB.lucaslopvet.fr"
 
                         rm -rf ${DEPLOY_DIR_PROD}/*
                         cp -r build/web/* ${DEPLOY_DIR_PROD}/
@@ -92,9 +92,9 @@ pipeline {
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
                             -w /app \
                             ${FLUTTER_IMAGE} \
-                            flutter build web --release \
+                            sh -c "flutter pub get && flutter build web --release \
                                 --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
+                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr"
 
                         rm -rf ${DEPLOY_DIR_DEV}/*
                         cp -r build/web/* ${DEPLOY_DIR_DEV}/
