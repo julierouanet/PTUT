@@ -82,13 +82,14 @@ pipeline {
             }
             post {
                 always {
-                    // Restitue la propriété de build/ au user Jenkins
-                    // pour que git checkout ne plante pas au prochain build.
+                    // Restitue la propriété de build/ au user Jenkins.
+                    // stat tourne DANS le conteneur (où /app est monté),
+                    // pas sur l'hôte Jenkins où /app n'existe pas.
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
                             alpine \
-                            sh -c "chown -R \$(stat -c '%u:%g' /app) /app/build 2>/dev/null || true"
+                            sh -c 'OWNER=\$(stat -c "%u:%g" /app) && chown -R \$OWNER /app/build 2>/dev/null || true'
                     """
                 }
             }
