@@ -145,13 +145,17 @@ pipeline {
 
         // ── 6. Docker : Build & démarrer services (main → prod) ───────────────
         stage('Services Deploy PROD') {
-            when { branch 'main' }
+            when {
+                allOf {
+                    branch 'main'
+                    expression { fileExists("${WORKSPACE}/docker-compose.yml") }
+                }
+            }
             steps {
                 sh """
-                    cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
                     export \$(grep -v '^#' /etc/kabutare/.env | xargs)
-                    docker compose -f docker-compose.yml pull 2>/dev/null || true
-                    docker compose -f docker-compose.yml up -d --build
+                    docker compose -f ${HOST_WORKSPACE}/docker-compose.yml pull 2>/dev/null || true
+                    docker compose -f ${HOST_WORKSPACE}/docker-compose.yml up -d --build
                     docker exec auth-service-prod node seed.js 2>/dev/null || true
                     docker exec db-service-prod  node seed.js 2>/dev/null || true
                 """
@@ -160,13 +164,17 @@ pipeline {
 
         // ── 7. Docker : Build & démarrer services (dev) ───────────────────────
         stage('Services Deploy DEV') {
-            when { branch 'dev' }
+            when {
+                allOf {
+                    branch 'dev'
+                    expression { fileExists("${WORKSPACE}/docker-compose.dev.yml") }
+                }
+            }
             steps {
                 sh """
-                    cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
                     export \$(grep -v '^#' /etc/kabutare/.env | xargs)
-                    docker compose -f docker-compose.dev.yml pull 2>/dev/null || true
-                    docker compose -f docker-compose.dev.yml up -d --build
+                    docker compose -f ${HOST_WORKSPACE}/docker-compose.dev.yml pull 2>/dev/null || true
+                    docker compose -f ${HOST_WORKSPACE}/docker-compose.dev.yml up -d --build
                     docker exec auth-service-dev node seed.js 2>/dev/null || true
                     docker exec db-service-dev  node seed.js 2>/dev/null || true
                 """
@@ -175,6 +183,12 @@ pipeline {
 
         // ── 8. Healthcheck ────────────────────────────────────────────────────
         stage('Healthcheck') {
+            when {
+                expression {
+                    fileExists("${WORKSPACE}/docker-compose.yml") ||
+                    fileExists("${WORKSPACE}/docker-compose.dev.yml")
+                }
+            }
             steps {
                 script {
                     if (env.BRANCH_NAME == 'main') {
