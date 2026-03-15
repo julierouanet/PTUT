@@ -1,30 +1,36 @@
 pipeline {
     agent any
 
+    options {
+        skipDefaultCheckout(true)   // on gère le checkout manuellement
+    }
+
     environment {
         FLUTTER_IMAGE   = 'ghcr.io/cirruslabs/flutter:3.41.4'
         HOST_WORKSPACE  = "${sh(script: 'echo $WORKSPACE | sed "s|/var/jenkins_home|/var/lib/docker/volumes/jenkins_home/_data|"', returnStdout: true).trim()}"
 
-        // Chemins de déploiement (sur le VPS hôte)
         DEPLOY_DIR_PROD = '/var/www/flutter-app'
         DEPLOY_DIR_DEV  = '/var/www/flutter-app-dev'
 
-        // Domaines
         IS_MAIN = "${env.BRANCH_NAME == 'main' ? 'true' : 'false'}"
         IS_DEV  = "${env.BRANCH_NAME == 'dev'  ? 'true' : 'false'}"
     }
 
     stages {
 
-        // ── 0. Cleanup : supprime build/ (créé par root dans Docker) ─────────
-        stage('Cleanup') {
+        // ── 0. Cleanup puis Checkout ──────────────────────────────────────────
+        // Supprime build/ (root-owned par Docker) AVANT que git checkout -f
+        // tente de toucher ces fichiers. Sans skipDefaultCheckout(true) +
+        // ce stage, Jenkins planterait au checkout automatique.
+        stage('Cleanup & Checkout') {
             steps {
                 sh """
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app:/app \
                         alpine \
-                        sh -c "rm -rf /app/build"
+                        sh -c "rm -rf /app/build /app/.pub-cache"
                 """
+                checkout scm
             }
         }
 
@@ -71,6 +77,18 @@ pipeline {
                             -w /app \
                             ${FLUTTER_IMAGE} \
                             flutter test
+                    """
+                }
+            }
+            post {
+                always {
+                    // Restitue la propriété de build/ au user Jenkins
+                    // pour que git checkout ne plante pas au prochain build.
+                    sh """
+                        docker run --rm \
+                            -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            alpine \
+                            sh -c "chown -R \$(stat -c '%u:%g' /app) /app/build 2>/dev/null || true"
                     """
                 }
             }
@@ -128,14 +146,9 @@ pipeline {
             steps {
                 sh """
                     cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
-
-                    # Charger les secrets depuis /etc/kabutare/.env sur le VPS
                     export \$(grep -v '^#' /etc/kabutare/.env | xargs)
-
                     docker compose -f docker-compose.yml pull 2>/dev/null || true
                     docker compose -f docker-compose.yml up -d --build
-
-                    # Seed si première installation (ne plante pas si déjà fait)
                     docker exec auth-service-prod node seed.js 2>/dev/null || true
                     docker exec db-service-prod  node seed.js 2>/dev/null || true
                 """
@@ -148,12 +161,9 @@ pipeline {
             steps {
                 sh """
                     cd /var/lib/docker/volumes/jenkins_home/_data/workspace/${env.JOB_NAME}
-
                     export \$(grep -v '^#' /etc/kabutare/.env | xargs)
-
                     docker compose -f docker-compose.dev.yml pull 2>/dev/null || true
                     docker compose -f docker-compose.dev.yml up -d --build
-
                     docker exec auth-service-dev node seed.js 2>/dev/null || true
                     docker exec db-service-dev  node seed.js 2>/dev/null || true
                 """
