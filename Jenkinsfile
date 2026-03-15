@@ -96,25 +96,27 @@ pipeline {
         }
 
         // ── 4. Flutter : Build & Deploy (main → prod) ─────────────────────────
+        // La copie se fait via Docker (root sur l'hôte) car le conteneur
+        // Jenkins ne monte pas /var/www et n'a pas les droits d'y écrire.
         stage('Flutter Build & Deploy PROD') {
             when { branch 'main' }
             steps {
-                dir('flutter-app') {
-                    sh """
-                        docker run --rm \
-                            -v ${HOST_WORKSPACE}/flutter-app:/app \
-                            -e PUB_CACHE=/app/.pub-cache \
-                            -w /app \
-                            ${FLUTTER_IMAGE} \
-                            flutter build web --release \
-                                --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://DB.lucaslopvet.fr
+                sh """
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        -e PUB_CACHE=/app/.pub-cache \
+                        -w /app \
+                        ${FLUTTER_IMAGE} \
+                        flutter build web --release \
+                            --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
+                            --dart-define=DB_URL=https://DB.lucaslopvet.fr
 
-                        mkdir -p ${DEPLOY_DIR_PROD}
-                        rm -rf ${DEPLOY_DIR_PROD}/*
-                        cp -r build/web/* ${DEPLOY_DIR_PROD}/
-                    """
-                }
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \
+                        -v ${DEPLOY_DIR_PROD}:/dst \
+                        alpine \
+                        sh -c "rm -rf /dst/* && cp -r /src/. /dst/ && chown -R 1000:1000 /dst"
+                """
             }
         }
 
@@ -122,22 +124,22 @@ pipeline {
         stage('Flutter Build & Deploy DEV') {
             when { branch 'dev' }
             steps {
-                dir('flutter-app') {
-                    sh """
-                        docker run --rm \
-                            -v ${HOST_WORKSPACE}/flutter-app:/app \
-                            -e PUB_CACHE=/app/.pub-cache \
-                            -w /app \
-                            ${FLUTTER_IMAGE} \
-                            flutter build web --release \
-                                --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
+                sh """
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        -e PUB_CACHE=/app/.pub-cache \
+                        -w /app \
+                        ${FLUTTER_IMAGE} \
+                        flutter build web --release \
+                            --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
+                            --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
 
-                        mkdir -p ${DEPLOY_DIR_DEV}
-                        rm -rf ${DEPLOY_DIR_DEV}/*
-                        cp -r build/web/* ${DEPLOY_DIR_DEV}/
-                    """
-                }
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \
+                        -v ${DEPLOY_DIR_DEV}:/dst \
+                        alpine \
+                        sh -c "rm -rf /dst/* && cp -r /src/. /dst/ && chown -R 1000:1000 /dst"
+                """
             }
         }
 
