@@ -16,6 +16,18 @@ pipeline {
 
     stages {
 
+        // ── 0. Cleanup : supprime build/ (créé par root dans Docker) ─────────
+        stage('Cleanup') {
+            steps {
+                sh """
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        alpine \
+                        sh -c "rm -rf /app/build"
+                """
+            }
+        }
+
         // ── 1. Flutter : Install ──────────────────────────────────────────────
         stage('Flutter Install') {
             steps {
