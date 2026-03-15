@@ -79,6 +79,7 @@ pipeline {
                                 --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
                                 --dart-define=DB_URL=https://DB.lucaslopvet.fr
 
+                        mkdir -p ${DEPLOY_DIR_PROD}
                         rm -rf ${DEPLOY_DIR_PROD}/*
                         cp -r build/web/* ${DEPLOY_DIR_PROD}/
                     """
@@ -101,6 +102,7 @@ pipeline {
                                 --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
                                 --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
 
+                        mkdir -p ${DEPLOY_DIR_DEV}
                         rm -rf ${DEPLOY_DIR_DEV}/*
                         cp -r build/web/* ${DEPLOY_DIR_DEV}/
                     """
