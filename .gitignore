@@ -19,6 +19,7 @@ flutter-app/.flutter-plugins
 flutter-app/.flutter-plugins-dependencies
 flutter-app/.packages
 flutter-app/pubspec.lock
+flutter-app/.pub-cache/
 
 # ── Docker ────────────────────────────────────────────────────
 docker-data/

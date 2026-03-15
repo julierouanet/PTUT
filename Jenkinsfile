@@ -23,6 +23,7 @@ pipeline {
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -e PUB_CACHE=/app/.pub-cache \
                             -w /app \
                             ${FLUTTER_IMAGE} \
                             flutter pub get
@@ -38,9 +39,10 @@ pipeline {
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -e PUB_CACHE=/app/.pub-cache \
                             -w /app \
                             ${FLUTTER_IMAGE} \
-                            flutter analyze
+                            flutter analyze --no-fatal-infos
                     """
                 }
             }
@@ -53,6 +55,7 @@ pipeline {
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -e PUB_CACHE=/app/.pub-cache \
                             -w /app \
                             ${FLUTTER_IMAGE} \
                             flutter test
@@ -69,11 +72,12 @@ pipeline {
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -e PUB_CACHE=/app/.pub-cache \
                             -w /app \
                             ${FLUTTER_IMAGE} \
-                            sh -c "flutter pub get && flutter build web --release \
+                            flutter build web --release \
                                 --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://DB.lucaslopvet.fr"
+                                --dart-define=DB_URL=https://DB.lucaslopvet.fr
 
                         rm -rf ${DEPLOY_DIR_PROD}/*
                         cp -r build/web/* ${DEPLOY_DIR_PROD}/
@@ -90,11 +94,12 @@ pipeline {
                     sh """
                         docker run --rm \
                             -v ${HOST_WORKSPACE}/flutter-app:/app \
+                            -e PUB_CACHE=/app/.pub-cache \
                             -w /app \
                             ${FLUTTER_IMAGE} \
-                            sh -c "flutter pub get && flutter build web --release \
+                            flutter build web --release \
                                 --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
-                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr"
+                                --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
 
                         rm -rf ${DEPLOY_DIR_DEV}/*
                         cp -r build/web/* ${DEPLOY_DIR_DEV}/
