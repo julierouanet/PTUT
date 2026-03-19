@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
+import '../services/auth_service.dart';
 import '../models/issue.dart';
 
 /// Technician update screen - update repair progress
@@ -271,42 +273,73 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
     );
   }
 
-  void _saveProgress() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.save, color: Colors.white),
-            SizedBox(width: 12),
-            Text('Progression sauvegardée'),
-          ],
-        ),
+  Future<void> _saveProgress() async {
+    if (_selectedIssueId == null) return;
+    final technicianName = AuthService().currentUser?.name ?? 'Technicien';
+    try {
+      await DbApiService.instance.updateIssue(_selectedIssueId!, {
+        'status':               'En cours',
+        'assigned_technician':  technicianName,
+        'diagnosis':            _diagnosisController.text.trim().isNotEmpty ? _diagnosisController.text.trim() : null,
+        'actions':              _actionsController.text.trim().isNotEmpty ? _actionsController.text.trim() : null,
+        'parts_replaced':       _partsController.text.trim().isNotEmpty ? _partsController.text.trim() : null,
+      });
+      await DataService().reloadIssues();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Row(children: [
+          Icon(Icons.save, color: Colors.white),
+          SizedBox(width: 12),
+          Text('Progression sauvegardée'),
+        ]),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
-      ),
-    );
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
-  void _markResolved() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 12),
-            Text('Incident marqué comme résolu!'),
-          ],
-        ),
+  Future<void> _markResolved() async {
+    if (_selectedIssueId == null) return;
+    final technicianName = AuthService().currentUser?.name ?? 'Technicien';
+    try {
+      await DbApiService.instance.updateIssue(_selectedIssueId!, {
+        'status':               'Résolu',
+        'assigned_technician':  technicianName,
+        'diagnosis':            _diagnosisController.text.trim().isNotEmpty ? _diagnosisController.text.trim() : null,
+        'actions':              _actionsController.text.trim().isNotEmpty ? _actionsController.text.trim() : null,
+        'parts_replaced':       _partsController.text.trim().isNotEmpty ? _partsController.text.trim() : null,
+      });
+      await DataService().reloadIssues();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Row(children: [
+          Icon(Icons.check_circle, color: Colors.white),
+          SizedBox(width: 12),
+          Text('Incident marqué comme résolu !'),
+        ]),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
-      ),
-    );
-
-    setState(() {
-      _selectedIssueId = null;
-      _diagnosisController.clear();
-      _actionsController.clear();
-      _partsController.clear();
-    });
+      ));
+      setState(() {
+        _selectedIssueId = null;
+        _diagnosisController.clear();
+        _actionsController.clear();
+        _partsController.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 }

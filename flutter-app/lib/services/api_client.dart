@@ -98,6 +98,21 @@ class ApiClient {
     return response;
   }
 
+  /// PATCH avec authentification.
+  static Future<http.Response> patch(String url, Map<String, dynamic> body) async {
+    final headers = await _authHeaders();
+    var response = await http.patch(Uri.parse(url), headers: headers, body: jsonEncode(body));
+
+    if (response.statusCode == 403) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final newHeaders = await _authHeaders();
+        response = await http.patch(Uri.parse(url), headers: newHeaders, body: jsonEncode(body));
+      }
+    }
+    return response;
+  }
+
   /// DELETE avec authentification.
   static Future<http.Response> delete(String url) async {
     final headers = await _authHeaders();

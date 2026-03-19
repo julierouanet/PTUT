@@ -2,6 +2,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
+import '../services/auth_service.dart';
 import '../models/equipment.dart';
 import '../utils/file_picker.dart';
 
@@ -349,24 +351,35 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.white),
-              const SizedBox(width: 12),
-              Text('Signalement envoyé avec succès!${_photos.isNotEmpty ? ' (${_photos.length} photo${_photos.length > 1 ? 's' : ''} jointe${_photos.length > 1 ? 's' : ''})' : ''}'),
-            ],
-          ),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      // Clear form
+    final equipment = _selectedEquipment!;
+    final issueData = {
+      'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+      'equipment_id':   equipment.id,
+      'equipment_name': equipment.name,
+      'department':     equipment.department,
+      'type':           _problemType,
+      'description':    _descriptionController.text.trim(),
+      'reporter':       _reporterController.text.trim().isNotEmpty
+                          ? _reporterController.text.trim()
+                          : AuthService().currentUser?.name ?? 'Inconnu',
+    };
+
+    try {
+      await DbApiService.instance.createIssue(issueData);
+      await DataService().reloadIssues();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.white),
+          const SizedBox(width: 12),
+          Text('Signalement envoyé !${_photos.isNotEmpty ? ' (${_photos.length} photo${_photos.length > 1 ? "s" : ""})' : ''}'),
+        ]),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
       setState(() {
         _selectedEquipmentId = null;
         _problemType = 'Panne';
@@ -374,6 +387,13 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
         _reporterController.clear();
         _photos.clear();
       });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Erreur lors de l\'envoi: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 }

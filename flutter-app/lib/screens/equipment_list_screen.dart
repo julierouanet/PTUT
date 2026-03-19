@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
 import '../services/config_service.dart';
@@ -161,6 +162,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 color: AppColors.error,
                                 onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
                                 tooltip: 'Signaler',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18),
+                                color: AppColors.error,
+                                onPressed: () => _confirmDelete(eq),
+                                tooltip: 'Supprimer',
                               ),
                             ],
                           )),
@@ -385,7 +392,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       Expanded(
                         flex: 2,
                         child: ElevatedButton.icon(
-                          onPressed: () {
+                          onPressed: () async {
                             if (nameController.text.isEmpty || serialController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -396,46 +403,46 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                               );
                               return;
                             }
-                            
-                            // Create new equipment
-                            final newEquipment = Equipment(
-                              id: isEdit ? existingEquipment.id : 'eq-${DateTime.now().millisecondsSinceEpoch}',
-                              name: nameController.text,
-                              serialNumber: serialController.text,
-                              department: selectedDepartment,
-                              category: selectedCategory,
-                              supplier: supplierController.text.isNotEmpty ? supplierController.text : 'Non spécifié',
-                              location: locationController.text.isNotEmpty ? locationController.text : 'Non spécifié',
-                              status: selectedStatus,
-                            );
-                            
-                            // Mise à jour locale + notification DataService
-                            setState(() {
+
+                            final data = {
+                              'id':            isEdit ? existingEquipment.id : 'eq-${DateTime.now().millisecondsSinceEpoch}',
+                              'name':          nameController.text,
+                              'serial_number': serialController.text,
+                              'department':    selectedDepartment,
+                              'category':      selectedCategory,
+                              'supplier':      supplierController.text.isNotEmpty ? supplierController.text : null,
+                              'location':      locationController.text.isNotEmpty ? locationController.text : null,
+                              'status':        selectedStatus.displayName,
+                            };
+
+                            try {
                               if (isEdit) {
-                                final index = DataService().equipment.indexWhere((e) => e.id == existingEquipment.id);
-                                if (index != -1) {
-                                  DataService().equipment[index] = newEquipment;
-                                }
+                                await DbApiService.instance.updateEquipment(existingEquipment.id, data);
                               } else {
-                                DataService().equipment.add(newEquipment);
+                                await DbApiService.instance.createEquipment(data);
                               }
-                              DataService().notify();
-                            });
-                            
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
+                              await DataService().reloadEquipment();
+                              if (context.mounted) Navigator.pop(context);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Row(children: [
                                     const Icon(Icons.check_circle, color: Colors.white),
                                     const SizedBox(width: 12),
-                                    Text(isEdit ? 'Équipement modifié avec succès' : 'Équipement ajouté avec succès'),
-                                  ],
-                                ),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                                    Text(isEdit ? 'Équipement modifié' : 'Équipement ajouté'),
+                                  ]),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text('Erreur: $e'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            }
                           },
                           icon: Icon(isEdit ? Icons.save : Icons.add),
                           label: Text(isEdit ? 'Enregistrer les modifications' : 'Ajouter l\'équipement'),
@@ -448,6 +455,45 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(Equipment eq) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer l\'équipement'),
+        content: Text('Confirmer la suppression de "${eq.name}" ? Cette action est irréversible.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await DbApiService.instance.deleteEquipment(eq.id);
+                await DataService().reloadEquipment();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Équipement supprimé'),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Erreur: $e'),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              }
+            },
+            child: const Text('Supprimer'),
+          ),
+        ],
       ),
     );
   }

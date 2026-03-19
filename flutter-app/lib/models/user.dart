@@ -12,6 +12,30 @@ class User {
   final String? phone;
   final String createdAt;
 
+  factory User.fromApiJson(Map<String, dynamic> json) {
+    final role = _roleFromString(json['role'] as String? ?? 'hospitalStaff');
+    return User(
+      id:          json['id']          as String? ?? '',
+      name:        json['name']        as String? ?? '',
+      email:       json['email']       as String? ?? '',
+      department:  json['department']  as String? ?? '',
+      role:        role,
+      permissions: getPermissionsForRole(role),
+      isActive:    (json['is_active'] as int? ?? 1) == 1,
+      phone:       json['phone']       as String?,
+      createdAt:   json['created_at']  as String? ?? '',
+    );
+  }
+
+  static UserRole _roleFromString(String v) {
+    switch (v) {
+      case 'admin':       return UserRole.admin;
+      case 'supervisor':  return UserRole.supervisor;
+      case 'technician':  return UserRole.technician;
+      default:            return UserRole.hospitalStaff;
+    }
+  }
+
   const User({
     required this.id,
     required this.name,

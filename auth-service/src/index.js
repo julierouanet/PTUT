@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const { PORT } = require('./config');
 const authRoutes = require('./routes/auth');
+const usersRoutes = require('./routes/users');
 const debugRoutes = require('./routes/debug');
 const { getDb } = require('./database');
 
@@ -31,6 +32,7 @@ app.use(cors({
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
+app.use('/api/users', usersRoutes);
 app.use('/', debugRoutes);
 
 const server = app.listen(PORT, () => {

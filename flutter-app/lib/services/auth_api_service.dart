@@ -74,4 +74,51 @@ class AuthApiService {
     } catch (_) {}
     return null;
   }
+
+  // ── Gestion des utilisateurs (admin) ───────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getUsers() async {
+    final response = await ApiClient.get(ApiConfig.usersUrl);
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  Future<Map<String, dynamic>> createUser(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.usersUrl, data);
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur création utilisateur');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateUser(String id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur mise à jour utilisateur');
+    }
+  }
+
+  Future<bool> toggleUserStatus(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id/toggle';
+    final response = await ApiClient.patch(url, {});
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur toggle statut utilisateur');
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['is_active'] as int) == 1;
+  }
+
+  Future<void> deleteUser(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.delete(url);
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur suppression utilisateur');
+    }
+  }
 }

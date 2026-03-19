@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
 import '../models/inventory_item.dart';
 
 /// Inventory screen - manage consumables and stock
@@ -32,18 +33,36 @@ class _InventoryScreenState extends State<InventoryScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            const Text(
-              'Inventaire',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Gestion des stocks de consommables',
-              style: TextStyle(color: AppColors.textSecondary),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Inventaire',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Gestion des stocks de consommables',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showItemDialog(null),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nouvel article'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
 
@@ -122,6 +141,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                         DataColumn(label: Text('Unité')),
                         DataColumn(label: Text('Statut')),
                         DataColumn(label: Text('Dernier réappro')),
+                        DataColumn(label: Text('Actions')),
                       ],
                       rows: _filteredItems.map((item) => DataRow(
                         cells: [
@@ -131,10 +151,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                             '${item.currentStock}',
                             style: TextStyle(
                               fontWeight: FontWeight.w600,
-                              color: item.status == StockStatus.outOfStock 
-                                ? AppColors.error 
-                                : item.status == StockStatus.low 
-                                  ? AppColors.warning 
+                              color: item.status == StockStatus.outOfStock
+                                ? AppColors.error
+                                : item.status == StockStatus.low
+                                  ? AppColors.warning
                                   : AppColors.textPrimary,
                             ),
                           )),
@@ -142,6 +162,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           DataCell(Text(item.unit)),
                           DataCell(_buildStockStatusBadge(item.status)),
                           DataCell(Text(item.lastRestocked)),
+                          DataCell(Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit, size: 18),
+                                color: AppColors.warning,
+                                tooltip: 'Modifier',
+                                onPressed: () => _showItemDialog(item),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18),
+                                color: AppColors.error,
+                                tooltip: 'Supprimer',
+                                onPressed: () => _confirmDeleteItem(item),
+                              ),
+                            ],
+                          )),
                         ],
                       )).toList(),
                     ),
@@ -151,6 +188,126 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showItemDialog(InventoryItem? existing) {
+    final isEdit = existing != null;
+    final nameCtrl     = TextEditingController(text: existing?.name ?? '');
+    final stockCtrl    = TextEditingController(text: existing != null ? '${existing.currentStock}' : '');
+    final minStockCtrl = TextEditingController(text: existing != null ? '${existing.minStock}' : '');
+    final unitCtrl     = TextEditingController(text: existing?.unit ?? '');
+    InventoryCategory selectedCategory = existing?.category ?? InventoryCategory.consommableMedical;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Modifier l\'article' : 'Nouvel article'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: nameCtrl,     decoration: const InputDecoration(labelText: 'Nom *')),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<InventoryCategory>(
+                  value: selectedCategory,
+                  decoration: const InputDecoration(labelText: 'Catégorie *'),
+                  items: InventoryCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.displayName))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedCategory = v!),
+                ),
+                const SizedBox(height: 12),
+                TextField(controller: stockCtrl,    keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock actuel *')),
+                const SizedBox(height: 12),
+                TextField(controller: minStockCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock minimum *')),
+                const SizedBox(height: 12),
+                TextField(controller: unitCtrl,     decoration: const InputDecoration(labelText: 'Unité (ex: boîtes) *')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+            ElevatedButton(
+              onPressed: () async {
+                if (nameCtrl.text.isEmpty || stockCtrl.text.isEmpty || minStockCtrl.text.isEmpty || unitCtrl.text.isEmpty) return;
+                final data = {
+                  'id':            isEdit ? existing.id : 'inv-${DateTime.now().millisecondsSinceEpoch}',
+                  'name':          nameCtrl.text,
+                  'category':      selectedCategory.displayName,
+                  'current_stock': int.tryParse(stockCtrl.text) ?? 0,
+                  'min_stock':     int.tryParse(minStockCtrl.text) ?? 0,
+                  'unit':          unitCtrl.text,
+                };
+                try {
+                  if (isEdit) {
+                    await DbApiService.instance.updateInventoryItem(existing.id, data);
+                  } else {
+                    await DbApiService.instance.createInventoryItem(data);
+                  }
+                  await DataService().reloadInventory();
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(isEdit ? 'Article modifié' : 'Article ajouté'),
+                      backgroundColor: AppColors.success,
+                      behavior: SnackBarBehavior.floating,
+                    ));
+                  }
+                } catch (e) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Erreur: $e'),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                    ));
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Enregistrer' : 'Ajouter'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteItem(InventoryItem item) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer l\'article'),
+        content: Text('Supprimer "${item.name}" de l\'inventaire ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await DbApiService.instance.deleteInventoryItem(item.id);
+                await DataService().reloadInventory();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Article supprimé'),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text('Erreur: $e'),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              }
+            },
+            child: const Text('Supprimer'),
+          ),
+        ],
       ),
     );
   }

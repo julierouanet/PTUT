@@ -28,6 +28,9 @@ class ApiConfig {
   static String get verifyUrl     => '$authBaseUrl/api/auth/verify';
   static String get meUrl         => '$authBaseUrl/api/auth/me';
 
+  // Auth user management endpoint
+  static String get usersUrl      => '$authBaseUrl/api/users';
+
   // DB endpoints
   static String get equipmentUrl  => '$dbBaseUrl/api/equipment';
   static String get issuesUrl     => '$dbBaseUrl/api/issues';

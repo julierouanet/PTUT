@@ -36,9 +36,27 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> createEquipment(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.equipmentUrl, data);
+    _checkStatus(response, ApiConfig.equipmentUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateEquipment(String id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.equipmentUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
   Future<void> updateEquipmentStatus(String id, String status) async {
     final url = '${ApiConfig.equipmentUrl}/$id';
     final response = await ApiClient.put(url, {'status': status});
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteEquipment(String id) async {
+    final url = '${ApiConfig.equipmentUrl}/$id';
+    final response = await ApiClient.delete(url);
     _checkStatus(response, url);
   }
 
@@ -94,6 +112,12 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  Future<void> deleteIssue(String id) async {
+    final url = '${ApiConfig.issuesUrl}/$id';
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
   // ── INVENTAIRE ─────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getInventory({
@@ -111,9 +135,27 @@ class DbApiService {
     return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
   }
 
+  Future<Map<String, dynamic>> createInventoryItem(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.inventoryUrl, data);
+    _checkStatus(response, ApiConfig.inventoryUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateInventoryItem(String id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.inventoryUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
   Future<void> updateStock(String id, int newStock) async {
     final url = '${ApiConfig.inventoryUrl}/$id';
     final response = await ApiClient.put(url, {'current_stock': newStock});
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteInventoryItem(String id) async {
+    final url = '${ApiConfig.inventoryUrl}/$id';
+    final response = await ApiClient.delete(url);
     _checkStatus(response, url);
   }
 
