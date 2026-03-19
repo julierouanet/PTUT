@@ -403,10 +403,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
   
-  Widget _getRoleIcon(UserRole role) {
-    return Icon(_getRoleIconData(role), size: 16, color: _getRoleColor(role));
-  }
-  
   IconData _getRoleIconData(UserRole role) {
     switch (role) {
       case UserRole.admin:
