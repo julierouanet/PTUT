@@ -6,7 +6,10 @@
       "Bash(do echo:*)",
       "Read(//c/Users/Perso/Desktop/PTUT-1/**)",
       "Bash(done)",
-      "Bash(grep -v \"//.*mock\")"
+      "Bash(grep -v \"//.*mock\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
