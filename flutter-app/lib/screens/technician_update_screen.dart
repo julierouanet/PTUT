@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/issue.dart';
 
 /// Technician update screen - update repair progress
@@ -28,7 +28,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
     'Réparé',
   ];
 
-  List<Issue> get _openIssues => mockIssues.where((i) => 
+  List<Issue> get _openIssues => DataService().issues.where((i) => 
     i.status != IssueStatus.resolved
   ).toList();
 
@@ -42,7 +42,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
   }
 
   void _loadIssueData() {
-    final issue = mockIssues.where((i) => i.id == _selectedIssueId).firstOrNull;
+    final issue = DataService().issues.where((i) => i.id == _selectedIssueId).firstOrNull;
     if (issue != null) {
       _diagnosisController.text = issue.diagnosis ?? '';
       _actionsController.text = issue.actions ?? '';
@@ -60,7 +60,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
 
   Issue? get _selectedIssue {
     if (_selectedIssueId == null) return null;
-    return mockIssues.where((i) => i.id == _selectedIssueId).firstOrNull;
+    return DataService().issues.where((i) => i.id == _selectedIssueId).firstOrNull;
   }
 
   @override

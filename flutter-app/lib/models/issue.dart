@@ -64,6 +64,24 @@ class Issue {
     this.partsReplaced,
   });
 
+  factory Issue.fromApiJson(Map<String, dynamic> json) {
+    return Issue(
+      id:                 json['id']                   as String? ?? '',
+      equipmentId:        json['equipment_id']         as String? ?? '',
+      equipmentName:      json['equipment_name']       as String? ?? '',
+      department:         json['department']           as String? ?? '',
+      type:               json['type']                 as String? ?? '',
+      description:        json['description']          as String? ?? '',
+      reporter:           json['reporter']             as String? ?? '',
+      createdAt:          json['created_at']           as String? ?? '',
+      status:             IssueStatus.fromString(json['status'] as String? ?? ''),
+      assignedTechnician: json['assigned_technician']  as String?,
+      diagnosis:          json['diagnosis']            as String?,
+      actions:            json['actions']              as String?,
+      partsReplaced:      json['parts_replaced']       as String?,
+    );
+  }
+
   Issue copyWith({
     String? id,
     String? equipmentId,

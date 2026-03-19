@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/issue.dart';
 import '../widgets/status_badge.dart';
 
@@ -20,16 +20,16 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   final List<String> _statuses = ['Tous', 'Ouvert', 'En cours', 'Résolu'];
 
   List<Issue> get _filteredIssues {
-    if (_statusFilter == 'Tous') return mockIssues;
-    return mockIssues.where((i) => i.status.displayName == _statusFilter).toList();
+    if (_statusFilter == 'Tous') return DataService().issues;
+    return DataService().issues.where((i) => i.status.displayName == _statusFilter).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     // Summary stats
-    final openCount = mockIssues.where((i) => i.status == IssueStatus.open).length;
-    final inProgressCount = mockIssues.where((i) => i.status == IssueStatus.inProgress).length;
-    final resolvedCount = mockIssues.where((i) => i.status == IssueStatus.resolved).length;
+    final openCount = DataService().issues.where((i) => i.status == IssueStatus.open).length;
+    final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
+    final resolvedCount = DataService().issues.where((i) => i.status == IssueStatus.resolved).length;
 
     return Align(
       alignment: Alignment.topLeft,

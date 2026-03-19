@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/equipment.dart';
 import '../utils/file_picker.dart';
 
@@ -50,7 +50,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
 
   Equipment? get _selectedEquipment {
     if (_selectedEquipmentId == null) return null;
-    return mockEquipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
+    return DataService().equipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
   }
 
   void _pickPhoto() {
@@ -124,7 +124,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                       decoration: const InputDecoration(
                         hintText: 'Sélectionnez un équipement',
                       ),
-                      items: mockEquipment.map((eq) => DropdownMenuItem(
+                      items: DataService().equipment.map((eq) => DropdownMenuItem(
                         value: eq.id,
                         child: Text('${eq.name} (${eq.serialNumber})'),
                       )).toList(),

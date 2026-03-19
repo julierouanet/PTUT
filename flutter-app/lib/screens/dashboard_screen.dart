@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/equipment.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/alert_card.dart';
@@ -15,19 +15,19 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Calculate statistics
-    final total = mockEquipment.length;
-    final disponible = mockEquipment.where((e) => e.status == EquipmentStatus.disponible).length;
-    final enUsage = mockEquipment.where((e) => e.status == EquipmentStatus.enUsage).length;
-    final enMaintenance = mockEquipment.where((e) => e.status == EquipmentStatus.enMaintenance).length;
-    final horsService = mockEquipment.where((e) => e.status == EquipmentStatus.horsService).length;
+    final total = DataService().equipment.length;
+    final disponible = DataService().equipment.where((e) => e.status == EquipmentStatus.disponible).length;
+    final enUsage = DataService().equipment.where((e) => e.status == EquipmentStatus.enUsage).length;
+    final enMaintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.enMaintenance).length;
+    final horsService = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).length;
 
     // Recent issues
-    final recentIssues = mockIssues.where((i) => 
+    final recentIssues = DataService().issues.where((i) => 
       i.status.displayName != 'Résolu'
     ).take(4).toList();
 
     // Critical alerts
-    final criticalEquipment = mockEquipment.where((e) => 
+    final criticalEquipment = DataService().equipment.where((e) => 
       e.status == EquipmentStatus.horsService
     ).toList();
 
@@ -280,7 +280,7 @@ class DashboardScreen extends StatelessWidget {
                 message: '${eq.name} - ${eq.department}',
                 severity: AlertSeverity.critical,
               )),
-            ...mockIssues.where((i) => i.status.displayName == 'Ouvert').take(2).map((issue) => 
+            ...DataService().issues.where((i) => i.status.displayName == 'Ouvert').take(2).map((issue) => 
               AlertCard(
                 title: 'Incident ouvert',
                 message: '${issue.equipmentName} - ${issue.description}',

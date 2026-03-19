@@ -73,6 +73,35 @@ class Equipment {
     this.futureMaintenance = const [],
   });
 
+  factory Equipment.fromApiJson(Map<String, dynamic> json) {
+    final history = (json['maintenanceHistory'] as List? ?? [])
+        .map((m) => MaintenanceRecord(
+              date: m['date'] as String? ?? '',
+              intervention: m['intervention'] as String? ?? '',
+              technician: m['technician'] as String? ?? '',
+            ))
+        .toList();
+    final future = (json['futureMaintenance'] as List? ?? [])
+        .map((m) => MaintenanceRecord(
+              date: m['date'] as String? ?? '',
+              intervention: m['intervention'] as String? ?? '',
+              technician: m['technician'] as String? ?? '',
+            ))
+        .toList();
+    return Equipment(
+      id:                 json['id']            as String? ?? '',
+      name:               json['name']          as String? ?? '',
+      department:         json['department']    as String? ?? '',
+      category:           json['category']      as String? ?? '',
+      serialNumber:       json['serial_number'] as String? ?? '',
+      status:             EquipmentStatus.fromString(json['status'] as String? ?? ''),
+      supplier:           json['supplier']      as String? ?? '',
+      location:           json['location']      as String? ?? '',
+      maintenanceHistory: history,
+      futureMaintenance:  future,
+    );
+  }
+
   Equipment copyWith({
     String? id,
     String? name,

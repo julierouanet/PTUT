@@ -56,6 +56,37 @@ class InventoryItem {
     required this.lastRestocked,
   });
 
+  factory InventoryItem.fromApiJson(Map<String, dynamic> json) {
+    return InventoryItem(
+      id:           json['id']             as String? ?? '',
+      name:         json['name']           as String? ?? '',
+      category:     _categoryFromString(json['category'] as String? ?? ''),
+      currentStock: json['current_stock']  as int? ?? 0,
+      minStock:     json['min_stock']      as int? ?? 0,
+      unit:         json['unit']           as String? ?? '',
+      status:       _stockStatusFromString(json['status'] as String? ?? ''),
+      lastRestocked: json['last_restocked'] as String? ?? '',
+    );
+  }
+
+  static InventoryCategory _categoryFromString(String v) {
+    switch (v) {
+      case 'Consommable médical': return InventoryCategory.consommableMedical;
+      case 'Hygiène':             return InventoryCategory.hygiene;
+      case 'Bureautique':         return InventoryCategory.bureautique;
+      default:                    return InventoryCategory.consommableMedical;
+    }
+  }
+
+  static StockStatus _stockStatusFromString(String v) {
+    switch (v) {
+      case 'Normal':  return StockStatus.normal;
+      case 'Bas':     return StockStatus.low;
+      case 'Rupture': return StockStatus.outOfStock;
+      default:        return StockStatus.normal;
+    }
+  }
+
   InventoryItem copyWith({
     String? id,
     String? name,

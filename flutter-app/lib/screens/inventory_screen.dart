@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/inventory_item.dart';
 
 /// Inventory screen - manage consumables and stock
@@ -15,14 +15,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _categoryFilter = 'Tous';
 
   List<InventoryItem> get _filteredItems {
-    if (_categoryFilter == 'Tous') return mockInventory;
-    return mockInventory.where((item) => item.category.displayName == _categoryFilter).toList();
+    if (_categoryFilter == 'Tous') return DataService().inventory;
+    return DataService().inventory.where((item) => item.category.displayName == _categoryFilter).toList();
   }
 
   @override
   Widget build(BuildContext context) {
-    final lowStock = mockInventory.where((i) => i.status == StockStatus.low).length;
-    final outOfStock = mockInventory.where((i) => i.status == StockStatus.outOfStock).length;
+    final lowStock = DataService().inventory.where((i) => i.status == StockStatus.low).length;
+    final outOfStock = DataService().inventory.where((i) => i.status == StockStatus.outOfStock).length;
 
     return Align(
       alignment: Alignment.topLeft,
@@ -92,10 +92,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   children: [
                     const Text('Filtrer: ', style: TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(width: 12),
-                    _buildFilterChip('Tous', mockInventory.length),
-                    _buildFilterChip('Consommable médical', mockInventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
-                    _buildFilterChip('Hygiène', mockInventory.where((i) => i.category == InventoryCategory.hygiene).length),
-                    _buildFilterChip('Bureautique', mockInventory.where((i) => i.category == InventoryCategory.bureautique).length),
+                    _buildFilterChip('Tous', DataService().inventory.length),
+                    _buildFilterChip('Consommable médical', DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
+                    _buildFilterChip('Hygiène', DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
+                    _buildFilterChip('Bureautique', DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
                     const Spacer(),
                     Text('${_filteredItems.length} articles', style: const TextStyle(color: AppColors.textSecondary)),
                   ],

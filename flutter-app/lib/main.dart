@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
+import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/equipment_list_screen.dart';
 import 'screens/issue_tracking_screen.dart';
@@ -10,12 +11,11 @@ import 'screens/reports_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/auth_service.dart';
-import 'data/mock_data.dart';
+import 'services/data_service.dart';
 import 'models/user_role.dart';
 
-void main() {
-  // Initialize auth service with admin user for demo
-  AuthService().initDemo();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const EquipmentManagementApp());
 }
 
@@ -28,7 +28,39 @@ class EquipmentManagementApp extends StatelessWidget {
       title: 'Gestion des Équipements - Kabutare Hospital',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const MainScaffold(),
+      home: ListenableBuilder(
+        listenable: AuthService(),
+        builder: (context, _) {
+          if (!AuthService().isLoggedIn) return const LoginScreen();
+          return ListenableBuilder(
+            listenable: DataService(),
+            builder: (context, _) {
+              if (DataService().isLoading) return const _LoadingScreen();
+              return const MainScaffold();
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Chargement des données...'),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -324,57 +356,19 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
           ),
           
-          // User switcher for demo
+          // Bouton de déconnexion
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Card(
-              color: AppColors.warningLight,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.swap_horiz, size: 14, color: AppColors.warning),
-                        SizedBox(width: 4),
-                        Text('Test: Changer de rôle', style: TextStyle(fontSize: 11, color: AppColors.warning, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    DropdownButton<String>(
-                      value: currentUser?.id,
-                      isExpanded: true,
-                      underline: const SizedBox(),
-                      isDense: true,
-                      items: mockUsers.map((user) => DropdownMenuItem(
-                        value: user.id,
-                        child: Row(
-                          children: [
-                            _getRoleIcon(user.role),
-                            const SizedBox(width: 8),
-                            Expanded(child: Text(user.name, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                          ],
-                        ),
-                      )).toList(),
-                      onChanged: (id) {
-                        final user = mockUsers.firstWhere((u) => u.id == id);
-                        _authService.switchUser(user);
-                        setState(() {
-                          _currentIndex = 0; // Reset to dashboard
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Connecté en tant que ${user.name} (${user.role.displayName})'),
-                            behavior: SnackBarBehavior.floating,
-                            backgroundColor: _getRoleColor(user.role),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: ListTile(
+              leading: const Icon(Icons.logout, color: AppColors.error),
+              title: const Text(
+                'Se déconnecter',
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500),
               ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              onTap: () async {
+                await _authService.logoutApi();
+              },
             ),
           ),
           

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
-import '../data/mock_data.dart';
+import '../services/data_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
 import '../services/config_service.dart';
@@ -22,12 +22,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   String _categoryFilter = 'Tous';
   final ConfigService _configService = ConfigService();
 
-  List<String> get _departments => ['Tous', ...mockEquipment.map((e) => e.department).toSet()];
+  List<String> get _departments => ['Tous', ...DataService().equipment.map((e) => e.department).toSet()];
   List<String> get _statuses => ['Tous', 'Disponible', 'En usage', 'En maintenance', 'Hors service'];
-  List<String> get _categories => ['Tous', ...mockEquipment.map((e) => e.category).toSet()];
+  List<String> get _categories => ['Tous', ...DataService().equipment.map((e) => e.category).toSet()];
 
   List<Equipment> get _filteredEquipment {
-    return mockEquipment.where((eq) {
+    return DataService().equipment.where((eq) {
       final matchesSearch = eq.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
           eq.serialNumber.toLowerCase().contains(_searchTerm.toLowerCase());
       final matchesDepartment = _departmentFilter == 'Tous' || eq.department == _departmentFilter;
@@ -409,16 +409,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                               status: selectedStatus,
                             );
                             
-                            // Add or update in mock data
+                            // Mise à jour locale + notification DataService
                             setState(() {
                               if (isEdit) {
-                                final index = mockEquipment.indexWhere((e) => e.id == existingEquipment.id);
+                                final index = DataService().equipment.indexWhere((e) => e.id == existingEquipment.id);
                                 if (index != -1) {
-                                  mockEquipment[index] = newEquipment;
+                                  DataService().equipment[index] = newEquipment;
                                 }
                               } else {
-                                mockEquipment.add(newEquipment);
+                                DataService().equipment.add(newEquipment);
                               }
+                              DataService().notify();
                             });
                             
                             Navigator.pop(context);
