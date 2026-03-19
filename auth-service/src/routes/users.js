@@ -1,12 +1,20 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
 const { getDb } = require('../database');
-const { verifyToken, requireRole } = require('../middleware/auth');
+const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Middleware inline : réservé aux admins
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+  }
+  next();
+};
+
 // GET /api/users — liste tous les utilisateurs (admin seulement)
-router.get('/', verifyToken, requireRole('admin'), (req, res) => {
+router.get('/', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const users = db.prepare(
     'SELECT id, name, email, department, role, phone, is_active, created_at FROM users ORDER BY name ASC'
@@ -15,7 +23,7 @@ router.get('/', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // GET /api/users/:id
-router.get('/:id', verifyToken, requireRole('admin'), (req, res) => {
+router.get('/:id', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const user = db.prepare(
     'SELECT id, name, email, department, role, phone, is_active, created_at FROM users WHERE id = ?'
@@ -25,7 +33,7 @@ router.get('/:id', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // POST /api/users — créer un utilisateur (admin seulement)
-router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
+router.post('/', verifyToken, requireAdmin, async (req, res) => {
   const { name, email, password, department, role, phone } = req.body;
 
   if (!name || !email || !password || !department || !role) {
@@ -58,7 +66,7 @@ router.post('/', verifyToken, requireRole('admin'), async (req, res) => {
 });
 
 // PUT /api/users/:id — modifier un utilisateur (admin seulement)
-router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
+router.put('/:id', verifyToken, requireAdmin, async (req, res) => {
   const { name, email, password, department, role, phone } = req.body;
   const db = getDb();
 
@@ -103,7 +111,7 @@ router.put('/:id', verifyToken, requireRole('admin'), async (req, res) => {
 });
 
 // PATCH /api/users/:id/toggle — activer/désactiver un compte (admin seulement)
-router.patch('/:id/toggle', verifyToken, requireRole('admin'), (req, res) => {
+router.patch('/:id/toggle', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const user = db.prepare('SELECT id, is_active FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
@@ -114,7 +122,7 @@ router.patch('/:id/toggle', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // DELETE /api/users/:id (admin seulement)
-router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
+router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   // Empêcher la suppression de soi-même
   if (req.user.id === req.params.id) {
