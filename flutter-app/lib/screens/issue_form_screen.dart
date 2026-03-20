@@ -23,7 +23,6 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   String? _selectedEquipmentId;
   String _problemType = 'Panne';
   final _descriptionController = TextEditingController();
-  final _reporterController = TextEditingController();
 
   // Photo handling
   final List<_PhotoItem> _photos = [];
@@ -57,7 +56,6 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   @override
   void dispose() {
     _descriptionController.dispose();
-    _reporterController.dispose();
     super.dispose();
   }
 
@@ -257,24 +255,55 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Reporter name
+                    // Reporter — auto-filled from logged-in user
                     Text(
                       l10n.issueFormYourName,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _reporterController,
-                      decoration: InputDecoration(
-                        hintText: l10n.issueFormYourNameHint,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return l10n.issueFormYourNameRequired;
-                        }
-                        return null;
-                      },
-                    ),
+                    Builder(builder: (context) {
+                      final user = AuthService().currentUser;
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.successLight,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.success.withValues(alpha: 0.2),
+                              child: const Icon(Icons.person, color: AppColors.success, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user?.name ?? '',
+                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                  ),
+                                  if (user?.email != null)
+                                    Text(
+                                      user!.email,
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                  if (user?.department != null && user!.department.isNotEmpty)
+                                    Text(
+                                      user.department,
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.verified_user, color: AppColors.success, size: 18),
+                          ],
+                        ),
+                      );
+                    }),
                     const SizedBox(height: 32),
 
                     // Submit button
@@ -372,16 +401,17 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
 
     final l10n = AppLocalizations.of(context)!;
     final equipment = _selectedEquipment!;
+    final currentUser = AuthService().currentUser;
     final issueData = {
-      'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
-      'equipment_id':   equipment.id,
-      'equipment_name': equipment.name,
-      'department':     equipment.department,
-      'type':           _problemType,
-      'description':    _descriptionController.text.trim(),
-      'reporter':       _reporterController.text.trim().isNotEmpty
-                          ? _reporterController.text.trim()
-                          : AuthService().currentUser?.name ?? 'Inconnu',
+      'id':              'issue-${DateTime.now().millisecondsSinceEpoch}',
+      'equipment_id':    equipment.id,
+      'equipment_name':  equipment.name,
+      'department':      equipment.department,
+      'type':            _problemType,
+      'description':     _descriptionController.text.trim(),
+      'reporter':        currentUser?.name ?? 'Inconnu',
+      'reporter_id':     currentUser?.id ?? '',
+      'reporter_email':  currentUser?.email ?? '',
     };
 
     try {
@@ -401,7 +431,6 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
         _selectedEquipmentId = null;
         _problemType = l10n.issueFormBreakdown;
         _descriptionController.clear();
-        _reporterController.clear();
         _photos.clear();
       });
     } catch (e) {
