@@ -100,9 +100,11 @@ void main() {
       expect(find.text('Signaler'), findsWidgets);
       expect(find.text('Suivi incidents'), findsWidgets);
 
+      // Staff should see Settings (language switcher, accessible to all)
+      expect(find.text('Parametres'), findsWidgets);
+
       // Staff should NOT see admin/tech/supervisor items
       expect(find.text('Utilisateurs'), findsNothing);
-      expect(find.text('Parametres'), findsNothing);
       expect(find.text('Technicien'), findsNothing);
       expect(find.text('Rapports'), findsNothing);
     });
