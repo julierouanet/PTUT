@@ -41,6 +41,8 @@ class Issue {
   final String type;
   final String description;
   final String reporter;
+  final String? reporterId;
+  final String? reporterEmail;
   final String createdAt;
   final IssueStatus status;
   final String? assignedTechnician;
@@ -56,6 +58,8 @@ class Issue {
     required this.type,
     required this.description,
     required this.reporter,
+    this.reporterId,
+    this.reporterEmail,
     required this.createdAt,
     required this.status,
     this.assignedTechnician,
@@ -73,6 +77,8 @@ class Issue {
       type:               json['type']                 as String? ?? '',
       description:        json['description']          as String? ?? '',
       reporter:           json['reporter']             as String? ?? '',
+      reporterId:         json['reporter_id']          as String?,
+      reporterEmail:      json['reporter_email']       as String?,
       createdAt:          json['created_at']           as String? ?? '',
       status:             IssueStatus.fromString(json['status'] as String? ?? ''),
       assignedTechnician: json['assigned_technician']  as String?,
@@ -90,6 +96,8 @@ class Issue {
     String? type,
     String? description,
     String? reporter,
+    String? reporterId,
+    String? reporterEmail,
     String? createdAt,
     IssueStatus? status,
     String? assignedTechnician,
@@ -104,8 +112,10 @@ class Issue {
       department: department ?? this.department,
       type: type ?? this.type,
       description: description ?? this.description,
-      reporter: reporter ?? this.reporter,
-      createdAt: createdAt ?? this.createdAt,
+      reporter:      reporter      ?? this.reporter,
+      reporterId:    reporterId    ?? this.reporterId,
+      reporterEmail: reporterEmail ?? this.reporterEmail,
+      createdAt:     createdAt     ?? this.createdAt,
       status: status ?? this.status,
       assignedTechnician: assignedTechnician ?? this.assignedTechnician,
       diagnosis: diagnosis ?? this.diagnosis,

@@ -107,6 +107,17 @@
   "equipmentMaintenanceHistory": "Maintenance history",
   "equipmentReportProblem": "Report a problem",
 
+  "issuesMyIssues": "My issues",
+  "issuesMyIssuesSubtitle": "Issues you have submitted",
+  "issuesNoMyIssues": "You have not reported any issue yet",
+  "issuesDeptIssues": "My department issues",
+  "issuesDeptIssuesSubtitle": "Department: {dept}",
+  "@issuesDeptIssuesSubtitle": { "placeholders": { "dept": { "type": "String" } } },
+  "issuesNoDeptIssues": "No issue reported in your department",
+  "issuesAndMore": "... and {count} more",
+  "@issuesAndMore": { "placeholders": { "count": { "type": "int" } } },
+  "issuesAllIssues": "All issues",
+
   "issuesTitle": "Issue Tracking",
   "issuesSubtitle": "Manage and track equipment issues",
   "issuesOpen": "Open",

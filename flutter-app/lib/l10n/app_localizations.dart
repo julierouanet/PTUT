@@ -740,6 +740,54 @@ abstract class AppLocalizations {
   /// **'{count} incident(s)'**
   String issuesCount(int count);
 
+  /// No description provided for @issuesMyIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes incidents'**
+  String get issuesMyIssues;
+
+  /// No description provided for @issuesMyIssuesSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents que vous avez soumis'**
+  String get issuesMyIssuesSubtitle;
+
+  /// No description provided for @issuesNoMyIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous n\'avez pas encore signale d\'incident'**
+  String get issuesNoMyIssues;
+
+  /// No description provided for @issuesDeptIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents de mon departement'**
+  String get issuesDeptIssues;
+
+  /// No description provided for @issuesDeptIssuesSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Departement: {dept}'**
+  String issuesDeptIssuesSubtitle(String dept);
+
+  /// No description provided for @issuesNoDeptIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident signale dans votre departement'**
+  String get issuesNoDeptIssues;
+
+  /// No description provided for @issuesAndMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'... et {count} autre(s)'**
+  String issuesAndMore(int count);
+
+  /// No description provided for @issuesAllIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les incidents'**
+  String get issuesAllIssues;
+
   /// No description provided for @issuesIncidentId.
   ///
   /// In fr, this message translates to:

@@ -339,6 +339,34 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get issuesMyIssues => 'My issues';
+
+  @override
+  String get issuesMyIssuesSubtitle => 'Issues you have submitted';
+
+  @override
+  String get issuesNoMyIssues => 'You have not reported any issue yet';
+
+  @override
+  String get issuesDeptIssues => 'My department issues';
+
+  @override
+  String issuesDeptIssuesSubtitle(String dept) {
+    return 'Department: $dept';
+  }
+
+  @override
+  String get issuesNoDeptIssues => 'No issue reported in your department';
+
+  @override
+  String issuesAndMore(int count) {
+    return '... and $count more';
+  }
+
+  @override
+  String get issuesAllIssues => 'All issues';
+
+  @override
   String issuesIncidentId(String id) {
     return 'Issue #$id';
   }
