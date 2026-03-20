@@ -123,7 +123,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
     _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
     _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
-    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
+    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, screenType: ScreenType.settings, requiredPermission: null),
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
