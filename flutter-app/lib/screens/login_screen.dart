@@ -1,14 +1,62 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/notification_service.dart';
+import '../models/user.dart';
+import '../data/mock_data.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
+}
+
+/// Small colored button used in the DEV quick-login section.
+class _DevLoginButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _DevLoginButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 15, color: color),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _LoginScreenState extends State<LoginScreen> {
@@ -25,6 +73,13 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _quickLogin(User user) async {
+    setState(() { _loading = true; _error = null; });
+    AuthService().switchUser(user);
+    await DataService().loadAll();
+    NotificationService().generateFromLoadedData();
   }
 
   Future<void> _submit() async {
@@ -136,6 +191,74 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                 ),
+
+                // ── DEV: Quick login buttons (debug mode only) ──────────────
+                if (kDebugMode) ...[
+                  const SizedBox(height: 24),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.orange.shade300),
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.orange.shade50,
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.developer_mode, size: 16, color: Colors.orange.shade700),
+                            const SizedBox(width: 6),
+                            Text(
+                              'DEV — Connexion rapide',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.orange.shade800,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        GridView.count(
+                          crossAxisCount: 2,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 3.2,
+                          children: [
+                            _DevLoginButton(
+                              label: 'Admin',
+                              icon: Icons.admin_panel_settings,
+                              color: AppColors.error,
+                              onTap: _loading ? null : () => _quickLogin(mockUsers[0]),
+                            ),
+                            _DevLoginButton(
+                              label: 'Superviseur',
+                              icon: Icons.supervisor_account,
+                              color: AppColors.primary,
+                              onTap: _loading ? null : () => _quickLogin(mockUsers[1]),
+                            ),
+                            _DevLoginButton(
+                              label: 'Technicien',
+                              icon: Icons.build,
+                              color: AppColors.warning,
+                              onTap: _loading ? null : () => _quickLogin(mockUsers[3]),
+                            ),
+                            _DevLoginButton(
+                              label: 'Hospitalier',
+                              icon: Icons.local_hospital,
+                              color: AppColors.success,
+                              onTap: _loading ? null : () => _quickLogin(mockUsers[5]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
