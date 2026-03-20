@@ -36,7 +36,7 @@ void main() {
       await tester.pumpWidget(const EquipmentManagementApp());
 
       final materialApp = tester.widget<MaterialApp>(find.byType(MaterialApp));
-      expect(materialApp.title, 'Gestion des Équipements - Kabutare Hospital');
+      expect(materialApp.title, 'Gestion des Equipements - Kabutare Hospital');
     });
   });
 
@@ -63,14 +63,14 @@ void main() {
 
       // All nav labels should appear
       expect(find.text('Tableau de bord'), findsWidgets);
-      expect(find.text('Équipements'), findsWidgets);
+      expect(find.text('Equipements'), findsWidgets);
       expect(find.text('Suivi incidents'), findsWidgets);
       expect(find.text('Signaler'), findsWidgets);
       expect(find.text('Technicien'), findsWidgets);
       expect(find.text('Inventaire'), findsWidgets);
       expect(find.text('Rapports'), findsWidgets);
       expect(find.text('Utilisateurs'), findsWidgets);
-      expect(find.text('Paramètres'), findsWidgets);
+      expect(find.text('Parametres'), findsWidgets);
     });
   });
 
@@ -96,13 +96,13 @@ void main() {
 
       // Staff should see basic items
       expect(find.text('Tableau de bord'), findsWidgets);
-      expect(find.text('Équipements'), findsWidgets);
+      expect(find.text('Equipements'), findsWidgets);
       expect(find.text('Signaler'), findsWidgets);
       expect(find.text('Suivi incidents'), findsWidgets);
 
       // Staff should NOT see admin/tech/supervisor items
       expect(find.text('Utilisateurs'), findsNothing);
-      expect(find.text('Paramètres'), findsNothing);
+      expect(find.text('Parametres'), findsNothing);
       expect(find.text('Technicien'), findsNothing);
       expect(find.text('Rapports'), findsNothing);
     });

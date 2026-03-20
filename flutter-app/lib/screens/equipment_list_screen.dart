@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
@@ -23,23 +24,35 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   String _categoryFilter = 'Tous';
   final ConfigService _configService = ConfigService();
 
-  List<String> get _departments => ['Tous', ...DataService().equipment.map((e) => e.department).toSet()];
-  List<String> get _statuses => ['Tous', 'Disponible', 'En usage', 'En maintenance', 'Hors service'];
-  List<String> get _categories => ['Tous', ...DataService().equipment.map((e) => e.category).toSet()];
+  List<String> _departments(String allLabel) => [allLabel, ...DataService().equipment.map((e) => e.department).toSet()];
+  List<String> _statuses(String allLabel) => [allLabel, 'Disponible', 'En usage', 'En maintenance', 'Hors service'];
+  List<String> _categories(String allLabel) => [allLabel, ...DataService().equipment.map((e) => e.category).toSet()];
 
   List<Equipment> get _filteredEquipment {
+    final l10n = AppLocalizations.of(context)!;
     return DataService().equipment.where((eq) {
       final matchesSearch = eq.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
           eq.serialNumber.toLowerCase().contains(_searchTerm.toLowerCase());
-      final matchesDepartment = _departmentFilter == 'Tous' || eq.department == _departmentFilter;
-      final matchesStatus = _statusFilter == 'Tous' || eq.status.displayName == _statusFilter;
-      final matchesCategory = _categoryFilter == 'Tous' || eq.category == _categoryFilter;
+      final matchesDepartment = _departmentFilter == l10n.commonAll || eq.department == _departmentFilter;
+      final matchesStatus = _statusFilter == l10n.commonAll || eq.status.displayName == _statusFilter;
+      final matchesCategory = _categoryFilter == l10n.commonAll || eq.category == _categoryFilter;
       return matchesSearch && matchesDepartment && matchesStatus && matchesCategory;
     }).toList();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = AppLocalizations.of(context)!;
+    if (_departmentFilter == 'Tous') _departmentFilter = l10n.commonAll;
+    if (_statusFilter == 'Tous') _statusFilter = l10n.commonAll;
+    if (_categoryFilter == 'Tous') _categoryFilter = l10n.commonAll;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
@@ -51,28 +64,28 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Liste des équipements',
-                      style: TextStyle(
+                      l10n.equipmentTitle,
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Gestion et suivi de tous les équipements',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      l10n.equipmentSubtitle,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
                 ElevatedButton.icon(
                   onPressed: _showAddEquipmentDialog,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Nouvel équipement'),
+                  label: Text(l10n.equipmentNew),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   ),
@@ -92,16 +105,16 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       children: [
                         Expanded(child: _buildSearchField()),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildDropdown('Département', _departmentFilter, _departments, (v) => setState(() => _departmentFilter = v!))),
+                        Expanded(child: _buildDropdown(l10n.commonDepartment, _departmentFilter, _departments(l10n.commonAll), (v) => setState(() => _departmentFilter = v!))),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildDropdown('Statut', _statusFilter, _statuses, (v) => setState(() => _statusFilter = v!))),
+                        Expanded(child: _buildDropdown(l10n.commonStatus, _statusFilter, _statuses(l10n.commonAll), (v) => setState(() => _statusFilter = v!))),
                         const SizedBox(width: 12),
-                        Expanded(child: _buildDropdown('Catégorie', _categoryFilter, _categories, (v) => setState(() => _categoryFilter = v!))),
+                        Expanded(child: _buildDropdown(l10n.commonCategory, _categoryFilter, _categories(l10n.commonAll), (v) => setState(() => _categoryFilter = v!))),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${_filteredEquipment.length} équipement(s) trouvé(s)',
+                      l10n.equipmentFound(_filteredEquipment.length),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
@@ -120,13 +133,13 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
                     child: DataTable(
                       headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: const [
-                        DataColumn(label: Text("Nom de l'équipement")),
-                        DataColumn(label: Text('Département')),
-                        DataColumn(label: Text('Catégorie')),
-                        DataColumn(label: Text('Numéro de série')),
-                        DataColumn(label: Text('Statut')),
-                        DataColumn(label: Text('Actions')),
+                      columns: [
+                        DataColumn(label: Text(l10n.equipmentName)),
+                        DataColumn(label: Text(l10n.commonDepartment)),
+                        DataColumn(label: Text(l10n.commonCategory)),
+                        DataColumn(label: Text(l10n.equipmentSerialNumber)),
+                        DataColumn(label: Text(l10n.commonStatus)),
+                        DataColumn(label: Text(l10n.commonActions)),
                       ],
                       rows: _filteredEquipment.map((eq) => DataRow(
                         cells: [
@@ -149,25 +162,25 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 icon: const Icon(Icons.visibility, size: 18),
                                 color: AppColors.primary,
                                 onPressed: () => _showEquipmentDetail(eq),
-                                tooltip: 'Détails',
+                                tooltip: l10n.commonDetails,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 18),
                                 color: AppColors.warning,
                                 onPressed: () => _showEditEquipmentDialog(eq),
-                                tooltip: 'Modifier',
+                                tooltip: l10n.commonEdit,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.report_problem_outlined, size: 18),
                                 color: AppColors.error,
                                 onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                                tooltip: 'Signaler',
+                                tooltip: l10n.commonReport,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18),
                                 color: AppColors.error,
                                 onPressed: () => _confirmDelete(eq),
-                                tooltip: 'Supprimer',
+                                tooltip: l10n.commonDelete,
                               ),
                             ],
                           )),
@@ -185,11 +198,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 
   Widget _buildSearchField() {
+    final l10n = AppLocalizations.of(context)!;
     return TextField(
       onChanged: (value) => setState(() => _searchTerm = value),
-      decoration: const InputDecoration(
-        hintText: 'Rechercher...',
-        prefixIcon: Icon(Icons.search),
+      decoration: InputDecoration(
+        hintText: l10n.commonSearch,
+        prefixIcon: const Icon(Icons.search),
         isDense: true,
       ),
     );
@@ -218,12 +232,13 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   void _showEquipmentFormDialog(Equipment? existingEquipment) {
     final isEdit = existingEquipment != null;
-    
+    final l10n = AppLocalizations.of(context)!;
+
     final nameController = TextEditingController(text: existingEquipment?.name ?? '');
     final serialController = TextEditingController(text: existingEquipment?.serialNumber ?? '');
     final supplierController = TextEditingController(text: existingEquipment?.supplier ?? '');
     final locationController = TextEditingController(text: existingEquipment?.location ?? '');
-    
+
     String selectedDepartment = existingEquipment?.department ?? _configService.departmentNames.first;
     String selectedCategory = existingEquipment?.category ?? _configService.categoryNames.first;
     EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
@@ -256,7 +271,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           Icon(isEdit ? Icons.edit : Icons.add_circle, color: Colors.white),
                           const SizedBox(width: 12),
                           Text(
-                            isEdit ? 'Modifier l\'équipement' : 'Nouvel équipement',
+                            isEdit ? l10n.equipmentEditTitle : l10n.equipmentNewTitle,
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                         ],
@@ -268,7 +283,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     ],
                   ),
                 ),
-                
+
                 // Form
                 Flexible(
                   child: SingleChildScrollView(
@@ -279,34 +294,34 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         // Name
                         TextField(
                           controller: nameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Nom de l\'équipement *',
-                            hintText: 'Ex: Scanner IRM Siemens',
-                            prefixIcon: Icon(Icons.inventory_2),
+                          decoration: InputDecoration(
+                            labelText: l10n.equipmentNameLabel,
+                            hintText: l10n.equipmentNameHint,
+                            prefixIcon: const Icon(Icons.inventory_2),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Serial number
                         TextField(
                           controller: serialController,
-                          decoration: const InputDecoration(
-                            labelText: 'Numéro de série *',
-                            hintText: 'Ex: SN-2023-001',
-                            prefixIcon: Icon(Icons.qr_code),
+                          decoration: InputDecoration(
+                            labelText: l10n.equipmentSerialLabel,
+                            hintText: l10n.equipmentSerialHint,
+                            prefixIcon: const Icon(Icons.qr_code),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Department and Category row
                         Row(
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 value: selectedDepartment,
-                                decoration: const InputDecoration(
-                                  labelText: 'Département *',
-                                  prefixIcon: Icon(Icons.business),
+                                decoration: InputDecoration(
+                                  labelText: l10n.equipmentDepartmentLabel,
+                                  prefixIcon: const Icon(Icons.business),
                                 ),
                                 items: _configService.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                                 onChanged: (v) => setDialogState(() => selectedDepartment = v!),
@@ -316,9 +331,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             Expanded(
                               child: DropdownButtonFormField<String>(
                                 value: selectedCategory,
-                                decoration: const InputDecoration(
-                                  labelText: 'Catégorie *',
-                                  prefixIcon: Icon(Icons.category),
+                                decoration: InputDecoration(
+                                  labelText: l10n.equipmentCategoryLabel,
+                                  prefixIcon: const Icon(Icons.category),
                                 ),
                                 items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                                 onChanged: (v) => setDialogState(() => selectedCategory = v!),
@@ -327,35 +342,35 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Supplier
                         TextField(
                           controller: supplierController,
-                          decoration: const InputDecoration(
-                            labelText: 'Fournisseur',
-                            hintText: 'Ex: Siemens Healthineers',
-                            prefixIcon: Icon(Icons.local_shipping),
+                          decoration: InputDecoration(
+                            labelText: l10n.equipmentSupplier,
+                            hintText: l10n.equipmentSupplierHint,
+                            prefixIcon: const Icon(Icons.local_shipping),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Location
                         TextField(
                           controller: locationController,
-                          decoration: const InputDecoration(
-                            labelText: 'Localisation',
-                            hintText: 'Ex: Bâtiment A, Salle 101',
-                            prefixIcon: Icon(Icons.location_on),
+                          decoration: InputDecoration(
+                            labelText: l10n.equipmentLocation,
+                            hintText: l10n.equipmentLocationHint,
+                            prefixIcon: const Icon(Icons.location_on),
                           ),
                         ),
                         const SizedBox(height: 16),
-                        
+
                         // Status
                         DropdownButtonFormField<EquipmentStatus>(
                           value: selectedStatus,
-                          decoration: const InputDecoration(
-                            labelText: 'Statut',
-                            prefixIcon: Icon(Icons.info_outline),
+                          decoration: InputDecoration(
+                            labelText: l10n.commonStatus,
+                            prefixIcon: const Icon(Icons.info_outline),
                           ),
                           items: EquipmentStatus.values.map((s) => DropdownMenuItem(
                             value: s,
@@ -373,7 +388,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     ),
                   ),
                 ),
-                
+
                 // Actions
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -385,7 +400,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text('Annuler'),
+                          child: Text(l10n.commonCancel),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -395,8 +410,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           onPressed: () async {
                             if (nameController.text.isEmpty || serialController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Veuillez remplir les champs obligatoires'),
+                                SnackBar(
+                                  content: Text(l10n.commonFillRequiredFields),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -428,7 +443,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                   content: Row(children: [
                                     const Icon(Icons.check_circle, color: Colors.white),
                                     const SizedBox(width: 12),
-                                    Text(isEdit ? 'Équipement modifié' : 'Équipement ajouté'),
+                                    Text(isEdit ? l10n.equipmentModified : l10n.equipmentAdded),
                                   ]),
                                   backgroundColor: AppColors.success,
                                   behavior: SnackBarBehavior.floating,
@@ -445,7 +460,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             }
                           },
                           icon: Icon(isEdit ? Icons.save : Icons.add),
-                          label: Text(isEdit ? 'Enregistrer les modifications' : 'Ajouter l\'équipement'),
+                          label: Text(isEdit ? l10n.equipmentSaveChanges : l10n.equipmentAddButton),
                         ),
                       ),
                     ],
@@ -460,13 +475,14 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 
   void _confirmDelete(Equipment eq) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer l\'équipement'),
-        content: Text('Confirmer la suppression de "${eq.name}" ? Cette action est irréversible.'),
+        title: Text(l10n.equipmentDeleteTitle),
+        content: Text(l10n.equipmentDeleteConfirm(eq.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () async {
@@ -475,8 +491,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 await DbApiService.instance.deleteEquipment(eq.id);
                 await DataService().reloadEquipment();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Équipement supprimé'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.equipmentDeleted),
                     backgroundColor: AppColors.success,
                     behavior: SnackBarBehavior.floating,
                   ));
@@ -491,7 +507,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 }
               }
             },
-            child: const Text('Supprimer'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -523,6 +539,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 
   void _showEquipmentDetail(Equipment eq) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -547,7 +564,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             _showEditEquipmentDialog(eq);
                           },
                           icon: const Icon(Icons.edit, color: AppColors.primary),
-                          tooltip: 'Modifier',
+                          tooltip: l10n.commonEdit,
                         ),
                         IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                       ],
@@ -557,14 +574,14 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 const SizedBox(height: 16),
                 StatusBadge(status: eq.status.displayName),
                 const SizedBox(height: 24),
-                _buildDetailRow('Département', eq.department),
-                _buildDetailRow('Catégorie', eq.category),
-                _buildDetailRow('Numéro de série', eq.serialNumber),
-                _buildDetailRow('Fournisseur', eq.supplier),
-                _buildDetailRow('Localisation', eq.location),
+                _buildDetailRow(l10n.commonDepartment, eq.department),
+                _buildDetailRow(l10n.commonCategory, eq.category),
+                _buildDetailRow(l10n.equipmentSerialNumber, eq.serialNumber),
+                _buildDetailRow(l10n.equipmentSupplier, eq.supplier),
+                _buildDetailRow(l10n.equipmentLocation, eq.location),
                 const SizedBox(height: 24),
                 if (eq.maintenanceHistory.isNotEmpty) ...[
-                  const Text('Historique de maintenance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  Text(l10n.equipmentMaintenanceHistory, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   ...eq.maintenanceHistory.map((m) => ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -583,7 +600,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           widget.onNavigate(3, equipmentId: eq.id);
                         },
                         icon: const Icon(Icons.report_problem_outlined),
-                        label: const Text('Signaler un problème'),
+                        label: Text(l10n.equipmentReportProblem),
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../models/issue.dart';
@@ -17,15 +18,26 @@ class IssueTrackingScreen extends StatefulWidget {
 class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   String _statusFilter = 'Tous';
 
-  final List<String> _statuses = ['Tous', 'Ouvert', 'En cours', 'Résolu'];
-
   List<Issue> get _filteredIssues {
-    if (_statusFilter == 'Tous') return DataService().issues;
+    final l10n = AppLocalizations.of(context)!;
+    if (_statusFilter == l10n.commonAll) return DataService().issues;
     return DataService().issues.where((i) => i.status.displayName == _statusFilter).toList();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = AppLocalizations.of(context)!;
+    if (_statusFilter == 'Tous') _statusFilter = l10n.commonAll;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Filter chip labels: use l10n for "Tous", keep status displayNames for matching
+    final statuses = [l10n.commonAll, 'Ouvert', 'En cours', 'Résolu'];
+
     // Summary stats
     final openCount = DataService().issues.where((i) => i.status == IssueStatus.open).length;
     final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
@@ -39,34 +51,34 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            const Text(
-              'Suivi des incidents',
-              style: TextStyle(
+            Text(
+              l10n.issuesTitle,
+              style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Gérer et suivre les incidents des équipements',
-              style: TextStyle(color: AppColors.textSecondary),
+            Text(
+              l10n.issuesSubtitle,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
 
             // Mini Summary Cards
             Row(
               children: [
-                _buildMiniStat('Ouverts', openCount, AppColors.error),
+                _buildMiniStat(l10n.issuesOpen, openCount, AppColors.error),
                 const SizedBox(width: 12),
-                _buildMiniStat('En cours', inProgressCount, AppColors.warning),
+                _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
                 const SizedBox(width: 12),
-                _buildMiniStat('Résolus', resolvedCount, AppColors.success),
+                _buildMiniStat(l10n.issuesResolved, resolvedCount, AppColors.success),
                 const Spacer(),
                 ElevatedButton.icon(
                   onPressed: () => widget.onNavigate(3),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Signaler un incident'),
+                  label: Text(l10n.issuesReport),
                 ),
               ],
             ),
@@ -78,9 +90,9 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    const Text('Filtrer par statut: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text(l10n.issuesFilterByStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(width: 12),
-                    ..._statuses.map((status) {
+                    ...statuses.map((status) {
                       final isSelected = _statusFilter == status;
                       return Padding(
                         padding: const EdgeInsets.only(right: 8),
@@ -95,7 +107,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
                     }),
                     const Spacer(),
                     Text(
-                      '${_filteredIssues.length} incident(s)',
+                      l10n.issuesCount(_filteredIssues.length),
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
@@ -142,6 +154,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   }
 
   Widget _buildIssueItem(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
     return InkWell(
       onTap: () => _showIssueDetail(issue),
       child: Container(
@@ -181,7 +194,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Signalé par ${issue.reporter} • ${issue.createdAt}',
+                    l10n.issuesReportedByDate(issue.reporter, issue.createdAt),
                     style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                 ],
@@ -212,6 +225,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   }
 
   void _showIssueDetail(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -225,22 +239,22 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Incident #${issue.id}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  Text(l10n.issuesIncidentId(issue.id), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                 ],
               ),
               const SizedBox(height: 12),
               IssueStatusBadge(status: issue.status.displayName),
               const SizedBox(height: 20),
-              _buildDetailRow('Équipement', issue.equipmentName),
-              _buildDetailRow('Type', issue.type),
-              _buildDetailRow('Description', issue.description),
-              _buildDetailRow('Signalé par', issue.reporter),
-              _buildDetailRow('Date de signalement', issue.createdAt),
+              _buildDetailRow(l10n.issuesEquipment, issue.equipmentName),
+              _buildDetailRow(l10n.issuesType, issue.type),
+              _buildDetailRow(l10n.issuesDescription, issue.description),
+              _buildDetailRow(l10n.issuesReportedBy, issue.reporter),
+              _buildDetailRow(l10n.issuesReportDate, issue.createdAt),
               if (issue.assignedTechnician != null)
-                _buildDetailRow('Technicien assigné', issue.assignedTechnician!),
+                _buildDetailRow(l10n.issuesAssignedTech, issue.assignedTechnician!),
               if (issue.diagnosis != null)
-                _buildDetailRow('Diagnostic', issue.diagnosis!),
+                _buildDetailRow(l10n.issuesDiagnosis, issue.diagnosis!),
               const SizedBox(height: 20),
               Row(
                 children: [
@@ -251,7 +265,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
                         widget.onNavigate(4, issueId: issue.id);
                       },
                       icon: const Icon(Icons.build),
-                      label: const Text('Mettre à jour'),
+                      label: Text(l10n.issuesUpdate),
                     ),
                   ),
                 ],

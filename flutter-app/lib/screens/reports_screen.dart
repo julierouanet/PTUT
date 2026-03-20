@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../models/equipment.dart';
@@ -9,6 +10,8 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     // Calculate statistics
     final total = DataService().equipment.length;
     final disponible = DataService().equipment.where((e) => e.status == EquipmentStatus.disponible).length;
@@ -42,28 +45,28 @@ class ReportsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Rapports et Analyses',
-                    style: TextStyle(
+                    l10n.reportsTitle,
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
-                    "Vue d'ensemble des statistiques",
-                    style: TextStyle(color: AppColors.textSecondary),
+                    l10n.reportsSubtitle,
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                 ],
               ),
               ElevatedButton.icon(
                 onPressed: () => _showExportDialog(context),
                 icon: const Icon(Icons.file_download),
-                label: const Text('Exporter'),
+                label: Text(l10n.reportsExport),
               ),
             ],
           ),
@@ -81,10 +84,10 @@ class ReportsScreen extends StatelessWidget {
                 mainAxisSpacing: 16,
                 childAspectRatio: 1.5,
                 children: [
-                  _buildSummaryCard('Total équipements', '$total', Icons.inventory_2, AppColors.primary),
-                  _buildSummaryCard('Taux disponibilité', '${((disponible + enUsage) / total * 100).round()}%', Icons.check_circle, AppColors.success),
-                  _buildSummaryCard('Total incidents', '$totalIssues', Icons.warning_amber, AppColors.warning),
-                  _buildSummaryCard('Incidents résolus', '$resolvedIssues', Icons.task_alt, AppColors.success),
+                  _buildSummaryCard(l10n.reportsTotalEquipment, '$total', Icons.inventory_2, AppColors.primary),
+                  _buildSummaryCard(l10n.reportsAvailabilityRate, '${((disponible + enUsage) / total * 100).round()}%', Icons.check_circle, AppColors.success),
+                  _buildSummaryCard(l10n.reportsTotalIssues, '$totalIssues', Icons.warning_amber, AppColors.warning),
+                  _buildSummaryCard(l10n.reportsResolvedIssues, '$resolvedIssues', Icons.task_alt, AppColors.success),
                 ],
               );
             },
@@ -98,17 +101,17 @@ class ReportsScreen extends StatelessWidget {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _buildStatusReport(total, disponible, enUsage, enMaintenance, horsService)),
+                    Expanded(child: _buildStatusReport(l10n, total, disponible, enUsage, enMaintenance, horsService)),
                     const SizedBox(width: 24),
-                    Expanded(child: _buildDepartmentReport(byDepartment)),
+                    Expanded(child: _buildDepartmentReport(l10n, byDepartment)),
                   ],
                 );
               }
               return Column(
                 children: [
-                  _buildStatusReport(total, disponible, enUsage, enMaintenance, horsService),
+                  _buildStatusReport(l10n, total, disponible, enUsage, enMaintenance, horsService),
                   const SizedBox(height: 24),
-                  _buildDepartmentReport(byDepartment),
+                  _buildDepartmentReport(l10n, byDepartment),
                 ],
               );
             },
@@ -122,17 +125,17 @@ class ReportsScreen extends StatelessWidget {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _buildCategoryReport(byCategory)),
+                    Expanded(child: _buildCategoryReport(l10n, byCategory)),
                     const SizedBox(width: 24),
-                    Expanded(child: _buildIssuesReport(totalIssues, openIssues, resolvedIssues)),
+                    Expanded(child: _buildIssuesReport(l10n, totalIssues, openIssues, resolvedIssues)),
                   ],
                 );
               }
               return Column(
                 children: [
-                  _buildCategoryReport(byCategory),
+                  _buildCategoryReport(l10n, byCategory),
                   const SizedBox(height: 24),
-                  _buildIssuesReport(totalIssues, openIssues, resolvedIssues),
+                  _buildIssuesReport(l10n, totalIssues, openIssues, resolvedIssues),
                 ],
               );
             },
@@ -173,22 +176,22 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusReport(int total, int disponible, int enUsage, int enMaintenance, int horsService) {
+  Widget _buildStatusReport(AppLocalizations l10n, int total, int disponible, int enUsage, int enMaintenance, int horsService) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Répartition par statut',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              l10n.reportsStatusBreakdown,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
-            _buildStatRow('Disponible', disponible, total, AppColors.success),
-            _buildStatRow('En usage', enUsage, total, AppColors.primary),
-            _buildStatRow('En maintenance', enMaintenance, total, AppColors.warning),
-            _buildStatRow('Hors service', horsService, total, AppColors.error),
+            _buildStatRow(l10n.reportsAvailable, disponible, total, AppColors.success),
+            _buildStatRow(l10n.reportsInUse, enUsage, total, AppColors.primary),
+            _buildStatRow(l10n.reportsInMaintenance, enMaintenance, total, AppColors.warning),
+            _buildStatRow(l10n.reportsOutOfService, horsService, total, AppColors.error),
           ],
         ),
       ),
@@ -212,16 +215,16 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDepartmentReport(Map<String, int> byDepartment) {
+  Widget _buildDepartmentReport(AppLocalizations l10n, Map<String, int> byDepartment) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Équipements par département',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              l10n.reportsByDepartment,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
             ...byDepartment.entries.map((e) => Padding(
@@ -253,16 +256,16 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildCategoryReport(Map<String, int> byCategory) {
+  Widget _buildCategoryReport(AppLocalizations l10n, Map<String, int> byCategory) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Équipements par catégorie',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              l10n.reportsByCategory,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
             ...byCategory.entries.map((e) => Padding(
@@ -294,21 +297,21 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIssuesReport(int total, int open, int resolved) {
+  Widget _buildIssuesReport(AppLocalizations l10n, int total, int open, int resolved) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Statistiques des incidents',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+            Text(
+              l10n.reportsIssueStats,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
-            _buildStatRow('Ouverts', open, total, AppColors.error),
-            _buildStatRow('En cours', total - open - resolved, total, AppColors.warning),
-            _buildStatRow('Résolus', resolved, total, AppColors.success),
+            _buildStatRow(l10n.reportsOpenIssues, open, total, AppColors.error),
+            _buildStatRow(l10n.reportsInProgressIssues, total - open - resolved, total, AppColors.warning),
+            _buildStatRow(l10n.reportsResolvedIssuesLabel, resolved, total, AppColors.success),
           ],
         ),
       ),
@@ -316,21 +319,22 @@ class ReportsScreen extends StatelessWidget {
   }
 
   void _showExportDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exporter les données'),
+        title: Text(l10n.reportsExportData),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
               leading: const Icon(Icons.table_chart, color: AppColors.success),
-              title: const Text('Exporter en Excel'),
+              title: Text(l10n.reportsExportExcel),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Export Excel en cours...'),
+                  SnackBar(
+                    content: Text(l10n.reportsExportExcelProgress),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -338,12 +342,12 @@ class ReportsScreen extends StatelessWidget {
             ),
             ListTile(
               leading: const Icon(Icons.picture_as_pdf, color: AppColors.error),
-              title: const Text('Exporter en PDF'),
+              title: Text(l10n.reportsExportPDF),
               onTap: () {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Export PDF en cours...'),
+                  SnackBar(
+                    content: Text(l10n.reportsExportPDFProgress),
                     behavior: SnackBarBehavior.floating,
                   ),
                 );
@@ -354,7 +358,7 @@ class ReportsScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text(l10n.commonCancel),
           ),
         ],
       ),

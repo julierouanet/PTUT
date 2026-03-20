@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
@@ -13,15 +14,16 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  String _categoryFilter = 'Tous';
+  String _categoryFilter = 'all'; // internal key, not displayed
 
   List<InventoryItem> get _filteredItems {
-    if (_categoryFilter == 'Tous') return DataService().inventory;
+    if (_categoryFilter == 'all') return DataService().inventory;
     return DataService().inventory.where((item) => item.category.displayName == _categoryFilter).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final lowStock = DataService().inventory.where((i) => i.status == StockStatus.low).length;
     final outOfStock = DataService().inventory.where((i) => i.status == StockStatus.outOfStock).length;
 
@@ -36,28 +38,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Inventaire',
-                      style: TextStyle(
+                      l10n.inventoryTitle,
+                      style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
-                      'Gestion des stocks de consommables',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      l10n.inventorySubtitle,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _showItemDialog(null),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Nouvel article'),
+                  label: Text(l10n.inventoryNewItem),
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   ),
@@ -84,15 +86,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Attention: Stock critique',
-                            style: TextStyle(
+                          Text(
+                            l10n.inventoryCriticalStock,
+                            style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               color: AppColors.error,
                             ),
                           ),
                           Text(
-                            '$outOfStock article(s) en rupture, $lowStock article(s) en stock bas',
+                            '${l10n.inventoryOutOfStockCount(outOfStock)}, ${l10n.inventoryLowStockCount(lowStock)}',
                             style: const TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
@@ -109,14 +111,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 padding: const EdgeInsets.all(12),
                 child: Row(
                   children: [
-                    const Text('Filtrer: ', style: TextStyle(fontWeight: FontWeight.w500)),
+                    Text('${l10n.inventoryFilter}: ', style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(width: 12),
-                    _buildFilterChip('Tous', DataService().inventory.length),
-                    _buildFilterChip('Consommable médical', DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
-                    _buildFilterChip('Hygiène', DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
-                    _buildFilterChip('Bureautique', DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
+                    _buildFilterChip('all', l10n.commonAll, DataService().inventory.length),
+                    _buildFilterChip('Consommable médical', l10n.inventoryMedicalConsumable, DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
+                    _buildFilterChip('Hygiène', l10n.inventoryHygiene, DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
+                    _buildFilterChip('Bureautique', l10n.inventoryOffice, DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
                     const Spacer(),
-                    Text('${_filteredItems.length} articles', style: const TextStyle(color: AppColors.textSecondary)),
+                    Text(l10n.inventoryItemCount(_filteredItems.length), style: const TextStyle(color: AppColors.textSecondary)),
                   ],
                 ),
               ),
@@ -133,15 +135,15 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
                     child: DataTable(
                       headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: const [
-                        DataColumn(label: Text('Article')),
-                        DataColumn(label: Text('Catégorie')),
-                        DataColumn(label: Text('Stock actuel'), numeric: true),
-                        DataColumn(label: Text('Stock min'), numeric: true),
-                        DataColumn(label: Text('Unité')),
-                        DataColumn(label: Text('Statut')),
-                        DataColumn(label: Text('Dernier réappro')),
-                        DataColumn(label: Text('Actions')),
+                      columns: [
+                        DataColumn(label: Text(l10n.inventoryItem)),
+                        DataColumn(label: Text(l10n.commonCategory)),
+                        DataColumn(label: Text(l10n.inventoryCurrentStock), numeric: true),
+                        DataColumn(label: Text(l10n.inventoryMinStock), numeric: true),
+                        DataColumn(label: Text(l10n.inventoryUnit)),
+                        DataColumn(label: Text(l10n.commonStatus)),
+                        DataColumn(label: Text(l10n.inventoryLastRestocked)),
+                        DataColumn(label: Text(l10n.commonActions)),
                       ],
                       rows: _filteredItems.map((item) => DataRow(
                         cells: [
@@ -168,13 +170,13 @@ class _InventoryScreenState extends State<InventoryScreen> {
                               IconButton(
                                 icon: const Icon(Icons.edit, size: 18),
                                 color: AppColors.warning,
-                                tooltip: 'Modifier',
+                                tooltip: l10n.commonEdit,
                                 onPressed: () => _showItemDialog(item),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18),
                                 color: AppColors.error,
-                                tooltip: 'Supprimer',
+                                tooltip: l10n.commonDelete,
                                 onPressed: () => _confirmDeleteItem(item),
                               ),
                             ],
@@ -193,6 +195,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _showItemDialog(InventoryItem? existing) {
+    final l10n = AppLocalizations.of(context)!;
     final isEdit = existing != null;
     final nameCtrl     = TextEditingController(text: existing?.name ?? '');
     final stockCtrl    = TextEditingController(text: existing != null ? '${existing.currentStock}' : '');
@@ -204,30 +207,30 @@ class _InventoryScreenState extends State<InventoryScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(isEdit ? 'Modifier l\'article' : 'Nouvel article'),
+          title: Text(isEdit ? l10n.inventoryEditItem : l10n.inventoryNewItemTitle),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameCtrl,     decoration: const InputDecoration(labelText: 'Nom *')),
+                TextField(controller: nameCtrl,     decoration: InputDecoration(labelText: l10n.inventoryNameLabel)),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<InventoryCategory>(
                   value: selectedCategory,
-                  decoration: const InputDecoration(labelText: 'Catégorie *'),
+                  decoration: InputDecoration(labelText: l10n.inventoryCategoryLabel),
                   items: InventoryCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.displayName))).toList(),
                   onChanged: (v) => setDialogState(() => selectedCategory = v!),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: stockCtrl,    keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock actuel *')),
+                TextField(controller: stockCtrl,    keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.inventoryCurrentStockLabel)),
                 const SizedBox(height: 12),
-                TextField(controller: minStockCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock minimum *')),
+                TextField(controller: minStockCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.inventoryMinStockLabel)),
                 const SizedBox(height: 12),
-                TextField(controller: unitCtrl,     decoration: const InputDecoration(labelText: 'Unité (ex: boîtes) *')),
+                TextField(controller: unitCtrl,     decoration: InputDecoration(labelText: l10n.inventoryUnitLabel)),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
             ElevatedButton(
               onPressed: () async {
                 if (nameCtrl.text.isEmpty || stockCtrl.text.isEmpty || minStockCtrl.text.isEmpty || unitCtrl.text.isEmpty) return;
@@ -249,7 +252,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(isEdit ? 'Article modifié' : 'Article ajouté'),
+                      content: Text(isEdit ? l10n.inventoryItemModified : l10n.inventoryItemAdded),
                       backgroundColor: AppColors.success,
                       behavior: SnackBarBehavior.floating,
                     ));
@@ -265,7 +268,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   }
                 }
               },
-              child: Text(isEdit ? 'Enregistrer' : 'Ajouter'),
+              child: Text(isEdit ? l10n.commonEdit : l10n.commonAdd),
             ),
           ],
         ),
@@ -274,13 +277,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   void _confirmDeleteItem(InventoryItem item) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer l\'article'),
-        content: Text('Supprimer "${item.name}" de l\'inventaire ?'),
+        title: Text(l10n.inventoryDeleteItem),
+        content: Text(l10n.inventoryDeleteConfirm(item.name)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () async {
@@ -289,8 +293,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 await DbApiService.instance.deleteInventoryItem(item.id);
                 await DataService().reloadInventory();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Article supprimé'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.inventoryItemDeleted),
                     backgroundColor: AppColors.success,
                     behavior: SnackBarBehavior.floating,
                   ));
@@ -305,21 +309,21 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 }
               }
             },
-            child: const Text('Supprimer'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label, int count) {
-    final isSelected = _categoryFilter == label;
+  Widget _buildFilterChip(String filterKey, String label, int count) {
+    final isSelected = _categoryFilter == filterKey;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: FilterChip(
         selected: isSelected,
         label: Text('$label ($count)'),
-        onSelected: (_) => setState(() => _categoryFilter = label),
+        onSelected: (_) => setState(() => _categoryFilter = filterKey),
         selectedColor: AppColors.primaryLight,
         checkmarkColor: AppColors.primary,
       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
@@ -30,7 +31,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
     'Réparé',
   ];
 
-  List<Issue> get _openIssues => DataService().issues.where((i) => 
+  List<Issue> get _openIssues => DataService().issues.where((i) =>
     i.status != IssueStatus.resolved
   ).toList();
 
@@ -65,8 +66,21 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
     return DataService().issues.where((i) => i.id == _selectedIssueId).firstOrNull;
   }
 
+  String _getRepairStatusDisplay(String status, AppLocalizations l10n) {
+    switch (status) {
+      case 'Diagnostic en cours': return l10n.techDiagnosisInProgress;
+      case 'Pièces commandées': return l10n.techPartsOrdered;
+      case 'Réparation en cours': return l10n.techRepairInProgress;
+      case 'Test en cours': return l10n.techTestInProgress;
+      case 'Réparé': return l10n.techRepaired;
+      default: return status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
@@ -75,18 +89,18 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            const Text(
-              'Mise à jour technicien',
-              style: TextStyle(
+            Text(
+              l10n.techTitle,
+              style: const TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Mettre à jour le statut de réparation',
-              style: TextStyle(color: AppColors.textSecondary),
+            Text(
+              l10n.techSubtitle,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -98,16 +112,16 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                     children: [
                       Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
                       const SizedBox(width: 20),
-                      const Column(
+                      Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Aucun incident en cours',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
+                            l10n.techNoIssues,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                           ),
                           Text(
-                            'Tous les incidents ont été résolus',
-                            style: TextStyle(color: AppColors.textSecondary),
+                            l10n.techAllResolved,
+                            style: const TextStyle(color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -125,15 +139,15 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Issue selection
-                        const Text(
-                          'Incident à mettre à jour',
-                          style: TextStyle(fontWeight: FontWeight.w500),
+                        Text(
+                          l10n.techSelectIssue,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 8),
                         DropdownButtonFormField<String>(
                           value: _selectedIssueId,
-                          decoration: const InputDecoration(
-                            hintText: 'Sélectionnez un incident',
+                          decoration: InputDecoration(
+                            hintText: l10n.techSelectIssueHint,
                           ),
                           items: _openIssues.map((issue) => DropdownMenuItem(
                             value: issue.id,
@@ -168,7 +182,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  'Signalé par ${_selectedIssue!.reporter} le ${_selectedIssue!.createdAt}',
+                                  l10n.techReportedByDate(_selectedIssue!.reporter, _selectedIssue!.createdAt),
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppColors.textSecondary,
@@ -180,61 +194,61 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                           const SizedBox(height: 24),
 
                           // Repair status
-                          const Text(
-                            'Statut de réparation',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          Text(
+                            l10n.techRepairStatus,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
                             value: _repairStatus,
                             items: _repairStatuses.map((status) => DropdownMenuItem(
                               value: status,
-                              child: Text(status),
+                              child: Text(_getRepairStatusDisplay(status, l10n)),
                             )).toList(),
                             onChanged: (value) => setState(() => _repairStatus = value!),
                           ),
                           const SizedBox(height: 24),
 
                           // Diagnosis
-                          const Text(
-                            'Diagnostic',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          Text(
+                            l10n.techDiagnosis,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _diagnosisController,
                             maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Décrivez le diagnostic...',
+                            decoration: InputDecoration(
+                              hintText: l10n.techDiagnosisHint,
                             ),
                           ),
                           const SizedBox(height: 24),
 
                           // Actions taken
-                          const Text(
-                            'Actions effectuées',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          Text(
+                            l10n.techActionsTaken,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _actionsController,
                             maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Décrivez les actions effectuées...',
+                            decoration: InputDecoration(
+                              hintText: l10n.techActionsHint,
                             ),
                           ),
                           const SizedBox(height: 24),
 
                           // Parts replaced
-                          const Text(
-                            'Pièces remplacées',
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          Text(
+                            l10n.techPartsReplaced,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 8),
                           TextFormField(
                             controller: _partsController,
-                            decoration: const InputDecoration(
-                              hintText: 'Ex: Capteur O2, Pompe à vide...',
+                            decoration: InputDecoration(
+                              hintText: l10n.techPartsHint,
                             ),
                           ),
                           const SizedBox(height: 32),
@@ -245,7 +259,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                               Expanded(
                                 child: OutlinedButton(
                                   onPressed: _saveProgress,
-                                  child: const Text('Sauvegarder'),
+                                  child: Text(l10n.techSave),
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -253,7 +267,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
                                 child: ElevatedButton.icon(
                                   onPressed: _repairStatus == 'Réparé' ? _markResolved : null,
                                   icon: const Icon(Icons.check),
-                                  label: const Text('Marquer résolu'),
+                                  label: Text(l10n.techMarkResolved),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.success,
                                   ),
@@ -275,6 +289,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
 
   Future<void> _saveProgress() async {
     if (_selectedIssueId == null) return;
+    final l10n = AppLocalizations.of(context)!;
     final technicianName = AuthService().currentUser?.name ?? 'Technicien';
     try {
       await DbApiService.instance.updateIssue(_selectedIssueId!, {
@@ -286,11 +301,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
       });
       await DataService().reloadIssues();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
-          Icon(Icons.save, color: Colors.white),
-          SizedBox(width: 12),
-          Text('Progression sauvegardée'),
+          const Icon(Icons.save, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techProgressSaved),
         ]),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
@@ -307,6 +322,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
 
   Future<void> _markResolved() async {
     if (_selectedIssueId == null) return;
+    final l10n = AppLocalizations.of(context)!;
     final technicianName = AuthService().currentUser?.name ?? 'Technicien';
     try {
       await DbApiService.instance.updateIssue(_selectedIssueId!, {
@@ -318,11 +334,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
       });
       await DataService().reloadIssues();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
-          Icon(Icons.check_circle, color: Colors.white),
-          SizedBox(width: 12),
-          Text('Incident marqué comme résolu !'),
+          const Icon(Icons.check_circle, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techIssueResolved),
         ]),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,

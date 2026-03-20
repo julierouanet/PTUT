@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/config_service.dart';
+import '../providers/locale_provider.dart';
 
 /// Settings screen for managing departments and categories (Admin only)
 class SettingsScreen extends StatefulWidget {
@@ -34,6 +36,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final localeProvider = LocaleProvider();
+
     return Align(
       alignment: Alignment.topLeft,
       child: Column(
@@ -53,22 +58,75 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   child: const Icon(Icons.settings, color: AppColors.primary, size: 28),
                 ),
                 const SizedBox(width: 16),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Paramètres',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      l10n.settingsTitle,
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                     ),
                     Text(
-                      'Gérer les départements et catégories d\'équipements',
-                      style: TextStyle(color: AppColors.textSecondary),
+                      l10n.settingsSubtitle,
+                      style: const TextStyle(color: AppColors.textSecondary),
                     ),
                   ],
                 ),
               ],
             ),
           ),
+
+          // Language switcher card
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.language, color: AppColors.primary),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.settingsLanguage,
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                        Text(
+                          l10n.settingsLanguageSubtitle,
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const Spacer(),
+                    ListenableBuilder(
+                      listenable: localeProvider,
+                      builder: (context, _) => DropdownButton<String>(
+                        value: localeProvider.locale.languageCode,
+                        underline: const SizedBox(),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'fr',
+                            child: Text(l10n.settingsFrench),
+                          ),
+                          DropdownMenuItem(
+                            value: 'en',
+                            child: Text(l10n.settingsEnglish),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            LocaleProvider().setLocale(Locale(value));
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // Tabs
           Container(
@@ -95,7 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     children: [
                       const Icon(Icons.business, size: 18),
                       const SizedBox(width: 8),
-                      Text('Départements (${_configService.departments.length})'),
+                      Text(l10n.settingsDepartmentsTab(_configService.departments.length)),
                     ],
                   ),
                 ),
@@ -105,7 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     children: [
                       const Icon(Icons.category, size: 18),
                       const SizedBox(width: 8),
-                      Text('Catégories (${_configService.categories.length})'),
+                      Text(l10n.settingsCategoriesTab(_configService.categories.length)),
                     ],
                   ),
                 ),
@@ -130,6 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Widget _buildDepartmentsTab() {
+    final l10n = AppLocalizations.of(context)!;
     final departments = _configService.departments;
 
     return Padding(
@@ -143,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ElevatedButton.icon(
                 onPressed: () => _showDepartmentDialog(null),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Nouveau département'),
+                label: Text(l10n.settingsNewDepartment),
               ),
             ],
           ),
@@ -174,7 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       ),
                     ),
                     title: Text(dept.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text('Abréviation: ${dept.shortName}'),
+                    subtitle: Text('${l10n.commonAbbreviation}: ${dept.shortName}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -185,23 +244,23 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('Par défaut', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            child: Text(l10n.commonDefault, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           ),
                         const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.edit, size: 18),
                           color: AppColors.primary,
                           onPressed: () => _showDepartmentDialog(dept),
-                          tooltip: 'Modifier',
+                          tooltip: l10n.commonEdit,
                         ),
                         if (!dept.isDefault)
                           IconButton(
                             icon: const Icon(Icons.delete, size: 18),
                             color: AppColors.error,
-                            onPressed: () => _confirmDelete('département', dept.name, () {
+                            onPressed: () => _confirmDelete(l10n.settingsDeleteDepartment, dept.name, () {
                               _configService.deleteDepartment(dept.id);
-                            }),
-                            tooltip: 'Supprimer',
+                            }, isFeminine: false),
+                            tooltip: l10n.commonDelete,
                           ),
                       ],
                     ),
@@ -216,6 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Widget _buildCategoriesTab() {
+    final l10n = AppLocalizations.of(context)!;
     final categories = _configService.categories;
 
     return Padding(
@@ -229,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ElevatedButton.icon(
                 onPressed: () => _showCategoryDialog(null),
                 icon: const Icon(Icons.add, size: 18),
-                label: const Text('Nouvelle catégorie'),
+                label: Text(l10n.settingsNewCategory),
               ),
             ],
           ),
@@ -255,7 +315,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       child: const Icon(Icons.category, color: AppColors.success, size: 20),
                     ),
                     title: Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text('Abréviation: ${cat.shortName}'),
+                    subtitle: Text('${l10n.commonAbbreviation}: ${cat.shortName}'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -266,23 +326,23 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                               color: AppColors.background,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Text('Par défaut', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            child: Text(l10n.commonDefault, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                           ),
                         const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.edit, size: 18),
                           color: AppColors.primary,
                           onPressed: () => _showCategoryDialog(cat),
-                          tooltip: 'Modifier',
+                          tooltip: l10n.commonEdit,
                         ),
                         if (!cat.isDefault)
                           IconButton(
                             icon: const Icon(Icons.delete, size: 18),
                             color: AppColors.error,
-                            onPressed: () => _confirmDelete('catégorie', cat.name, () {
+                            onPressed: () => _confirmDelete(l10n.settingsDeleteCategory, cat.name, () {
                               _configService.deleteCategory(cat.id);
-                            }),
-                            tooltip: 'Supprimer',
+                            }, isFeminine: true),
+                            tooltip: l10n.commonDelete,
                           ),
                       ],
                     ),
@@ -297,6 +357,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _showDepartmentDialog(DepartmentItem? dept) {
+    final l10n = AppLocalizations.of(context)!;
     final isEdit = dept != null;
     final nameController = TextEditingController(text: dept?.name ?? '');
     final shortNameController = TextEditingController(text: dept?.shortName ?? '');
@@ -315,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isEdit ? 'Modifier département' : 'Nouveau département',
+                    isEdit ? l10n.settingsEditDepartment : l10n.settingsNewDepartment,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
@@ -324,19 +385,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               const SizedBox(height: 20),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nom du département',
-                  hintText: 'Ex: Cardiologie',
-                  prefixIcon: Icon(Icons.business),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsDepartmentName,
+                  hintText: l10n.settingsDepartmentNameHint,
+                  prefixIcon: const Icon(Icons.business),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: shortNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nom abrégé',
-                  hintText: 'Ex: Cardio',
-                  prefixIcon: Icon(Icons.short_text),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsShortName,
+                  hintText: l10n.settingsShortNameHint,
+                  prefixIcon: const Icon(Icons.short_text),
                 ),
               ),
               const SizedBox(height: 24),
@@ -345,7 +406,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Annuler'),
+                      child: Text(l10n.commonCancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -354,7 +415,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       onPressed: () {
                         if (nameController.text.isEmpty || shortNameController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Veuillez remplir tous les champs'), backgroundColor: AppColors.error),
+                            SnackBar(content: Text(l10n.commonFillAllFields), backgroundColor: AppColors.error),
                           );
                           return;
                         }
@@ -366,13 +427,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(isEdit ? 'Département modifié' : 'Département ajouté'),
+                            content: Text(isEdit ? l10n.settingsDepartmentModified : l10n.settingsDepartmentAdded),
                             backgroundColor: AppColors.success,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                       },
-                      child: Text(isEdit ? 'Enregistrer' : 'Ajouter'),
+                      child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
                     ),
                   ),
                 ],
@@ -385,6 +446,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _showCategoryDialog(CategoryItem? cat) {
+    final l10n = AppLocalizations.of(context)!;
     final isEdit = cat != null;
     final nameController = TextEditingController(text: cat?.name ?? '');
     final shortNameController = TextEditingController(text: cat?.shortName ?? '');
@@ -403,7 +465,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isEdit ? 'Modifier catégorie' : 'Nouvelle catégorie',
+                    isEdit ? l10n.settingsEditCategory : l10n.settingsNewCategory,
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
@@ -412,19 +474,19 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               const SizedBox(height: 20),
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nom de la catégorie',
-                  hintText: 'Ex: Équipement radiologique',
-                  prefixIcon: Icon(Icons.category),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsCategoryName,
+                  hintText: l10n.settingsCategoryNameHint,
+                  prefixIcon: const Icon(Icons.category),
                 ),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: shortNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nom abrégé',
-                  hintText: 'Ex: Radio',
-                  prefixIcon: Icon(Icons.short_text),
+                decoration: InputDecoration(
+                  labelText: l10n.settingsShortName,
+                  hintText: l10n.settingsCategoryShortHint,
+                  prefixIcon: const Icon(Icons.short_text),
                 ),
               ),
               const SizedBox(height: 24),
@@ -433,7 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(context),
-                      child: const Text('Annuler'),
+                      child: Text(l10n.commonCancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -442,7 +504,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                       onPressed: () {
                         if (nameController.text.isEmpty || shortNameController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Veuillez remplir tous les champs'), backgroundColor: AppColors.error),
+                            SnackBar(content: Text(l10n.commonFillAllFields), backgroundColor: AppColors.error),
                           );
                           return;
                         }
@@ -454,13 +516,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text(isEdit ? 'Catégorie modifiée' : 'Catégorie ajoutée'),
+                            content: Text(isEdit ? l10n.settingsCategoryModified : l10n.settingsCategoryAdded),
                             backgroundColor: AppColors.success,
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
                       },
-                      child: Text(isEdit ? 'Enregistrer' : 'Ajouter'),
+                      child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
                     ),
                   ),
                 ],
@@ -472,16 +534,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     );
   }
 
-  void _confirmDelete(String type, String name, VoidCallback onConfirm) {
+  void _confirmDelete(String title, String name, VoidCallback onConfirm, {bool isFeminine = false}) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Supprimer $type'),
-        content: Text('Êtes-vous sûr de vouloir supprimer "$name" ?\n\nCette action est irréversible.'),
+        title: Text(title),
+        content: Text(l10n.settingsDeleteConfirm(name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Annuler'),
+            child: Text(l10n.commonCancel),
           ),
           ElevatedButton(
             onPressed: () {
@@ -489,14 +552,16 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('$type supprimé${type == 'catégorie' ? 'e' : ''}'),
+                  content: Text(isFeminine
+                      ? l10n.settingsDeletedFeminine(title)
+                      : l10n.settingsDeleted(title)),
                   backgroundColor: AppColors.success,
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Supprimer'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
