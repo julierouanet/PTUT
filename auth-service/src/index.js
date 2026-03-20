@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { PORT } = require('./config');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
@@ -12,7 +13,17 @@ const app = express();
 // Initialize DB on startup
 getDb();
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet());
+
+// Rate limiter : max 10 tentatives de login par IP par fenêtre de 15 min
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/login', loginLimiter);
 
 app.use(cors({
   origin: function (origin, callback) {

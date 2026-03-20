@@ -1,4 +1,5 @@
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcrypt');
 const { getDb } = require('../database');
 const { verifyToken } = require('../middleware/auth');
@@ -47,7 +48,7 @@ router.post('/', verifyToken, requireAdmin, async (req, res) => {
 
   try {
     const db = getDb();
-    const id = `user-${Date.now()}`;
+    const id = `user-${crypto.randomUUID()}`;
     const passwordHash = await bcrypt.hash(password, 10);
     const createdAt = new Date().toISOString();
 
@@ -56,12 +57,14 @@ router.post('/', verifyToken, requireAdmin, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
     `).run(id, name, email, passwordHash, department, role, phone || null, createdAt);
 
+    console.log(`[AUDIT] Utilisateur créé: ${email} (id: ${id}, rôle: ${role}) par ${req.user.email}`);
     res.status(201).json({ message: 'Utilisateur créé', id });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'Email déjà utilisé' });
     }
-    res.status(500).json({ error: err.message });
+    console.error('[USERS] Erreur interne:', err.message);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 });
 
@@ -101,12 +104,14 @@ router.put('/:id', verifyToken, requireAdmin, async (req, res) => {
         WHERE id = ?
       `).run(name, email, department, role, phone, req.params.id);
     }
+    console.log(`[AUDIT] Utilisateur modifié: ${req.params.id} par ${req.user.email}`);
     res.json({ message: 'Utilisateur mis à jour' });
   } catch (err) {
     if (err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'Email déjà utilisé' });
     }
-    res.status(500).json({ error: err.message });
+    console.error('[USERS] Erreur interne:', err.message);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 });
 
@@ -118,6 +123,7 @@ router.patch('/:id/toggle', verifyToken, requireAdmin, (req, res) => {
 
   const newStatus = user.is_active ? 0 : 1;
   db.prepare('UPDATE users SET is_active = ? WHERE id = ?').run(newStatus, req.params.id);
+  console.log(`[AUDIT] Utilisateur ${newStatus ? 'activé' : 'désactivé'}: ${req.params.id} par ${req.user.email}`);
   res.json({ message: newStatus ? 'Compte activé' : 'Compte désactivé', is_active: newStatus });
 });
 
@@ -130,6 +136,7 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   }
   const result = db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  console.log(`[AUDIT] Utilisateur supprimé: ${req.params.id} par ${req.user.email}`);
   res.json({ message: 'Utilisateur supprimé' });
 });
 

@@ -22,10 +22,13 @@ class AuthService extends ChangeNotifier {
 
   UserRole? get currentRole => _currentUser?.role;
 
-  // ── Initialisation ─────────────────────────────────────────────────────────
+  // ── Initialisation (tests uniquement) ──────────────────────────────────────
 
   /// Démarre avec l'admin en mode démo (données mock).
+  /// Réservé aux tests — n'utilise pas de vrai token JWT.
+  @visibleForTesting
   void initDemo() {
+    assert(kDebugMode, 'initDemo ne doit pas être appelé en production');
     if (_currentUser == null) {
       _currentUser = mockUsers.firstWhere((u) => u.role == UserRole.admin);
       notifyListeners();
@@ -63,8 +66,11 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  /// Connexion simplifiée par email (données mock — pour la démo).
+  /// Connexion simplifiée par email (données mock — tests uniquement).
+  /// Ne crée PAS de session JWT — aucune requête API ne fonctionnera.
+  @visibleForTesting
   bool login(String email) {
+    assert(kDebugMode, 'login(email) mock ne doit pas être appelé en production');
     final user = mockUsers.where((u) => u.email == email).firstOrNull;
     if (user != null) {
       _currentUser = user;
@@ -74,8 +80,10 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
-  /// Changer d'utilisateur (démo).
+  /// Changer d'utilisateur (tests uniquement).
+  @visibleForTesting
   void switchUser(User user) {
+    assert(kDebugMode, 'switchUser ne doit pas être appelé en production');
     _currentUser = user;
     notifyListeners();
   }

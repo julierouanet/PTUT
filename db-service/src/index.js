@@ -13,7 +13,7 @@ const app = express();
 // Initialize DB on startup
 getDb();
 
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet());
 
 app.use(cors({
   origin: function (origin, callback) {

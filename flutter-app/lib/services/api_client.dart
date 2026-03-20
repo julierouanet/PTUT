@@ -42,14 +42,14 @@ class ApiClient {
     };
   }
 
-  /// GET avec authentification — rafraîchit le token si expiré (403).
+  /// GET avec authentification — rafraîchit le token si expiré (401).
   static Future<http.Response> get(String url, {Map<String, String>? extra}) async {
     final headers = await _authHeaders();
     if (extra != null) headers.addAll(extra);
 
     var response = await http.get(Uri.parse(url), headers: headers);
 
-    if (response.statusCode == 403) {
+    if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
@@ -73,7 +73,7 @@ class ApiClient {
     final headers = await _authHeaders();
     var response = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body));
 
-    if (response.statusCode == 403) {
+    if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
@@ -88,7 +88,7 @@ class ApiClient {
     final headers = await _authHeaders();
     var response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(body));
 
-    if (response.statusCode == 403) {
+    if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
@@ -103,7 +103,7 @@ class ApiClient {
     final headers = await _authHeaders();
     var response = await http.patch(Uri.parse(url), headers: headers, body: jsonEncode(body));
 
-    if (response.statusCode == 403) {
+    if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
@@ -113,13 +113,22 @@ class ApiClient {
     return response;
   }
 
-  /// DELETE avec authentification.
+  /// DELETE avec authentification + retry sur token expiré.
   static Future<http.Response> delete(String url) async {
     final headers = await _authHeaders();
-    return http.delete(Uri.parse(url), headers: headers);
+    var response = await http.delete(Uri.parse(url), headers: headers);
+
+    if (response.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final newHeaders = await _authHeaders();
+        response = await http.delete(Uri.parse(url), headers: newHeaders);
+      }
+    }
+    return response;
   }
 
-  // ── Refresh token ─────────────────────────────────────────────────────────
+  // ── Refresh token (avec rotation — sauvegarde aussi le nouveau refresh) ────
 
   static Future<bool> _tryRefresh() async {
     final refreshToken = await getRefreshToken();
@@ -134,8 +143,15 @@ class ApiClient {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(_accessTokenKey, data['accessToken'] as String);
+        final newAccess = data['accessToken'] as String;
+        // Le serveur fait de la rotation : il renvoie aussi un nouveau refreshToken
+        final newRefresh = data['refreshToken'] as String?;
+        if (newRefresh != null) {
+          await saveTokens(newAccess, newRefresh);
+        } else {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_accessTokenKey, newAccess);
+        }
         return true;
       }
     } catch (_) {}
