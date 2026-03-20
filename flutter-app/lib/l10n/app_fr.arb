@@ -315,5 +315,25 @@
   "settingsLanguage": "Langue",
   "settingsLanguageSubtitle": "Changer la langue de l'application",
   "settingsFrench": "Francais",
-  "settingsEnglish": "English"
+  "settingsEnglish": "English",
+
+  "settingsAccountSection": "Parametres du compte",
+  "settingsAccountSubtitle": "Gerez vos informations personnelles et preferences",
+  "settingsPersonalInfo": "Informations personnelles",
+  "settingsPersonalInfoSubtitle": "Modifier votre nom, email et telephone",
+  "settingsChangePassword": "Changer le mot de passe",
+  "settingsChangePasswordSubtitle": "Modifier votre mot de passe de connexion",
+  "settingsNewPassword": "Nouveau mot de passe",
+  "settingsConfirmPassword": "Confirmer le nouveau mot de passe",
+  "settingsPasswordMismatch": "Les mots de passe ne correspondent pas",
+  "settingsPasswordMinLength": "Minimum 6 caracteres requis",
+  "settingsPasswordChanged": "Mot de passe modifie avec succes",
+  "settingsProfileUpdated": "Profil mis a jour",
+  "settingsAdminSection": "Administration",
+  "settingsAdminSubtitle": "Gerer les departements et categories d'equipements",
+  "settingsFullName": "Nom complet",
+  "settingsFullNameHint": "Ex: Dr. Martin",
+  "settingsPhoneLabel": "Telephone",
+  "settingsPhoneHint": "Ex: +250 788 123 456",
+  "settingsDepartmentHint": "Ex: Cardiologie"
 }

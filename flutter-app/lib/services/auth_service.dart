@@ -102,6 +102,40 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Profil utilisateur ─────────────────────────────────────────────────────
+
+  /// Met à jour le profil de l'utilisateur connecté localement + via API.
+  Future<bool> updateProfile({String? name, String? email, String? phone, String? department}) async {
+    if (_currentUser == null) return false;
+    _currentUser = _currentUser!.copyWith(
+      name:       name       ?? _currentUser!.name,
+      email:      email      ?? _currentUser!.email,
+      phone:      phone      ?? _currentUser!.phone,
+      department: department ?? _currentUser!.department,
+    );
+    notifyListeners();
+    try {
+      final data = <String, dynamic>{};
+      if (name != null)       data['name']       = name;
+      if (email != null)      data['email']      = email;
+      if (phone != null)      data['phone']      = phone;
+      if (department != null) data['department'] = department;
+      await AuthApiService.instance.updateUser(_currentUser!.id, data);
+    } catch (_) {}
+    return true;
+  }
+
+  /// Change le mot de passe de l'utilisateur connecté via API.
+  Future<bool> changePassword(String newPassword) async {
+    if (_currentUser == null) return false;
+    try {
+      await AuthApiService.instance.updateUser(_currentUser!.id, {'password': newPassword});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Permissions ────────────────────────────────────────────────────────────
 
   bool hasPermission(Permission permission)            => _currentUser?.hasPermission(permission) ?? false;

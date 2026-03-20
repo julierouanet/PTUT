@@ -292,5 +292,25 @@
   "settingsLanguage": "Language",
   "settingsLanguageSubtitle": "Change the application language",
   "settingsFrench": "Francais",
-  "settingsEnglish": "English"
+  "settingsEnglish": "English",
+
+  "settingsAccountSection": "Account settings",
+  "settingsAccountSubtitle": "Manage your personal information and preferences",
+  "settingsPersonalInfo": "Personal information",
+  "settingsPersonalInfoSubtitle": "Edit your name, email and phone number",
+  "settingsChangePassword": "Change password",
+  "settingsChangePasswordSubtitle": "Update your login password",
+  "settingsNewPassword": "New password",
+  "settingsConfirmPassword": "Confirm new password",
+  "settingsPasswordMismatch": "Passwords do not match",
+  "settingsPasswordMinLength": "Minimum 6 characters required",
+  "settingsPasswordChanged": "Password changed successfully",
+  "settingsProfileUpdated": "Profile updated",
+  "settingsAdminSection": "Administration",
+  "settingsAdminSubtitle": "Manage departments and equipment categories",
+  "settingsFullName": "Full name",
+  "settingsFullNameHint": "E.g.: Dr. Martin",
+  "settingsPhoneLabel": "Phone number",
+  "settingsPhoneHint": "E.g.: +250 788 123 456",
+  "settingsDepartmentHint": "E.g.: Cardiology"
 }

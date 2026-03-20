@@ -890,4 +890,64 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsEnglish => 'English';
+
+  @override
+  String get settingsAccountSection => 'Account settings';
+
+  @override
+  String get settingsAccountSubtitle =>
+      'Manage your personal information and preferences';
+
+  @override
+  String get settingsPersonalInfo => 'Personal information';
+
+  @override
+  String get settingsPersonalInfoSubtitle =>
+      'Edit your name, email and phone number';
+
+  @override
+  String get settingsChangePassword => 'Change password';
+
+  @override
+  String get settingsChangePasswordSubtitle => 'Update your login password';
+
+  @override
+  String get settingsNewPassword => 'New password';
+
+  @override
+  String get settingsConfirmPassword => 'Confirm new password';
+
+  @override
+  String get settingsPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get settingsPasswordMinLength => 'Minimum 6 characters required';
+
+  @override
+  String get settingsPasswordChanged => 'Password changed successfully';
+
+  @override
+  String get settingsProfileUpdated => 'Profile updated';
+
+  @override
+  String get settingsAdminSection => 'Administration';
+
+  @override
+  String get settingsAdminSubtitle =>
+      'Manage departments and equipment categories';
+
+  @override
+  String get settingsFullName => 'Full name';
+
+  @override
+  String get settingsFullNameHint => 'E.g.: Dr. Martin';
+
+  @override
+  String get settingsPhoneLabel => 'Phone number';
+
+  @override
+  String get settingsPhoneHint => 'E.g.: +250 788 123 456';
+
+  @override
+  String get settingsDepartmentHint => 'E.g.: Cardiology';
 }

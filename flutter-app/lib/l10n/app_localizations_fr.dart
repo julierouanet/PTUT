@@ -894,4 +894,66 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsEnglish => 'English';
+
+  @override
+  String get settingsAccountSection => 'Parametres du compte';
+
+  @override
+  String get settingsAccountSubtitle =>
+      'Gerez vos informations personnelles et preferences';
+
+  @override
+  String get settingsPersonalInfo => 'Informations personnelles';
+
+  @override
+  String get settingsPersonalInfoSubtitle =>
+      'Modifier votre nom, email et telephone';
+
+  @override
+  String get settingsChangePassword => 'Changer le mot de passe';
+
+  @override
+  String get settingsChangePasswordSubtitle =>
+      'Modifier votre mot de passe de connexion';
+
+  @override
+  String get settingsNewPassword => 'Nouveau mot de passe';
+
+  @override
+  String get settingsConfirmPassword => 'Confirmer le nouveau mot de passe';
+
+  @override
+  String get settingsPasswordMismatch =>
+      'Les mots de passe ne correspondent pas';
+
+  @override
+  String get settingsPasswordMinLength => 'Minimum 6 caracteres requis';
+
+  @override
+  String get settingsPasswordChanged => 'Mot de passe modifie avec succes';
+
+  @override
+  String get settingsProfileUpdated => 'Profil mis a jour';
+
+  @override
+  String get settingsAdminSection => 'Administration';
+
+  @override
+  String get settingsAdminSubtitle =>
+      'Gerer les departements et categories d\'equipements';
+
+  @override
+  String get settingsFullName => 'Nom complet';
+
+  @override
+  String get settingsFullNameHint => 'Ex: Dr. Martin';
+
+  @override
+  String get settingsPhoneLabel => 'Telephone';
+
+  @override
+  String get settingsPhoneHint => 'Ex: +250 788 123 456';
+
+  @override
+  String get settingsDepartmentHint => 'Ex: Cardiologie';
 }

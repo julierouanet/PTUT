@@ -1765,6 +1765,120 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'English'**
   String get settingsEnglish;
+
+  /// No description provided for @settingsAccountSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Parametres du compte'**
+  String get settingsAccountSection;
+
+  /// No description provided for @settingsAccountSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gerez vos informations personnelles et preferences'**
+  String get settingsAccountSubtitle;
+
+  /// No description provided for @settingsPersonalInfo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations personnelles'**
+  String get settingsPersonalInfo;
+
+  /// No description provided for @settingsPersonalInfoSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier votre nom, email et telephone'**
+  String get settingsPersonalInfoSubtitle;
+
+  /// No description provided for @settingsChangePassword.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer le mot de passe'**
+  String get settingsChangePassword;
+
+  /// No description provided for @settingsChangePasswordSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier votre mot de passe de connexion'**
+  String get settingsChangePasswordSubtitle;
+
+  /// No description provided for @settingsNewPassword.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau mot de passe'**
+  String get settingsNewPassword;
+
+  /// No description provided for @settingsConfirmPassword.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer le nouveau mot de passe'**
+  String get settingsConfirmPassword;
+
+  /// No description provided for @settingsPasswordMismatch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les mots de passe ne correspondent pas'**
+  String get settingsPasswordMismatch;
+
+  /// No description provided for @settingsPasswordMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Minimum 6 caracteres requis'**
+  String get settingsPasswordMinLength;
+
+  /// No description provided for @settingsPasswordChanged.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe modifie avec succes'**
+  String get settingsPasswordChanged;
+
+  /// No description provided for @settingsProfileUpdated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil mis a jour'**
+  String get settingsProfileUpdated;
+
+  /// No description provided for @settingsAdminSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Administration'**
+  String get settingsAdminSection;
+
+  /// No description provided for @settingsAdminSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gerer les departements et categories d\'equipements'**
+  String get settingsAdminSubtitle;
+
+  /// No description provided for @settingsFullName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom complet'**
+  String get settingsFullName;
+
+  /// No description provided for @settingsFullNameHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: Dr. Martin'**
+  String get settingsFullNameHint;
+
+  /// No description provided for @settingsPhoneLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Telephone'**
+  String get settingsPhoneLabel;
+
+  /// No description provided for @settingsPhoneHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: +250 788 123 456'**
+  String get settingsPhoneHint;
+
+  /// No description provided for @settingsDepartmentHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: Cardiologie'**
+  String get settingsDepartmentHint;
 }
 
 class _AppLocalizationsDelegate
