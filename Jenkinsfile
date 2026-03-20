@@ -26,9 +26,9 @@ pipeline {
             steps {
                 sh """
                     docker run --rm \
-                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        -v ${HOST_WORKSPACE}:/ws \
                         alpine \
-                        sh -c "rm -rf /app/build /app/.pub-cache"
+                        sh -c 'OWNER=\$(stat -c "%u:%g" /ws) && chown -R \$OWNER /ws && rm -rf /ws/flutter-app/build /ws/flutter-app/.pub-cache'
                 """
                 checkout scm
             }
