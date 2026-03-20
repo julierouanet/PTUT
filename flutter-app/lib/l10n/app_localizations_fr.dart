@@ -985,4 +985,55 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsDepartmentHint => 'Ex: Cardiologie';
+
+  @override
+  String get notifTitle => 'Notifications';
+
+  @override
+  String get notifMarkAllRead => 'Tout marquer comme lu';
+
+  @override
+  String get notifEmpty => 'Aucune notification';
+
+  @override
+  String get notifNewIssue => 'Nouvel incident signale';
+
+  @override
+  String notifNewIssueBody(String equipment, String dept) {
+    return 'Incident sur $equipment ($dept)';
+  }
+
+  @override
+  String get notifInProgress => 'Votre incident est pris en charge';
+
+  @override
+  String notifInProgressBody(String equipment) {
+    return 'L\'incident sur $equipment est en cours de traitement';
+  }
+
+  @override
+  String get notifResolved => 'Votre incident a ete resolu';
+
+  @override
+  String notifResolvedBody(String equipment) {
+    return 'L\'incident sur $equipment est marque comme resolu';
+  }
+
+  @override
+  String get notifTimeJustNow => 'A l\'instant';
+
+  @override
+  String notifTimeMinutes(int n) {
+    return 'Il y a $n min';
+  }
+
+  @override
+  String notifTimeHours(int n) {
+    return 'Il y a $n h';
+  }
+
+  @override
+  String notifTimeDays(int n) {
+    return 'Il y a $n j';
+  }
 }

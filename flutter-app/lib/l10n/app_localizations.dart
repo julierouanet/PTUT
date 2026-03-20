@@ -1927,6 +1927,84 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Ex: Cardiologie'**
   String get settingsDepartmentHint;
+
+  /// No description provided for @notifTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get notifTitle;
+
+  /// No description provided for @notifMarkAllRead.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout marquer comme lu'**
+  String get notifMarkAllRead;
+
+  /// No description provided for @notifEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune notification'**
+  String get notifEmpty;
+
+  /// No description provided for @notifNewIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvel incident signale'**
+  String get notifNewIssue;
+
+  /// No description provided for @notifNewIssueBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident sur {equipment} ({dept})'**
+  String notifNewIssueBody(String equipment, String dept);
+
+  /// No description provided for @notifInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre incident est pris en charge'**
+  String get notifInProgress;
+
+  /// No description provided for @notifInProgressBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'incident sur {equipment} est en cours de traitement'**
+  String notifInProgressBody(String equipment);
+
+  /// No description provided for @notifResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre incident a ete resolu'**
+  String get notifResolved;
+
+  /// No description provided for @notifResolvedBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'incident sur {equipment} est marque comme resolu'**
+  String notifResolvedBody(String equipment);
+
+  /// No description provided for @notifTimeJustNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'A l\'instant'**
+  String get notifTimeJustNow;
+
+  /// No description provided for @notifTimeMinutes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il y a {n} min'**
+  String notifTimeMinutes(int n);
+
+  /// No description provided for @notifTimeHours.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il y a {n} h'**
+  String notifTimeHours(int n);
+
+  /// No description provided for @notifTimeDays.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il y a {n} j'**
+  String notifTimeDays(int n);
 }
 
 class _AppLocalizationsDelegate

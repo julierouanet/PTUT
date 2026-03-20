@@ -14,8 +14,10 @@ import 'screens/user_management_screen.dart';
 import 'screens/settings_screen.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
+import 'services/notification_service.dart';
 import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
+import 'widgets/notification_bell.dart';
 
 /// Screen types for navigation (no more string matching)
 enum ScreenType {
@@ -112,6 +114,15 @@ class _MainScaffoldState extends State<MainScaffold> {
   String? _selectedEquipmentId;
   String? _selectedIssueId;
   final AuthService _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Générer les notifications après le premier rendu (données déjà chargées)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationService().generateFromLoadedData();
+    });
+  }
 
   /// Define all nav items with their required permissions
   List<_NavItem> _allNavItems(AppLocalizations l10n) => [
@@ -217,15 +228,71 @@ class _MainScaffoldState extends State<MainScaffold> {
     final isWide = MediaQuery.of(context).size.width > 800;
     final l10n = AppLocalizations.of(context)!;
     final navItems = _navItems(l10n);
+
     return Scaffold(
-      body: Row(
-        children: [
-          if (isWide) _buildSidebar(l10n, navItems),
-          Expanded(child: _buildCurrentScreen(navItems)),
-        ],
+      body: Builder(
+        builder: (scaffoldContext) => Row(
+          children: [
+            if (isWide) _buildSidebar(l10n, navItems),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildTopBar(l10n, navItems, isWide, scaffoldContext),
+                  Expanded(child: _buildCurrentScreen(navItems)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: isWide ? null : _buildBottomNav(navItems),
       drawer: isWide ? null : _buildDrawer(l10n, navItems),
+    );
+  }
+
+  /// Barre de titre en haut du contenu avec la cloche de notifications
+  Widget _buildTopBar(
+    AppLocalizations l10n,
+    List<_NavItem> navItems,
+    bool isWide,
+    BuildContext scaffoldContext,
+  ) {
+    final currentLabel = _currentIndex < navItems.length
+        ? navItems[_currentIndex].label
+        : '';
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(
+        children: [
+          // Bouton menu sur écran étroit
+          if (!isWide) ...[
+            IconButton(
+              icon: const Icon(Icons.menu, color: AppColors.textSecondary),
+              onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+              tooltip: 'Menu',
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            currentLabel,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const Spacer(),
+          NotificationBell(onNavigate: _navigateByScreenType),
+          const SizedBox(width: 4),
+        ],
+      ),
     );
   }
 

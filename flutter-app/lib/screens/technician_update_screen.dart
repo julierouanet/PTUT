@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../models/issue.dart';
 
 /// Technician update screen - update repair progress
@@ -300,6 +301,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
         'parts_replaced':       _partsController.text.trim().isNotEmpty ? _partsController.text.trim() : null,
       });
       await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -333,6 +335,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
         'parts_replaced':       _partsController.text.trim().isNotEmpty ? _partsController.text.trim() : null,
       });
       await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [

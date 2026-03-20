@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../models/equipment.dart';
 import '../utils/file_picker.dart';
 
@@ -417,6 +418,7 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     try {
       await DbApiService.instance.createIssue(issueData);
       await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [

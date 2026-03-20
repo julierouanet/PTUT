@@ -323,5 +323,25 @@
   "settingsFullNameHint": "E.g.: Dr. Martin",
   "settingsPhoneLabel": "Phone number",
   "settingsPhoneHint": "E.g.: +250 788 123 456",
-  "settingsDepartmentHint": "E.g.: Cardiology"
+  "settingsDepartmentHint": "E.g.: Cardiology",
+
+  "notifTitle": "Notifications",
+  "notifMarkAllRead": "Mark all as read",
+  "notifEmpty": "No notifications",
+  "notifNewIssue": "New issue reported",
+  "notifNewIssueBody": "Issue on {equipment} ({dept})",
+  "@notifNewIssueBody": { "placeholders": { "equipment": { "type": "String" }, "dept": { "type": "String" } } },
+  "notifInProgress": "Your issue is being handled",
+  "notifInProgressBody": "The issue on {equipment} is being processed",
+  "@notifInProgressBody": { "placeholders": { "equipment": { "type": "String" } } },
+  "notifResolved": "Your issue has been resolved",
+  "notifResolvedBody": "The issue on {equipment} is marked as resolved",
+  "@notifResolvedBody": { "placeholders": { "equipment": { "type": "String" } } },
+  "notifTimeJustNow": "Just now",
+  "notifTimeMinutes": "{n} min ago",
+  "@notifTimeMinutes": { "placeholders": { "n": { "type": "int" } } },
+  "notifTimeHours": "{n} h ago",
+  "@notifTimeHours": { "placeholders": { "n": { "type": "int" } } },
+  "notifTimeDays": "{n} d ago",
+  "@notifTimeDays": { "placeholders": { "n": { "type": "int" } } }
 }
