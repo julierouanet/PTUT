@@ -53,6 +53,7 @@ class _NotificationBellState extends State<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return CompositedTransformTarget(
       link: _layerLink,
       child: ListenableBuilder(
@@ -72,7 +73,7 @@ class _NotificationBellState extends State<NotificationBell> {
                       : AppColors.textSecondary,
                 ),
                 onPressed: _toggleOverlay,
-                tooltip: 'Notifications',
+                tooltip: l10n.tooltipNotifications,
               ),
               if (count > 0)
                 Positioned(

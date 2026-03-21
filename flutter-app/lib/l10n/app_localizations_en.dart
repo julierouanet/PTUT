@@ -51,6 +51,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSettings => 'Settings';
 
   @override
+  String get navLogs => 'Activity Logs';
+
+  @override
+  String get navLogsShort => 'Logs';
+
+  @override
   String get navDashboardShort => 'Home';
 
   @override
@@ -78,7 +84,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSettingsShort => 'Settings';
 
   @override
+  String get tooltipBack => 'Back';
+
+  @override
+  String get tooltipMenu => 'Menu';
+
+  @override
+  String get tooltipMobilePreview => 'Mobile preview';
+
+  @override
+  String get tooltipAccountSettings => 'Account settings';
+
+  @override
+  String get tooltipNotifications => 'Notifications';
+
+  @override
   String get logout => 'Log out';
+
+  @override
+  String get logoutConfirmTitle => 'Log out';
+
+  @override
+  String get logoutConfirmMessage => 'Are you sure you want to log out?';
 
   @override
   String get accessDenied => 'Access Denied';
@@ -506,6 +533,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String issueFormSubmitWithPhotos(int count) {
     return 'Submit report ($count photo(s))';
   }
+
+  @override
+  String get issueFormLeaveTitle => 'Leave the form?';
+
+  @override
+  String get issueFormLeaveMessage =>
+      'Information has been entered. If you leave now, it will be lost.';
+
+  @override
+  String get issueFormLeaveConfirm => 'Leave';
 
   @override
   String get issueFormSuccess => 'Report sent!';

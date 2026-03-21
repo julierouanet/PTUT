@@ -12,14 +12,15 @@ import '../utils/file_picker.dart';
 /// Issue form screen - report a new equipment problem
 class IssueFormScreen extends StatefulWidget {
   final String? equipmentId;
+  final VoidCallback? onCancel;
 
-  const IssueFormScreen({super.key, this.equipmentId});
+  const IssueFormScreen({super.key, this.equipmentId, this.onCancel});
 
   @override
-  State<IssueFormScreen> createState() => _IssueFormScreenState();
+  State<IssueFormScreen> createState() => IssueFormScreenState();
 }
 
-class _IssueFormScreenState extends State<IssueFormScreen> {
+class IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedEquipmentId;
   String _problemType = 'Panne';
@@ -28,6 +29,12 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   // Photo handling
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
+
+  /// Retourne true si l'utilisateur a commencé à remplir le formulaire.
+  bool get hasUnsavedData =>
+      _selectedEquipmentId != null ||
+      _descriptionController.text.isNotEmpty ||
+      _photos.isNotEmpty;
 
   List<String> _problemTypes(AppLocalizations l10n) => [
     l10n.issueFormBreakdown,
@@ -307,17 +314,34 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     }),
                     const SizedBox(height: 32),
 
-                    // Submit button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _submitForm,
-                        icon: const Icon(Icons.send),
-                        label: Text(_photos.isNotEmpty ? l10n.issueFormSubmitWithPhotos(_photos.length) : l10n.issueFormSubmit),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                    // Boutons Annuler / Soumettre
+                    Row(
+                      children: [
+                        if (widget.onCancel != null) ...[
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: widget.onCancel,
+                              icon: const Icon(Icons.close, color: AppColors.error),
+                              label: Text(l10n.commonCancel, style: const TextStyle(color: AppColors.error)),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: AppColors.error),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _submitForm,
+                            icon: const Icon(Icons.send),
+                            label: Text(_photos.isNotEmpty ? l10n.issueFormSubmitWithPhotos(_photos.length) : l10n.issueFormSubmit),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),

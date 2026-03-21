@@ -2,8 +2,21 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../database');
-const { JWT_SECRET, JWT_REFRESH_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS } = require('../config');
+const { JWT_SECRET, JWT_REFRESH_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS, DB_SERVICE_URL, INTERNAL_SECRET } = require('../config');
 const { verifyToken } = require('../middleware/auth');
+
+/** Envoie un log d'authentification vers db-service. Ne bloque jamais en cas d'échec. */
+async function sendAuthLog({ user_id, user_name, user_role, action, details }) {
+  try {
+    await fetch(`${DB_SERVICE_URL}/api/logs/internal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
+      body: JSON.stringify({ user_id, user_name, user_role, action, target_type: 'auth', details }),
+    });
+  } catch (err) {
+    console.error('[AUTH-LOG] Impossible d\'envoyer le log:', err.message);
+  }
+}
 
 const router = express.Router();
 
@@ -28,12 +41,14 @@ router.post('/login', async (req, res) => {
 
   if (!user) {
     console.log(`[AUTH] Échec login — email inconnu ou inactif: ${email}`);
+    sendAuthLog({ user_id: null, user_name: email, user_role: 'unknown', action: 'login_failed', details: { reason: 'email_inconnu' } });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     console.log(`[AUTH] Échec login — mauvais mot de passe: ${email}`);
+    sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' } });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
@@ -49,6 +64,7 @@ router.post('/login', async (req, res) => {
   db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, refreshToken, expiresAt);
 
   console.log(`[AUTH] Login réussi: ${email} (rôle: ${user.role})`);
+  sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login' });
 
   res.json({
     accessToken,
@@ -111,6 +127,18 @@ router.post('/logout', (req, res) => {
   if (refreshToken) {
     const db = getDb();
     db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
+  }
+
+  // Récupérer les infos user pour le log si possible
+  if (refreshToken) {
+    try {
+      const db = getDb();
+      const stored = db.prepare('SELECT user_id FROM refresh_tokens WHERE token = ?').get(refreshToken);
+      if (stored) {
+        const u = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(stored.user_id);
+        if (u) sendAuthLog({ user_id: u.id, user_name: u.name, user_role: u.role, action: 'logout' });
+      }
+    } catch (_) {}
   }
 
   console.log('[AUTH] Déconnexion effectuée');

@@ -159,6 +159,28 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  // ── LOGS ───────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getLogs({
+    String? action,
+    String? userId,
+    String? targetType,
+    String? from,
+    String? to,
+    int limit = 500,
+  }) async {
+    var url = '${ApiConfig.logsUrl}?limit=$limit';
+    if (action     != null) url += '&action=${Uri.encodeComponent(action)}';
+    if (userId     != null) url += '&user_id=${Uri.encodeComponent(userId)}';
+    if (targetType != null) url += '&target_type=${Uri.encodeComponent(targetType)}';
+    if (from       != null) url += '&from=${Uri.encodeComponent(from)}';
+    if (to         != null) url += '&to=${Uri.encodeComponent(to)}';
+
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
   // ── Utilitaire ─────────────────────────────────────────────────────────────
 
   void _checkStatus(dynamic response, String url) {

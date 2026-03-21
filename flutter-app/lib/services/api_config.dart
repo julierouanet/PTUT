@@ -35,4 +35,5 @@ class ApiConfig {
   static String get equipmentUrl  => '$dbBaseUrl/api/equipment';
   static String get issuesUrl     => '$dbBaseUrl/api/issues';
   static String get inventoryUrl  => '$dbBaseUrl/api/inventory';
+  static String get logsUrl       => '$dbBaseUrl/api/logs';
 }

@@ -12,6 +12,8 @@ import 'screens/inventory_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/user_management_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/account_settings_screen.dart';
+import 'screens/logs_screen.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
 import 'services/notification_service.dart';
@@ -30,6 +32,7 @@ enum ScreenType {
   reports,
   users,
   settings,
+  logs,
 }
 
 void main() async {
@@ -114,6 +117,8 @@ class _MainScaffoldState extends State<MainScaffold> {
   String? _selectedEquipmentId;
   String? _selectedIssueId;
   final AuthService _authService = AuthService();
+  final List<int> _history = [];
+  final GlobalKey<IssueFormScreenState> _issueFormKey = GlobalKey<IssueFormScreenState>();
 
   @override
   void initState() {
@@ -128,13 +133,14 @@ class _MainScaffoldState extends State<MainScaffold> {
   List<_NavItem> _allNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
     _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
-    _NavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
+    _NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
     _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
     _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs),
     _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
     _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
     _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
-    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: null),
+    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
+    _NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: l10n.navLogs, shortLabel: l10n.navLogsShort, screenType: ScreenType.logs, requiredPermission: Permission.manageUsers),
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
@@ -144,8 +150,66 @@ class _MainScaffoldState extends State<MainScaffold> {
     }).toList();
   }
 
-  void _navigateTo(int index, {String? equipmentId, String? issueId}) {
+  bool get _canGoBack => _history.isNotEmpty;
+
+  /// Vérifie si on peut quitter le formulaire de signalement.
+  /// Affiche un dialog de confirmation si des données ont été saisies.
+  Future<bool> _canLeaveIssueForm() async {
+    final formState = _issueFormKey.currentState;
+    if (formState == null || !formState.hasUnsavedData) return true;
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(children: [
+          const Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+          const SizedBox(width: 12),
+          Text(l10n.issueFormLeaveTitle),
+        ]),
+        content: Text(l10n.issueFormLeaveMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning, foregroundColor: Colors.white),
+            child: Text(l10n.issueFormLeaveConfirm),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
+  Future<void> _goBack() async {
+    if (_history.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    final navItems = _navItems(l10n);
+    final currentItem = _currentIndex < navItems.length ? navItems[_currentIndex] : null;
+    if (currentItem?.screenType == ScreenType.issueForm) {
+      if (!await _canLeaveIssueForm()) return;
+    }
     setState(() {
+      _currentIndex = _history.removeLast();
+      _selectedEquipmentId = null;
+      _selectedIssueId = null;
+    });
+  }
+
+  Future<void> _navigateTo(int index, {String? equipmentId, String? issueId}) async {
+    if (index != _currentIndex) {
+      final l10n = AppLocalizations.of(context)!;
+      final navItems = _navItems(l10n);
+      final currentItem = _currentIndex < navItems.length ? navItems[_currentIndex] : null;
+      if (currentItem?.screenType == ScreenType.issueForm) {
+        if (!await _canLeaveIssueForm()) return;
+      }
+    }
+    setState(() {
+      if (index != _currentIndex) _history.add(_currentIndex);
       _currentIndex = index;
       _selectedEquipmentId = equipmentId;
       _selectedIssueId = issueId;
@@ -163,7 +227,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       case ScreenType.issueTracking:
         return IssueTrackingScreen(onNavigate: _navigateByScreenType);
       case ScreenType.issueForm:
-        return IssueFormScreen(equipmentId: _selectedEquipmentId);
+        return IssueFormScreen(key: _issueFormKey, equipmentId: _selectedEquipmentId, onCancel: _goBack);
       case ScreenType.technician:
         return TechnicianUpdateScreen(issueId: _selectedIssueId);
       case ScreenType.inventory:
@@ -174,6 +238,8 @@ class _MainScaffoldState extends State<MainScaffold> {
         return const UserManagementScreen();
       case ScreenType.settings:
         return const SettingsScreen();
+      case ScreenType.logs:
+        return const LogsScreen();
     }
   }
 
@@ -205,11 +271,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       ));
       return;
     }
-    setState(() {
-      _currentIndex = newIndex;
-      _selectedEquipmentId = equipmentId;
-      _selectedIssueId = issueId;
-    });
+    _navigateTo(newIndex, equipmentId: equipmentId, issueId: issueId);
   }
 
   Widget _buildAccessDeniedScreen() {
@@ -281,7 +343,18 @@ class _MainScaffoldState extends State<MainScaffold> {
             IconButton(
               icon: const Icon(Icons.menu, color: AppColors.textSecondary),
               onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
-              tooltip: 'Menu',
+              tooltip: l10n.tooltipMenu,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 4),
+          ],
+          // Bouton retour
+          if (_canGoBack) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
+              onPressed: _goBack,
+              tooltip: l10n.tooltipBack,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
             ),
@@ -299,7 +372,15 @@ class _MainScaffoldState extends State<MainScaffold> {
           IconButton(
             icon: const Icon(Icons.smartphone_outlined, color: AppColors.textSecondary),
             onPressed: () => _showPhonePreview(context),
-            tooltip: 'Aperçu mobile',
+            tooltip: l10n.tooltipMobilePreview,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
+            tooltip: l10n.tooltipAccountSettings,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -309,6 +390,35 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmLogout(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.logout, color: AppColors.error),
+            const SizedBox(width: 12),
+            Text(l10n.logoutConfirmTitle),
+          ],
+        ),
+        content: Text(l10n.logoutConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            child: Text(l10n.logout),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _authService.logoutApi();
   }
 
   Widget _buildSidebar(AppLocalizations l10n, List<_NavItem> navItems) {
@@ -368,12 +478,12 @@ class _MainScaffoldState extends State<MainScaffold> {
               leading: const Icon(Icons.logout, color: AppColors.error),
               title: Text(l10n.logout, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onTap: () async { await _authService.logoutApi(); },
+              onTap: () => _confirmLogout(l10n),
             ),
           ),
           const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
             child: Row(
               children: [
                 CircleAvatar(
@@ -389,6 +499,13 @@ class _MainScaffoldState extends State<MainScaffold> {
                       Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
+                  tooltip: l10n.tooltipAccountSettings,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -465,6 +582,15 @@ class _MainScaffoldState extends State<MainScaffold> {
               onTap: () { Navigator.pop(context); _navigateTo(index); },
             );
           }),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.manage_accounts_outlined, color: AppColors.primary),
+            title: Text(l10n.settingsAccountSection, style: const TextStyle(fontWeight: FontWeight.w500)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen()));
+            },
+          ),
         ],
       ),
     );

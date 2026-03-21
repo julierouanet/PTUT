@@ -48,7 +48,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navUsers => 'Utilisateurs';
 
   @override
-  String get navSettings => 'Parametres';
+  String get navSettings => 'Gestion';
+
+  @override
+  String get navLogs => 'Journaux';
+
+  @override
+  String get navLogsShort => 'Logs';
 
   @override
   String get navDashboardShort => 'Accueil';
@@ -75,10 +81,32 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navUsersShort => 'Usagers';
 
   @override
-  String get navSettingsShort => 'Reglages';
+  String get navSettingsShort => 'Gestion';
+
+  @override
+  String get tooltipBack => 'Retour';
+
+  @override
+  String get tooltipMenu => 'Menu';
+
+  @override
+  String get tooltipMobilePreview => 'Apercu mobile';
+
+  @override
+  String get tooltipAccountSettings => 'Parametres du compte';
+
+  @override
+  String get tooltipNotifications => 'Notifications';
 
   @override
   String get logout => 'Se deconnecter';
+
+  @override
+  String get logoutConfirmTitle => 'Deconnexion';
+
+  @override
+  String get logoutConfirmMessage =>
+      'Etes-vous sur de vouloir vous deconnecter ?';
 
   @override
   String get accessDenied => 'Acces refuse';
@@ -509,6 +537,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String issueFormSubmitWithPhotos(int count) {
     return 'Soumettre le signalement ($count photo(s))';
   }
+
+  @override
+  String get issueFormLeaveTitle => 'Quitter le formulaire ?';
+
+  @override
+  String get issueFormLeaveMessage =>
+      'Des informations ont ete saisies. Si vous quittez maintenant, elles seront perdues.';
+
+  @override
+  String get issueFormLeaveConfirm => 'Quitter';
 
   @override
   String get issueFormSuccess => 'Signalement envoye !';

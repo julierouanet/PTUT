@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/config_service.dart';
-import '../services/auth_service.dart';
-import '../models/user_role.dart';
-import '../providers/locale_provider.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -16,7 +13,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final ConfigService _configService = ConfigService();
-  final AuthService _authService = AuthService();
 
   @override
   void initState() {
@@ -33,8 +29,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _onConfigChange() => setState(() {});
-
-  bool get _isAdmin => _authService.hasPermission(Permission.manageDepartments);
 
   @override
   Widget build(BuildContext context) {
@@ -53,353 +47,54 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.settings, color: AppColors.primary, size: 24),
+                child: const Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 24),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.settingsTitle, style: TextStyle(fontSize: isMobile ? 18 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                  Text(l10n.settingsSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(l10n.settingsAdminSection, style: TextStyle(fontSize: isMobile ? 18 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Text(l10n.settingsAdminSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ],
               ),
             ],
           ),
         ),
 
-        // ── Section Compte (visible par tous) ────────────────────────────────
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: hPad),
-          child: _buildAccountSection(l10n),
-        ),
-
-        // ── Section Administration (admin seulement) ─────────────────────────
-        if (_isAdmin) ...[
-          const SizedBox(height: 24),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Row(children: [
-              const Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(l10n.settingsAdminSection, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-            ]),
-          ),
-          const SizedBox(height: 4),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: Text(l10n.settingsAdminSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            margin: EdgeInsets.symmetric(horizontal: hPad),
-            decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
-              labelColor: Colors.white,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              padding: const EdgeInsets.all(4),
-              tabs: [
-                Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.business, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l10n.settingsDepartmentsTab(_configService.departments.length)),
-                ])),
-                Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.category, size: 18),
-                  const SizedBox(width: 8),
-                  Text(l10n.settingsCategoriesTab(_configService.categories.length)),
-                ])),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [_buildDepartmentsTab(), _buildCategoriesTab()],
-            ),
-          ),
-        ] else
-          const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  // ── Section compte ─────────────────────────────────────────────────────────
-
-  Widget _buildAccountSection(AppLocalizations l10n) {
-    final localeProvider = LocaleProvider();
-    final currentUser = _authService.currentUser;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          const Icon(Icons.manage_accounts, color: AppColors.primary, size: 20),
-          const SizedBox(width: 8),
-          Text(l10n.settingsAccountSection, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        ]),
-        const SizedBox(height: 4),
-        Text(l10n.settingsAccountSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-        const SizedBox(height: 12),
-        Card(
-          child: Column(
-            children: [
-              // Langue
-              ListenableBuilder(
-                listenable: localeProvider,
-                builder: (context, _) => ListTile(
-                  leading: const Icon(Icons.language, color: AppColors.primary),
-                  title: Text(l10n.settingsLanguage, style: const TextStyle(fontWeight: FontWeight.w500)),
-                  subtitle: Text(l10n.settingsLanguageSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  trailing: DropdownButton<String>(
-                    value: localeProvider.locale.languageCode,
-                    underline: const SizedBox(),
-                    items: [
-                      DropdownMenuItem(value: 'fr', child: Text(l10n.settingsFrench)),
-                      DropdownMenuItem(value: 'en', child: Text(l10n.settingsEnglish)),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) LocaleProvider().setLocale(Locale(value));
-                    },
-                  ),
-                ),
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              // Informations personnelles
-              ListTile(
-                leading: const Icon(Icons.person_outline, color: AppColors.primary),
-                title: Text(l10n.settingsPersonalInfo, style: const TextStyle(fontWeight: FontWeight.w500)),
-                subtitle: Text(
-                  currentUser?.name ?? '',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                onTap: () => _showPersonalInfoDialog(l10n),
-              ),
-              const Divider(height: 1, indent: 16, endIndent: 16),
-              // Changer mot de passe
-              ListTile(
-                leading: const Icon(Icons.lock_outline, color: AppColors.primary),
-                title: Text(l10n.settingsChangePassword, style: const TextStyle(fontWeight: FontWeight.w500)),
-                subtitle: Text(l10n.settingsChangePasswordSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                onTap: () => _showChangePasswordDialog(l10n),
-              ),
+        // ── Onglets départements / catégories ─────────────────────────────────
+        Container(
+          margin: EdgeInsets.symmetric(horizontal: hPad),
+          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+          child: TabBar(
+            controller: _tabController,
+            indicator: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+            labelColor: Colors.white,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            padding: const EdgeInsets.all(4),
+            tabs: [
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.business, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.settingsDepartmentsTab(_configService.departments.length)),
+              ])),
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.category, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.settingsCategoriesTab(_configService.categories.length)),
+              ])),
             ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [_buildDepartmentsTab(), _buildCategoriesTab()],
           ),
         ),
       ],
-    );
-  }
-
-  void _showPersonalInfoDialog(AppLocalizations l10n) {
-    final user = _authService.currentUser;
-    final nameCtrl  = TextEditingController(text: user?.name ?? '');
-    final emailCtrl = TextEditingController(text: user?.email ?? '');
-    final phoneCtrl = TextEditingController(text: user?.phone ?? '');
-    final deptCtrl  = TextEditingController(text: user?.department ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        child: Container(
-          width: 480,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(l10n.settingsPersonalInfo, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: l10n.settingsFullName,
-                  hintText: l10n.settingsFullNameHint,
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  labelText: l10n.commonEmail,
-                  prefixIcon: const Icon(Icons.email_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneCtrl,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: l10n.settingsPhoneLabel,
-                  hintText: l10n.settingsPhoneHint,
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: deptCtrl,
-                decoration: InputDecoration(
-                  labelText: l10n.commonDepartment,
-                  hintText: l10n.settingsDepartmentHint,
-                  prefixIcon: const Icon(Icons.business_outlined),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(l10n.commonCancel),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      final ok = await _authService.updateProfile(
-                        name:       nameCtrl.text.trim(),
-                        email:      emailCtrl.text.trim(),
-                        phone:      phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
-                        department: deptCtrl.text.trim(),
-                      );
-                      if (mounted) {
-                        setState(() {});
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(ok ? l10n.settingsProfileUpdated : l10n.commonError),
-                          backgroundColor: ok ? AppColors.success : AppColors.error,
-                          behavior: SnackBarBehavior.floating,
-                        ));
-                      }
-                    },
-                    child: Text(l10n.commonSave),
-                  ),
-                ),
-              ]),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showChangePasswordDialog(AppLocalizations l10n) {
-    final newPassCtrl   = TextEditingController();
-    final confirmCtrl   = TextEditingController();
-    bool obscureNew     = true;
-    bool obscureConfirm = true;
-    String? errorMsg;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          child: Container(
-            width: 420,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(l10n.settingsChangePassword, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: newPassCtrl,
-                  obscureText: obscureNew,
-                  decoration: InputDecoration(
-                    labelText: l10n.settingsNewPassword,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureNew ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                      onPressed: () => setDialogState(() => obscureNew = !obscureNew),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: confirmCtrl,
-                  obscureText: obscureConfirm,
-                  decoration: InputDecoration(
-                    labelText: l10n.settingsConfirmPassword,
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                      onPressed: () => setDialogState(() => obscureConfirm = !obscureConfirm),
-                    ),
-                  ),
-                ),
-                if (errorMsg != null) ...[
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(color: AppColors.errorLight, borderRadius: BorderRadius.circular(8)),
-                    child: Row(children: [
-                      const Icon(Icons.error_outline, color: AppColors.error, size: 16),
-                      const SizedBox(width: 8),
-                      Expanded(child: Text(errorMsg!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
-                    ]),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l10n.commonCancel),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final newPass = newPassCtrl.text;
-                        final confirm = confirmCtrl.text;
-                        if (newPass.length < 6) {
-                          setDialogState(() => errorMsg = l10n.settingsPasswordMinLength);
-                          return;
-                        }
-                        if (newPass != confirm) {
-                          setDialogState(() => errorMsg = l10n.settingsPasswordMismatch);
-                          return;
-                        }
-                        Navigator.pop(ctx);
-                        final ok = await _authService.changePassword(newPass);
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(ok ? l10n.settingsPasswordChanged : l10n.commonError),
-                            backgroundColor: ok ? AppColors.success : AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                          ));
-                        }
-                      },
-                      child: Text(l10n.commonSave),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 

@@ -179,8 +179,14 @@ abstract class AppLocalizations {
   /// No description provided for @navSettings.
   ///
   /// In fr, this message translates to:
-  /// **'Parametres'**
+  /// **'Gestion'**
   String get navSettings;
+
+  /// No description provided for @navLogs.
+  String get navLogs;
+
+  /// No description provided for @navLogsShort.
+  String get navLogsShort;
 
   /// No description provided for @navDashboardShort.
   ///
@@ -233,14 +239,56 @@ abstract class AppLocalizations {
   /// No description provided for @navSettingsShort.
   ///
   /// In fr, this message translates to:
-  /// **'Reglages'**
+  /// **'Gestion'**
   String get navSettingsShort;
+
+  /// No description provided for @tooltipBack.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour'**
+  String get tooltipBack;
+
+  /// No description provided for @tooltipMenu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Menu'**
+  String get tooltipMenu;
+
+  /// No description provided for @tooltipMobilePreview.
+  ///
+  /// In fr, this message translates to:
+  /// **'Apercu mobile'**
+  String get tooltipMobilePreview;
+
+  /// No description provided for @tooltipAccountSettings.
+  ///
+  /// In fr, this message translates to:
+  /// **'Parametres du compte'**
+  String get tooltipAccountSettings;
+
+  /// No description provided for @tooltipNotifications.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get tooltipNotifications;
 
   /// No description provided for @logout.
   ///
   /// In fr, this message translates to:
   /// **'Se deconnecter'**
   String get logout;
+
+  /// No description provided for @logoutConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Deconnexion'**
+  String get logoutConfirmTitle;
+
+  /// No description provided for @logoutConfirmMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Etes-vous sur de vouloir vous deconnecter ?'**
+  String get logoutConfirmMessage;
 
   /// No description provided for @accessDenied.
   ///
@@ -1045,6 +1093,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Soumettre le signalement ({count} photo(s))'**
   String issueFormSubmitWithPhotos(int count);
+
+  /// No description provided for @issueFormLeaveTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter le formulaire ?'**
+  String get issueFormLeaveTitle;
+
+  /// No description provided for @issueFormLeaveMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Des informations ont ete saisies. Si vous quittez maintenant, elles seront perdues.'**
+  String get issueFormLeaveMessage;
+
+  /// No description provided for @issueFormLeaveConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quitter'**
+  String get issueFormLeaveConfirm;
 
   /// No description provided for @issueFormSuccess.
   ///

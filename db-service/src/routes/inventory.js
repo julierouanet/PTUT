@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
+const { logAction } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -47,6 +48,12 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       VALUES (?, ?, ?, ?, ?, ?, ?, date('now'))
     `).run(id, name, category, current_stock, min_stock, unit, status);
 
+    logAction({
+      user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+      action: 'create_inventory', target_type: 'inventory', target_id: id, target_name: name,
+      details: { category, current_stock, unit },
+    });
+
     res.status(201).json({ message: 'Article créé', id });
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'ID déjà utilisé' });
@@ -83,22 +90,37 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
     WHERE id = ?
   `).run(name, category, unit, newStock, newMinStock, status, req.params.id);
 
+  const isRestock = current_stock !== undefined && current_stock > existing.current_stock;
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    action: isRestock ? 'restock_inventory' : 'update_inventory',
+    target_type: 'inventory', target_id: req.params.id, target_name: name || existing.name,
+    details: current_stock !== undefined ? { old_stock: existing.current_stock, new_stock: newStock } : undefined,
+  });
+
   res.json({ message: 'Stock mis à jour', status });
 });
 
 // DELETE /api/inventory/:id (admin)
 router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
+  const existing = db.prepare('SELECT id, name FROM inventory WHERE id = ?').get(req.params.id);
   const result = db.prepare('DELETE FROM inventory WHERE id = ?').run(req.params.id);
 
   if (result.changes === 0) return res.status(404).json({ error: 'Article introuvable' });
+
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    action: 'delete_inventory', target_type: 'inventory', target_id: req.params.id,
+    target_name: existing?.name,
+  });
 
   res.json({ message: 'Article supprimé' });
 });
 
 function computeStatus(current, min) {
-  if (current === 0)         return 'Rupture';
-  if (current < min)         return 'Faible';
+  if (current === 0) return 'Rupture';
+  if (current < min) return 'Faible';
   return 'Normal';
 }
 
