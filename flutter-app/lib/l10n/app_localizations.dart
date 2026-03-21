@@ -183,9 +183,15 @@ abstract class AppLocalizations {
   String get navSettings;
 
   /// No description provided for @navLogs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Journaux'**
   String get navLogs;
 
   /// No description provided for @navLogsShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Logs'**
   String get navLogsShort;
 
   /// No description provided for @navDashboardShort.
