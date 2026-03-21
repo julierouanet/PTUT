@@ -483,19 +483,36 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _confirmDeleteUser(User user) {
     final l10n = AppLocalizations.of(context)!;
+    final reasonController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.usersDeleteTitle),
-        content: Text(l10n.usersDeleteConfirm(user.name)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.usersDeleteConfirm(user.name)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Raison de la suppression (optionnel)',
+                hintText: 'Ex : Départ de l\'établissement, doublon…',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () async {
+              final reason = reasonController.text.trim();
               Navigator.pop(ctx);
               try {
-                await AuthApiService.instance.deleteUser(user.id);
+                await AuthApiService.instance.deleteUser(user.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadUsers();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(

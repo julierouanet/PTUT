@@ -40,6 +40,91 @@ const _kRestorableActions = {
   'change_name', 'change_email', 'change_phone', 'update_user',
 };
 
+/// Label du bouton "Restaurer" selon l'action
+String _restoreLabelFor(String action) => switch (action) {
+  'delete_equipment' => 'Restaurer l\'équipement',
+  'update_equipment' => 'Restaurer l\'état précédent',
+  'delete_user'      => 'Restaurer le compte',
+  'suspend_user'     => 'Réactiver le compte',
+  'change_name'      => 'Restaurer l\'ancien nom',
+  'change_email'     => 'Restaurer l\'ancien email',
+  'change_phone'     => 'Restaurer l\'ancien numéro',
+  'update_user'      => 'Restaurer les valeurs précédentes',
+  _                  => 'Restaurer',
+};
+
+/// Logique de restauration partagée entre la tuile et la fiche détail.
+/// Retourne un message de succès, lève une exception en cas d'erreur.
+Future<String> _executeRestore(Map<String, dynamic> log) async {
+  final action   = log['action']    as String? ?? '';
+  final targetId = log['target_id'] as String?;
+
+  Map<String, dynamic>? details;
+  final raw = log['details'] as String?;
+  if (raw != null) {
+    try { details = Map<String, dynamic>.from(jsonDecode(raw) as Map); } catch (_) {}
+  }
+
+  switch (action) {
+    case 'delete_equipment':
+      final snap = details?['snapshot'];
+      if (snap == null) throw 'Données de snapshot manquantes';
+      await DbApiService.instance.restoreEquipment(Map<String, dynamic>.from(snap as Map));
+      return 'Équipement restauré avec succès.';
+
+    case 'update_equipment':
+      final snap = details?['snapshot_before'];
+      if (snap == null || targetId == null) throw 'Données insuffisantes';
+      await DbApiService.instance.restoreEquipmentState(targetId, Map<String, dynamic>.from(snap as Map));
+      return 'Équipement restauré à son état précédent.';
+
+    case 'delete_user':
+      final snap = details?['snapshot'];
+      if (snap == null) throw 'Données de snapshot manquantes';
+      final res = await DbApiService.instance.restoreDeletedUser(Map<String, dynamic>.from(snap as Map));
+      final pwd = res['tempPassword'] as String? ?? '—';
+      return 'Compte restauré.\nMot de passe temporaire : $pwd';
+
+    case 'suspend_user':
+      if (targetId == null) throw 'ID utilisateur manquant';
+      await DbApiService.instance.toggleUser(targetId);
+      return 'Compte réactivé.';
+
+    case 'change_name':
+      if (targetId == null) throw 'ID utilisateur manquant';
+      final old = details?['old'] as String?;
+      if (old == null) throw 'Ancienne valeur introuvable';
+      await DbApiService.instance.updateUser(targetId, {'name': old});
+      return 'Nom restauré : $old';
+
+    case 'change_email':
+      if (targetId == null) throw 'ID utilisateur manquant';
+      final old = details?['old'] as String?;
+      if (old == null) throw 'Ancienne valeur introuvable';
+      await DbApiService.instance.updateUser(targetId, {'email': old});
+      return 'Email restauré : $old';
+
+    case 'change_phone':
+      if (targetId == null) throw 'ID utilisateur manquant';
+      final old = details?['old'] as String?;
+      if (old == null) throw 'Ancienne valeur introuvable';
+      await DbApiService.instance.updateUser(targetId, {'phone': old});
+      return 'Téléphone restauré : $old';
+
+    case 'update_user':
+      if (targetId == null) throw 'ID utilisateur manquant';
+      final restoreData = <String, dynamic>{};
+      if (details?['role']       is Map) restoreData['role']       = (details!['role'] as Map)['old'];
+      if (details?['department'] is Map) restoreData['department'] = (details!['department'] as Map)['old'];
+      if (restoreData.isEmpty) throw 'Aucune valeur à restaurer';
+      await DbApiService.instance.updateUser(targetId, restoreData);
+      return 'Valeurs précédentes restaurées.';
+
+    default:
+      throw 'Action non restaurable';
+  }
+}
+
 // ── Écran principal ───────────────────────────────────────────────────────────
 
 class LogsScreen extends StatefulWidget {
@@ -93,6 +178,67 @@ class _LogsScreenState extends State<LogsScreen> {
       final action = (log['action']      as String? ?? '').toLowerCase();
       return name.contains(q) || target.contains(q) || action.contains(q);
     }).toList();
+  }
+
+  /// Vérifie si une action restaurable a déjà été restaurée (log de restauration
+  /// trouvé APRÈS ce log pour le même target_id).
+  bool _isAlreadyRestored(Map<String, dynamic> log) {
+    final action   = log['action']    as String? ?? '';
+    final targetId = log['target_id'] as String?;
+    final ts       = log['timestamp'] as String? ?? '';
+    if (targetId == null) return false;
+
+    final restoreAction = switch (action) {
+      'delete_equipment' || 'update_equipment' => 'restore_equipment',
+      'delete_user'                            => 'restore_user',
+      'suspend_user'                           => 'activate_user',
+      _                                        => null,
+    };
+    if (restoreAction == null) return false;
+
+    return _logs.any((l) =>
+        l['action'] == restoreAction &&
+        l['target_id'] == targetId &&
+        (l['timestamp'] as String? ?? '') > ts);
+  }
+
+  /// Restauration rapide depuis la tuile (dialog de confirmation + snackbar résultat).
+  Future<void> _quickRestore(BuildContext context, Map<String, dynamic> log) async {
+    final action = log['action'] as String? ?? '';
+    final label  = _restoreLabelFor(action);
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Confirmer la restauration'),
+        content: Text('$label ?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restaurer')),
+        ],
+      ),
+    );
+    if (confirm != true || !context.mounted) return;
+
+    try {
+      final msg = await _executeRestore(log);
+      _load();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
   }
 
   /// Détecte les connexions depuis une nouvelle IP pour chaque utilisateur.
@@ -208,9 +354,10 @@ class _LogsScreenState extends State<LogsScreen> {
                           padding: EdgeInsets.symmetric(horizontal: hPad, vertical: 4),
                           itemCount: filtered.length,
                           itemBuilder: (ctx, i) {
-                            final log      = filtered[i];
-                            final isNewIp  = newIpIds.contains(log['id']?.toString());
-                            return _buildLogTile(log, isMobile, isNewIp);
+                            final log             = filtered[i];
+                            final isNewIp         = newIpIds.contains(log['id']?.toString());
+                            final alreadyRestored = _isAlreadyRestored(log);
+                            return _buildLogTile(log, isMobile, isNewIp, alreadyRestored);
                           },
                         ),
         ),
@@ -266,7 +413,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
   // ── Tuile de log ──────────────────────────────────────────────────────────────
 
-  Widget _buildLogTile(Map<String, dynamic> log, bool isMobile, bool isNewIp) {
+  Widget _buildLogTile(Map<String, dynamic> log, bool isMobile, bool isNewIp, bool alreadyRestored) {
     final action     = log['action']      as String? ?? '';
     final meta       = _kActionMeta[action];
     final label      = meta?.$1 ?? action;
@@ -274,7 +421,9 @@ class _LogsScreenState extends State<LogsScreen> {
     final color      = meta?.$3 ?? AppColors.textSecondary;
     final userName   = log['user_name']   as String? ?? '?';
     final userRole   = log['user_role']   as String? ?? '';
+    final userId     = log['user_id']     as String?;
     final targetName = log['target_name'] as String?;
+    final targetId   = log['target_id']   as String?;
     final timestamp  = log['timestamp']   as String? ?? '';
     final details    = log['details']     as String?;
     final ipAddress  = log['ip_address']  as String?;
@@ -315,7 +464,29 @@ class _LogsScreenState extends State<LogsScreen> {
           )
         : null;
 
-    void onTap() => _showLogDetail(context, log, isNewIp);
+    void onTap() => _showLogDetail(context, log, isNewIp, alreadyRestored);
+
+    final canRestore   = _kRestorableActions.contains(action) && !alreadyRestored;
+    final shortUserId  = userId  != null && userId.length  > 14 ? '${userId.substring(0, 14)}…'  : userId;
+    final shortTargetId= targetId != null && targetId.length > 14 ? '${targetId.substring(0, 14)}…' : targetId;
+
+    // Bouton restauration rapide
+    Widget? restoreBtn;
+    if (_kRestorableActions.contains(action)) {
+      restoreBtn = Tooltip(
+        message: alreadyRestored ? 'Déjà restauré' : _restoreLabelFor(action),
+        child: IconButton(
+          icon: Icon(
+            alreadyRestored ? Icons.check_circle_outline : Icons.restore,
+            size: 18,
+            color: alreadyRestored ? AppColors.success : AppColors.primary,
+          ),
+          onPressed: canRestore ? () => _quickRestore(context, log) : null,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        ),
+      );
+    }
 
     if (isMobile) {
       return Card(
@@ -337,24 +508,39 @@ class _LogsScreenState extends State<LogsScreen> {
                       Row(
                         children: [
                           Expanded(child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 13))),
-                          if (newIpBadge != null) ...[newIpBadge, const SizedBox(width: 6)],
+                          if (newIpBadge != null) ...[newIpBadge, const SizedBox(width: 4)],
                           Text(formattedDate, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                         ],
                       ),
                       const SizedBox(height: 3),
-                      RichText(
-                        text: TextSpan(
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          children: [
-                            TextSpan(text: userName, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                            TextSpan(text: ' · $userRole'),
-                            if (targetName != null) ...[
-                              const TextSpan(text: ' → '),
-                              TextSpan(text: targetName, style: const TextStyle(fontStyle: FontStyle.italic)),
-                            ],
-                          ],
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                children: [
+                                  TextSpan(text: userName, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                                  TextSpan(text: ' · $userRole'),
+                                  if (targetName != null) ...[
+                                    const TextSpan(text: ' → '),
+                                    TextSpan(text: targetName, style: const TextStyle(fontStyle: FontStyle.italic)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (restoreBtn != null) restoreBtn,
+                        ],
                       ),
+                      if (shortUserId != null || shortTargetId != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            [if (shortUserId != null) 'uid:$shortUserId', if (shortTargetId != null) 'rid:$shortTargetId'].join('  '),
+                            style: const TextStyle(fontSize: 9, color: AppColors.textMuted, fontFamily: 'monospace'),
+                          ),
+                        ),
                       const SizedBox(height: 3),
                       Row(
                         children: [
@@ -389,7 +575,7 @@ class _LogsScreenState extends State<LogsScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -418,7 +604,7 @@ class _LogsScreenState extends State<LogsScreen> {
                 ),
               ),
               const SizedBox(width: 16),
-              // Col 2 : utilisateur + rôle + badge nouvelle IP
+              // Col 2 : utilisateur + rôle + ID + badge nouvelle IP
               Expanded(
                 flex: 2,
                 child: Column(
@@ -433,18 +619,25 @@ class _LogsScreenState extends State<LogsScreen> {
                       ],
                     ),
                     Text(userRole, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                    if (shortUserId != null)
+                      Text(shortUserId, style: const TextStyle(fontSize: 9, color: AppColors.textMuted, fontFamily: 'monospace')),
                   ],
                 ),
               ),
               const SizedBox(width: 16),
-              // Col 3 : ressource cible
+              // Col 3 : ressource cible + ID
               Expanded(
                 flex: 2,
-                child: targetName != null
-                    ? Text(targetName,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontStyle: FontStyle.italic),
-                        overflow: TextOverflow.ellipsis)
-                    : const Text('—', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    targetName != null
+                        ? Text(targetName, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontStyle: FontStyle.italic), overflow: TextOverflow.ellipsis)
+                        : const Text('—', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    if (shortTargetId != null)
+                      Text(shortTargetId, style: const TextStyle(fontSize: 9, color: AppColors.textMuted, fontFamily: 'monospace')),
+                  ],
+                ),
               ),
               const SizedBox(width: 16),
               // Col 4 : IP + appareil
@@ -477,6 +670,11 @@ class _LogsScreenState extends State<LogsScreen> {
                     style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                     textAlign: TextAlign.right),
               ),
+              // Col 6 : bouton restaurer
+              SizedBox(
+                width: 36,
+                child: restoreBtn ?? const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -486,12 +684,12 @@ class _LogsScreenState extends State<LogsScreen> {
 
   // ── Bottom sheet détail ───────────────────────────────────────────────────────
 
-  void _showLogDetail(BuildContext context, Map<String, dynamic> log, bool isNewIp) {
+  void _showLogDetail(BuildContext context, Map<String, dynamic> log, bool isNewIp, bool alreadyRestored) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => _LogDetailSheet(log: log, isNewIp: isNewIp, onRestored: _load),
+      builder: (ctx) => _LogDetailSheet(log: log, isNewIp: isNewIp, alreadyRestored: alreadyRestored, onRestored: _load),
     );
   }
 
@@ -575,9 +773,10 @@ class _LogsScreenState extends State<LogsScreen> {
 class _LogDetailSheet extends StatefulWidget {
   final Map<String, dynamic> log;
   final bool isNewIp;
+  final bool alreadyRestored;
   final VoidCallback onRestored;
 
-  const _LogDetailSheet({required this.log, required this.isNewIp, required this.onRestored});
+  const _LogDetailSheet({required this.log, required this.isNewIp, required this.alreadyRestored, required this.onRestored});
 
   @override
   State<_LogDetailSheet> createState() => _LogDetailSheetState();
@@ -594,21 +793,8 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     try { return Map<String, dynamic>.from(jsonDecode(raw) as Map); } catch (_) { return null; }
   }
 
-  bool get _canRestore => _kRestorableActions.contains(widget.log['action'] as String? ?? '');
-
-  String get _restoreLabel {
-    return switch (widget.log['action'] as String? ?? '') {
-      'delete_equipment' => 'Restaurer l\'équipement',
-      'update_equipment' => 'Restaurer l\'état précédent',
-      'delete_user'      => 'Restaurer le compte',
-      'suspend_user'     => 'Réactiver le compte',
-      'change_name'      => 'Restaurer l\'ancien nom',
-      'change_email'     => 'Restaurer l\'ancien email',
-      'change_phone'     => 'Restaurer l\'ancien numéro',
-      'update_user'      => 'Restaurer les valeurs précédentes',
-      _                  => 'Restaurer',
-    };
-  }
+  bool get _canRestore => _kRestorableActions.contains(widget.log['action'] as String? ?? '') && !widget.alreadyRestored;
+  String get _restoreLabel => _restoreLabelFor(widget.log['action'] as String? ?? '');
 
   Future<void> _doRestore() async {
     final confirm = await showDialog<bool>(
@@ -618,10 +804,7 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
         content: Text('Voulez-vous vraiment $_restoreLabel ?'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Restaurer'),
-          ),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restaurer')),
         ],
       ),
     );
@@ -630,72 +813,8 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     setState(() { _restoring = true; _restoreMessage = null; });
 
     try {
-      final action   = widget.log['action'] as String? ?? '';
-      final targetId = widget.log['target_id'] as String?;
-      final details  = _details;
-
-      switch (action) {
-        case 'delete_equipment':
-          final snapshot = details?['snapshot'];
-          if (snapshot == null) throw 'Données de snapshot manquantes';
-          await DbApiService.instance.restoreEquipment(Map<String, dynamic>.from(snapshot as Map));
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Équipement restauré avec succès.'; });
-
-        case 'update_equipment':
-          final snapshot = details?['snapshot_before'];
-          if (snapshot == null || targetId == null) throw 'Données insuffisantes pour la restauration';
-          await DbApiService.instance.restoreEquipmentState(targetId, Map<String, dynamic>.from(snapshot as Map));
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Équipement restauré à son état précédent.'; });
-
-        case 'delete_user':
-          final snapshot = details?['snapshot'];
-          if (snapshot == null) throw 'Données de snapshot manquantes';
-          final result = await DbApiService.instance.restoreDeletedUser(Map<String, dynamic>.from(snapshot as Map));
-          final tempPwd = result['tempPassword'] as String? ?? '—';
-          setState(() {
-            _restoreSuccess = true;
-            _restoreMessage = 'Compte restauré.\nMot de passe temporaire : $tempPwd\n(Communiquez-le à l\'utilisateur)';
-          });
-
-        case 'suspend_user':
-          if (targetId == null) throw 'ID utilisateur manquant';
-          await DbApiService.instance.toggleUser(targetId);
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Compte réactivé.'; });
-
-        case 'change_name':
-          if (targetId == null) throw 'ID utilisateur manquant';
-          final old = details?['old'] as String?;
-          if (old == null) throw 'Ancienne valeur introuvable';
-          await DbApiService.instance.updateUser(targetId, {'name': old});
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Nom restauré : $old'; });
-
-        case 'change_email':
-          if (targetId == null) throw 'ID utilisateur manquant';
-          final old = details?['old'] as String?;
-          if (old == null) throw 'Ancienne valeur introuvable';
-          await DbApiService.instance.updateUser(targetId, {'email': old});
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Email restauré : $old'; });
-
-        case 'change_phone':
-          if (targetId == null) throw 'ID utilisateur manquant';
-          final old = details?['old'] as String?;
-          if (old == null) throw 'Ancienne valeur introuvable';
-          await DbApiService.instance.updateUser(targetId, {'phone': old});
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Téléphone restauré : $old'; });
-
-        case 'update_user':
-          if (targetId == null) throw 'ID utilisateur manquant';
-          final restoreData = <String, dynamic>{};
-          if (details?['role']       is Map) restoreData['role']       = (details!['role'] as Map)['old'];
-          if (details?['department'] is Map) restoreData['department'] = (details!['department'] as Map)['old'];
-          if (restoreData.isEmpty) throw 'Aucune valeur à restaurer';
-          await DbApiService.instance.updateUser(targetId, restoreData);
-          setState(() { _restoreSuccess = true; _restoreMessage = 'Valeurs précédentes restaurées.'; });
-
-        default:
-          throw 'Action non restaurable';
-      }
-
+      final msg = await _executeRestore(widget.log);
+      setState(() { _restoreSuccess = true; _restoreMessage = msg; });
       widget.onRestored();
     } catch (e) {
       setState(() { _restoreSuccess = false; _restoreMessage = 'Erreur : $e'; });
@@ -995,22 +1114,39 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                     ),
                   ],
                   // Bouton restaurer
-                  if (_canRestore) ...[
+                  if (_kRestorableActions.contains(widget.log['action'] as String? ?? '')) ...[
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _restoring ? null : _doRestore,
-                        icon: _restoring
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Icon(Icons.restore),
-                        label: Text(_restoring ? 'Restauration…' : _restoreLabel),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                    if (widget.alreadyRestored)
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.success.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+                            SizedBox(width: 8),
+                            Text('Cette action a déjà été restaurée.', style: TextStyle(color: AppColors.success, fontSize: 13, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: _restoring ? null : _doRestore,
+                          icon: _restoring
+                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.restore),
+                          label: Text(_restoring ? 'Restauration…' : _restoreLabel),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ],
               ),

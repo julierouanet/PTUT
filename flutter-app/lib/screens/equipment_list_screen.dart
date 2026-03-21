@@ -483,19 +483,37 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   void _confirmDelete(Equipment eq) {
     final l10n = AppLocalizations.of(context)!;
+    final reasonController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.equipmentDeleteTitle),
-        content: Text(l10n.equipmentDeleteConfirm(eq.name)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.equipmentDeleteConfirm(eq.name)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Raison de la suppression (optionnel)',
+                hintText: 'Ex : Hors service, remplacé…',
+                isDense: true,
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () async {
+              final reason = reasonController.text.trim();
               Navigator.pop(ctx);
               try {
-                await DbApiService.instance.deleteEquipment(eq.id);
+                await DbApiService.instance.deleteEquipment(eq.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadEquipment();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(

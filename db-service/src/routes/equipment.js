@@ -137,11 +137,12 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
   db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
+  const reason = req.query.reason;
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: existing.name,
-    details: { snapshot: existing },
+    details: { snapshot: existing, ...(reason ? { reason } : {}) },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement supprimé' });

@@ -246,6 +246,7 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   if (req.user.id === req.params.id) {
     return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
   }
+  const reason = req.query.reason;
   const target = db.prepare('SELECT id, name, role, email, department, phone FROM users WHERE id = ?').get(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
@@ -257,7 +258,7 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_user', target_type: 'user',
     target_id: req.params.id, target_name: target.name,
-    details: { snapshot: target },
+    details: { snapshot: target, ...(reason ? { reason } : {}) },
     ...reqMeta(req),
   });
 
