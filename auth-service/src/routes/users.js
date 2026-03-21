@@ -24,6 +24,42 @@ router.get('/', verifyToken, requireAdmin, (req, res) => {
   res.json(users);
 });
 
+// POST /api/users/restore — restaurer un utilisateur supprimé (admin)
+router.post('/restore', verifyToken, requireAdmin, async (req, res) => {
+  const db = getDb();
+  const { snapshot } = req.body;
+
+  if (!snapshot || !snapshot.id || !snapshot.email || !snapshot.name) {
+    return res.status(400).json({ error: 'Données de restauration incomplètes' });
+  }
+
+  const tempPassword = crypto.randomBytes(8).toString('hex');
+  const passwordHash = await bcrypt.hash(tempPassword, 10);
+
+  try {
+    db.prepare(`
+      INSERT INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `).run(snapshot.id, snapshot.name, snapshot.email, passwordHash,
+           snapshot.department || null, snapshot.role || 'hospitalStaff',
+           snapshot.phone || null, new Date().toISOString());
+
+    sendLog({
+      user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+      action: 'restore_user', target_type: 'user',
+      target_id: snapshot.id, target_name: snapshot.name,
+      ...reqMeta(req),
+    });
+
+    res.status(201).json({ message: 'Utilisateur restauré', tempPassword });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Cet utilisateur existe déjà (email ou ID déjà utilisé)' });
+    }
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
+});
+
 // GET /api/users/:id
 router.get('/:id', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
@@ -210,17 +246,18 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   if (req.user.id === req.params.id) {
     return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
   }
-  const target = db.prepare('SELECT id, name, role, email FROM users WHERE id = ?').get(req.params.id);
-  const result = db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
-  if (result.changes === 0) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  const target = db.prepare('SELECT id, name, role, email, department, phone FROM users WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  db.prepare('DELETE FROM users WHERE id = ?').run(req.params.id);
 
   console.log(`[AUDIT] Utilisateur supprimé: ${req.params.id} par ${req.user.email}`);
 
   sendLog({
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_user', target_type: 'user',
-    target_id: req.params.id, target_name: target?.name,
-    details: { email: target?.email, role: target?.role },
+    target_id: req.params.id, target_name: target.name,
+    details: { snapshot: target },
     ...reqMeta(req),
   });
 

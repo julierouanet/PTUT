@@ -31,6 +31,34 @@ router.get('/', verifyToken, (req, res) => {
   res.json(result);
 });
 
+// POST /api/equipment/restore — restaurer un équipement supprimé (admin)
+router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const { id, name, department, category, serial_number, status, supplier, location } = req.body;
+
+  if (!id || !name || !department || !category) {
+    return res.status(400).json({ error: 'Données de restauration incomplètes' });
+  }
+
+  try {
+    db.prepare(`
+      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null);
+
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+      action: 'restore_equipment', target_type: 'equipment', target_id: id, target_name: name,
+      ...extractReqMeta(req) });
+
+    res.status(201).json({ message: 'Équipement restauré', id });
+  } catch (err) {
+    if (err.message.includes('UNIQUE')) {
+      return res.status(409).json({ error: 'Un équipement avec cet ID existe déjà' });
+    }
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/equipment/:id
 router.get('/:id', verifyToken, (req, res) => {
   const db = getDb();
@@ -77,7 +105,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   const db = getDb();
   const { name, department, category, serial_number, status, supplier, location } = req.body;
 
-  const existing = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
   db.prepare(`
@@ -95,7 +123,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
-    target_name: name || existing.name, details: status ? { new_status: status } : undefined,
+    target_name: name || existing.name,
+    details: { snapshot_before: existing },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement mis à jour' });
@@ -104,14 +133,16 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 // DELETE /api/equipment/:id (admin seulement)
 router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
-  const existing = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(req.params.id);
-  const result = db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
-  if (result.changes === 0) return res.status(404).json({ error: 'Équipement introuvable' });
+  db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
-    target_name: existing?.name, ...extractReqMeta(req) });
+    target_name: existing.name,
+    details: { snapshot: existing },
+    ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement supprimé' });
 });

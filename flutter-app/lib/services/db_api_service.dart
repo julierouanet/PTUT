@@ -181,6 +181,53 @@ class DbApiService {
     return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
   }
 
+  // ── RESTAURATION ───────────────────────────────────────────────────────────
+
+  Future<void> restoreEquipment(Map<String, dynamic> snapshot) async {
+    final url = '${ApiConfig.equipmentUrl}/restore';
+    final response = await ApiClient.post(url, snapshot);
+    _checkStatus(response, url);
+  }
+
+  Future<void> restoreEquipmentState(String id, Map<String, dynamic> oldValues) async {
+    final url = '${ApiConfig.equipmentUrl}/$id';
+    final response = await ApiClient.put(url, oldValues);
+    _checkStatus(response, url);
+  }
+
+  Future<Map<String, dynamic>> restoreDeletedUser(Map<String, dynamic> snapshot) async {
+    final url = '${ApiConfig.usersUrl}/restore';
+    final response = await ApiClient.post(url, {'snapshot': snapshot});
+    _checkStatus(response, url);
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  Future<void> updateUser(String id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
+  Future<void> toggleUser(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id/toggle';
+    final response = await ApiClient.patch(url, {});
+    _checkStatus(response, url);
+  }
+
+  Future<Map<String, dynamic>> getEquipmentById(String id) async {
+    final url = '${ApiConfig.equipmentUrl}/$id';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  Future<Map<String, dynamic>> getUserById(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
   // ── Utilitaire ─────────────────────────────────────────────────────────────
 
   void _checkStatus(dynamic response, String url) {
