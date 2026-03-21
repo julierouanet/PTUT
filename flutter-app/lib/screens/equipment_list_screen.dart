@@ -52,46 +52,49 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with Add button
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.equipmentTitle,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.equipmentSubtitle,
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
+            if (isMobile) ...[
+              Text(l10n.equipmentTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(l10n.equipmentSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: _showAddEquipmentDialog,
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(l10n.equipmentNew),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
                 ),
-              ],
-            ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.equipmentTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text(l10n.equipmentSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _showAddEquipmentDialog,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.equipmentNew),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+                  ),
+                ],
+              ),
             const SizedBox(height: 24),
 
             // Search and Filters - FULL WIDTH
@@ -101,17 +104,28 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(child: _buildSearchField()),
-                        const SizedBox(width: 12),
+                    if (isMobile) ...[
+                      _buildSearchField(),
+                      const SizedBox(height: 10),
+                      Row(children: [
                         Expanded(child: _buildDropdown(l10n.commonDepartment, _departmentFilter, _departments(l10n.commonAll), (v) => setState(() => _departmentFilter = v!))),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 10),
                         Expanded(child: _buildDropdown(l10n.commonStatus, _statusFilter, _statuses(l10n.commonAll), (v) => setState(() => _statusFilter = v!))),
-                        const SizedBox(width: 12),
-                        Expanded(child: _buildDropdown(l10n.commonCategory, _categoryFilter, _categories(l10n.commonAll), (v) => setState(() => _categoryFilter = v!))),
-                      ],
-                    ),
+                      ]),
+                      const SizedBox(height: 10),
+                      _buildDropdown(l10n.commonCategory, _categoryFilter, _categories(l10n.commonAll), (v) => setState(() => _categoryFilter = v!)),
+                    ] else
+                      Row(
+                        children: [
+                          Expanded(child: _buildSearchField()),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildDropdown(l10n.commonDepartment, _departmentFilter, _departments(l10n.commonAll), (v) => setState(() => _departmentFilter = v!))),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildDropdown(l10n.commonStatus, _statusFilter, _statuses(l10n.commonAll), (v) => setState(() => _statusFilter = v!))),
+                          const SizedBox(width: 12),
+                          Expanded(child: _buildDropdown(l10n.commonCategory, _categoryFilter, _categories(l10n.commonAll), (v) => setState(() => _categoryFilter = v!))),
+                        ],
+                      ),
                     const SizedBox(height: 12),
                     Text(
                       l10n.equipmentFound(_filteredEquipment.length),
@@ -248,8 +262,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => Dialog(
           child: Container(
-            width: 600,
-            constraints: const BoxConstraints(maxHeight: 700),
+            constraints: const BoxConstraints(maxWidth: 600, maxHeight: 700),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -313,33 +326,19 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Department and Category row
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: selectedDepartment,
-                                decoration: InputDecoration(
-                                  labelText: l10n.equipmentDepartmentLabel,
-                                  prefixIcon: const Icon(Icons.business),
-                                ),
-                                items: _configService.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                                onChanged: (v) => setDialogState(() => selectedDepartment = v!),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: DropdownButtonFormField<String>(
-                                value: selectedCategory,
-                                decoration: InputDecoration(
-                                  labelText: l10n.equipmentCategoryLabel,
-                                  prefixIcon: const Icon(Icons.category),
-                                ),
-                                items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                                onChanged: (v) => setDialogState(() => selectedCategory = v!),
-                              ),
-                            ),
-                          ],
+                        // Department and Category
+                        DropdownButtonFormField<String>(
+                          value: selectedDepartment,
+                          decoration: InputDecoration(labelText: l10n.equipmentDepartmentLabel, prefixIcon: const Icon(Icons.business)),
+                          items: _configService.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                          onChanged: (v) => setDialogState(() => selectedDepartment = v!),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: selectedCategory,
+                          decoration: InputDecoration(labelText: l10n.equipmentCategoryLabel, prefixIcon: const Icon(Icons.category)),
+                          items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (v) => setDialogState(() => selectedCategory = v!),
                         ),
                         const SizedBox(height: 16),
 
@@ -543,8 +542,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         child: Container(
-          width: 600,
+          constraints: const BoxConstraints(maxWidth: 600),
           padding: const EdgeInsets.all(24),
           child: SingleChildScrollView(
             child: Column(

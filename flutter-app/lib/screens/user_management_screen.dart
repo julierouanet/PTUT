@@ -36,41 +36,64 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       for (var role in UserRole.values) role.displayName: users.where((u) => u.role == role).length,
     };
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.usersTitle,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(l10n.usersSubtitle,
-                        style: const TextStyle(color: AppColors.textSecondary)),
-                  ],
-                ),
-                ElevatedButton.icon(
+            if (isMobile) ...[
+              Text(l10n.usersTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(l10n.usersSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: () => _showUserDialog(null),
                   icon: const Icon(Icons.person_add, size: 18),
                   label: Text(l10n.usersNew),
                 ),
-              ],
-            ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.usersTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text(l10n.usersSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showUserDialog(null),
+                    icon: const Icon(Icons.person_add, size: 18),
+                    label: Text(l10n.usersNew),
+                  ),
+                ],
+              ),
             const SizedBox(height: 20),
 
             // Role summary cards
-            Row(
-              children: [
+            if (isMobile)
+              LayoutBuilder(builder: (context, constraints) {
+                final w = (constraints.maxWidth - 12) / 2;
+                return Wrap(spacing: 12, runSpacing: 12, children: [
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTotal, users.length, Icons.people, AppColors.primary)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersAdmins, roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersSupervisors, roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary)),
+                ]);
+              })
+            else
+              Row(children: [
                 _buildRoleCard(l10n.usersTotal, users.length, Icons.people, AppColors.primary),
                 const SizedBox(width: 12),
                 _buildRoleCard(l10n.usersAdmins, roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error),
@@ -80,8 +103,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 _buildRoleCard(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success),
                 const SizedBox(width: 12),
                 _buildRoleCard(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary),
-              ],
-            ),
+              ]),
             const SizedBox(height: 20),
 
             // Filters
@@ -206,31 +228,33 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildRoleCard(String label, int count, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$count', style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                ],
-              ),
-            ],
-          ),
+  Widget _buildRoleCardWidget(String label, int count, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$count', style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildRoleCard(String label, int count, IconData icon, Color color) {
+    return Expanded(child: _buildRoleCardWidget(label, count, icon, color));
   }
 
   Widget _buildRoleBadge(UserRole role) {
@@ -285,8 +309,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
           child: Container(
-            width: 500,
+            constraints: const BoxConstraints(maxWidth: 500),
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -391,8 +416,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         child: Container(
-          width: 500,
+          constraints: const BoxConstraints(maxWidth: 500),
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,

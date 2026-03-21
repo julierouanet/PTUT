@@ -39,26 +39,28 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final hPad = isMobile ? 16.0 : 24.0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // ── Header ───────────────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(hPad),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
-                child: const Icon(Icons.settings, color: AppColors.primary, size: 28),
+                child: const Icon(Icons.settings, color: AppColors.primary, size: 24),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.settingsTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                  Text(l10n.settingsSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(l10n.settingsTitle, style: TextStyle(fontSize: isMobile ? 18 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  Text(l10n.settingsSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                 ],
               ),
             ],
@@ -67,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
         // ── Section Compte (visible par tous) ────────────────────────────────
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
+          padding: EdgeInsets.symmetric(horizontal: hPad),
           child: _buildAccountSection(l10n),
         ),
 
@@ -75,7 +77,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         if (_isAdmin) ...[
           const SizedBox(height: 24),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: hPad),
             child: Row(children: [
               const Icon(Icons.admin_panel_settings, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
@@ -84,12 +86,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
           const SizedBox(height: 4),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: hPad),
             child: Text(l10n.settingsAdminSubtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           ),
           const SizedBox(height: 12),
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
+            margin: EdgeInsets.symmetric(horizontal: hPad),
             decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
             child: TabBar(
               controller: _tabController,

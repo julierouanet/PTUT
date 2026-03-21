@@ -21,31 +21,45 @@ class DashboardScreen extends StatelessWidget {
     final horsService = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).length;
     final recentIssues = DataService().issues.where((i) => i.status.displayName != 'Résolu').take(4).toList();
     final criticalEquipment = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).toList();
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(l10n.dashboardTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          Text(l10n.dashboardTitle, style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
           const SizedBox(height: 4),
           Text(l10n.dashboardSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
           const SizedBox(height: 16),
-          Wrap(spacing: 12, runSpacing: 12, children: [
+          Wrap(spacing: 8, runSpacing: 8, children: [
             ElevatedButton.icon(onPressed: () => onNavigate(1), icon: const Icon(Icons.inventory_2, size: 18), label: Text(l10n.dashboardViewEquipment)),
             ElevatedButton.icon(onPressed: () => onNavigate(3), style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning), icon: const Icon(Icons.report_problem_outlined, size: 18), label: Text(l10n.dashboardReportProblem)),
             ElevatedButton.icon(onPressed: () => onNavigate(2), style: ElevatedButton.styleFrom(backgroundColor: AppColors.success), icon: const Icon(Icons.list_alt, size: 18), label: Text(l10n.dashboardViewIssues)),
           ]),
           const SizedBox(height: 24),
-          Row(children: [
-            Expanded(child: _buildCompactStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildCompactStatCard(l10n.dashboardAvailable, '$disponible', Icons.check_circle_outline, AppColors.success)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$enMaintenance', Icons.build_outlined, AppColors.warning)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$horsService', Icons.cancel_outlined, AppColors.error)),
-          ]),
+          if (isMobile) ...[
+            Row(children: [
+              Expanded(child: _buildCompactStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardAvailable, '$disponible', Icons.check_circle_outline, AppColors.success)),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$enMaintenance', Icons.build_outlined, AppColors.warning)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$horsService', Icons.cancel_outlined, AppColors.error)),
+            ]),
+          ] else
+            Row(children: [
+              Expanded(child: _buildCompactStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardAvailable, '$disponible', Icons.check_circle_outline, AppColors.success)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$enMaintenance', Icons.build_outlined, AppColors.warning)),
+              const SizedBox(width: 12),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$horsService', Icons.cancel_outlined, AppColors.error)),
+            ]),
           const SizedBox(height: 24),
           Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(l10n.dashboardEquipmentStatus, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),

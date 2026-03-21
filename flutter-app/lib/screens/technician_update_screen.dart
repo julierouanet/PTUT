@@ -82,18 +82,20 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
             Text(
               l10n.techTitle,
-              style: const TextStyle(
-                fontSize: 28,
+              style: TextStyle(
+                fontSize: isMobile ? 20 : 28,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
               ),
@@ -108,22 +110,25 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen> {
             if (_openIssues.isEmpty)
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(32),
-                  child: Row(
+                  padding: const EdgeInsets.all(24),
+                  child: isMobile
+                      ? Column(
+                          children: [
+                            const Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
+                            const SizedBox(height: 12),
+                            Text(l10n.techNoIssues, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                            Text(l10n.techAllResolved, style: const TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+                          ],
+                        )
+                      : Row(
                     children: [
-                      Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
+                      const Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
                       const SizedBox(width: 20),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            l10n.techNoIssues,
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-                          ),
-                          Text(
-                            l10n.techAllResolved,
-                            style: const TextStyle(color: AppColors.textSecondary),
-                          ),
+                          Text(l10n.techNoIssues, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
+                          Text(l10n.techAllResolved, style: const TextStyle(color: AppColors.textSecondary)),
                         ],
                       ),
                     ],

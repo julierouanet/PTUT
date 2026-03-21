@@ -36,40 +36,46 @@ class ReportsScreen extends StatelessWidget {
     final openIssues = DataService().issues.where((i) => i.status.displayName == 'Ouvert').length;
     final resolvedIssues = DataService().issues.where((i) => i.status.displayName == 'Résolu').length;
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n.reportsTitle,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    l10n.reportsSubtitle,
-                    style: const TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-              ElevatedButton.icon(
+          if (isMobile) ...[
+            Text(l10n.reportsTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text(l10n.reportsSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
                 onPressed: () => _showExportDialog(context),
                 icon: const Icon(Icons.file_download),
                 label: Text(l10n.reportsExport),
               ),
-            ],
-          ),
+            ),
+          ] else
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.reportsTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    Text(l10n.reportsSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                  ],
+                ),
+                ElevatedButton.icon(
+                  onPressed: () => _showExportDialog(context),
+                  icon: const Icon(Icons.file_download),
+                  label: Text(l10n.reportsExport),
+                ),
+              ],
+            ),
           const SizedBox(height: 32),
 
           // Summary cards

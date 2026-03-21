@@ -64,33 +64,51 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
     final resolvedCount = DataService().issues.where((i) => i.status == IssueStatus.resolved).length;
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ── Header ───────────────────────────────────────────────────────
-            Text(l10n.issuesTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+            Text(l10n.issuesTitle, style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
             const SizedBox(height: 4),
             Text(l10n.issuesSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
 
             // ── Stats + bouton ────────────────────────────────────────────────
-            Row(children: [
-              _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
-              const SizedBox(width: 12),
-              _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
-              const SizedBox(width: 12),
-              _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: () => widget.onNavigate(3),
-                icon: const Icon(Icons.add, size: 18),
-                label: Text(l10n.issuesReport),
+            if (isMobile) ...[
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
+                _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
+                _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
+              ]),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => widget.onNavigate(3),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(l10n.issuesReport),
+                ),
               ),
-            ]),
+            ] else
+              Row(children: [
+                _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
+                const SizedBox(width: 12),
+                _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
+                const SizedBox(width: 12),
+                _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () => widget.onNavigate(3),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: Text(l10n.issuesReport),
+                ),
+              ]),
             const SizedBox(height: 24),
 
             // ── Encadré : Mes incidents ───────────────────────────────────────
@@ -116,22 +134,42 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(children: [
-                  Text(l10n.issuesFilterByStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(width: 12),
-                  ...statuses.map((status) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      selected: _statusFilter == status,
-                      label: Text(status),
-                      onSelected: (_) => setState(() => _statusFilter = status),
-                      selectedColor: AppColors.primaryLight,
-                      checkmarkColor: AppColors.primary,
-                    ),
-                  )),
-                  const Spacer(),
-                  Text(l10n.issuesCount(_filteredIssues.length), style: const TextStyle(color: AppColors.textSecondary)),
-                ]),
+                child: isMobile
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(l10n.issuesFilterByStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(children: statuses.map((status) => Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              selected: _statusFilter == status,
+                              label: Text(status),
+                              onSelected: (_) => setState(() => _statusFilter = status),
+                              selectedColor: AppColors.primaryLight,
+                              checkmarkColor: AppColors.primary,
+                            ),
+                          )).toList()),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(l10n.issuesCount(_filteredIssues.length), style: const TextStyle(color: AppColors.textSecondary)),
+                      ])
+                    : Row(children: [
+                        Text(l10n.issuesFilterByStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(width: 12),
+                        ...statuses.map((status) => Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: FilterChip(
+                            selected: _statusFilter == status,
+                            label: Text(status),
+                            onSelected: (_) => setState(() => _statusFilter = status),
+                            selectedColor: AppColors.primaryLight,
+                            checkmarkColor: AppColors.primary,
+                          ),
+                        )),
+                        const Spacer(),
+                        Text(l10n.issuesCount(_filteredIssues.length), style: const TextStyle(color: AppColors.textSecondary)),
+                      ]),
               ),
             ),
             const SizedBox(height: 16),
@@ -387,8 +425,9 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         child: Container(
-          width: 500,
+          constraints: const BoxConstraints(maxWidth: 500),
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,

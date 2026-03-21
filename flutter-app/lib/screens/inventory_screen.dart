@@ -27,45 +27,49 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final lowStock = DataService().inventory.where((i) => i.status == StockStatus.low).length;
     final outOfStock = DataService().inventory.where((i) => i.status == StockStatus.outOfStock).length;
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.inventoryTitle,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.inventorySubtitle,
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-                ElevatedButton.icon(
+            if (isMobile) ...[
+              Text(l10n.inventoryTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(l10n.inventorySubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: () => _showItemDialog(null),
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(l10n.inventoryNewItem),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  ),
                 ),
-              ],
-            ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.inventoryTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text(l10n.inventorySubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showItemDialog(null),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.inventoryNewItem),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+                  ),
+                ],
+              ),
             const SizedBox(height: 20),
 
             // Alerts for low stock
@@ -109,18 +113,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    Text('${l10n.inventoryFilter}: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(width: 12),
-                    _buildFilterChip('all', l10n.commonAll, DataService().inventory.length),
-                    _buildFilterChip('Consommable médical', l10n.inventoryMedicalConsumable, DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
-                    _buildFilterChip('Hygiène', l10n.inventoryHygiene, DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
-                    _buildFilterChip('Bureautique', l10n.inventoryOffice, DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
-                    const Spacer(),
-                    Text(l10n.inventoryItemCount(_filteredItems.length), style: const TextStyle(color: AppColors.textSecondary)),
-                  ],
-                ),
+                child: isMobile
+                    ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('${l10n.inventoryFilter}: ', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(children: [
+                            _buildFilterChip('all', l10n.commonAll, DataService().inventory.length),
+                            _buildFilterChip('Consommable médical', l10n.inventoryMedicalConsumable, DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
+                            _buildFilterChip('Hygiène', l10n.inventoryHygiene, DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
+                            _buildFilterChip('Bureautique', l10n.inventoryOffice, DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
+                          ]),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(l10n.inventoryItemCount(_filteredItems.length), style: const TextStyle(color: AppColors.textSecondary)),
+                      ])
+                    : Row(children: [
+                        Text('${l10n.inventoryFilter}: ', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(width: 12),
+                        _buildFilterChip('all', l10n.commonAll, DataService().inventory.length),
+                        _buildFilterChip('Consommable médical', l10n.inventoryMedicalConsumable, DataService().inventory.where((i) => i.category == InventoryCategory.consommableMedical).length),
+                        _buildFilterChip('Hygiène', l10n.inventoryHygiene, DataService().inventory.where((i) => i.category == InventoryCategory.hygiene).length),
+                        _buildFilterChip('Bureautique', l10n.inventoryOffice, DataService().inventory.where((i) => i.category == InventoryCategory.bureautique).length),
+                        const Spacer(),
+                        Text(l10n.inventoryItemCount(_filteredItems.length), style: const TextStyle(color: AppColors.textSecondary)),
+                      ]),
               ),
             ),
             const SizedBox(height: 20),
