@@ -1073,12 +1073,6 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     return 'PC / Navigateur';
   }
 
-  IconData _deviceIcon(String? ua) {
-    if (ua == null) return Icons.device_unknown_outlined;
-    final u = ua.toLowerCase();
-    if (u.contains('mobile') || u.contains('android') || u.contains('iphone')) return Icons.smartphone;
-    return Icons.computer;
-  }
 
   IconData _targetIcon(String? type) => switch (type) {
     'equipment' => Icons.medical_services_outlined,
