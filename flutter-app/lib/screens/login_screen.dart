@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+// true si lancé avec --dart-define=DEV_SHORTCUTS=true  OU  en mode debug local
+const bool _showDevShortcuts =
+    bool.fromEnvironment('DEV_SHORTCUTS') || kDebugMode;
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
@@ -193,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 // ── DEV: Quick login buttons (debug mode only) ──────────────
-                if (kDebugMode) ...[
+                if (_showDevShortcuts) ...[
                   const SizedBox(height: 24),
                   Container(
                     decoration: BoxDecoration(
