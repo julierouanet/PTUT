@@ -6,6 +6,7 @@ import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
 import '../services/config_service.dart';
+import '../services/auth_service.dart';
 
 /// Equipment list screen with search and filters
 class EquipmentListScreen extends StatefulWidget {
@@ -23,6 +24,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   String _statusFilter = 'Tous';
   String _categoryFilter = 'Tous';
   final ConfigService _configService = ConfigService();
+  final AuthService _authService = AuthService();
 
   List<String> _departments(String allLabel) => [allLabel, ...DataService().equipment.map((e) => e.department).toSet()];
   List<String> _statuses(String allLabel) => [allLabel, 'Disponible', 'En usage', 'En maintenance', 'Hors service'];
@@ -53,6 +55,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < 600;
+    final isAdmin = _authService.canManageEquipment;
 
     return Align(
       alignment: Alignment.topLeft,
@@ -66,15 +69,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               Text(l10n.equipmentTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
               const SizedBox(height: 4),
               Text(l10n.equipmentSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _showAddEquipmentDialog,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: Text(l10n.equipmentNew),
+              if (isAdmin) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _showAddEquipmentDialog,
+                    icon: const Icon(Icons.add, size: 18),
+                    label: Text(l10n.equipmentNew),
+                  ),
                 ),
-              ),
+              ],
             ] else
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -87,12 +92,13 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       Text(l10n.equipmentSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: _showAddEquipmentDialog,
-                    icon: const Icon(Icons.add, size: 18),
-                    label: Text(l10n.equipmentNew),
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
-                  ),
+                  if (isAdmin)
+                    ElevatedButton.icon(
+                      onPressed: _showAddEquipmentDialog,
+                      icon: const Icon(Icons.add, size: 18),
+                      label: Text(l10n.equipmentNew),
+                      style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+                    ),
                 ],
               ),
             const SizedBox(height: 24),
@@ -178,24 +184,26 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 onPressed: () => _showEquipmentDetail(eq),
                                 tooltip: l10n.commonDetails,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18),
-                                color: AppColors.warning,
-                                onPressed: () => _showEditEquipmentDialog(eq),
-                                tooltip: l10n.commonEdit,
-                              ),
+                              if (isAdmin)
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  color: AppColors.warning,
+                                  onPressed: () => _showEditEquipmentDialog(eq),
+                                  tooltip: l10n.commonEdit,
+                                ),
                               IconButton(
                                 icon: const Icon(Icons.report_problem_outlined, size: 18),
                                 color: AppColors.error,
                                 onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
                                 tooltip: l10n.commonReport,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                color: AppColors.error,
-                                onPressed: () => _confirmDelete(eq),
-                                tooltip: l10n.commonDelete,
-                              ),
+                              if (isAdmin)
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  color: AppColors.error,
+                                  onPressed: () => _confirmDelete(eq),
+                                  tooltip: l10n.commonDelete,
+                                ),
                             ],
                           )),
                         ],
@@ -558,14 +566,15 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        IconButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _showEditEquipmentDialog(eq);
-                          },
-                          icon: const Icon(Icons.edit, color: AppColors.primary),
-                          tooltip: l10n.commonEdit,
-                        ),
+                        if (_authService.canManageEquipment)
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              _showEditEquipmentDialog(eq);
+                            },
+                            icon: const Icon(Icons.edit, color: AppColors.primary),
+                            tooltip: l10n.commonEdit,
+                          ),
                         IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
                       ],
                     ),

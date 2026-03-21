@@ -51,6 +51,33 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navSettings => 'Parametres';
 
   @override
+  String get navDashboardShort => 'Accueil';
+
+  @override
+  String get navEquipmentShort => 'Equip.';
+
+  @override
+  String get navIssueTrackingShort => 'Incidents';
+
+  @override
+  String get navReportIssueShort => 'Signaler';
+
+  @override
+  String get navTechnicianShort => 'Technicien';
+
+  @override
+  String get navInventoryShort => 'Inventaire';
+
+  @override
+  String get navReportsShort => 'Rapports';
+
+  @override
+  String get navUsersShort => 'Usagers';
+
+  @override
+  String get navSettingsShort => 'Reglages';
+
+  @override
   String get logout => 'Se deconnecter';
 
   @override

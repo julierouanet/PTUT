@@ -141,7 +141,8 @@ class AuthService extends ChangeNotifier {
   bool hasAllPermissions(List<Permission> permissions) => permissions.every(hasPermission);
   bool hasAnyPermission(List<Permission> permissions)  => permissions.any(hasPermission);
 
-  bool get canViewEquipment   => hasPermission(Permission.viewEquipment);
+  bool get canViewEquipment    => hasPermission(Permission.viewEquipment);
+  bool get canManageEquipment  => hasPermission(Permission.manageEquipment);
   bool get canReportIssue     => hasPermission(Permission.reportIssue);
   bool get canTrackIssues     => hasPermission(Permission.trackIssues);
   bool get canApproveRequests => hasPermission(Permission.approveRequests);

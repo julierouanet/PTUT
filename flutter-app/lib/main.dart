@@ -126,15 +126,15 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   /// Define all nav items with their required permissions
   List<_NavItem> _allNavItems(AppLocalizations l10n) => [
-    _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, screenType: ScreenType.dashboard, requiredPermission: null),
-    _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
-    _NavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: l10n.navIssueTracking, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
-    _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
-    _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs),
-    _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
-    _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
-    _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
-    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, screenType: ScreenType.settings, requiredPermission: null),
+    _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
+    _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
+    _NavItem(icon: Icons.warning_amber_outlined, activeIcon: Icons.warning_amber, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
+    _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
+    _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs),
+    _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
+    _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
+    _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
+    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: null),
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
@@ -422,7 +422,12 @@ class _MainScaffoldState extends State<MainScaffold> {
     return NavigationBar(
       selectedIndex: _currentIndex < visibleItems.length ? _currentIndex : 0,
       onDestinationSelected: _navigateTo,
-      destinations: visibleItems.map((item) => NavigationDestination(icon: Icon(item.icon), selectedIcon: Icon(item.activeIcon), label: item.label)).toList(),
+      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+      destinations: visibleItems.map((item) => NavigationDestination(
+        icon: Icon(item.icon),
+        selectedIcon: Icon(item.activeIcon),
+        label: item.shortLabel,
+      )).toList(),
     );
   }
 
@@ -596,8 +601,9 @@ class _NavItem {
   final IconData icon;
   final IconData activeIcon;
   final String label;
+  final String shortLabel;
   final ScreenType screenType;
   final Permission? requiredPermission;
 
-  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.screenType, this.requiredPermission});
+  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.shortLabel, required this.screenType, this.requiredPermission});
 }

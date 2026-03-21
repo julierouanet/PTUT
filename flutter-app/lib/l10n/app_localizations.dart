@@ -182,6 +182,60 @@ abstract class AppLocalizations {
   /// **'Parametres'**
   String get navSettings;
 
+  /// No description provided for @navDashboardShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accueil'**
+  String get navDashboardShort;
+
+  /// No description provided for @navEquipmentShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Equip.'**
+  String get navEquipmentShort;
+
+  /// No description provided for @navIssueTrackingShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents'**
+  String get navIssueTrackingShort;
+
+  /// No description provided for @navReportIssueShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler'**
+  String get navReportIssueShort;
+
+  /// No description provided for @navTechnicianShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Technicien'**
+  String get navTechnicianShort;
+
+  /// No description provided for @navInventoryShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
+  String get navInventoryShort;
+
+  /// No description provided for @navReportsShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapports'**
+  String get navReportsShort;
+
+  /// No description provided for @navUsersShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Usagers'**
+  String get navUsersShort;
+
+  /// No description provided for @navSettingsShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Reglages'**
+  String get navSettingsShort;
+
   /// No description provided for @logout.
   ///
   /// In fr, this message translates to:

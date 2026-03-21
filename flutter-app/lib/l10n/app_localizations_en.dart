@@ -51,6 +51,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navSettings => 'Settings';
 
   @override
+  String get navDashboardShort => 'Home';
+
+  @override
+  String get navEquipmentShort => 'Equipment';
+
+  @override
+  String get navIssueTrackingShort => 'Incidents';
+
+  @override
+  String get navReportIssueShort => 'Report';
+
+  @override
+  String get navTechnicianShort => 'Technician';
+
+  @override
+  String get navInventoryShort => 'Inventory';
+
+  @override
+  String get navReportsShort => 'Reports';
+
+  @override
+  String get navUsersShort => 'Users';
+
+  @override
+  String get navSettingsShort => 'Settings';
+
+  @override
   String get logout => 'Log out';
 
   @override
