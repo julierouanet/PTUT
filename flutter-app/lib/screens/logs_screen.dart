@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
-import '../l10n/app_localizations.dart';
 
 class LogsScreen extends StatefulWidget {
   const LogsScreen({super.key});
