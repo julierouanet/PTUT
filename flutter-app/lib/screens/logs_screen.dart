@@ -840,9 +840,8 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     final canViewUser     = userId != null;
     final canViewResource = targetId != null && (targetType == 'equipment' || targetType == 'user');
 
-    final fullDate = _fullDate(timestamp);
+    final fullDate    = _fullDate(timestamp);
     final deviceLabel = _deviceLabel(userAgent);
-    final deviceIcon  = _deviceIcon(userAgent);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,

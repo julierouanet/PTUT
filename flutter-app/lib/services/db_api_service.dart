@@ -214,13 +214,6 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
-  Future<Map<String, dynamic>> getEquipmentById(String id) async {
-    final url = '${ApiConfig.equipmentUrl}/$id';
-    final response = await ApiClient.get(url);
-    _checkStatus(response, url);
-    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-  }
-
   Future<Map<String, dynamic>> getUserById(String id) async {
     final url = '${ApiConfig.usersUrl}/$id';
     final response = await ApiClient.get(url);
