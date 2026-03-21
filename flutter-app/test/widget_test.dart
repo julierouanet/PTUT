@@ -41,7 +41,7 @@ void main() {
   });
 
   group('Admin navigation (wide screen)', () {
-    testWidgets('admin sees all 9 nav items in sidebar', (tester) async {
+    testWidgets('admin sees all 10 nav items in sidebar', (tester) async {
       // Set wide screen to trigger sidebar — large enough to avoid overflow
       tester.view.physicalSize = const Size(1800, 1000);
       tester.view.devicePixelRatio = 1.0;
@@ -70,7 +70,8 @@ void main() {
       expect(find.text('Inventaire'), findsWidgets);
       expect(find.text('Rapports'), findsWidgets);
       expect(find.text('Utilisateurs'), findsWidgets);
-      expect(find.text('Parametres'), findsWidgets);
+      expect(find.text('Gestion'), findsWidgets);
+      expect(find.text('Journaux'), findsWidgets);
     });
   });
 
@@ -100,13 +101,12 @@ void main() {
       expect(find.text('Signaler'), findsWidgets);
       expect(find.text('Suivi incidents'), findsWidgets);
 
-      // Staff should see Settings (language switcher, accessible to all)
-      expect(find.text('Parametres'), findsWidgets);
-
       // Staff should NOT see admin/tech/supervisor items
       expect(find.text('Utilisateurs'), findsNothing);
       expect(find.text('Technicien'), findsNothing);
       expect(find.text('Rapports'), findsNothing);
+      expect(find.text('Gestion'), findsNothing);
+      expect(find.text('Journaux'), findsNothing);
     });
   });
 
