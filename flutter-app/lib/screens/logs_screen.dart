@@ -199,7 +199,7 @@ class _LogsScreenState extends State<LogsScreen> {
     return _logs.any((l) =>
         l['action'] == restoreAction &&
         l['target_id'] == targetId &&
-        (l['timestamp'] as String? ?? '') > ts);
+        (l['timestamp'] as String? ?? '').compareTo(ts) > 0);
   }
 
   /// Restauration rapide depuis la tuile (dialog de confirmation + snackbar résultat).
@@ -793,7 +793,6 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     try { return Map<String, dynamic>.from(jsonDecode(raw) as Map); } catch (_) { return null; }
   }
 
-  bool get _canRestore => _kRestorableActions.contains(widget.log['action'] as String? ?? '') && !widget.alreadyRestored;
   String get _restoreLabel => _restoreLabelFor(widget.log['action'] as String? ?? '');
 
   Future<void> _doRestore() async {

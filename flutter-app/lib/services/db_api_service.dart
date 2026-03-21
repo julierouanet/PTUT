@@ -54,8 +54,9 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
-  Future<void> deleteEquipment(String id) async {
-    final url = '${ApiConfig.equipmentUrl}/$id';
+  Future<void> deleteEquipment(String id, {String? reason}) async {
+    var url = '${ApiConfig.equipmentUrl}/$id';
+    if (reason != null && reason.isNotEmpty) url += '?reason=${Uri.encodeComponent(reason)}';
     final response = await ApiClient.delete(url);
     _checkStatus(response, url);
   }
