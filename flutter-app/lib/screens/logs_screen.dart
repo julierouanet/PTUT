@@ -132,6 +132,27 @@ class _LogsScreenState extends State<LogsScreen> {
                 ]),
         ),
         const SizedBox(height: 12),
+        // En-tête colonnes desktop
+        if (!isMobile)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: hPad),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Row(
+                children: [
+                  SizedBox(width: 200, child: Text('Action', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  SizedBox(width: 16),
+                  Expanded(flex: 2, child: Text('Utilisateur', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  SizedBox(width: 16),
+                  Expanded(flex: 2, child: Text('Ressource', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  SizedBox(width: 16),
+                  SizedBox(width: 160, child: Text('IP / Appareil', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  SizedBox(width: 16),
+                  SizedBox(width: 130, child: Text('Horodatage', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.right)),
+                ],
+              ),
+            ),
+          ),
         // Liste
         Expanded(
           child: _isLoading
@@ -227,82 +248,154 @@ class _LogsScreenState extends State<LogsScreen> {
     final formattedDate = _formatDate(timestamp);
     final deviceType    = _parseDeviceType(userAgent);
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Icône action
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 18),
-            ),
-            const SizedBox(width: 10),
-            // Contenu
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Ligne 1 : action + horodatage précis
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 13)),
-                      ),
-                      Text(formattedDate, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Ligne 2 : utilisateur + rôle + ressource
-                  RichText(
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+    // Icône colorée commune aux deux layouts
+    final actionIcon = Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icon, color: color, size: 18),
+    );
+
+    if (isMobile) {
+      // ── Layout mobile : colonne verticale ──────────────────────────────────
+      return Card(
+        margin: const EdgeInsets.only(bottom: 6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              actionIcon,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        TextSpan(text: userName, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
-                        TextSpan(text: ' · $userRole'),
-                        if (targetName != null) ...[
-                          const TextSpan(text: ' → '),
-                          TextSpan(text: targetName, style: const TextStyle(fontStyle: FontStyle.italic)),
+                        Expanded(child: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 13))),
+                        Text(formattedDate, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    RichText(
+                      text: TextSpan(
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        children: [
+                          TextSpan(text: userName, style: const TextStyle(fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                          TextSpan(text: ' · $userRole'),
+                          if (targetName != null) ...[
+                            const TextSpan(text: ' → '),
+                            TextSpan(text: targetName, style: const TextStyle(fontStyle: FontStyle.italic)),
+                          ],
                         ],
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 11, color: AppColors.textMuted),
+                        const SizedBox(width: 3),
+                        Text(ipAddress ?? '—', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        const SizedBox(width: 8),
+                        Icon(deviceType == 'mobile' ? Icons.smartphone : Icons.computer, size: 11, color: AppColors.textMuted),
+                        const SizedBox(width: 3),
+                        Text(deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                      ],
+                    ),
+                    if (details != null && details.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(_formatDetails(details), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ── Layout desktop : ligne horizontale avec colonnes fixes ────────────────
+    return Card(
+      margin: const EdgeInsets.only(bottom: 4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Col 1 : icône + action (200px)
+            SizedBox(
+              width: 200,
+              child: Row(
+                children: [
+                  actionIcon,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 13), overflow: TextOverflow.ellipsis),
+                        if (details != null && details.isNotEmpty)
+                          Text(_formatDetails(details), style: const TextStyle(fontSize: 10, color: AppColors.textMuted), overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  // Ligne 3 : IP + type d'appareil
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Col 2 : utilisateur + rôle (flex 2)
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(userName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis),
+                  Text(userRole, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            // Col 3 : ressource cible (flex 2)
+            Expanded(
+              flex: 2,
+              child: targetName != null
+                  ? Text(targetName, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontStyle: FontStyle.italic), overflow: TextOverflow.ellipsis)
+                  : const Text('—', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ),
+            const SizedBox(width: 16),
+            // Col 4 : IP + appareil (160px)
+            SizedBox(
+              width: 160,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Row(
                     children: [
                       const Icon(Icons.location_on_outlined, size: 11, color: AppColors.textMuted),
                       const SizedBox(width: 3),
-                      Text(
-                        ipAddress ?? '—',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        deviceType == 'mobile' ? Icons.smartphone : Icons.computer,
-                        size: 11,
-                        color: AppColors.textMuted,
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                      ),
+                      Expanded(child: Text(ipAddress ?? '—', style: const TextStyle(fontSize: 11, color: AppColors.textMuted), overflow: TextOverflow.ellipsis)),
                     ],
                   ),
-                  if (details != null && details.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(_formatDetails(details), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                  ],
+                  Row(
+                    children: [
+                      Icon(deviceType == 'mobile' ? Icons.smartphone : Icons.computer, size: 11, color: AppColors.textMuted),
+                      const SizedBox(width: 3),
+                      Text(deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                    ],
+                  ),
                 ],
               ),
+            ),
+            const SizedBox(width: 16),
+            // Col 5 : horodatage (130px, aligné à droite)
+            SizedBox(
+              width: 130,
+              child: Text(formattedDate, style: const TextStyle(fontSize: 11, color: AppColors.textMuted), textAlign: TextAlign.right),
             ),
           ],
         ),
