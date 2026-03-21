@@ -13,6 +13,7 @@ const app = express();
 // Initialize DB on startup
 getDb();
 
+app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
 
 // Rate limiter : max 10 tentatives de login par IP par fenêtre de 15 min

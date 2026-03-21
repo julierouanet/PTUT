@@ -1,7 +1,7 @@
 const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
-const { logAction } = require('../utils/logger');
+const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -46,12 +46,9 @@ router.post('/', verifyToken, (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), 'Ouvert')
     `).run(id, equipment_id, equipment_name, department, type, description, reporter);
 
-    logAction({
-      user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_issue', target_type: 'issue', target_id: id,
-      target_name: equipment_name,
-      details: { type, department },
-    });
+      target_name: equipment_name, details: { type, department }, ...extractReqMeta(req) });
 
     res.status(201).json({ message: 'Incident signalé', id });
   } catch (err) {
@@ -81,12 +78,11 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
 
-  logAction({
-    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: actionLabel, target_type: 'issue', target_id: req.params.id,
     target_name: existing.equipment_name,
     details: status ? { old_status: existing.status, new_status: status } : undefined,
-  });
+    ...extractReqMeta(req) });
 
   res.json({ message: 'Incident mis à jour' });
 });
@@ -99,11 +95,9 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 
   if (result.changes === 0) return res.status(404).json({ error: 'Incident introuvable' });
 
-  logAction({
-    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_issue', target_type: 'issue', target_id: req.params.id,
-    target_name: existing?.equipment_name,
-  });
+    target_name: existing?.equipment_name, ...extractReqMeta(req) });
 
   res.json({ message: 'Incident supprimé' });
 });

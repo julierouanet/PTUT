@@ -35,6 +35,15 @@ class _LogsScreenState extends State<LogsScreen> {
     'update_inventory':   ('Modif. stock',     Icons.edit_outlined,       AppColors.warning),
     'restock_inventory':  ('Réappro. stock',   Icons.inventory_outlined,  AppColors.success),
     'delete_inventory':   ('Suppr. article',   Icons.delete_outline,      AppColors.error),
+    'create_user':        ('Créer compte',     Icons.person_add_outlined,  AppColors.primary),
+    'update_user':        ('Modif. compte',    Icons.manage_accounts_outlined, AppColors.warning),
+    'delete_user':        ('Suppr. compte',    Icons.person_remove_outlined, AppColors.error),
+    'change_password':    ('Modif. mot de passe', Icons.lock_outline,     AppColors.warning),
+    'change_name':        ('Modif. nom',       Icons.badge_outlined,      AppColors.warning),
+    'change_email':       ('Modif. email',     Icons.email_outlined,      AppColors.warning),
+    'change_phone':       ('Modif. téléphone', Icons.phone_outlined,      AppColors.warning),
+    'activate_user':      ('Compte activé',    Icons.check_circle_outline, AppColors.success),
+    'suspend_user':       ('Compte suspendu',  Icons.block_outlined,      AppColors.error),
   };
 
   @override
@@ -180,6 +189,11 @@ class _LogsScreenState extends State<LogsScreen> {
           setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'inventory' ? null : 'inventory'; });
           _load();
         }),
+        const SizedBox(width: 6),
+        _chip('Utilisateurs', _filterTargetType == 'user', () {
+          setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'user' ? null : 'user'; });
+          _load();
+        }),
       ],
     );
   }
@@ -207,8 +221,11 @@ class _LogsScreenState extends State<LogsScreen> {
     final targetName = log['target_name'] as String?;
     final timestamp  = log['timestamp']   as String? ?? '';
     final details    = log['details']     as String?;
+    final ipAddress  = log['ip_address']  as String?;
+    final userAgent  = log['user_agent']  as String?;
 
     final formattedDate = _formatDate(timestamp);
+    final deviceType    = _parseDeviceType(userAgent);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 6),
@@ -233,6 +250,7 @@ class _LogsScreenState extends State<LogsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Ligne 1 : action + horodatage précis
                   Row(
                     children: [
                       Expanded(
@@ -241,7 +259,8 @@ class _LogsScreenState extends State<LogsScreen> {
                       Text(formattedDate, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     ],
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
+                  // Ligne 2 : utilisateur + rôle + ressource
                   RichText(
                     text: TextSpan(
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -254,6 +273,28 @@ class _LogsScreenState extends State<LogsScreen> {
                         ],
                       ],
                     ),
+                  ),
+                  const SizedBox(height: 3),
+                  // Ligne 3 : IP + type d'appareil
+                  Row(
+                    children: [
+                      if (ipAddress != null) ...[
+                        const Icon(Icons.location_on_outlined, size: 11, color: AppColors.textMuted),
+                        const SizedBox(width: 3),
+                        Text(ipAddress, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        const SizedBox(width: 8),
+                      ],
+                      Icon(
+                        deviceType == 'mobile' ? Icons.smartphone : Icons.computer,
+                        size: 11,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '?',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
                   ),
                   if (details != null && details.isNotEmpty) ...[
                     const SizedBox(height: 2),
@@ -268,15 +309,25 @@ class _LogsScreenState extends State<LogsScreen> {
     );
   }
 
+  String _parseDeviceType(String? userAgent) {
+    if (userAgent == null) return 'unknown';
+    final ua = userAgent.toLowerCase();
+    if (ua.contains('mobile') || ua.contains('android') || ua.contains('iphone') ||
+        ua.contains('ipad') || ua.contains('ipod') || ua.contains('blackberry') ||
+        ua.contains('windows phone')) return 'mobile';
+    return 'desktop';
+  }
+
   String _formatDate(String iso) {
     try {
       final dt = DateTime.parse(iso).toLocal();
       final now = DateTime.now();
       final diff = now.difference(dt);
-      if (diff.inMinutes < 1)  return 'À l\'instant';
-      if (diff.inMinutes < 60) return 'Il y a ${diff.inMinutes} min';
-      if (diff.inHours < 24)   return 'Il y a ${diff.inHours} h';
-      return '${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year} ${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}';
+      final time = '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}:${dt.second.toString().padLeft(2,'0')}';
+      if (diff.inSeconds < 10)  return 'À l\'instant';
+      if (diff.inMinutes < 60)  return '$time (il y a ${diff.inMinutes} min)';
+      if (diff.inHours < 24)    return '$time (il y a ${diff.inHours} h)';
+      return '${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year} $time';
     } catch (_) {
       return iso;
     }

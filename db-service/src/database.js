@@ -87,6 +87,10 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_logs_action ON logs(action);
   `);
+
+  // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
+  try { db.exec('ALTER TABLE logs ADD COLUMN ip_address TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE logs ADD COLUMN user_agent TEXT'); } catch (_) {}
 }
 
 function closeDb() {

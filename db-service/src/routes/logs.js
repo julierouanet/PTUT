@@ -36,13 +36,13 @@ router.post('/internal', (req, res) => {
     return res.status(403).json({ error: 'Accès interdit' });
   }
 
-  const { user_id, user_name, user_role, action, target_type, target_id, target_name, details } = req.body;
+  const { user_id, user_name, user_role, action, target_type, target_id, target_name, details, ip_address, user_agent } = req.body;
 
   if (!user_name || !user_role || !action) {
     return res.status(400).json({ error: 'Champs requis: user_name, user_role, action' });
   }
 
-  logAction({ user_id, user_name, user_role, action, target_type, target_id, target_name, details });
+  logAction({ user_id, user_name, user_role, action, target_type, target_id, target_name, details, ip_address, user_agent });
   res.status(201).json({ message: 'Log enregistré' });
 });
 

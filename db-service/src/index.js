@@ -14,6 +14,7 @@ const app = express();
 // Initialize DB on startup
 getDb();
 
+app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
 
 app.use(cors({

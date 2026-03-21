@@ -1,7 +1,7 @@
 const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
-const { logAction } = require('../utils/logger');
+const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -59,10 +59,9 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null);
 
-    logAction({
-      user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
-    });
+      ...extractReqMeta(req) });
 
     res.status(201).json({ message: 'Équipement créé', id });
   } catch (err) {
@@ -94,12 +93,10 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
     WHERE id = ?
   `).run(name, department, category, serial_number, status, supplier, location, req.params.id);
 
-  logAction({
-    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
-    target_name: name || existing.name,
-    details: status ? { new_status: status } : undefined,
-  });
+    target_name: name || existing.name, details: status ? { new_status: status } : undefined,
+    ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement mis à jour' });
 });
@@ -112,11 +109,9 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 
   if (result.changes === 0) return res.status(404).json({ error: 'Équipement introuvable' });
 
-  logAction({
-    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
-    target_name: existing?.name,
-  });
+    target_name: existing?.name, ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement supprimé' });
 });
@@ -138,12 +133,10 @@ router.post('/:id/maintenance', verifyToken, requireRole('admin', 'supervisor', 
     VALUES (?, ?, ?, ?, ?)
   `).run(req.params.id, date, intervention, technician, is_future ? 1 : 0);
 
-  logAction({
-    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: is_future ? 'schedule_maintenance' : 'add_maintenance',
     target_type: 'equipment', target_id: req.params.id, target_name: eq.name,
-    details: { date, intervention, technician },
-  });
+    details: { date, intervention, technician }, ...extractReqMeta(req) });
 
   res.status(201).json({ message: 'Maintenance enregistrée', id: result.lastInsertRowid });
 });
