@@ -48,6 +48,7 @@ enum Permission {
   registerParts,
   
   // Admin only
+  manageEquipment,
   manageUsers,
   manageDepartments,
   manageCategories,
@@ -70,6 +71,8 @@ enum Permission {
         return 'Mettre à jour les réparations';
       case Permission.registerParts:
         return 'Enregistrer les pièces';
+      case Permission.manageEquipment:
+        return 'Gérer les équipements';
       case Permission.manageUsers:
         return 'Gérer les utilisateurs';
       case Permission.manageDepartments:

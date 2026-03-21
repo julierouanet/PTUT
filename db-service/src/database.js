@@ -66,11 +66,31 @@ function initTables() {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      user_id TEXT,
+      user_name TEXT NOT NULL,
+      user_role TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target_type TEXT,
+      target_id TEXT,
+      target_name TEXT,
+      details TEXT
+    );
+
     CREATE INDEX IF NOT EXISTS idx_equipment_dept ON equipment(department);
     CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
     CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);
     CREATE INDEX IF NOT EXISTS idx_issues_equipment ON issues(equipment_id);
+    CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
+    CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_logs_action ON logs(action);
   `);
+
+  // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
+  try { db.exec('ALTER TABLE logs ADD COLUMN ip_address TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE logs ADD COLUMN user_agent TEXT'); } catch (_) {}
 }
 
 function closeDb() {

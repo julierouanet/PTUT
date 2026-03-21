@@ -54,8 +54,9 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
-  Future<void> deleteEquipment(String id) async {
-    final url = '${ApiConfig.equipmentUrl}/$id';
+  Future<void> deleteEquipment(String id, {String? reason}) async {
+    var url = '${ApiConfig.equipmentUrl}/$id';
+    if (reason != null && reason.isNotEmpty) url += '?reason=${Uri.encodeComponent(reason)}';
     final response = await ApiClient.delete(url);
     _checkStatus(response, url);
   }
@@ -157,6 +158,68 @@ class DbApiService {
     final url = '${ApiConfig.inventoryUrl}/$id';
     final response = await ApiClient.delete(url);
     _checkStatus(response, url);
+  }
+
+  // ── LOGS ───────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getLogs({
+    String? action,
+    String? userId,
+    String? targetType,
+    String? from,
+    String? to,
+    int limit = 500,
+  }) async {
+    var url = '${ApiConfig.logsUrl}?limit=$limit';
+    if (action     != null) url += '&action=${Uri.encodeComponent(action)}';
+    if (userId     != null) url += '&user_id=${Uri.encodeComponent(userId)}';
+    if (targetType != null) url += '&target_type=${Uri.encodeComponent(targetType)}';
+    if (from       != null) url += '&from=${Uri.encodeComponent(from)}';
+    if (to         != null) url += '&to=${Uri.encodeComponent(to)}';
+
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  // ── RESTAURATION ───────────────────────────────────────────────────────────
+
+  Future<void> restoreEquipment(Map<String, dynamic> snapshot) async {
+    final url = '${ApiConfig.equipmentUrl}/restore';
+    final response = await ApiClient.post(url, snapshot);
+    _checkStatus(response, url);
+  }
+
+  Future<void> restoreEquipmentState(String id, Map<String, dynamic> oldValues) async {
+    final url = '${ApiConfig.equipmentUrl}/$id';
+    final response = await ApiClient.put(url, oldValues);
+    _checkStatus(response, url);
+  }
+
+  Future<Map<String, dynamic>> restoreDeletedUser(Map<String, dynamic> snapshot) async {
+    final url = '${ApiConfig.usersUrl}/restore';
+    final response = await ApiClient.post(url, {'snapshot': snapshot});
+    _checkStatus(response, url);
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  Future<void> updateUser(String id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
+  Future<void> toggleUser(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id/toggle';
+    final response = await ApiClient.patch(url, {});
+    _checkStatus(response, url);
+  }
+
+  Future<Map<String, dynamic>> getUserById(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
 
   // ── Utilitaire ─────────────────────────────────────────────────────────────

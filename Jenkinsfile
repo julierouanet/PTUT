@@ -174,9 +174,10 @@ pipeline {
             steps {
                 sh """
                     [ -f /etc/kabutare/.env ] && export \$(grep -v '^#' /etc/kabutare/.env | xargs) || true
-                    docker-compose -p gestion-equipement-medical-dev -f ${WORKSPACE}/docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-dev -f ${WORKSPACE}/docker-compose.dev.yml pull 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-dev -f ${WORKSPACE}/docker-compose.dev.yml up -d --build --force-recreate
+                    docker rm -f auth-service-dev db-service-dev 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml pull 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml up -d --build --force-recreate
                     docker exec auth-service-dev node seed.js 2>/dev/null || true
                     docker exec db-service-dev  node seed.js 2>/dev/null || true
                 """

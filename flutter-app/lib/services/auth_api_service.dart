@@ -113,8 +113,9 @@ class AuthApiService {
     return (body['is_active'] as int) == 1;
   }
 
-  Future<void> deleteUser(String id) async {
-    final url = '${ApiConfig.usersUrl}/$id';
+  Future<void> deleteUser(String id, {String? reason}) async {
+    var url = '${ApiConfig.usersUrl}/$id';
+    if (reason != null && reason.isNotEmpty) url += '?reason=${Uri.encodeComponent(reason)}';
     final response = await ApiClient.delete(url);
     if (response.statusCode >= 400) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;

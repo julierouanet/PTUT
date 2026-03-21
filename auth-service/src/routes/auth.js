@@ -5,6 +5,11 @@ const { getDb } = require('../database');
 const { JWT_SECRET, JWT_REFRESH_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS } = require('../config');
 const { verifyToken } = require('../middleware/auth');
 
+const { sendLog, reqMeta, extractIp } = require('../utils/logger');
+
+const sendAuthLog = ({ user_id, user_name, user_role, action, details, ip_address, user_agent }) =>
+  sendLog({ user_id, user_name, user_role, action, target_type: 'auth', details, ip_address, user_agent });
+
 const router = express.Router();
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -28,12 +33,14 @@ router.post('/login', async (req, res) => {
 
   if (!user) {
     console.log(`[AUTH] Échec login — email inconnu ou inactif: ${email}`);
+    sendAuthLog({ user_id: null, user_name: email, user_role: 'unknown', action: 'login_failed', details: { reason: 'email_inconnu' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     console.log(`[AUTH] Échec login — mauvais mot de passe: ${email}`);
+    sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
@@ -49,6 +56,7 @@ router.post('/login', async (req, res) => {
   db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, refreshToken, expiresAt);
 
   console.log(`[AUTH] Login réussi: ${email} (rôle: ${user.role})`);
+  sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
 
   res.json({
     accessToken,
@@ -107,9 +115,19 @@ router.post('/refresh', (req, res) => {
 
 router.post('/logout', (req, res) => {
   const { refreshToken } = req.body;
+  const ip = extractIp(req);
+  const ua = req.headers['user-agent'];
 
   if (refreshToken) {
     const db = getDb();
+    // Lire d'abord, supprimer ensuite (ordre crucial pour le log)
+    try {
+      const stored = db.prepare('SELECT user_id FROM refresh_tokens WHERE token = ?').get(refreshToken);
+      if (stored) {
+        const u = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(stored.user_id);
+        if (u) sendAuthLog({ user_id: u.id, user_name: u.name, user_role: u.role, action: 'logout', ip_address: ip, user_agent: ua });
+      }
+    } catch (_) {}
     db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
   }
 

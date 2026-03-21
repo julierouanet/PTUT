@@ -80,8 +80,7 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
-  /// Changer d'utilisateur (tests uniquement).
-  @visibleForTesting
+  /// Changer d'utilisateur (debug uniquement, protégé par assert).
   void switchUser(User user) {
     assert(kDebugMode, 'switchUser ne doit pas être appelé en production');
     _currentUser = user;
@@ -102,13 +101,48 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Profil utilisateur ─────────────────────────────────────────────────────
+
+  /// Met à jour le profil de l'utilisateur connecté localement + via API.
+  Future<bool> updateProfile({String? name, String? email, String? phone, String? department}) async {
+    if (_currentUser == null) return false;
+    _currentUser = _currentUser!.copyWith(
+      name:       name       ?? _currentUser!.name,
+      email:      email      ?? _currentUser!.email,
+      phone:      phone      ?? _currentUser!.phone,
+      department: department ?? _currentUser!.department,
+    );
+    notifyListeners();
+    try {
+      final data = <String, dynamic>{};
+      if (name != null)       data['name']       = name;
+      if (email != null)      data['email']      = email;
+      if (phone != null)      data['phone']      = phone;
+      if (department != null) data['department'] = department;
+      await AuthApiService.instance.updateUser(_currentUser!.id, data);
+    } catch (_) {}
+    return true;
+  }
+
+  /// Change le mot de passe de l'utilisateur connecté via API.
+  Future<bool> changePassword(String newPassword) async {
+    if (_currentUser == null) return false;
+    try {
+      await AuthApiService.instance.updateUser(_currentUser!.id, {'password': newPassword});
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   // ── Permissions ────────────────────────────────────────────────────────────
 
   bool hasPermission(Permission permission)            => _currentUser?.hasPermission(permission) ?? false;
   bool hasAllPermissions(List<Permission> permissions) => permissions.every(hasPermission);
   bool hasAnyPermission(List<Permission> permissions)  => permissions.any(hasPermission);
 
-  bool get canViewEquipment   => hasPermission(Permission.viewEquipment);
+  bool get canViewEquipment    => hasPermission(Permission.viewEquipment);
+  bool get canManageEquipment  => hasPermission(Permission.manageEquipment);
   bool get canReportIssue     => hasPermission(Permission.reportIssue);
   bool get canTrackIssues     => hasPermission(Permission.trackIssues);
   bool get canApproveRequests => hasPermission(Permission.approveRequests);

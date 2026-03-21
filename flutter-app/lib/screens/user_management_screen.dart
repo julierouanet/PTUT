@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_api_service.dart';
@@ -14,72 +15,95 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
-  String _roleFilter = 'Tous';
+  String _roleFilter = 'all'; // internal key
   String _searchTerm = '';
 
   List<User> get _filteredUsers {
     return DataService().users.where((user) {
       final matchesSearch = user.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
           user.email.toLowerCase().contains(_searchTerm.toLowerCase());
-      final matchesRole = _roleFilter == 'Tous' || user.role.displayName == _roleFilter;
+      final matchesRole = _roleFilter == 'all' || user.role.displayName == _roleFilter;
       return matchesSearch && matchesRole;
     }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final users = DataService().users;
     final roleStats = {
-      'Tous': users.length,
+      'all': users.length,
       for (var role in UserRole.values) role.displayName: users.where((u) => u.role == role).length,
     };
+
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Align(
       alignment: Alignment.topLeft,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Gestion des utilisateurs',
-                      style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
-                    ),
-                    SizedBox(height: 4),
-                    Text("Gérer les comptes et les rôles des utilisateurs",
-                        style: TextStyle(color: AppColors.textSecondary)),
-                  ],
-                ),
-                ElevatedButton.icon(
+            if (isMobile) ...[
+              Text(l10n.usersTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text(l10n.usersSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: () => _showUserDialog(null),
                   icon: const Icon(Icons.person_add, size: 18),
-                  label: const Text('Nouvel utilisateur'),
+                  label: Text(l10n.usersNew),
                 ),
-              ],
-            ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l10n.usersTitle, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      const SizedBox(height: 4),
+                      Text(l10n.usersSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showUserDialog(null),
+                    icon: const Icon(Icons.person_add, size: 18),
+                    label: Text(l10n.usersNew),
+                  ),
+                ],
+              ),
             const SizedBox(height: 20),
 
             // Role summary cards
-            Row(
-              children: [
-                _buildRoleCard('Total', users.length, Icons.people, AppColors.primary),
+            if (isMobile)
+              LayoutBuilder(builder: (context, constraints) {
+                final w = (constraints.maxWidth - 12) / 2;
+                return Wrap(spacing: 12, runSpacing: 12, children: [
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTotal, users.length, Icons.people, AppColors.primary)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersAdmins, roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersSupervisors, roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary)),
+                ]);
+              })
+            else
+              Row(children: [
+                _buildRoleCard(l10n.usersTotal, users.length, Icons.people, AppColors.primary),
                 const SizedBox(width: 12),
-                _buildRoleCard('Admins', roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error),
+                _buildRoleCard(l10n.usersAdmins, roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error),
                 const SizedBox(width: 12),
-                _buildRoleCard('Superviseurs', roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning),
+                _buildRoleCard(l10n.usersSupervisors, roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning),
                 const SizedBox(width: 12),
-                _buildRoleCard('Techniciens', roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success),
+                _buildRoleCard(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success),
                 const SizedBox(width: 12),
-                _buildRoleCard('Personnel', roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary),
-              ],
-            ),
+                _buildRoleCard(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary),
+              ]),
             const SizedBox(height: 20),
 
             // Filters
@@ -92,9 +116,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       flex: 2,
                       child: TextField(
                         onChanged: (value) => setState(() => _searchTerm = value),
-                        decoration: const InputDecoration(
-                          hintText: 'Rechercher par nom ou email...',
-                          prefixIcon: Icon(Icons.search),
+                        decoration: InputDecoration(
+                          hintText: l10n.usersSearchHint,
+                          prefixIcon: const Icon(Icons.search),
                           isDense: true,
                         ),
                       ),
@@ -103,11 +127,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         value: _roleFilter,
-                        decoration: const InputDecoration(labelText: 'Filtrer par rôle', isDense: true),
-                        items: roleStats.keys.map((role) => DropdownMenuItem(
-                          value: role,
-                          child: Text('$role (${roleStats[role]})'),
-                        )).toList(),
+                        decoration: InputDecoration(labelText: l10n.usersFilterByRole, isDense: true),
+                        items: [
+                          DropdownMenuItem(
+                            value: 'all',
+                            child: Text('${l10n.commonAll} (${roleStats['all']})'),
+                          ),
+                          ...UserRole.values.map((role) => DropdownMenuItem(
+                            value: role.displayName,
+                            child: Text('${role.displayName} (${roleStats[role.displayName]})'),
+                          )),
+                        ],
                         onChanged: (value) => setState(() => _roleFilter = value!),
                       ),
                     ),
@@ -127,13 +157,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
                     child: DataTable(
                       headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: const [
-                        DataColumn(label: Text('Utilisateur')),
-                        DataColumn(label: Text('Email')),
-                        DataColumn(label: Text('Département')),
-                        DataColumn(label: Text('Rôle')),
-                        DataColumn(label: Text('Statut')),
-                        DataColumn(label: Text('Actions')),
+                      columns: [
+                        DataColumn(label: Text(l10n.usersUser)),
+                        DataColumn(label: Text(l10n.commonEmail)),
+                        DataColumn(label: Text(l10n.commonDepartment)),
+                        DataColumn(label: Text(l10n.commonRole)),
+                        DataColumn(label: Text(l10n.commonStatus)),
+                        DataColumn(label: Text(l10n.commonActions)),
                       ],
                       rows: _filteredUsers.map((user) => DataRow(
                         cells: [
@@ -155,7 +185,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           DataCell(Text(user.email)),
                           DataCell(Text(user.department)),
                           DataCell(_buildRoleBadge(user.role)),
-                          DataCell(_buildStatusBadge(user.isActive)),
+                          DataCell(_buildStatusBadge(user.isActive, l10n)),
                           DataCell(Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -163,25 +193,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 icon: const Icon(Icons.edit, size: 18),
                                 color: AppColors.primary,
                                 onPressed: () => _showUserDialog(user),
-                                tooltip: 'Modifier',
+                                tooltip: l10n.commonEdit,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.key, size: 18),
                                 color: AppColors.warning,
                                 onPressed: () => _showPermissionsDialog(user),
-                                tooltip: 'Permissions',
+                                tooltip: l10n.usersPermissions,
                               ),
                               IconButton(
                                 icon: Icon(user.isActive ? Icons.block : Icons.check_circle, size: 18),
                                 color: user.isActive ? AppColors.error : AppColors.success,
                                 onPressed: () => _toggleUserStatus(user),
-                                tooltip: user.isActive ? 'Désactiver' : 'Activer',
+                                tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
                               ),
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, size: 18),
                                 color: AppColors.error,
                                 onPressed: () => _confirmDeleteUser(user),
-                                tooltip: 'Supprimer',
+                                tooltip: l10n.commonDelete,
                               ),
                             ],
                           )),
@@ -198,31 +228,33 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildRoleCard(String label, int count, IconData icon, Color color) {
-    return Expanded(
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$count', style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-                  Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                ],
-              ),
-            ],
-          ),
+  Widget _buildRoleCardWidget(String label, int count, IconData icon, Color color) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$count', style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              ],
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildRoleCard(String label, int count, IconData icon, Color color) {
+    return Expanded(child: _buildRoleCardWidget(label, count, icon, color));
   }
 
   Widget _buildRoleBadge(UserRole role) {
@@ -238,7 +270,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildStatusBadge(bool isActive) {
+  Widget _buildStatusBadge(bool isActive, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -246,7 +278,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
-        isActive ? 'Actif' : 'Inactif',
+        isActive ? l10n.usersActive : l10n.usersInactive,
         style: TextStyle(color: isActive ? AppColors.success : AppColors.error, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     );
@@ -262,6 +294,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showUserDialog(User? user) {
+    final l10n = AppLocalizations.of(context)!;
     final isEdit   = user != null;
     final nameCtrl  = TextEditingController(text: user?.name ?? '');
     final emailCtrl = TextEditingController(text: user?.email ?? '');
@@ -276,8 +309,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
           child: Container(
-            width: 500,
+            constraints: const BoxConstraints(maxWidth: 500),
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -286,44 +320,44 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(isEdit ? 'Modifier utilisateur' : 'Nouvel utilisateur',
+                    Text(isEdit ? l10n.usersEditTitle : l10n.usersNewTitle,
                         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(controller: nameCtrl,  decoration: const InputDecoration(labelText: 'Nom complet *', prefixIcon: Icon(Icons.person))),
+                TextField(controller: nameCtrl,  decoration: InputDecoration(labelText: l10n.usersFullName, prefixIcon: const Icon(Icons.person))),
                 const SizedBox(height: 12),
-                TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email *', prefixIcon: Icon(Icons.email))),
+                TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: l10n.usersEmailLabel, prefixIcon: const Icon(Icons.email))),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passCtrl,
                   obscureText: true,
                   decoration: InputDecoration(
-                    labelText: isEdit ? 'Nouveau mot de passe (laisser vide = inchangé)' : 'Mot de passe *',
+                    labelText: isEdit ? l10n.usersNewPassword : l10n.usersPasswordLabel,
                     prefixIcon: const Icon(Icons.lock),
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'Téléphone', prefixIcon: Icon(Icons.phone))),
+                TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: l10n.usersPhone, prefixIcon: const Icon(Icons.phone))),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedDepartment,
-                  decoration: const InputDecoration(labelText: 'Département', prefixIcon: Icon(Icons.business)),
+                  decoration: InputDecoration(labelText: l10n.commonDepartment, prefixIcon: const Icon(Icons.business)),
                   items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: (v) => setDialogState(() => selectedDepartment = v!),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: selectedRole,
-                  decoration: const InputDecoration(labelText: 'Rôle', prefixIcon: Icon(Icons.badge)),
+                  decoration: InputDecoration(labelText: l10n.commonRole, prefixIcon: const Icon(Icons.badge)),
                   items: UserRole.values.map((r) => DropdownMenuItem(value: r.name, child: Text(r.displayName))).toList(),
                   onChanged: (v) => setDialogState(() => selectedRole = v!),
                 ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
-                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler'))),
+                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel))),
                     const SizedBox(width: 16),
                     Expanded(
                       child: ElevatedButton(
@@ -348,7 +382,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(isEdit ? 'Utilisateur modifié' : 'Utilisateur créé'),
+                                content: Text(isEdit ? l10n.usersModified : l10n.usersCreated),
                                 backgroundColor: AppColors.success,
                                 behavior: SnackBarBehavior.floating,
                               ));
@@ -364,7 +398,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             }
                           }
                         },
-                        child: Text(isEdit ? 'Enregistrer' : 'Créer'),
+                        child: Text(isEdit ? l10n.commonSave : l10n.commonCreate),
                       ),
                     ),
                   ],
@@ -378,11 +412,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _showPermissionsDialog(User user) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
         child: Container(
-          width: 500,
+          constraints: const BoxConstraints(maxWidth: 500),
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -391,7 +427,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Permissions — ${user.name}',
+                  Text(l10n.usersPermissionsTitle(user.name),
                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                 ],
@@ -399,7 +435,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const SizedBox(height: 8),
               _buildRoleBadge(user.role),
               const SizedBox(height: 16),
-              const Text('Permissions actives:', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text(l10n.usersActivePermissions, style: const TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -413,7 +449,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fermer')),
+                child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
               ),
             ],
           ),
@@ -423,12 +459,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _toggleUserStatus(User user) async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final newActive = await AuthApiService.instance.toggleUserStatus(user.id);
       await DataService().reloadUsers();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(newActive ? 'Compte activé' : 'Compte désactivé'),
+          content: Text(newActive ? l10n.usersAccountActivated : l10n.usersAccountDeactivated),
           backgroundColor: newActive ? AppColors.success : AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -445,23 +482,41 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   void _confirmDeleteUser(User user) {
+    final l10n = AppLocalizations.of(context)!;
+    final reasonController = TextEditingController();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer l\'utilisateur'),
-        content: Text('Supprimer le compte de "${user.name}" ? Cette action est irréversible.'),
+        title: Text(l10n.usersDeleteTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.usersDeleteConfirm(user.name)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Raison de la suppression (optionnel)',
+                hintText: 'Ex : Départ de l\'établissement, doublon…',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () async {
+              final reason = reasonController.text.trim();
               Navigator.pop(ctx);
               try {
-                await AuthApiService.instance.deleteUser(user.id);
+                await AuthApiService.instance.deleteUser(user.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadUsers();
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Utilisateur supprimé'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.usersDeleted),
                     backgroundColor: AppColors.success,
                     behavior: SnackBarBehavior.floating,
                   ));
@@ -476,7 +531,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 }
               }
             },
-            child: const Text('Supprimer'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
