@@ -80,8 +80,7 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
-  /// Changer d'utilisateur (tests uniquement).
-  @visibleForTesting
+  /// Changer d'utilisateur (debug uniquement, protégé par assert).
   void switchUser(User user) {
     assert(kDebugMode, 'switchUser ne doit pas être appelé en production');
     _currentUser = user;

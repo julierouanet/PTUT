@@ -1,9 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-// true si lancé avec --dart-define=DEV_SHORTCUTS=true  OU  en mode debug local
-const bool _showDevShortcuts =
-    bool.fromEnvironment('DEV_SHORTCUTS') || kDebugMode;
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
@@ -11,6 +7,10 @@ import '../services/data_service.dart';
 import '../services/notification_service.dart';
 import '../models/user.dart';
 import '../data/mock_data.dart';
+
+// true si lancé avec --dart-define=DEV_SHORTCUTS=true  OU  en mode debug local
+const bool _showDevShortcuts =
+    bool.fromEnvironment('DEV_SHORTCUTS') || kDebugMode;
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
