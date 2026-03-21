@@ -278,12 +278,13 @@ class _LogsScreenState extends State<LogsScreen> {
                   // Ligne 3 : IP + type d'appareil
                   Row(
                     children: [
-                      if (ipAddress != null) ...[
-                        const Icon(Icons.location_on_outlined, size: 11, color: AppColors.textMuted),
-                        const SizedBox(width: 3),
-                        Text(ipAddress, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
-                        const SizedBox(width: 8),
-                      ],
+                      const Icon(Icons.location_on_outlined, size: 11, color: AppColors.textMuted),
+                      const SizedBox(width: 3),
+                      Text(
+                        ipAddress ?? '—',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                      const SizedBox(width: 8),
                       Icon(
                         deviceType == 'mobile' ? Icons.smartphone : Icons.computer,
                         size: 11,
@@ -291,7 +292,7 @@ class _LogsScreenState extends State<LogsScreen> {
                       ),
                       const SizedBox(width: 3),
                       Text(
-                        deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '?',
+                        deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—',
                         style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                       ),
                     ],
@@ -320,14 +321,16 @@ class _LogsScreenState extends State<LogsScreen> {
 
   String _formatDate(String iso) {
     try {
-      final dt = DateTime.parse(iso).toLocal();
+      // SQLite CURRENT_TIMESTAMP uses space separator — normalize to ISO 8601
+      final normalized = iso.replaceFirst(' ', 'T');
+      final dt = DateTime.parse(normalized).toLocal();
       final now = DateTime.now();
       final diff = now.difference(dt);
-      final time = '${dt.hour.toString().padLeft(2,'0')}:${dt.minute.toString().padLeft(2,'0')}:${dt.second.toString().padLeft(2,'0')}';
+      final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
       if (diff.inSeconds < 10)  return 'À l\'instant';
       if (diff.inMinutes < 60)  return '$time (il y a ${diff.inMinutes} min)';
       if (diff.inHours < 24)    return '$time (il y a ${diff.inHours} h)';
-      return '${dt.day.toString().padLeft(2,'0')}/${dt.month.toString().padLeft(2,'0')}/${dt.year} $time';
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} $time';
     } catch (_) {
       return iso;
     }
