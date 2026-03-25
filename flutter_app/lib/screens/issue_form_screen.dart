@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
 import '../models/equipment.dart';
+import '../services/auth_service.dart';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 
@@ -19,33 +20,76 @@ class IssueFormScreen extends StatefulWidget {
 class _IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedEquipmentId;
-  String _problemType = 'Panne';
   final _descriptionController = TextEditingController();
   final _reporterController = TextEditingController();
+  final TextEditingController _equipmentSearchController = TextEditingController();
   
   // Photo handling
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
 
-  final List<String> _problemTypes = [
-    'Panne',
-    'Dysfonctionnement',
-    'Usure',
-    'Bruit anormal',
-    'Fuite',
-    'Autre',
-  ];
+  final Map<String, List<String>> _problemCategories = {
+    'ICT': [
+      'Panne réseau',
+      'Panne matériel informatique',
+      'Problème logiciel',
+      'Problème de connexion',
+      'Autre ICT',
+    ],
+    'Biomédical': [
+      'Panne',
+      'Dysfonctionnement',
+      'Calibration requise',
+      'Usure',
+      'Autre biomédical',
+    ],
+    'Électrique': [
+      'Court-circuit',
+      'Surchauffe',
+      'Fuite électrique',
+      'Panne alimentation',
+      'Autre électrique',
+    ],
+    'Hygiène': [
+      'Contamination',
+      'Nettoyage requis',
+      'Désinfection requise',
+      'Autre hygiène',
+    ],
+    'Général': [
+      'Usure',
+      'Bruit anormal',
+      'Fuite',
+      'Autre',
+    ],
+  };
+
+  String? _selectedDomain;
+  String? _selectedProblemType;
 
   @override
   void initState() {
     super.initState();
     _selectedEquipmentId = widget.equipmentId;
+
+    @override
+    void initState() {
+      super.initState();
+      _selectedEquipmentId = widget.equipmentId;
+      
+      // Auto-remplir le nom avec l'utilisateur connecté
+      final currentUser = AuthService().currentUser;
+      if (currentUser != null) {
+        _reporterController.text = currentUser.name;
+      }
+    }
   }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _reporterController.dispose();
+    _equipmentSearchController.dispose();
     super.dispose();
   }
 
@@ -137,17 +181,33 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEquipmentId,
-                      decoration: const InputDecoration(
-                        hintText: 'Sélectionnez un équipement',
-                      ),
-                      items: mockEquipment.map((eq) => DropdownMenuItem(
-                        value: eq.id,
-                        child: Text('${eq.name} (${eq.serialNumber})'),
-                      )).toList(),
-                      onChanged: (value) => setState(() => _selectedEquipmentId = value),
-                      validator: (value) => value == null ? 'Sélectionnez un équipement' : null,
+                    Autocomplete<Equipment>(
+                      displayStringForOption: (eq) => '${eq.name} (${eq.serialNumber})',
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) {
+                          return mockEquipment;
+                        }
+                        return mockEquipment.where((eq) =>
+                          eq.name.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                          eq.serialNumber.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                          eq.department.toLowerCase().contains(textEditingValue.text.toLowerCase())
+                        );
+                      },
+                      onSelected: (Equipment eq) {
+                        setState(() => _selectedEquipmentId = eq.id);
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        _equipmentSearchController.text = controller.text;
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: const InputDecoration(
+                            hintText: 'Recherchez par nom, numéro de série ou département...',
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          validator: (value) => _selectedEquipmentId == null ? 'Sélectionnez un équipement' : null,
+                        );
+                      },
                     ),
 
                     // Show selected equipment info
@@ -187,21 +247,50 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     ],
                     const SizedBox(height: 24),
 
-                    // Problem type
+                    // Domaine
                     const Text(
-                      'Type de problème *',
+                      'Domaine *',
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _problemType,
-                      items: _problemTypes.map((type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type),
+                      value: _selectedDomain,
+                      decoration: const InputDecoration(
+                        hintText: 'Sélectionnez un domaine',
+                      ),
+                      items: _problemCategories.keys.map((domain) => DropdownMenuItem(
+                        value: domain,
+                        child: Text(domain),
                       )).toList(),
-                      onChanged: (value) => setState(() => _problemType = value!),
+                      onChanged: (value) => setState(() {
+                        _selectedDomain = value;
+                        _selectedProblemType = null; // reset le type quand domaine change
+                      }),
+                      validator: (value) => value == null ? 'Sélectionnez un domaine' : null,
                     ),
                     const SizedBox(height: 24),
+
+                    // Type de problème (apparaît après sélection du domaine)
+                    if (_selectedDomain != null) ...[
+                      const Text(
+                        'Type de problème *',
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedProblemType,
+                        decoration: const InputDecoration(
+                          hintText: 'Sélectionnez un type de problème',
+                        ),
+                        items: _problemCategories[_selectedDomain]!.map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type),
+                        )).toList(),
+                        onChanged: (value) => setState(() => _selectedProblemType = value),
+                        validator: (value) => value == null ? 'Sélectionnez un type de problème' : null,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Description
                     const Text(
@@ -266,8 +355,12 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _reporterController,
-                      decoration: const InputDecoration(
+                      readOnly: AuthService().currentUser != null,
+                      decoration: InputDecoration(
                         hintText: 'Ex: Dr. Martin',
+                        suffixIcon: AuthService().currentUser != null 
+                          ? const Icon(Icons.lock_outline, color: Colors.grey)
+                          : null,
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
@@ -387,7 +480,8 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
       // Clear form
       setState(() {
         _selectedEquipmentId = null;
-        _problemType = 'Panne';
+        _selectedDomain = null;
+        _selectedProblemType = null;
         _descriptionController.clear();
         _reporterController.clear();
         _photos.clear();
