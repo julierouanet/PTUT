@@ -23,7 +23,11 @@
       "Bash(tree /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib -I *.lock)",
       "Bash(flutter run:*)",
       "Bash(grep -r kabutare C:UsersPersoDesktopPTUT-1/auth-service --include=*.js -l)",
-      "Bash(echo \"Exit: $?\")"
+      "Bash(echo \"Exit: $?\")",
+      "Bash(npm test:*)",
+      "Bash(npm install:*)",
+      "Bash(npx jest:*)",
+      "WebSearch"
     ]
   }
 }
