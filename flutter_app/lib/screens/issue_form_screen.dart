@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:js' as js;
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../data/mock_data.dart';
@@ -64,6 +65,9 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     ],
   };
 
+  bool _isListening = false;
+  html.SpeechRecognition? _recognition;
+
   String? _selectedDomain;
   String? _selectedProblemType;
 
@@ -71,17 +75,11 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
   void initState() {
     super.initState();
     _selectedEquipmentId = widget.equipmentId;
-
-    @override
-    void initState() {
-      super.initState();
-      _selectedEquipmentId = widget.equipmentId;
-      
-      // Auto-remplir le nom avec l'utilisateur connecté
-      final currentUser = AuthService().currentUser;
-      if (currentUser != null) {
-        _reporterController.text = currentUser.name;
-      }
+    
+    // Auto-remplir le nom avec l'utilisateur connecté
+    final currentUser = AuthService().currentUser;
+    if (currentUser != null) {
+      _reporterController.text = currentUser.name;
     }
   }
 
@@ -141,6 +139,42 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
     setState(() {
       _photos.removeAt(index);
     });
+  }
+
+  void _toggleListening() {
+    if (_isListening) {
+      _recognition?.stop();
+      setState(() => _isListening = false);
+    } else {
+      _recognition = html.SpeechRecognition();
+      _recognition!.lang = 'fr-FR';
+      _recognition!.continuous = false;
+      _recognition!.interimResults = false;
+
+      _recognition!.addEventListener('result', (event) {
+        try {
+          final jsResults = js.JsObject.fromBrowserObject(event)['results'];
+          final jsResult = jsResults[jsResults['length'] - 1];
+          final transcript = jsResult[0]['transcript'] as String;
+          if (transcript.isNotEmpty) {
+            setState(() => _descriptionController.text = transcript);
+          }
+        } catch (e) {
+          print('Speech result error: $e');
+        }
+      });
+
+      _recognition!.onError.listen((_) {
+        setState(() => _isListening = false);
+      });
+
+      _recognition!.onEnd.listen((_) {
+        setState(() => _isListening = false);
+      });
+
+      _recognition!.start();
+      setState(() => _isListening = true);
+    }
   }
 
   @override
@@ -301,8 +335,15 @@ class _IssueFormScreenState extends State<IssueFormScreen> {
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 4,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Décrivez le problème en détail...',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none,
+                            color: _isListening ? Colors.red : AppColors.primary,
+                          ),
+                          onPressed: _toggleListening,
+                        ),
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
