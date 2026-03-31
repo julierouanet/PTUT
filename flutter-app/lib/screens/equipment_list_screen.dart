@@ -101,7 +101,29 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     ),
                 ],
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Quick filter - My department
+            Wrap(
+              spacing: 8,
+              children: [
+                FilterChip(
+                  label: Text(_authService.currentUser?.department ?? l10n.commonDepartment),
+                  avatar: const Icon(Icons.business, size: 16),
+                  selected: _departmentFilter == (_authService.currentUser?.department ?? ''),
+                  selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                  checkmarkColor: AppColors.primary,
+                  onSelected: (selected) {
+                    setState(() {
+                      _departmentFilter = selected
+                          ? (_authService.currentUser?.department ?? l10n.commonAll)
+                          : l10n.commonAll;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
 
             // Search and Filters - FULL WIDTH
             Card(

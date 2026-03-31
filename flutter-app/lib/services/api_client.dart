@@ -1,6 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_config.dart';
 
 /// Client HTTP de base — gère le token JWT et le refresh automatique.
@@ -8,28 +9,35 @@ class ApiClient {
   static const _accessTokenKey  = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
 
-  // ── Token storage ──────────────────────────────────────────────────────────
+  static const _storage = FlutterSecureStorage();
+
+  /// Callback appelé quand la session expire (refresh token invalide).
+  static VoidCallback? onSessionExpired;
+
+  // ── Token storage (FlutterSecureStorage) ─────────────────────────────────
 
   static Future<void> saveTokens(String access, String refresh) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_accessTokenKey,  access);
-    await prefs.setString(_refreshTokenKey, refresh);
+    await _storage.write(key: _accessTokenKey, value: access);
+    await _storage.write(key: _refreshTokenKey, value: refresh);
   }
 
   static Future<String?> getAccessToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_accessTokenKey);
+    return _storage.read(key: _accessTokenKey);
   }
 
   static Future<String?> getRefreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_refreshTokenKey);
+    return _storage.read(key: _refreshTokenKey);
   }
 
   static Future<void> clearTokens() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_accessTokenKey);
-    await prefs.remove(_refreshTokenKey);
+    await _storage.delete(key: _accessTokenKey);
+    await _storage.delete(key: _refreshTokenKey);
+  }
+
+  /// Vérifie si des tokens sont stockés (pour l'auto-login).
+  static Future<bool> hasStoredTokens() async {
+    final token = await getAccessToken();
+    return token != null;
   }
 
   // ── Requêtes HTTP ──────────────────────────────────────────────────────────
@@ -132,7 +140,10 @@ class ApiClient {
 
   static Future<bool> _tryRefresh() async {
     final refreshToken = await getRefreshToken();
-    if (refreshToken == null) return false;
+    if (refreshToken == null) {
+      onSessionExpired?.call();
+      return false;
+    }
 
     try {
       final response = await http.post(
@@ -144,17 +155,18 @@ class ApiClient {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         final newAccess = data['accessToken'] as String;
-        // Le serveur fait de la rotation : il renvoie aussi un nouveau refreshToken
         final newRefresh = data['refreshToken'] as String?;
         if (newRefresh != null) {
           await saveTokens(newAccess, newRefresh);
         } else {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(_accessTokenKey, newAccess);
+          await _storage.write(key: _accessTokenKey, value: newAccess);
         }
         return true;
       }
     } catch (_) {}
+
+    // Refresh echoue → session expiree
+    onSessionExpired?.call();
     return false;
   }
 }

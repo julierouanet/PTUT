@@ -45,6 +45,23 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
   `);
+
+  // Migration : ajout des colonnes first_name et last_name
+  const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (!cols.includes('first_name')) {
+    db.exec(`ALTER TABLE users ADD COLUMN first_name TEXT`);
+    db.exec(`ALTER TABLE users ADD COLUMN last_name TEXT`);
+    // Migrer les donnees existantes : splitter 'name' en first_name / last_name
+    const users = db.prepare('SELECT id, name FROM users').all();
+    const updateStmt = db.prepare('UPDATE users SET first_name = ?, last_name = ? WHERE id = ?');
+    for (const u of users) {
+      const parts = (u.name || '').split(' ');
+      const firstName = parts[0] || '';
+      const lastName = parts.slice(1).join(' ') || '';
+      updateStmt.run(firstName, lastName, u.id);
+    }
+    console.log(`[DB] Migration first_name/last_name: ${users.length} utilisateurs migrés`);
+  }
 }
 
 /**

@@ -17,6 +17,7 @@ import 'screens/logs_screen.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
 import 'services/notification_service.dart';
+import 'services/api_client.dart';
 import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/notification_bell.dart';
@@ -38,6 +39,21 @@ enum ScreenType {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocaleProvider().loadSavedLocale();
+
+  // Configurer le callback de session expiree
+  ApiClient.onSessionExpired = () {
+    AuthService().handleSessionExpired();
+  };
+
+  // Tenter l'auto-login si des tokens sont stockes
+  if (await ApiClient.hasStoredTokens()) {
+    final restored = await AuthService().restoreSession();
+    if (restored) {
+      await DataService().loadAll();
+      NotificationService().generateFromLoadedData();
+    }
+  }
+
   runApp(const EquipmentManagementApp());
 }
 
@@ -495,7 +511,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(currentUser?.name ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
                       Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),

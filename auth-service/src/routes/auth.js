@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, department: user.department, phone: user.phone },
+    user: { id: user.id, name: user.name, first_name: user.first_name, last_name: user.last_name, email: user.email, role: user.role, department: user.department, phone: user.phone },
   });
 });
 
@@ -145,7 +145,7 @@ router.get('/verify', verifyToken, (req, res) => {
 
 router.get('/me', verifyToken, (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, name, email, role, department, phone, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, first_name, last_name, email, role, department, phone, created_at FROM users WHERE id = ?').get(req.user.id);
 
   if (!user) {
     return res.status(404).json({ error: 'Utilisateur introuvable' });

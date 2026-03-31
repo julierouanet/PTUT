@@ -1,6 +1,7 @@
 /// Issue status enumeration
 enum IssueStatus {
   open,
+  approved,
   inProgress,
   resolved;
 
@@ -8,6 +9,8 @@ enum IssueStatus {
     switch (this) {
       case IssueStatus.open:
         return 'Ouvert';
+      case IssueStatus.approved:
+        return 'Approuvé';
       case IssueStatus.inProgress:
         return 'En cours';
       case IssueStatus.resolved:
@@ -20,6 +23,9 @@ enum IssueStatus {
       case 'Open':
       case 'Ouvert':
         return IssueStatus.open;
+      case 'Approved':
+      case 'Approuvé':
+        return IssueStatus.approved;
       case 'In Progress':
       case 'En cours':
         return IssueStatus.inProgress;

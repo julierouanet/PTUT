@@ -291,7 +291,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    user?.name ?? '',
+                                    user?.fullName ?? '',
                                     style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                                   ),
                                   if (user?.email != null)
@@ -434,7 +434,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       'department':      equipment.department,
       'type':            _problemType,
       'description':     _descriptionController.text.trim(),
-      'reporter':        currentUser?.name ?? 'Inconnu',
+      'reporter':        currentUser?.fullName ?? 'Inconnu',
       'reporter_id':     currentUser?.id ?? '',
       'reporter_email':  currentUser?.email ?? '',
     };

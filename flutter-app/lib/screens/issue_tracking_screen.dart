@@ -3,7 +3,9 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/db_api_service.dart';
 import '../models/issue.dart';
+import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 
 /// Issue tracking screen - view and manage all issues
@@ -16,9 +18,31 @@ class IssueTrackingScreen extends StatefulWidget {
   State<IssueTrackingScreen> createState() => _IssueTrackingScreenState();
 }
 
-class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
+class _IssueTrackingScreenState extends State<IssueTrackingScreen>
+    with SingleTickerProviderStateMixin {
   String _statusFilter = 'Tous';
   final AuthService _authService = AuthService();
+  TabController? _tabController;
+  bool _isValidating = false;
+
+  bool get _isPrivileged {
+    final role = _authService.currentRole;
+    return role == UserRole.supervisor || role == UserRole.admin;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isPrivileged) {
+      _tabController = TabController(length: 2, vsync: this);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController?.dispose();
+    super.dispose();
+  }
 
   // ── Filtres ────────────────────────────────────────────────────────────────
 
@@ -26,7 +50,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     final user = _authService.currentUser;
     if (user == null) return [];
     return DataService().issues.where((i) {
-      // Priorité : reporter_id si disponible, sinon match par nom
       if (i.reporterId != null && i.reporterId!.isNotEmpty) {
         return i.reporterId == user.id;
       }
@@ -46,6 +69,17 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     return DataService().issues.where((i) => i.status.displayName == _statusFilter).toList();
   }
 
+  List<Issue> get _openIssuesForValidation {
+    final role = _authService.currentRole;
+    final allOpen = DataService().issues.where((i) => i.status == IssueStatus.open).toList();
+    if (role == UserRole.admin) return allOpen;
+    if (role == UserRole.supervisor) {
+      final dept = _authService.currentUser?.department ?? '';
+      return allOpen.where((i) => i.department == dept).toList();
+    }
+    return [];
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -57,12 +91,49 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final statuses = [l10n.commonAll, 'Ouvert', 'En cours', 'Résolu'];
+    if (!_isPrivileged) {
+      return _buildMainContent(context);
+    }
 
-    final openCount     = DataService().issues.where((i) => i.status == IssueStatus.open).length;
+    return Column(
+      children: [
+        Material(
+          color: Theme.of(context).cardColor,
+          elevation: 1,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
+            tabs: const [
+              Tab(icon: Icon(Icons.list_alt, size: 18), text: 'Suivi des incidents'),
+              Tab(icon: Icon(Icons.pending_actions, size: 18), text: 'À valider'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildMainContent(context),
+              _buildValidationTab(context),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Contenu principal (onglet Suivi) ───────────────────────────────────────
+
+  Widget _buildMainContent(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final statuses = [l10n.commonAll, 'Ouvert', 'Approuvé', 'En cours', 'Résolu'];
+
+    final openCount       = DataService().issues.where((i) => i.status == IssueStatus.open).length;
+    final approvedCount   = DataService().issues.where((i) => i.status == IssueStatus.approved).length;
     final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
-    final resolvedCount = DataService().issues.where((i) => i.status == IssueStatus.resolved).length;
+    final resolvedCount   = DataService().issues.where((i) => i.status == IssueStatus.resolved).length;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -83,6 +154,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             if (isMobile) ...[
               Wrap(spacing: 8, runSpacing: 8, children: [
                 _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
+                _buildMiniStat('Approuvé',            approvedCount,   AppColors.primary),
                 _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
                 _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
               ]),
@@ -98,6 +170,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             ] else
               Row(children: [
                 _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
+                const SizedBox(width: 12),
+                _buildMiniStat('Approuvé',            approvedCount,   AppColors.primary),
                 const SizedBox(width: 12),
                 _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
                 const SizedBox(width: 12),
@@ -194,6 +268,239 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     );
   }
 
+  // ── Onglet "À valider" ─────────────────────────────────────────────────────
+
+  Widget _buildValidationTab(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final issues = _openIssuesForValidation;
+    final role = _authService.currentRole;
+    final isAdmin = role == UserRole.admin;
+    final dept = _authService.currentUser?.department ?? '';
+
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header ───────────────────────────────────────────────────────
+            Text(
+              'Incidents à valider',
+              style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              isAdmin
+                  ? 'Tous les incidents ouverts en attente de validation'
+                  : 'Incidents ouverts du département "$dept" en attente de validation',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Compteur ─────────────────────────────────────────────────────
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text('${issues.length}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.error)),
+                  const SizedBox(width: 8),
+                  const Text('incident(s) ouvert(s)', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
+                ]),
+              ),
+            ]),
+            const SizedBox(height: 16),
+
+            // ── Liste ────────────────────────────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              child: Card(
+                child: issues.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                          Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
+                          SizedBox(width: 12),
+                          Text('Aucun incident ouvert à valider', style: TextStyle(color: AppColors.textSecondary)),
+                        ]),
+                      )
+                    : Column(
+                        children: issues.map((issue) => _buildValidationIssueItem(issue, isMobile)).toList(),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildValidationIssueItem(Issue issue, bool isMobile) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
+      child: isMobile
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(issue.department, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  ]),
+                ),
+                IssueStatusBadge(status: issue.status.displayName),
+              ]),
+              const SizedBox(height: 8),
+              Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 4),
+              Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _showIssueDetail(issue),
+                    icon: const Icon(Icons.info_outline, size: 16),
+                    label: const Text('Détails'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _isValidating ? null : () => _showValidateDialog(issue),
+                    icon: const Icon(Icons.check_circle_outline, size: 16),
+                    label: const Text('Valider'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
+                  ),
+                ),
+              ]),
+            ])
+          : Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: AppColors.error, size: 20),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(issue.department, style: const TextStyle(fontSize: 11, color: AppColors.primary)),
+                    ),
+                  ]),
+                  const SizedBox(height: 4),
+                  Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                ]),
+              ),
+              const SizedBox(width: 16),
+              IssueStatusBadge(status: issue.status.displayName),
+              const SizedBox(width: 12),
+              OutlinedButton.icon(
+                onPressed: () => _showIssueDetail(issue),
+                icon: const Icon(Icons.info_outline, size: 16),
+                label: const Text('Détails'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: _isValidating ? null : () => _showValidateDialog(issue),
+                icon: const Icon(Icons.check_circle_outline, size: 16),
+                label: const Text('Valider'),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
+              ),
+            ]),
+    );
+  }
+
+  void _showValidateDialog(Issue issue) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Valider l\'incident'),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Confirmer la validation de l\'incident sur :'),
+          const SizedBox(height: 8),
+          Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const SizedBox(height: 12),
+          const Text(
+            'L\'incident passera au statut "En cours" et sera pris en charge par l\'équipe technique.',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+        ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _validateIssue(issue);
+            },
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: const Text('Confirmer'),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _validateIssue(Issue issue) async {
+    setState(() => _isValidating = true);
+    try {
+      await DbApiService.instance.updateIssue(issue.id, {'status': 'Approuvé'});
+      await DataService().reloadIssues();
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Incident sur "${issue.equipmentName}" validé avec succès.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la validation : $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isValidating = false);
+    }
+  }
+
   // ── Encadré "Mes incidents" ────────────────────────────────────────────────
 
   Widget _buildPersonalCard(AppLocalizations l10n) {
@@ -204,7 +511,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(children: [
@@ -228,8 +534,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             ]),
           ),
           const Divider(height: 1),
-
-          // Contenu
           if (myIssues.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
@@ -268,7 +572,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(children: [
@@ -295,8 +598,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             ]),
           ),
           const Divider(height: 1),
-
-          // Contenu
           if (deptIssues.isEmpty)
             Padding(
               padding: const EdgeInsets.all(20),
@@ -415,6 +716,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   Color _getStatusColor(IssueStatus status) {
     switch (status) {
       case IssueStatus.open:       return AppColors.error;
+      case IssueStatus.approved:   return AppColors.primary;
       case IssueStatus.inProgress: return AppColors.warning;
       case IssueStatus.resolved:   return AppColors.success;
     }

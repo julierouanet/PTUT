@@ -179,7 +179,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                              Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
                             ],
                           )),
                           DataCell(Text(user.email)),
@@ -295,10 +295,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   void _showUserDialog(User? user) {
     final l10n = AppLocalizations.of(context)!;
-    final isEdit   = user != null;
-    final nameCtrl  = TextEditingController(text: user?.name ?? '');
-    final emailCtrl = TextEditingController(text: user?.email ?? '');
-    final phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    final isEdit        = user != null;
+    final firstNameCtrl = TextEditingController(text: user?.firstName ?? '');
+    final lastNameCtrl  = TextEditingController(text: user?.lastName ?? '');
+    final emailCtrl     = TextEditingController(text: user?.email ?? '');
+    final phoneCtrl     = TextEditingController(text: user?.phone ?? '');
     final passCtrl  = TextEditingController();
     String selectedRole       = user?.role.name ?? UserRole.hospitalStaff.name;
     String selectedDepartment = user?.department ?? 'IT';
@@ -326,7 +327,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(controller: nameCtrl,  decoration: InputDecoration(labelText: l10n.usersFullName, prefixIcon: const Icon(Icons.person))),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: firstNameCtrl,
+                        decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: lastNameCtrl,
+                        decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: l10n.usersEmailLabel, prefixIcon: const Icon(Icons.email))),
                 const SizedBox(height: 12),
@@ -362,13 +379,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
+                          if (firstNameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
                           if (!isEdit && passCtrl.text.isEmpty) return;
+                          final fullName = '${firstNameCtrl.text.trim()} ${lastNameCtrl.text.trim()}'.trim();
                           final data = {
-                            'name':       nameCtrl.text,
-                            'email':      emailCtrl.text,
-                            'department': selectedDepartment,
-                            'role':       selectedRole,
+                            'first_name':  firstNameCtrl.text.trim(),
+                            'last_name':   lastNameCtrl.text.trim(),
+                            'name':        fullName,
+                            'email':       emailCtrl.text,
+                            'department':  selectedDepartment,
+                            'role':        selectedRole,
                             if (phoneCtrl.text.isNotEmpty) 'phone': phoneCtrl.text,
                             if (passCtrl.text.isNotEmpty)  'password': passCtrl.text,
                           };

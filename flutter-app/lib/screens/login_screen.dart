@@ -73,6 +73,17 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _error;
 
   @override
+  void initState() {
+    super.initState();
+    // Afficher le message de session expiree si present
+    final sessionMsg = AuthService().sessionExpiredMessage;
+    if (sessionMsg != null) {
+      _error = sessionMsg;
+      AuthService().clearSessionExpiredMessage();
+    }
+  }
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();

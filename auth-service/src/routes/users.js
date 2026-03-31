@@ -19,7 +19,7 @@ const requireAdmin = (req, res, next) => {
 router.get('/', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const users = db.prepare(
-    'SELECT id, name, email, department, role, phone, is_active, created_at FROM users ORDER BY name ASC'
+    'SELECT id, name, first_name, last_name, email, department, role, phone, is_active, created_at FROM users ORDER BY name ASC'
   ).all();
   res.json(users);
 });
@@ -64,7 +64,7 @@ router.post('/restore', verifyToken, requireAdmin, async (req, res) => {
 router.get('/:id', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const user = db.prepare(
-    'SELECT id, name, email, department, role, phone, is_active, created_at FROM users WHERE id = ?'
+    'SELECT id, name, first_name, last_name, email, department, role, phone, is_active, created_at FROM users WHERE id = ?'
   ).get(req.params.id);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   res.json(user);
@@ -72,10 +72,15 @@ router.get('/:id', verifyToken, requireAdmin, (req, res) => {
 
 // POST /api/users — créer un utilisateur (admin seulement)
 router.post('/', verifyToken, requireAdmin, async (req, res) => {
-  const { name, email, password, department, role, phone } = req.body;
+  const { first_name, last_name, name: rawName, email, password, department, role, phone } = req.body;
+
+  // Supporter first_name/last_name ou name legacy
+  const firstName = first_name || (rawName ? rawName.split(' ')[0] : '');
+  const lastName = last_name || (rawName ? rawName.split(' ').slice(1).join(' ') : '');
+  const name = `${firstName} ${lastName}`.trim();
 
   if (!name || !email || !password || !department || !role) {
-    return res.status(400).json({ error: 'Champs requis: name, email, password, department, role' });
+    return res.status(400).json({ error: 'Champs requis: first_name, last_name, email, password, department, role' });
   }
 
   const validRoles = ['hospitalStaff', 'supervisor', 'technician', 'admin'];
@@ -90,9 +95,9 @@ router.post('/', verifyToken, requireAdmin, async (req, res) => {
     const createdAt = new Date().toISOString();
 
     db.prepare(`
-      INSERT INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)
-    `).run(id, name, email, passwordHash, department, role, phone || null, createdAt);
+      INSERT INTO users (id, name, first_name, last_name, email, password_hash, department, role, phone, is_active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+    `).run(id, name, firstName, lastName, email, passwordHash, department, role, phone || null, createdAt);
 
     console.log(`[AUDIT] Utilisateur créé: ${email} (id: ${id}, rôle: ${role}) par ${req.user.email}`);
 
@@ -115,11 +120,18 @@ router.post('/', verifyToken, requireAdmin, async (req, res) => {
 
 // PUT /api/users/:id — modifier un utilisateur (admin seulement)
 router.put('/:id', verifyToken, requireAdmin, async (req, res) => {
-  const { name, email, password, department, role, phone } = req.body;
+  const { first_name, last_name, name: rawName, email, password, department, role, phone } = req.body;
   const db = getDb();
 
-  const existing = db.prepare('SELECT id, name, email, role, phone, department FROM users WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id, name, first_name, last_name, email, role, phone, department FROM users WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Calculer first_name/last_name et garder name synchronise
+  const newFirstName = first_name !== undefined ? first_name : (rawName ? rawName.split(' ')[0] : null);
+  const newLastName = last_name !== undefined ? last_name : (rawName ? rawName.split(' ').slice(1).join(' ') : null);
+  const computedName = (newFirstName || newLastName)
+    ? `${newFirstName || existing.first_name || ''} ${newLastName || existing.last_name || ''}`.trim()
+    : rawName;
 
   let passwordHash = undefined;
   if (password) {
@@ -131,24 +143,29 @@ router.put('/:id', verifyToken, requireAdmin, async (req, res) => {
       db.prepare(`
         UPDATE users
         SET name = COALESCE(?, name),
+            first_name = COALESCE(?, first_name),
+            last_name = COALESCE(?, last_name),
             email = COALESCE(?, email),
             password_hash = ?,
             department = COALESCE(?, department),
             role = COALESCE(?, role),
             phone = COALESCE(?, phone)
         WHERE id = ?
-      `).run(name, email, passwordHash, department, role, phone, req.params.id);
+      `).run(computedName, newFirstName, newLastName, email, passwordHash, department, role, phone, req.params.id);
     } else {
       db.prepare(`
         UPDATE users
         SET name = COALESCE(?, name),
+            first_name = COALESCE(?, first_name),
+            last_name = COALESCE(?, last_name),
             email = COALESCE(?, email),
             department = COALESCE(?, department),
             role = COALESCE(?, role),
             phone = COALESCE(?, phone)
         WHERE id = ?
-      `).run(name, email, department, role, phone, req.params.id);
+      `).run(computedName, newFirstName, newLastName, email, department, role, phone, req.params.id);
     }
+    const name = computedName;
 
     console.log(`[AUDIT] Utilisateur modifié: ${req.params.id} par ${req.user.email}`);
 

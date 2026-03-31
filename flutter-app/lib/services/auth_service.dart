@@ -14,11 +14,17 @@ class AuthService extends ChangeNotifier {
   User? _currentUser;
   bool _isLoading = false;
   String? _lastError;
+  String? _sessionExpiredMessage;
 
-  User?   get currentUser => _currentUser;
-  bool    get isLoggedIn  => _currentUser != null;
-  bool    get isLoading   => _isLoading;
-  String? get lastError   => _lastError;
+  User?   get currentUser          => _currentUser;
+  bool    get isLoggedIn           => _currentUser != null;
+  bool    get isLoading            => _isLoading;
+  String? get lastError            => _lastError;
+  String? get sessionExpiredMessage => _sessionExpiredMessage;
+
+  void clearSessionExpiredMessage() {
+    _sessionExpiredMessage = null;
+  }
 
   UserRole? get currentRole => _currentUser?.role;
 
@@ -87,6 +93,36 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Restauration de session (auto-login) ──────────────────────────────────
+
+  /// Tente de restaurer la session depuis un token stocké.
+  /// Appelle /api/auth/me et restaure l'utilisateur si le token est valide.
+  Future<bool> restoreSession() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final userData = await AuthApiService.instance.getMe();
+      if (userData != null) {
+        _currentUser = _userFromApiResponse(userData);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      }
+    } catch (_) {}
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
+  }
+
+  /// Appelé quand la session JWT expire (refresh token invalide).
+  void handleSessionExpired() {
+    _sessionExpiredMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
+    _currentUser = null;
+    notifyListeners();
+  }
+
   // ── Déconnexion ────────────────────────────────────────────────────────────
 
   Future<void> logoutApi() async {
@@ -104,10 +140,15 @@ class AuthService extends ChangeNotifier {
   // ── Profil utilisateur ─────────────────────────────────────────────────────
 
   /// Met à jour le profil de l'utilisateur connecté localement + via API.
-  Future<bool> updateProfile({String? name, String? email, String? phone, String? department}) async {
+  Future<bool> updateProfile({String? firstName, String? lastName, String? email, String? phone, String? department}) async {
     if (_currentUser == null) return false;
+    final newFirst = firstName ?? _currentUser!.firstName;
+    final newLast  = lastName  ?? _currentUser!.lastName;
+    final newName  = '$newFirst $newLast'.trim();
     _currentUser = _currentUser!.copyWith(
-      name:       name       ?? _currentUser!.name,
+      firstName:  newFirst,
+      lastName:   newLast,
+      name:       newName,
       email:      email      ?? _currentUser!.email,
       phone:      phone      ?? _currentUser!.phone,
       department: department ?? _currentUser!.department,
@@ -115,7 +156,9 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
     try {
       final data = <String, dynamic>{};
-      if (name != null)       data['name']       = name;
+      if (firstName != null)  data['first_name']  = firstName;
+      if (lastName != null)   data['last_name']   = lastName;
+      if (firstName != null || lastName != null) data['name'] = newName;
       if (email != null)      data['email']      = email;
       if (phone != null)      data['phone']      = phone;
       if (department != null) data['department'] = department;
@@ -155,12 +198,17 @@ class AuthService extends ChangeNotifier {
   // ── Conversion API → modèle ────────────────────────────────────────────────
 
   User _userFromApiResponse(Map<String, dynamic> data) {
-    final roleStr = data['role'] as String? ?? 'hospitalStaff';
-    final role    = _parseRole(roleStr);
+    final roleStr   = data['role'] as String? ?? 'hospitalStaff';
+    final role      = _parseRole(roleStr);
+    final name      = data['name']       as String? ?? '';
+    final firstName = data['first_name'] as String? ?? '';
+    final lastName  = data['last_name']  as String? ?? '';
 
     return User(
       id:          data['id']         as String? ?? '',
-      name:        data['name']       as String? ?? '',
+      name:        name,
+      firstName:   firstName.isNotEmpty ? firstName : (name.split(' ').first),
+      lastName:    lastName.isNotEmpty  ? lastName  : (name.split(' ').skip(1).join(' ')),
       email:       data['email']      as String? ?? '',
       department:  data['department'] as String? ?? '',
       role:        role,
