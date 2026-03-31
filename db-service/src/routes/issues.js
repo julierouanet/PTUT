@@ -34,17 +34,19 @@ router.get('/:id', verifyToken, (req, res) => {
 // POST /api/issues - signaler un incident
 router.post('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { id, equipment_id, equipment_name, department, type, description, reporter } = req.body;
+  const { id, equipment_id, equipment_name, department, type, description, reporter, reporter_id, reporter_email, urgency } = req.body;
 
   if (!id || !equipment_id || !equipment_name || !department || !type || !description || !reporter) {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 
+  const urgencyValue = urgency || 'Moyen';
+
   try {
     db.prepare(`
-      INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), 'Ouvert')
-    `).run(id, equipment_id, equipment_name, department, type, description, reporter);
+      INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'Ouvert')
+    `).run(id, equipment_id, equipment_name, department, type, description, reporter, reporter_id || null, reporter_email || null, urgencyValue);
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_issue', target_type: 'issue', target_id: id,
@@ -60,7 +62,7 @@ router.post('/', verifyToken, (req, res) => {
 // PUT /api/issues/:id - mettre à jour un incident
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
   const db = getDb();
-  const { status, assigned_technician, diagnosis, actions, parts_replaced } = req.body;
+  const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency } = req.body;
 
   const existing = db.prepare('SELECT id, equipment_name, status FROM issues WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
@@ -72,9 +74,10 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         diagnosis = COALESCE(?, diagnosis),
         actions = COALESCE(?, actions),
         parts_replaced = COALESCE(?, parts_replaced),
+        urgency = COALESCE(?, urgency),
         updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
-  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, req.params.id);
+  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, req.params.id);
 
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
 

@@ -1,37 +1,37 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_config.dart';
+import 'secure_token_storage.dart';
 
 /// Client HTTP de base — gère le token JWT et le refresh automatique.
+///
+/// Le stockage des tokens est délégué à [SecureTokenStorage] qui utilise
+/// SharedPreferences sur web et FlutterSecureStorage sur natif.
 class ApiClient {
   static const _accessTokenKey  = 'access_token';
   static const _refreshTokenKey = 'refresh_token';
 
-  static const _storage = FlutterSecureStorage();
-
   /// Callback appelé quand la session expire (refresh token invalide).
   static VoidCallback? onSessionExpired;
 
-  // ── Token storage (FlutterSecureStorage) ─────────────────────────────────
+  // ── Token storage ─────────────────────────────────────────────────────────
 
   static Future<void> saveTokens(String access, String refresh) async {
-    await _storage.write(key: _accessTokenKey, value: access);
-    await _storage.write(key: _refreshTokenKey, value: refresh);
+    await SecureTokenStorage.write(_accessTokenKey, access);
+    await SecureTokenStorage.write(_refreshTokenKey, refresh);
   }
 
   static Future<String?> getAccessToken() async {
-    return _storage.read(key: _accessTokenKey);
+    return SecureTokenStorage.read(_accessTokenKey);
   }
 
   static Future<String?> getRefreshToken() async {
-    return _storage.read(key: _refreshTokenKey);
+    return SecureTokenStorage.read(_refreshTokenKey);
   }
 
   static Future<void> clearTokens() async {
-    await _storage.delete(key: _accessTokenKey);
-    await _storage.delete(key: _refreshTokenKey);
+    await SecureTokenStorage.deleteAll([_accessTokenKey, _refreshTokenKey]);
   }
 
   /// Vérifie si des tokens sont stockés (pour l'auto-login).
@@ -157,7 +157,7 @@ class ApiClient {
         if (newRefresh != null) {
           await saveTokens(newAccess, newRefresh);
         } else {
-          await _storage.write(key: _accessTokenKey, value: newAccess);
+          await SecureTokenStorage.write(_accessTokenKey, newAccess);
         }
         return true;
       }

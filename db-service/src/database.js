@@ -91,6 +91,16 @@ function initTables() {
   // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
   try { db.exec('ALTER TABLE logs ADD COLUMN ip_address TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE logs ADD COLUMN user_agent TEXT'); } catch (_) {}
+
+  // Migration : ajout des colonnes reporter_id, reporter_email dans issues si elles n'existent pas
+  try { db.exec("ALTER TABLE issues ADD COLUMN reporter_id TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE issues ADD COLUMN reporter_email TEXT"); } catch (_) {}
+
+  // Migration : ajout de la colonne urgency dans issues
+  try { db.exec("ALTER TABLE issues ADD COLUMN urgency TEXT DEFAULT 'Moyen'"); } catch (_) {}
+
+  // Migration : ajout de la colonne next_revision_date dans equipment
+  try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
 }
 
 function closeDb() {

@@ -7,6 +7,7 @@ import '../services/db_api_service.dart';
 import '../models/issue.dart';
 import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/urgency_badge.dart';
 
 /// Issue tracking screen - view and manage all issues
 class IssueTrackingScreen extends StatefulWidget {
@@ -438,45 +439,83 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   }
 
   void _showValidateDialog(Issue issue) {
+    IssueUrgency selectedUrgency = issue.urgency;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Valider l\'incident'),
-        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Confirmer la validation de l\'incident sur :'),
-          const SizedBox(height: 8),
-          Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          const SizedBox(height: 12),
-          const Text(
-            'L\'incident passera au statut "En cours" et sera pris en charge par l\'équipe technique.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-        ]),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Annuler'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await _validateIssue(issue);
-            },
-            icon: const Icon(Icons.check_circle_outline, size: 16),
-            label: const Text('Confirmer'),
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
-          ),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Valider l\'incident'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Confirmer la validation de l\'incident sur :'),
+            const SizedBox(height: 8),
+            Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 16),
+            const Text('Niveau d\'urgence :', style: TextStyle(fontWeight: FontWeight.w500)),
+            const SizedBox(height: 8),
+            Row(
+              children: IssueUrgency.values.map((u) {
+                final sel = selectedUrgency == u;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setDialogState(() => selectedUrgency = u),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: sel ? _urgencyColorFor(u).withValues(alpha: 0.15) : AppColors.background,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: sel ? _urgencyColorFor(u) : AppColors.border, width: sel ? 2 : 1),
+                      ),
+                      child: UrgencyBadge(urgency: u, isCompact: true),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'L\'incident passera au statut "Approuvé" et sera assigné à l\'équipe technique.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ]),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annuler'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _validateIssue(issue, urgency: selectedUrgency);
+              },
+              icon: const Icon(Icons.check_circle_outline, size: 16),
+              label: const Text('Confirmer'),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<void> _validateIssue(Issue issue) async {
+  Color _urgencyColorFor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.faible:  return AppColors.textSecondary;
+      case IssueUrgency.moyen:   return AppColors.warning;
+      case IssueUrgency.urgent:  return AppColors.error;
+    }
+  }
+
+  Future<void> _validateIssue(Issue issue, {IssueUrgency? urgency}) async {
     setState(() => _isValidating = true);
     try {
-      await DbApiService.instance.updateIssue(issue.id, {'status': 'Approuvé'});
+      await DbApiService.instance.updateIssue(issue.id, {
+        'status': 'Approuvé',
+        if (urgency != null) 'urgency': urgency.displayName,
+      });
       await DataService().reloadIssues();
       if (mounted) {
         setState(() {});
@@ -654,7 +693,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             ]),
           ),
           const SizedBox(width: 8),
-          IssueStatusBadge(status: issue.status.displayName),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              IssueStatusBadge(status: issue.status.displayName),
+              const SizedBox(height: 2),
+              UrgencyBadge(urgency: issue.urgency, isCompact: true),
+            ],
+          ),
         ]),
       ),
     );
@@ -705,7 +751,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             ]),
           ),
           const SizedBox(width: 16),
-          IssueStatusBadge(status: issue.status.displayName),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              IssueStatusBadge(status: issue.status.displayName),
+              const SizedBox(height: 4),
+              UrgencyBadge(urgency: issue.urgency, isCompact: true),
+            ],
+          ),
           const SizedBox(width: 12),
           IconButton(icon: const Icon(Icons.arrow_forward_ios, size: 16), onPressed: () => _showIssueDetail(issue)),
         ]),
@@ -743,7 +796,11 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 ],
               ),
               const SizedBox(height: 12),
-              IssueStatusBadge(status: issue.status.displayName),
+              Row(children: [
+                IssueStatusBadge(status: issue.status.displayName),
+                const SizedBox(width: 8),
+                UrgencyBadge(urgency: issue.urgency),
+              ]),
               const SizedBox(height: 20),
               _buildDetailRow(l10n.issuesEquipment,   issue.equipmentName),
               _buildDetailRow(l10n.issuesType,         issue.type),

@@ -6,7 +6,9 @@ import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/issue.dart';
-import '../widgets/status_badge.dart';
+import '../models/equipment.dart';
+import '../widgets/urgency_badge.dart';
+import '../widgets/equipment_detail_dialog.dart';
 
 /// Technician update screen - two tabs: available incidents & my interventions
 class TechnicianUpdateScreen extends StatefulWidget {
@@ -42,10 +44,27 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   String get _currentTechnicianName => AuthService().currentUser?.fullName ?? '';
 
-  /// Incidents approuvés (non encore assignés) — disponibles à prendre en charge
-  List<Issue> get _availableIssues => DataService().issues
-      .where((i) => i.status == IssueStatus.approved)
-      .toList();
+  /// Incidents approuvés (non encore assignés) — disponibles à prendre en charge.
+  /// Triés par urgence décroissante : Urgent → Moyen → Faible.
+  List<Issue> get _availableIssues {
+    final list = DataService().issues
+        .where((i) => i.status == IssueStatus.approved)
+        .toList();
+    list.sort((a, b) => _urgencyOrder(b.urgency) - _urgencyOrder(a.urgency));
+    return list;
+  }
+
+  int _urgencyOrder(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.urgent: return 2;
+      case IssueUrgency.moyen:  return 1;
+      case IssueUrgency.faible: return 0;
+    }
+  }
+
+  /// Retourne l'équipement lié à un incident (null si introuvable)
+  Equipment? _equipmentFor(Issue issue) =>
+      DataService().equipment.where((e) => e.id == issue.equipmentId).firstOrNull;
 
   /// Incidents en cours assignés à ce technicien
   List<Issue> get _myIssues => DataService().issues
@@ -202,6 +221,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   Widget _buildAvailableIssueItem(Issue issue, bool isMobile) {
+    final eq = _equipmentFor(issue);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.border))),
@@ -211,10 +231,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryLight,
+                    color: _urgencyBgColor(issue.urgency),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Icon(Icons.warning_amber_rounded, color: AppColors.primary, size: 18),
+                  child: Icon(Icons.warning_amber_rounded, color: _urgencyFgColor(issue.urgency), size: 18),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -223,30 +243,53 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                     Text(issue.department, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   ]),
                 ),
-                IssueStatusBadge(status: issue.status.displayName),
+                UrgencyBadge(urgency: issue.urgency, isCompact: true),
               ]),
               const SizedBox(height: 8),
               Text(issue.type, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
               const SizedBox(height: 2),
               Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+              if (eq != null) ...[
+                const SizedBox(height: 4),
+                Wrap(spacing: 8, children: [
+                  if (eq.category.isNotEmpty) _miniChip(Icons.category, eq.category),
+                  if (eq.location.isNotEmpty) _miniChip(Icons.location_on, eq.location),
+                  if (eq.serialNumber.isNotEmpty) _miniChip(Icons.qr_code, eq.serialNumber),
+                ]),
+              ],
               const SizedBox(height: 4),
               Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showTakeOverDialog(issue),
-                  icon: const Icon(Icons.handyman_outlined, size: 16),
-                  label: const Text('Prendre en charge'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              Row(children: [
+                if (eq != null) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => EquipmentDetailDialog.show(context, eq),
+                      icon: const Icon(Icons.info_outline, size: 14),
+                      label: const Text('Fiche'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showTakeOverDialog(issue),
+                    icon: const Icon(Icons.handyman_outlined, size: 16),
+                    label: const Text('Prendre en charge'),
+                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                  ),
                 ),
-              ),
+              ]),
             ])
           : Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.warning_amber_rounded, color: AppColors.primary, size: 20),
+                decoration: BoxDecoration(
+                  color: _urgencyBgColor(issue.urgency),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.warning_amber_rounded, color: _urgencyFgColor(issue.urgency), size: 20),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -254,27 +297,44 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   Row(children: [
                     Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(4)),
-                      child: Text(issue.department, style: const TextStyle(fontSize: 11, color: AppColors.primary)),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(4)),
-                      child: Text(issue.type, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    ),
+                    _infoChip(issue.department, AppColors.primaryLight, AppColors.primary),
+                    const SizedBox(width: 6),
+                    _infoChip(issue.type, AppColors.background, AppColors.textSecondary),
+                    if (eq != null && eq.category.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      _infoChip(eq.category, AppColors.successLight, AppColors.success),
+                    ],
                   ]),
                   const SizedBox(height: 4),
                   Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Row(children: [
+                    Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    if (eq != null && eq.location.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      const Icon(Icons.location_on, size: 12, color: AppColors.textMuted),
+                      const SizedBox(width: 2),
+                      Text(eq.location, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                    if (eq != null && eq.serialNumber.isNotEmpty) ...[
+                      const SizedBox(width: 10),
+                      const Icon(Icons.qr_code, size: 12, color: AppColors.textMuted),
+                      const SizedBox(width: 2),
+                      Text(eq.serialNumber, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ]),
                 ]),
               ),
               const SizedBox(width: 16),
-              IssueStatusBadge(status: issue.status.displayName),
-              const SizedBox(width: 12),
+              UrgencyBadge(urgency: issue.urgency),
+              const SizedBox(width: 8),
+              if (eq != null)
+                OutlinedButton.icon(
+                  onPressed: () => EquipmentDetailDialog.show(context, eq),
+                  icon: const Icon(Icons.info_outline, size: 14),
+                  label: const Text('Fiche'),
+                ),
+              const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _showTakeOverDialog(issue),
                 icon: const Icon(Icons.handyman_outlined, size: 16),
@@ -284,6 +344,40 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             ]),
     );
   }
+
+  // ── Helpers visuels ──────────────────────────────────────────────────────────
+
+  Color _urgencyBgColor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.urgent: return AppColors.errorLight;
+      case IssueUrgency.moyen:  return AppColors.warningLight;
+      case IssueUrgency.faible: return AppColors.background;
+    }
+  }
+
+  Color _urgencyFgColor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.urgent: return AppColors.error;
+      case IssueUrgency.moyen:  return AppColors.warning;
+      case IssueUrgency.faible: return AppColors.textSecondary;
+    }
+  }
+
+  Widget _infoChip(String label, Color bg, Color fg) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+    child: Text(label, style: TextStyle(fontSize: 11, color: fg)),
+  );
+
+  Widget _miniChip(IconData icon, String label) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+    decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(4), border: Border.all(color: AppColors.border)),
+    child: Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 10, color: AppColors.textSecondary),
+      const SizedBox(width: 3),
+      Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+    ]),
+  );
 
   void _showTakeOverDialog(Issue issue) {
     showDialog(
@@ -426,7 +520,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(_selectedIssue!.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              Row(children: [
+                                Expanded(child: Text(_selectedIssue!.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                                UrgencyBadge(urgency: _selectedIssue!.urgency, isCompact: true),
+                              ]),
                               const SizedBox(height: 4),
                               Text(_selectedIssue!.description, style: const TextStyle(fontSize: 13)),
                               const SizedBox(height: 8),

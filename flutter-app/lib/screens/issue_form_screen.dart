@@ -7,7 +7,9 @@ import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/equipment.dart';
+import '../models/issue.dart';
 import '../utils/file_picker.dart';
+import '../widgets/urgency_badge.dart';
 
 /// Issue form screen - report a new equipment problem
 class IssueFormScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedEquipmentId;
   String _problemType = 'Panne';
+  IssueUrgency _urgency = IssueUrgency.moyen;
   final _descriptionController = TextEditingController();
 
   // Photo handling
@@ -205,6 +208,44 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                         child: Text(type),
                       )).toList(),
                       onChanged: (value) => setState(() => _problemType = value!),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Urgency
+                    const SizedBox(height: 24),
+                    Text(
+                      "Niveau d'urgence",
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: IssueUrgency.values.map((u) {
+                        final selected = _urgency == u;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: GestureDetector(
+                            onTap: () => setState(() => _urgency = u),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 150),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: selected ? _urgencyColor(u).withValues(alpha: 0.15) : AppColors.background,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: selected ? _urgencyColor(u) : AppColors.border,
+                                  width: selected ? 2 : 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  UrgencyBadge(urgency: u, isCompact: true),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
                     ),
                     const SizedBox(height: 24),
 
@@ -437,6 +478,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       'reporter':        currentUser?.fullName ?? 'Inconnu',
       'reporter_id':     currentUser?.id ?? '',
       'reporter_email':  currentUser?.email ?? '',
+      'urgency':         _urgency.displayName,
     };
 
     try {
@@ -456,6 +498,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       setState(() {
         _selectedEquipmentId = null;
         _problemType = l10n.issueFormBreakdown;
+        _urgency = IssueUrgency.moyen;
         _descriptionController.clear();
         _photos.clear();
       });
@@ -466,6 +509,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
+    }
+  }
+
+  Color _urgencyColor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.faible:  return AppColors.textSecondary;
+      case IssueUrgency.moyen:   return AppColors.warning;
+      case IssueUrgency.urgent:  return AppColors.error;
     }
   }
 }

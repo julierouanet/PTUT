@@ -5,6 +5,7 @@ import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/equipment_detail_dialog.dart';
 import '../services/config_service.dart';
 import '../services/auth_service.dart';
 
@@ -181,6 +182,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         DataColumn(label: Text(l10n.commonCategory)),
                         DataColumn(label: Text(l10n.equipmentSerialNumber)),
                         DataColumn(label: Text(l10n.commonStatus)),
+                        const DataColumn(label: Text('Révision')),
                         DataColumn(label: Text(l10n.commonActions)),
                       ],
                       rows: _filteredEquipment.map((eq) => DataRow(
@@ -197,6 +199,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           )),
                           DataCell(Text(eq.serialNumber)),
                           DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
+                          DataCell(_buildRevisionCell(eq.nextRevisionDate)),
                           DataCell(Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -286,6 +289,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     String selectedDepartment = existingEquipment?.department ?? _configService.departmentNames.first;
     String selectedCategory = existingEquipment?.category ?? _configService.categoryNames.first;
     EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
+    String? selectedRevisionDate = existingEquipment?.nextRevisionDate;
 
     showDialog(
       context: context,
@@ -413,6 +417,54 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           )).toList(),
                           onChanged: (v) => setDialogState(() => selectedStatus = v!),
                         ),
+                        const SizedBox(height: 16),
+
+                        // Date de prochaine révision
+                        InkWell(
+                          onTap: () async {
+                            final now = DateTime.now();
+                            final initial = selectedRevisionDate != null
+                                ? DateTime.tryParse(selectedRevisionDate!) ?? now
+                                : now;
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: initial.isAfter(now) ? initial : now.add(const Duration(days: 30)),
+                              firstDate: now,
+                              lastDate: DateTime(now.year + 10),
+                              locale: const Locale('fr'),
+                            );
+                            if (picked != null) {
+                              setDialogState(() => selectedRevisionDate = picked.toIso8601String().substring(0, 10));
+                            }
+                          },
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Prochaine révision',
+                              prefixIcon: Icon(Icons.event),
+                              suffixIcon: Icon(Icons.calendar_today, size: 18),
+                            ),
+                            child: Text(
+                              selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
+                                  ? _formatDateDisplay(selectedRevisionDate!)
+                                  : 'Sélectionner une date (optionnel)',
+                              style: TextStyle(
+                                color: selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
+                                    ? null
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => setDialogState(() => selectedRevisionDate = null),
+                              icon: const Icon(Icons.clear, size: 14),
+                              label: const Text('Supprimer la date'),
+                              style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -449,14 +501,15 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             }
 
                             final data = {
-                              'id':            isEdit ? existingEquipment.id : 'eq-${DateTime.now().millisecondsSinceEpoch}',
-                              'name':          nameController.text,
-                              'serial_number': serialController.text,
-                              'department':    selectedDepartment,
-                              'category':      selectedCategory,
-                              'supplier':      supplierController.text.isNotEmpty ? supplierController.text : null,
-                              'location':      locationController.text.isNotEmpty ? locationController.text : null,
-                              'status':        selectedStatus.displayName,
+                              'id':                 isEdit ? existingEquipment.id : 'eq-${DateTime.now().millisecondsSinceEpoch}',
+                              'name':               nameController.text,
+                              'serial_number':      serialController.text,
+                              'department':         selectedDepartment,
+                              'category':           selectedCategory,
+                              'supplier':           supplierController.text.isNotEmpty ? supplierController.text : null,
+                              'location':           locationController.text.isNotEmpty ? locationController.text : null,
+                              'status':             selectedStatus.displayName,
+                              'next_revision_date': selectedRevisionDate,
                             };
 
                             try {
@@ -585,96 +638,40 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     return Icon(icon, color: color, size: 18);
   }
 
-  void _showEquipmentDetail(Equipment eq) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 600),
-          padding: const EdgeInsets.all(24),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(child: Text(eq.name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (_authService.canManageEquipment)
-                          IconButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _showEditEquipmentDialog(eq);
-                            },
-                            icon: const Icon(Icons.edit, color: AppColors.primary),
-                            tooltip: l10n.commonEdit,
-                          ),
-                        IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                StatusBadge(status: eq.status.displayName),
-                const SizedBox(height: 24),
-                _buildDetailRow(l10n.commonDepartment, eq.department),
-                _buildDetailRow(l10n.commonCategory, eq.category),
-                _buildDetailRow(l10n.equipmentSerialNumber, eq.serialNumber),
-                _buildDetailRow(l10n.equipmentSupplier, eq.supplier),
-                _buildDetailRow(l10n.equipmentLocation, eq.location),
-                const SizedBox(height: 24),
-                if (eq.maintenanceHistory.isNotEmpty) ...[
-                  Text(l10n.equipmentMaintenanceHistory, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  ...eq.maintenanceHistory.map((m) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.build, color: AppColors.warning),
-                    title: Text(m.intervention),
-                    subtitle: Text('${m.date} - ${m.technician}'),
-                  )),
-                ],
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          widget.onNavigate(3, equipmentId: eq.id);
-                        },
-                        icon: const Icon(Icons.report_problem_outlined),
-                        label: Text(l10n.equipmentReportProblem),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+  /// Cellule date de révision — colorée selon la proximité
+  Widget _buildRevisionCell(String? iso) {
+    if (iso == null || iso.isEmpty) {
+      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
+    }
+    Color color = AppColors.textSecondary;
+    try {
+      final date = DateTime.parse(iso.substring(0, 10));
+      final diff = date.difference(DateTime.now()).inDays;
+      if (diff < 0)    color = AppColors.error;
+      else if (diff <= 30) color = AppColors.warning;
+      else                 color = AppColors.success;
+    } catch (_) {}
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.event, size: 13, color: color),
+      const SizedBox(width: 4),
+      Text(_formatDateDisplay(iso), style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+    ]);
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 140,
-            child: Text(label, style: const TextStyle(color: AppColors.textSecondary)),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
-        ],
-      ),
+  /// Formate une date ISO (2025-12-31) → "31/12/2025"
+  String _formatDateDisplay(String iso) {
+    if (iso.length < 10) return iso;
+    final parts = iso.substring(0, 10).split('-');
+    if (parts.length != 3) return iso;
+    return '${parts[2]}/${parts[1]}/${parts[0]}';
+  }
+
+  void _showEquipmentDetail(Equipment eq) {
+    EquipmentDetailDialog.show(
+      context,
+      eq,
+      onEdit: _authService.canManageEquipment ? () => _showEditEquipmentDialog(eq) : null,
+      onReport: () => widget.onNavigate(3, equipmentId: eq.id),
     );
   }
 }
