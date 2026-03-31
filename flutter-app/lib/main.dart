@@ -46,12 +46,16 @@ void main() async {
   };
 
   // Tenter l'auto-login si des tokens sont stockes
-  if (await ApiClient.hasStoredTokens()) {
-    final restored = await AuthService().restoreSession();
-    if (restored) {
-      await DataService().loadAll();
-      NotificationService().generateFromLoadedData();
+  try {
+    if (await ApiClient.hasStoredTokens()) {
+      final restored = await AuthService().restoreSession();
+      if (restored) {
+        await DataService().loadAll();
+        NotificationService().generateFromLoadedData();
+      }
     }
+  } catch (_) {
+    // En cas d'erreur (secure storage indisponible, etc.), afficher le login normalement
   }
 
   runApp(const EquipmentManagementApp());

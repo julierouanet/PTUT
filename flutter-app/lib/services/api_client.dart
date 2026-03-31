@@ -140,10 +140,8 @@ class ApiClient {
 
   static Future<bool> _tryRefresh() async {
     final refreshToken = await getRefreshToken();
-    if (refreshToken == null) {
-      onSessionExpired?.call();
-      return false;
-    }
+    // Pas de refresh token = jamais connecté ou déjà déconnecté → pas d'alerte
+    if (refreshToken == null) return false;
 
     try {
       final response = await http.post(
@@ -165,7 +163,7 @@ class ApiClient {
       }
     } catch (_) {}
 
-    // Refresh echoue → session expiree
+    // Refresh token existait mais le serveur l'a rejeté → session expirée
     onSessionExpired?.call();
     return false;
   }
