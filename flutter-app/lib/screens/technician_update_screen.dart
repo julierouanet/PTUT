@@ -176,6 +176,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 ),
                 text: 'Mes interventions',
               ),
+              const Tab(
+                icon: Icon(Icons.calendar_today_outlined, size: 18),
+                text: 'Agenda',
+              ),
             ],
           ),
         ),
@@ -187,6 +191,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             children: [
               _buildAvailableTab(l10n, isMobile),
               _buildMyInterventionsTab(l10n, isMobile),
+              _buildAgendaTab(isMobile),
             ],
           ),
         ),
