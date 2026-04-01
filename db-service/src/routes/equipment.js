@@ -5,6 +5,10 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
+const VALID_STATUSES_EQ   = ['Disponible', 'En service', 'En maintenance', 'Hors service'];
+const VALID_DEPARTMENTS   = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
+const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
+
 // GET /api/equipment - liste tous les équipements
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
@@ -81,6 +85,20 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     return res.status(400).json({ error: 'Champs requis: id, name, department, category' });
   }
 
+  // Validation format
+  if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 100) {
+    return res.status(400).json({ error: 'ID invalide (alphanumérique, max 100 caractères)' });
+  }
+  if (typeof name !== 'string' || name.length > 255) {
+    return res.status(400).json({ error: 'Nom invalide (max 255 caractères)' });
+  }
+  if (!VALID_DEPARTMENTS.includes(department)) {
+    return res.status(400).json({ error: 'Département invalide' });
+  }
+  if (status && !VALID_STATUSES_EQ.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES_EQ.join(', ')}` });
+  }
+
   try {
     db.prepare(`
       INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location, next_revision_date)
@@ -125,7 +143,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: name || existing.name,
-    details: { snapshot_before: existing },
+    details: { snapshot_before: { id: existing.id, name: existing.name, status: existing.status, department: existing.department } },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement mis à jour' });
@@ -138,12 +156,19 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
   db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
-  const reason = req.query.reason;
+  const rawReason = req.query.reason;
+  // Sanitisation : longueur max 200 chars, caractères simples uniquement
+  const reason = rawReason && typeof rawReason === 'string'
+    ? rawReason.replace(/[<>'"]/g, '').substring(0, 200)
+    : undefined;
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: existing.name,
-    details: { snapshot: existing, ...(reason ? { reason } : {}) },
+    details: {
+      snapshot: { id: existing.id, name: existing.name, department: existing.department, category: existing.category, status: existing.status },
+      ...(reason ? { reason } : {}),
+    },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement supprimé' });

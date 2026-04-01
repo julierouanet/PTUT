@@ -55,13 +55,15 @@ class ApiClient {
     final headers = await _authHeaders();
     if (extra != null) headers.addAll(extra);
 
-    var response = await http.get(Uri.parse(url), headers: headers);
+    var response = await http.get(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
-        response = await http.get(Uri.parse(url), headers: newHeaders);
+        response = await http.get(Uri.parse(url), headers: newHeaders)
+            .timeout(const Duration(seconds: 30));
       }
     }
     return response;
@@ -73,19 +75,21 @@ class ApiClient {
       Uri.parse(url),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode(body),
-    );
+    ).timeout(const Duration(seconds: 30));
   }
 
   /// POST avec authentification.
   static Future<http.Response> post(String url, Map<String, dynamic> body) async {
     final headers = await _authHeaders();
-    var response = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body));
+    var response = await http.post(Uri.parse(url), headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
-        response = await http.post(Uri.parse(url), headers: newHeaders, body: jsonEncode(body));
+        response = await http.post(Uri.parse(url), headers: newHeaders, body: jsonEncode(body))
+            .timeout(const Duration(seconds: 30));
       }
     }
     return response;
@@ -94,13 +98,15 @@ class ApiClient {
   /// PUT avec authentification.
   static Future<http.Response> put(String url, Map<String, dynamic> body) async {
     final headers = await _authHeaders();
-    var response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(body));
+    var response = await http.put(Uri.parse(url), headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
-        response = await http.put(Uri.parse(url), headers: newHeaders, body: jsonEncode(body));
+        response = await http.put(Uri.parse(url), headers: newHeaders, body: jsonEncode(body))
+            .timeout(const Duration(seconds: 30));
       }
     }
     return response;
@@ -109,13 +115,15 @@ class ApiClient {
   /// PATCH avec authentification.
   static Future<http.Response> patch(String url, Map<String, dynamic> body) async {
     final headers = await _authHeaders();
-    var response = await http.patch(Uri.parse(url), headers: headers, body: jsonEncode(body));
+    var response = await http.patch(Uri.parse(url), headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
-        response = await http.patch(Uri.parse(url), headers: newHeaders, body: jsonEncode(body));
+        response = await http.patch(Uri.parse(url), headers: newHeaders, body: jsonEncode(body))
+            .timeout(const Duration(seconds: 30));
       }
     }
     return response;
@@ -124,13 +132,15 @@ class ApiClient {
   /// DELETE avec authentification + retry sur token expiré.
   static Future<http.Response> delete(String url) async {
     final headers = await _authHeaders();
-    var response = await http.delete(Uri.parse(url), headers: headers);
+    var response = await http.delete(Uri.parse(url), headers: headers)
+        .timeout(const Duration(seconds: 30));
 
     if (response.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
-        response = await http.delete(Uri.parse(url), headers: newHeaders);
+        response = await http.delete(Uri.parse(url), headers: newHeaders)
+            .timeout(const Duration(seconds: 30));
       }
     }
     return response;
@@ -148,18 +158,20 @@ class ApiClient {
         Uri.parse(ApiConfig.refreshUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'refreshToken': refreshToken}),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final newAccess = data['accessToken'] as String;
+        final newAccess  = data['accessToken']  as String?;
         final newRefresh = data['refreshToken'] as String?;
-        if (newRefresh != null) {
+        // Les deux tokens sont obligatoires (rotation stricte)
+        if (newAccess != null && newRefresh != null) {
           await saveTokens(newAccess, newRefresh);
-        } else {
-          await SecureTokenStorage.write(_accessTokenKey, newAccess);
+          return true;
         }
-        return true;
+        // Réponse incomplète = session considérée expirée
+        onSessionExpired?.call();
+        return false;
       }
     } catch (_) {}
 

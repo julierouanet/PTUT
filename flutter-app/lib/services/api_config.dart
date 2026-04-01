@@ -21,6 +21,19 @@ class ApiConfig {
     defaultValue: 'https://DB.lucaslopvet.fr',
   );
 
+  /// Vérifie que les URLs de production utilisent HTTPS.
+  /// Appelé au démarrage de l'application.
+  static void assertSecureUrls() {
+    assert(
+      authBaseUrl.startsWith('https://') || authBaseUrl.startsWith('http://localhost'),
+      'AUTH_URL doit utiliser HTTPS en production (valeur actuelle: $authBaseUrl)',
+    );
+    assert(
+      dbBaseUrl.startsWith('https://') || dbBaseUrl.startsWith('http://localhost'),
+      'DB_URL doit utiliser HTTPS en production (valeur actuelle: $dbBaseUrl)',
+    );
+  }
+
   // Auth endpoints
   static String get loginUrl      => '$authBaseUrl/api/auth/login';
   static String get logoutUrl     => '$authBaseUrl/api/auth/logout';

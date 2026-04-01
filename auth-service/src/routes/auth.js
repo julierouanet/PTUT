@@ -32,14 +32,14 @@ router.post('/login', async (req, res) => {
   const user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(email);
 
   if (!user) {
-    console.log(`[AUTH] Échec login — email inconnu ou inactif: ${email}`);
+    console.log('[AUTH] Échec login — email inconnu ou inactif');
     sendAuthLog({ user_id: null, user_name: email, user_role: 'unknown', action: 'login_failed', details: { reason: 'email_inconnu' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
-    console.log(`[AUTH] Échec login — mauvais mot de passe: ${email}`);
+    console.log('[AUTH] Échec login — mot de passe incorrect');
     sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Identifiants invalides' });
   }
@@ -55,7 +55,7 @@ router.post('/login', async (req, res) => {
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS).toISOString();
   db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, refreshToken, expiresAt);
 
-  console.log(`[AUTH] Login réussi: ${email} (rôle: ${user.role})`);
+  console.log(`[AUTH] Login réussi (rôle: ${user.role})`);
   sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
 
   res.json({
@@ -103,7 +103,7 @@ router.post('/refresh', (req, res) => {
     // Nettoyage opportuniste
     cleanExpiredTokens(db);
 
-    console.log(`[AUTH] Token refresh réussi pour user ${user.email}`);
+    console.log('[AUTH] Token refresh réussi');
 
     res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
   } catch (err) {

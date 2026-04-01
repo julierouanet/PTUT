@@ -143,29 +143,41 @@ class AuthService extends ChangeNotifier {
   /// Met à jour le profil de l'utilisateur connecté localement + via API.
   Future<bool> updateProfile({String? firstName, String? lastName, String? email, String? phone, String? department}) async {
     if (_currentUser == null) return false;
+
+    // Sauvegarder l'état précédent pour rollback en cas d'erreur
+    final previousUser = _currentUser;
+
     final newFirst = firstName ?? _currentUser!.firstName;
     final newLast  = lastName  ?? _currentUser!.lastName;
     final newName  = '$newFirst $newLast'.trim();
-    _currentUser = _currentUser!.copyWith(
-      firstName:  newFirst,
-      lastName:   newLast,
-      name:       newName,
-      email:      email      ?? _currentUser!.email,
-      phone:      phone      ?? _currentUser!.phone,
-      department: department ?? _currentUser!.department,
-    );
-    notifyListeners();
+
+    final data = <String, dynamic>{};
+    if (firstName != null)  data['first_name']  = firstName;
+    if (lastName != null)   data['last_name']   = lastName;
+    if (firstName != null || lastName != null) data['name'] = newName;
+    if (email != null)      data['email']      = email;
+    if (phone != null)      data['phone']      = phone;
+    if (department != null) data['department'] = department;
+
     try {
-      final data = <String, dynamic>{};
-      if (firstName != null)  data['first_name']  = firstName;
-      if (lastName != null)   data['last_name']   = lastName;
-      if (firstName != null || lastName != null) data['name'] = newName;
-      if (email != null)      data['email']      = email;
-      if (phone != null)      data['phone']      = phone;
-      if (department != null) data['department'] = department;
+      // Appel API d'abord — on ne met à jour l'état local qu'après confirmation
       await AuthApiService.instance.updateUser(_currentUser!.id, data);
-    } catch (_) {}
-    return true;
+      _currentUser = _currentUser!.copyWith(
+        firstName:  newFirst,
+        lastName:   newLast,
+        name:       newName,
+        email:      email      ?? _currentUser!.email,
+        phone:      phone      ?? _currentUser!.phone,
+        department: department ?? _currentUser!.department,
+      );
+      notifyListeners();
+      return true;
+    } catch (_) {
+      // Rollback : restaurer l'état précédent
+      _currentUser = previousUser;
+      notifyListeners();
+      return false;
+    }
   }
 
   /// Change le mot de passe de l'utilisateur connecté via API.

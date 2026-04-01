@@ -4,6 +4,13 @@ const { verifyToken } = require('../middleware/auth');
 
 const router = express.Router();
 
+// Liste blanche des permissions valides
+const VALID_PERMISSIONS = [
+  'viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
+  'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
+  'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
+];
+
 // Middleware admin
 const requireAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {
@@ -12,8 +19,8 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// GET /api/roles — tous les rôles avec leurs permissions
-router.get('/', verifyToken, (req, res) => {
+// GET /api/roles — tous les rôles avec leurs permissions (admin seulement)
+router.get('/', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   const roles = db.prepare('SELECT name, display_name, description, is_builtin, created_at FROM roles ORDER BY is_builtin DESC, name ASC').all();
   const result = roles.map(role => {
@@ -33,6 +40,11 @@ router.post('/', verifyToken, requireAdmin, (req, res) => {
   }
   if (!/^[a-zA-Z][a-zA-Z0-9_]*$/.test(name)) {
     return res.status(400).json({ error: 'Le nom du rôle ne doit contenir que des lettres, chiffres et underscores' });
+  }
+
+  const invalidPerms = permissions.filter(p => !VALID_PERMISSIONS.includes(p));
+  if (invalidPerms.length > 0) {
+    return res.status(400).json({ error: `Permissions invalides : ${invalidPerms.join(', ')}` });
   }
 
   const existing = db.prepare('SELECT name FROM roles WHERE name = ?').get(name);
@@ -66,6 +78,11 @@ router.put('/:name/permissions', verifyToken, requireAdmin, (req, res) => {
 
   if (!Array.isArray(permissions)) {
     return res.status(400).json({ error: 'permissions doit être un tableau' });
+  }
+
+  const invalidPerms = permissions.filter(p => !VALID_PERMISSIONS.includes(p));
+  if (invalidPerms.length > 0) {
+    return res.status(400).json({ error: `Permissions invalides : ${invalidPerms.join(', ')}` });
   }
 
   if (name === 'admin') {

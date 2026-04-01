@@ -263,7 +263,8 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   if (req.user.id === req.params.id) {
     return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
   }
-  const reason = req.query.reason;
+  let reason = req.query.reason;
+  if (reason && reason.length > 200) reason = reason.substring(0, 200);
   const target = db.prepare('SELECT id, name, role, email, department, phone FROM users WHERE id = ?').get(req.params.id);
   if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
 
@@ -290,6 +291,11 @@ router.post('/department-request', verifyToken, (req, res) => {
   const { requested_department } = req.body;
   if (!requested_department) {
     return res.status(400).json({ error: 'Département demandé requis' });
+  }
+
+  const VALID_DEPARTMENTS = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
+  if (!VALID_DEPARTMENTS.includes(requested_department)) {
+    return res.status(400).json({ error: 'Département invalide' });
   }
   const user = db.prepare('SELECT id, name, department FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });

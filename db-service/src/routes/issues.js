@@ -5,6 +5,10 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
+const VALID_STATUSES  = ['Ouvert', 'En cours', 'Résolu', 'Annulé'];
+const VALID_URGENCIES = ['Faible', 'Moyen', 'Urgent'];
+const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
+
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
@@ -41,6 +45,17 @@ router.post('/', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 
+  // Validation format
+  if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 100) {
+    return res.status(400).json({ error: 'ID invalide' });
+  }
+  if (description.length > 2000) {
+    return res.status(400).json({ error: 'Description trop longue (max 2000 caractères)' });
+  }
+  if (urgency && !VALID_URGENCIES.includes(urgency)) {
+    return res.status(400).json({ error: `Urgence invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
+  }
+
   const urgencyValue = urgency || 'Moyen';
 
   try {
@@ -65,8 +80,21 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   const db = getDb();
   const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency } = req.body;
 
-  const existing = db.prepare('SELECT id, equipment_name, status FROM issues WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id, equipment_name, status, department FROM issues WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // Un technicien ne peut modifier que les incidents de son propre département
+  if (req.user.role === 'technician' && req.user.department && existing.department !== req.user.department) {
+    return res.status(403).json({ error: 'Accès limité aux incidents de votre département' });
+  }
+
+  // Validation enum statut et urgence
+  if (status && !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(', ')}` });
+  }
+  if (urgency && !VALID_URGENCIES.includes(urgency)) {
+    return res.status(400).json({ error: `Urgence invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
+  }
 
   db.prepare(`
     UPDATE issues

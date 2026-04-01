@@ -27,13 +27,24 @@ const loginLimiter = rateLimit({
 });
 app.use('/api/auth/login', loginLimiter);
 
+// Rate limiter pour les endpoints d'écriture/administration
+const writeLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,
+  message: { error: 'Trop de requêtes. Réessayez dans une minute.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/users', writeLimiter);
+app.use('/api/roles', writeLimiter);
+
 app.use(cors({
   origin: function (origin, callback) {
     const allowed = [
       'https://app.lucaslopvet.fr',
       'https://dev.app.lucaslopvet.fr',
     ];
-    if (!origin || allowed.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
+    if (!origin || allowed.includes(origin) || /^http:\/\/localhost:(3000|3001|3002|5000|8080|4200|9000)$/.test(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
