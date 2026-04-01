@@ -424,6 +424,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       );
       await DataService().reloadUsers();
       await _loadDeptRequests();
+      if (mounted) setState(() {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(status == 'approved'
@@ -615,6 +616,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               await AuthApiService.instance.createUser(data);
                             }
                             await DataService().reloadUsers();
+                            if (mounted) setState(() {});
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -699,6 +701,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       final newActive = await AuthApiService.instance.toggleUserStatus(user.id);
       await DataService().reloadUsers();
+      if (mounted) setState(() {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(newActive ? l10n.usersAccountActivated : l10n.usersAccountDeactivated),
@@ -750,6 +753,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               try {
                 await AuthApiService.instance.deleteUser(user.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadUsers();
+                if (mounted) setState(() {});
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.usersDeleted),

@@ -303,8 +303,7 @@ router.post('/department-request', verifyToken, (req, res) => {
   if (existing) {
     return res.status(409).json({ error: 'Une demande est déjà en attente' });
   }
-  const { v4: uuidv4 } = require('uuid');
-  const id = uuidv4();
+  const id = crypto.randomUUID();
   db.prepare(`
     INSERT INTO department_change_requests (id, user_id, user_name, current_department, requested_department, status, created_at)
     VALUES (?, ?, ?, ?, ?, 'pending', ?)

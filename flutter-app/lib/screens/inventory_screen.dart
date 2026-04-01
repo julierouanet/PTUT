@@ -267,6 +267,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     await DbApiService.instance.createInventoryItem(data);
                   }
                   await DataService().reloadInventory();
+                  if (mounted) setState(() {});
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -310,6 +311,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               try {
                 await DbApiService.instance.deleteInventoryItem(item.id);
                 await DataService().reloadInventory();
+                if (mounted) setState(() {});
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.inventoryItemDeleted),

@@ -526,6 +526,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 await DbApiService.instance.createEquipment(data);
                               }
                               await DataService().reloadEquipment();
+                              if (mounted) setState(() {});
                               if (context.mounted) Navigator.pop(context);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -597,6 +598,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               try {
                 await DbApiService.instance.deleteEquipment(eq.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadEquipment();
+                if (mounted) setState(() {});
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.equipmentDeleted),
