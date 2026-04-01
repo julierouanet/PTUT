@@ -31,6 +31,9 @@ class DataService extends ChangeNotifier {
   /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
   Map<String, List<String>> sidebarOrder = {};
 
+  /// Config des rôles : nom du rôle → ensemble des permissions actives
+  Map<String, Set<String>> _rolePermissionsMap = {};
+
   bool isLoading = false;
   bool isLoaded  = false;
 
@@ -47,6 +50,7 @@ class DataService extends ChangeNotifier {
     await _loadInventory();
     await _loadUsers();
     await _loadSidebarConfig();
+    await _loadRolesConfig();
 
     isLoading = false;
     isLoaded  = true;
@@ -131,6 +135,37 @@ class DataService extends ChangeNotifier {
   Future<void> saveSidebarConfig(String role, List<String> order) async {
     await DbApiService.instance.updateSidebarConfig(role, order);
     sidebarOrder = Map.from(sidebarOrder)..[role] = order;
+    notifyListeners();
+  }
+
+  Future<void> _loadRolesConfig() async {
+    try {
+      final raw = await AuthApiService.instance.getRoles();
+      final map = <String, Set<String>>{};
+      for (final role in raw) {
+        final name = role['name'] as String;
+        final perms = (role['permissions'] as List?)?.cast<String>().toSet() ?? <String>{};
+        map[name] = perms;
+      }
+      _rolePermissionsMap = map;
+    } catch (e) {
+      debugPrint('DataService: roles config — fallback default ($e)');
+    }
+  }
+
+  /// Recharge la configuration des rôles depuis l'API.
+  Future<void> reloadRolesConfig() async {
+    await _loadRolesConfig();
+    notifyListeners();
+  }
+
+  /// Retourne les permissions configurées pour un rôle (null si non chargé).
+  Set<String>? permissionsForRole(String roleName) => _rolePermissionsMap[roleName];
+
+  /// Sauvegarde les permissions d'un rôle et met à jour la config locale.
+  Future<void> saveRolePermissions(String roleName, List<String> permissions) async {
+    await AuthApiService.instance.updateRolePermissions(roleName, permissions);
+    _rolePermissionsMap = Map.from(_rolePermissionsMap)..[roleName] = permissions.toSet();
     notifyListeners();
   }
 }

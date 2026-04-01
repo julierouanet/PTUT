@@ -80,6 +80,51 @@ function initTables() {
     }
     console.log(`[DB] Migration first_name/last_name: ${users.length} utilisateurs migrés`);
   }
+
+  // Tables des rôles et permissions
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS roles (
+      name TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      description TEXT,
+      is_builtin INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      role_name TEXT NOT NULL REFERENCES roles(name) ON DELETE CASCADE,
+      permission TEXT NOT NULL,
+      PRIMARY KEY (role_name, permission)
+    );
+  `);
+
+  // Seed des rôles intégrés (INSERT OR IGNORE pour idempotence)
+  const builtinRoles = [
+    { name: 'hospitalStaff', display_name: 'Personnel hospitalier', description: 'Médecins, infirmiers, techniciens de laboratoire', is_builtin: 1 },
+    { name: 'supervisor',    display_name: 'Superviseur',           description: 'Responsables de département',                        is_builtin: 1 },
+    { name: 'technician',   display_name: 'Technicien',            description: 'Équipe technique de maintenance',                     is_builtin: 1 },
+    { name: 'admin',        display_name: 'Administrateur ICT',     description: 'Service informatique',                               is_builtin: 1 },
+  ];
+  const insertRole = db.prepare('INSERT OR IGNORE INTO roles (name, display_name, description, is_builtin) VALUES (?, ?, ?, ?)');
+  for (const r of builtinRoles) {
+    insertRole.run(r.name, r.display_name, r.description, r.is_builtin);
+  }
+
+  // Seed des permissions par défaut (INSERT OR IGNORE)
+  const defaultPerms = {
+    hospitalStaff: ['viewEquipment', 'reportIssue', 'trackIssues'],
+    supervisor:    ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks'],
+    technician:    ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'],
+    admin:         ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
+                    'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
+                    'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory'],
+  };
+  const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
+  for (const [roleName, perms] of Object.entries(defaultPerms)) {
+    for (const perm of perms) {
+      insertPerm.run(roleName, perm);
+    }
+  }
 }
 
 /**

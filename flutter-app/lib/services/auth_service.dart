@@ -3,6 +3,7 @@ import '../models/user.dart';
 import '../models/user_role.dart';
 import '../data/mock_data.dart';
 import 'auth_api_service.dart';
+import 'data_service.dart';
 
 /// Service d'authentification — utilise l'API réelle en priorité,
 /// avec fallback sur les données mock si le serveur est inaccessible.
@@ -180,7 +181,15 @@ class AuthService extends ChangeNotifier {
 
   // ── Permissions ────────────────────────────────────────────────────────────
 
-  bool hasPermission(Permission permission)            => _currentUser?.hasPermission(permission) ?? false;
+  bool hasPermission(Permission permission) {
+    final user = _currentUser;
+    if (user == null) return false;
+    final dynamicPerms = DataService().permissionsForRole(user.role.name);
+    if (dynamicPerms != null && dynamicPerms.isNotEmpty) {
+      return dynamicPerms.contains(permission.name);
+    }
+    return user.hasPermission(permission);
+  }
   bool hasAllPermissions(List<Permission> permissions) => permissions.every(hasPermission);
   bool hasAnyPermission(List<Permission> permissions)  => permissions.any(hasPermission);
 

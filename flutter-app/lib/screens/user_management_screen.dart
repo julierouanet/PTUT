@@ -37,6 +37,31 @@ class _DeptRequest {
   );
 }
 
+/// Modèle léger pour un rôle avec ses permissions.
+class _RoleConfig {
+  final String name;
+  final String displayName;
+  final String description;
+  final bool isBuiltin;
+  final List<String> permissions;
+
+  const _RoleConfig({
+    required this.name,
+    required this.displayName,
+    required this.description,
+    required this.isBuiltin,
+    required this.permissions,
+  });
+
+  factory _RoleConfig.fromJson(Map<String, dynamic> j) => _RoleConfig(
+    name: j['name'] as String,
+    displayName: j['display_name'] as String,
+    description: j['description'] as String? ?? '',
+    isBuiltin: (j['is_builtin'] as int? ?? 0) == 1,
+    permissions: (j['permissions'] as List?)?.cast<String>() ?? [],
+  );
+}
+
 /// User management screen - Admin only
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -45,20 +70,37 @@ class UserManagementScreen extends StatefulWidget {
   State<UserManagementScreen> createState() => _UserManagementScreenState();
 }
 
-class _UserManagementScreenState extends State<UserManagementScreen> {
-  String _roleFilter = 'all'; // internal key
+class _UserManagementScreenState extends State<UserManagementScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  // ── Onglet Utilisateurs ──────────────────────────────────────────────────
+  String _roleFilter = 'all';
   String _searchTerm = '';
 
-  // Demandes de changement de département
   List<_DeptRequest> _deptRequests = [];
   bool _deptRequestsLoading = false;
   bool _deptRequestsExpanded = false;
 
+  // ── Onglet Rôles ─────────────────────────────────────────────────────────
+  List<_RoleConfig> _roles = [];
+  bool _rolesLoading = false;
+
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadDeptRequests();
+    _loadRoles();
   }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // ── Chargement données ────────────────────────────────────────────────────
 
   Future<void> _loadDeptRequests() async {
     setState(() => _deptRequestsLoading = true);
@@ -73,6 +115,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  Future<void> _loadRoles() async {
+    setState(() => _rolesLoading = true);
+    try {
+      final raw = await AuthApiService.instance.getRoles();
+      setState(() {
+        _roles = raw.map((j) => _RoleConfig.fromJson(j)).toList();
+        _rolesLoading = false;
+      });
+    } catch (_) {
+      setState(() => _rolesLoading = false);
+    }
+  }
+
   List<User> get _filteredUsers {
     return DataService().users.where((user) {
       final matchesSearch = user.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
@@ -82,9 +137,43 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }).toList();
   }
 
+  // ── Build principal ───────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
+    return Column(
+      children: [
+        Material(
+          color: Theme.of(context).colorScheme.surface,
+          elevation: 1,
+          child: TabBar(
+            controller: _tabController,
+            tabs: const [
+              Tab(icon: Icon(Icons.people_outline), text: 'Utilisateurs'),
+              Tab(icon: Icon(Icons.badge_outlined), text: 'Rôles'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildUsersTab(context, l10n),
+              _buildRolesTab(context),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 1 : UTILISATEURS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildUsersTab(BuildContext context, AppLocalizations l10n) {
     final users = DataService().users;
     final roleStats = {
       'all': users.length,
@@ -287,7 +376,508 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  // ── Demandes de changement de département ─────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 2 : RÔLES
+  // ══════════════════════════════════════════════════════════════════════════
+
+  /// Liste de toutes les permissions disponibles avec leur libellé.
+  static const List<MapEntry<String, String>> _allPermissions = [
+    MapEntry('viewEquipment',     'Consulter les équipements'),
+    MapEntry('reportIssue',       'Signaler un problème'),
+    MapEntry('trackIssues',       'Suivre les demandes'),
+    MapEntry('approveRequests',   'Approuver les demandes'),
+    MapEntry('assignTasks',       'Assigner les tâches'),
+    MapEntry('updateRepairs',     'Mettre à jour les réparations'),
+    MapEntry('registerParts',     'Enregistrer les pièces'),
+    MapEntry('manageEquipment',   'Gérer les équipements'),
+    MapEntry('manageUsers',       'Gérer les utilisateurs'),
+    MapEntry('manageDepartments', 'Gérer les départements'),
+    MapEntry('manageCategories',  'Gérer les catégories'),
+    MapEntry('generateReports',   'Générer des rapports'),
+    MapEntry('viewInventory',     'Consulter l\'inventaire'),
+  ];
+
+  Widget _buildRolesTab(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
+    return Align(
+      alignment: Alignment.topLeft,
+      child: SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16 : 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            if (isMobile) ...[
+              const Text('Gestion des rôles', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text('Créer des rôles et configurer leurs permissions', style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showCreateRoleDialog(),
+                  icon: const Icon(Icons.add, size: 18),
+                  label: const Text('Nouveau rôle'),
+                ),
+              ),
+            ] else
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Gestion des rôles', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                      SizedBox(height: 4),
+                      Text('Créer des rôles et configurer leurs permissions', style: TextStyle(color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () => _showCreateRoleDialog(),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Nouveau rôle'),
+                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 20),
+
+            // Info card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Les rôles intégrés (Personnel hospitalier, Superviseur, Technicien, Administrateur) peuvent avoir leurs permissions modifiées. Les rôles personnalisés peuvent être supprimés.',
+                      style: TextStyle(fontSize: 13, color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Liste des rôles
+            if (_rolesLoading)
+              const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()))
+            else if (_roles.isEmpty)
+              const Center(child: Padding(
+                padding: EdgeInsets.all(40),
+                child: Text('Aucun rôle chargé. Vérifiez la connexion au serveur.', style: TextStyle(color: AppColors.textSecondary)),
+              ))
+            else
+              ..._roles.map((role) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildRoleCard2(role),
+              )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoleCard2(_RoleConfig role) {
+    final color = _getRoleColorByName(role.name);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(role.isBuiltin ? Icons.lock_outline : Icons.badge_outlined, size: 14, color: color),
+                      const SizedBox(width: 6),
+                      Text(role.displayName, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (!role.isBuiltin)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.warningLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text('Personnalisé', style: TextStyle(fontSize: 11, color: AppColors.warning)),
+                  ),
+                const Spacer(),
+                TextButton.icon(
+                  onPressed: () => _showEditPermissionsDialog(role),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('Modifier les permissions'),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                ),
+                if (!role.isBuiltin)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: AppColors.error,
+                    tooltip: 'Supprimer ce rôle',
+                    onPressed: () => _confirmDeleteRole(role),
+                  ),
+              ],
+            ),
+            if (role.description.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(role.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ],
+            const SizedBox(height: 12),
+            const Text('Permissions actives :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            role.permissions.isEmpty
+                ? const Text('Aucune permission', style: TextStyle(color: AppColors.textMuted, fontSize: 12))
+                : Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: role.permissions.map((p) {
+                      final label = _allPermissions.where((e) => e.key == p).firstOrNull?.value ?? p;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppColors.successLight,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(label, style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w500)),
+                      );
+                    }).toList(),
+                  ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Dialogs Rôles ─────────────────────────────────────────────────────────
+
+  void _showCreateRoleDialog() {
+    final nameCtrl = TextEditingController();
+    final displayCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final selectedPerms = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title bar
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+                  decoration: const BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.badge_outlined, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      const Expanded(child: Text('Nouveau rôle personnalisé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                    ],
+                  ),
+                ),
+                // Body
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: nameCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Identifiant du rôle (ex: nurse)',
+                            helperText: 'Lettres, chiffres et underscores uniquement',
+                            prefixIcon: Icon(Icons.code),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: displayCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Nom affiché (ex: Infirmier)',
+                            prefixIcon: Icon(Icons.label_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: descCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'Description (optionnel)',
+                            prefixIcon: Icon(Icons.notes),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Permissions', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        ..._allPermissions.map((perm) => CheckboxListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          value: selectedPerms.contains(perm.key),
+                          title: Text(perm.value, style: const TextStyle(fontSize: 13)),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          onChanged: (v) => setDialog(() {
+                            if (v == true) selectedPerms.add(perm.key);
+                            else selectedPerms.remove(perm.key);
+                          }),
+                        )),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  ),
+                ),
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler'))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (nameCtrl.text.trim().isEmpty || displayCtrl.text.trim().isEmpty) return;
+                            try {
+                              await AuthApiService.instance.createRole({
+                                'name': nameCtrl.text.trim(),
+                                'display_name': displayCtrl.text.trim(),
+                                'description': descCtrl.text.trim(),
+                                'permissions': selectedPerms.toList(),
+                              });
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              await _loadRoles();
+                              await DataService().reloadRolesConfig();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                  content: Text('Rôle créé avec succès'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text('Erreur : $e'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            }
+                          },
+                          child: const Text('Créer'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showEditPermissionsDialog(_RoleConfig role) {
+    final currentPerms = Set<String>.from(role.permissions);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title bar
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+                  decoration: const BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.tune, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Permissions — ${role.displayName}',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            if (role.isBuiltin)
+                              const Text('Rôle intégré', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                    ],
+                  ),
+                ),
+                // Bulk actions
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
+                  child: Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => setDialog(() => currentPerms.addAll(_allPermissions.map((e) => e.key))),
+                        icon: const Icon(Icons.select_all, size: 16),
+                        label: const Text('Tout sélectionner', style: TextStyle(fontSize: 12)),
+                      ),
+                      TextButton.icon(
+                        onPressed: () => setDialog(() => currentPerms.clear()),
+                        icon: const Icon(Icons.deselect, size: 16),
+                        label: const Text('Tout désélectionner', style: TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+                // Permissions list
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                    child: Column(
+                      children: _allPermissions.map((perm) => CheckboxListTile(
+                        dense: true,
+                        value: currentPerms.contains(perm.key),
+                        title: Text(perm.value, style: const TextStyle(fontSize: 13)),
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (v) => setDialog(() {
+                          if (v == true) currentPerms.add(perm.key);
+                          else currentPerms.remove(perm.key);
+                        }),
+                      )).toList(),
+                    ),
+                  ),
+                ),
+                // Actions
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler'))),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              await DataService().saveRolePermissions(role.name, currentPerms.toList());
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              await _loadRoles();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text('Permissions de ${role.displayName} mises à jour'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            } catch (e) {
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                  content: Text('Erreur : $e'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                ));
+                              }
+                            }
+                          },
+                          child: const Text('Enregistrer'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteRole(_RoleConfig role) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Supprimer le rôle'),
+        content: Text('Supprimer le rôle "${role.displayName}" ? Cette action est irréversible.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AuthApiService.instance.deleteRole(role.name);
+      await _loadRoles();
+      await DataService().reloadRolesConfig();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Rôle "${role.displayName}" supprimé'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  Color _getRoleColorByName(String name) {
+    switch (name) {
+      case 'admin':         return AppColors.error;
+      case 'supervisor':    return AppColors.warning;
+      case 'technician':    return AppColors.success;
+      case 'hospitalStaff': return AppColors.primary;
+      default:              return Colors.purple;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 1 — SECTION DEMANDES DE DÉPARTEMENT
+  // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDeptRequestsSection() {
     final count = _deptRequests.length;
@@ -445,6 +1035,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // WIDGETS COMMUNS
+  // ══════════════════════════════════════════════════════════════════════════
+
   Widget _buildRoleCardWidget(String label, int count, IconData icon, Color color) {
     return Card(
       child: Padding(
@@ -509,6 +1103,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       case UserRole.hospitalStaff: return AppColors.primary;
     }
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // DIALOGS UTILISATEURS
+  // ══════════════════════════════════════════════════════════════════════════
 
   void _showUserDialog(User? user) {
     final l10n = AppLocalizations.of(context)!;
@@ -684,7 +1282,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   side: BorderSide.none,
                 )).toList(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              const Text(
+                'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),

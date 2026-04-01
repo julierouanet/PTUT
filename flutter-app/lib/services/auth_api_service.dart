@@ -164,4 +164,45 @@ class AuthApiService {
       throw Exception(body['error'] ?? 'Erreur résolution demande');
     }
   }
+
+  // ── Gestion des rôles ─────────────────────────────────────────────────────
+
+  /// Récupère tous les rôles avec leurs permissions.
+  Future<List<Map<String, dynamic>>> getRoles() async {
+    final response = await ApiClient.get(ApiConfig.rolesUrl);
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Crée un rôle personnalisé (admin seulement).
+  Future<Map<String, dynamic>> createRole(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.rolesUrl, data);
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur création rôle');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Met à jour les permissions d'un rôle (admin seulement).
+  Future<void> updateRolePermissions(String roleName, List<String> permissions) async {
+    final url = '${ApiConfig.rolesUrl}/$roleName/permissions';
+    final response = await ApiClient.put(url, {'permissions': permissions});
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur mise à jour permissions');
+    }
+  }
+
+  /// Supprime un rôle personnalisé (admin seulement).
+  Future<void> deleteRole(String roleName) async {
+    final url = '${ApiConfig.rolesUrl}/$roleName';
+    final response = await ApiClient.delete(url);
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur suppression rôle');
+    }
+  }
 }

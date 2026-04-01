@@ -40,4 +40,5 @@ class ApiConfig {
 
   // Auth extra endpoints
   static String get deptRequestsUrl => '$authBaseUrl/api/users/department-requests';
+  static String get rolesUrl => '$authBaseUrl/api/roles';
 }
