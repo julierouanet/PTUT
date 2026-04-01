@@ -282,12 +282,15 @@ class _HubModuleCard extends StatelessWidget {
                           children: [
                             Icon(p.icon, size: 13, color: color),
                             const SizedBox(width: 5),
-                            Text(
-                              p.name,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: color,
-                                fontWeight: FontWeight.w500,
+                            Flexible(
+                              child: Text(
+                                p.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: color,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
