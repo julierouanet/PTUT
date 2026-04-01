@@ -68,6 +68,10 @@ router.put('/:name/permissions', verifyToken, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'permissions doit être un tableau' });
   }
 
+  if (name === 'admin') {
+    return res.status(403).json({ error: 'Les permissions du rôle administrateur ne peuvent pas être modifiées' });
+  }
+
   const role = db.prepare('SELECT name FROM roles WHERE name = ?').get(name);
   if (!role) return res.status(404).json({ error: 'Rôle introuvable' });
 

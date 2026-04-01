@@ -184,6 +184,8 @@ class AuthService extends ChangeNotifier {
   bool hasPermission(Permission permission) {
     final user = _currentUser;
     if (user == null) return false;
+    // L'admin a toujours accès à tout, sans exception
+    if (user.role == UserRole.admin) return true;
     final dynamicPerms = DataService().permissionsForRole(user.role.name);
     if (dynamicPerms != null && dynamicPerms.isNotEmpty) {
       return dynamicPerms.contains(permission.name);

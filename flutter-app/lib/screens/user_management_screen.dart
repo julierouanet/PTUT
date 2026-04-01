@@ -523,12 +523,23 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                     child: const Text('Personnalisé', style: TextStyle(fontSize: 11, color: AppColors.warning)),
                   ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: () => _showEditPermissionsDialog(role),
-                  icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Modifier les permissions'),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                ),
+                if (role.name == 'admin')
+                  Tooltip(
+                    message: 'L\'administrateur a toujours accès à toutes les permissions',
+                    child: TextButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.lock, size: 16),
+                      label: const Text('Toutes les permissions'),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                    ),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: () => _showEditPermissionsDialog(role),
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('Modifier les permissions'),
+                    style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                  ),
                 if (!role.isBuiltin)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
