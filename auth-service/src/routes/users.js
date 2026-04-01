@@ -282,4 +282,81 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   res.json({ message: 'Utilisateur supprimé' });
 });
 
+// ── Demandes de changement de département ──────────────────────────────────
+
+// POST /api/users/department-request  (user connecté)
+router.post('/department-request', verifyToken, (req, res) => {
+  const db = getDb();
+  const { requested_department } = req.body;
+  if (!requested_department) {
+    return res.status(400).json({ error: 'Département demandé requis' });
+  }
+  const user = db.prepare('SELECT id, name, department FROM users WHERE id = ?').get(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  if (user.department === requested_department) {
+    return res.status(400).json({ error: 'Vous êtes déjà dans ce département' });
+  }
+  // Vérifier qu'il n'y a pas déjà une demande en attente
+  const existing = db.prepare(
+    "SELECT id FROM department_change_requests WHERE user_id = ? AND status = 'pending'"
+  ).get(req.user.id);
+  if (existing) {
+    return res.status(409).json({ error: 'Une demande est déjà en attente' });
+  }
+  const { v4: uuidv4 } = require('uuid');
+  const id = uuidv4();
+  db.prepare(`
+    INSERT INTO department_change_requests (id, user_id, user_name, current_department, requested_department, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
+  `).run(id, user.id, user.name, user.department, requested_department, new Date().toISOString());
+  res.status(201).json({ id, message: 'Demande envoyée, en attente de validation admin' });
+});
+
+// GET /api/users/department-requests  (admin seulement)
+router.get('/department-requests', verifyToken, requireAdmin, (req, res) => {
+  const db = getDb();
+  const { status } = req.query;
+  let query = 'SELECT * FROM department_change_requests';
+  const params = [];
+  if (status) { query += ' WHERE status = ?'; params.push(status); }
+  query += ' ORDER BY created_at DESC';
+  const rows = db.prepare(query).all(...params);
+  res.json(rows);
+});
+
+// PUT /api/users/department-requests/:id  (admin approuve ou rejette)
+router.put('/department-requests/:id', verifyToken, requireAdmin, (req, res) => {
+  const db = getDb();
+  const { status, admin_note } = req.body;
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide (approved | rejected)' });
+  }
+  const request = db.prepare('SELECT * FROM department_change_requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Demande introuvable' });
+  if (request.status !== 'pending') {
+    return res.status(409).json({ error: 'Demande déjà traitée' });
+  }
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE department_change_requests
+    SET status = ?, admin_id = ?, admin_note = ?, resolved_at = ?
+    WHERE id = ?
+  `).run(status, req.user.id, admin_note || null, now, req.params.id);
+
+  if (status === 'approved') {
+    db.prepare('UPDATE users SET department = ? WHERE id = ?')
+      .run(request.requested_department, request.user_id);
+  }
+
+  sendLog({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    action: status === 'approved' ? 'approve_dept_request' : 'reject_dept_request',
+    target_type: 'user', target_id: request.user_id, target_name: request.user_name,
+    details: { from: request.current_department, to: request.requested_department, admin_note },
+    ...reqMeta(req),
+  });
+
+  res.json({ message: status === 'approved' ? 'Demande approuvée, département mis à jour' : 'Demande rejetée' });
+});
+
 module.exports = router;

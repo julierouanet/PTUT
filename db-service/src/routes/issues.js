@@ -8,13 +8,14 @@ const router = express.Router();
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { status, department } = req.query;
+  const { status, department, equipment_id } = req.query;
 
   let query = 'SELECT * FROM issues WHERE 1=1';
   const params = [];
 
-  if (status)     { query += ' AND status = ?';     params.push(status); }
-  if (department) { query += ' AND department = ?'; params.push(department); }
+  if (status)       { query += ' AND status = ?';       params.push(status); }
+  if (department)   { query += ' AND department = ?';   params.push(department); }
+  if (equipment_id) { query += ' AND equipment_id = ?'; params.push(equipment_id); }
 
   query += ' ORDER BY created_at DESC';
 

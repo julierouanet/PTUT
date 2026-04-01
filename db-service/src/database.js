@@ -101,6 +101,16 @@ function initTables() {
 
   // Migration : ajout de la colonne next_revision_date dans equipment
   try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
+
+  // Table de configuration de la sidebar par rôle
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sidebar_config (
+      role        TEXT NOT NULL,
+      screen_type TEXT NOT NULL,
+      sort_order  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (role, screen_type)
+    );
+  `);
 }
 
 function closeDb() {

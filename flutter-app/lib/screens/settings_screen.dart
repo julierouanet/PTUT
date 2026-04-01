@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/config_service.dart';
+import '../services/data_service.dart';
+import '../models/user_role.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,11 +16,32 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   late TabController _tabController;
   final ConfigService _configService = ConfigService();
 
+  // État de l'onglet "Ordre du menu"
+  UserRole _selectedRole = UserRole.admin;
+  late Map<String, List<String>> _sidebarOrder;
+  bool _sidebarSaving = false;
+
+  /// Noms lisibles des types d'écrans
+  static const Map<String, String> _screenLabels = {
+    'dashboard':     'Tableau de bord',
+    'equipment':     'Équipements',
+    'issueTracking': 'Suivi incidents',
+    'issueForm':     'Signaler incident',
+    'technician':    'Technicien',
+    'inventory':     'Inventaire',
+    'reports':       'Rapports',
+    'users':         'Utilisateurs',
+    'settings':      'Paramètres',
+    'logs':          'Journaux',
+  };
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _configService.addListener(_onConfigChange);
+    // Charger la config actuelle depuis DataService (déjà chargée au login)
+    _sidebarOrder = Map.from(DataService().sidebarOrder);
   }
 
   @override
@@ -84,6 +107,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 const SizedBox(width: 8),
                 Text(l10n.settingsCategoriesTab(_configService.categories.length)),
               ])),
+              const Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.menu, size: 18),
+                SizedBox(width: 8),
+                Text('Ordre du menu'),
+              ])),
             ],
           ),
         ),
@@ -91,7 +119,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildDepartmentsTab(), _buildCategoriesTab()],
+            children: [_buildDepartmentsTab(), _buildCategoriesTab(), _buildSidebarOrderTab()],
           ),
         ),
       ],
@@ -246,6 +274,147 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // ── Onglet : ordre du menu ─────────────────────────────────────────────────
+
+  Widget _buildSidebarOrderTab() {
+    // Ordre actuel pour le rôle sélectionné (ou ordre par défaut)
+    final defaultOrder = ['dashboard', 'equipment', 'issueTracking', 'issueForm',
+      'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
+    final currentOrder = List<String>.from(
+      _sidebarOrder[_selectedRole.name] ?? defaultOrder,
+    );
+    // Ajouter les items manquants à la fin
+    for (final s in defaultOrder) {
+      if (!currentOrder.contains(s)) currentOrder.add(s);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        children: [
+          // Sélecteur de rôle
+          Row(
+            children: [
+              const Icon(Icons.badge_outlined, color: AppColors.primary),
+              const SizedBox(width: 12),
+              const Text('Configurer pour le rôle :', style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<UserRole>(
+                  value: _selectedRole,
+                  decoration: const InputDecoration(isDense: true),
+                  items: UserRole.values.map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(r.displayName),
+                  )).toList(),
+                  onChanged: (r) { if (r != null) setState(() => _selectedRole = r); },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Faites glisser les éléments pour changer leur ordre dans la barre de navigation.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Card(
+              child: ReorderableListView.builder(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: currentOrder.length,
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (newIndex > oldIndex) newIndex--;
+                    final item = currentOrder.removeAt(oldIndex);
+                    currentOrder.insert(newIndex, item);
+                    _sidebarOrder = Map.from(_sidebarOrder)..[_selectedRole.name] = List.from(currentOrder);
+                  });
+                },
+                itemBuilder: (context, index) {
+                  final screenType = currentOrder[index];
+                  final label = _screenLabels[screenType] ?? screenType;
+                  return ListTile(
+                    key: ValueKey(screenType),
+                    leading: Container(
+                      width: 28, height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+                    trailing: const Icon(Icons.drag_handle, color: AppColors.textSecondary),
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _sidebarOrder = Map.from(_sidebarOrder)..remove(_selectedRole.name);
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Ordre par défaut restauré (non encore sauvegardé)'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                },
+                icon: const Icon(Icons.restore),
+                label: const Text('Réinitialiser'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _sidebarSaving ? null : () async {
+                  setState(() => _sidebarSaving = true);
+                  try {
+                    final order = List<String>.from(
+                      _sidebarOrder[_selectedRole.name] ?? ['dashboard', 'equipment', 'issueTracking', 'issueForm', 'technician', 'inventory', 'reports', 'users', 'settings', 'logs'],
+                    );
+                    await DataService().saveSidebarConfig(_selectedRole.name, order);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Ordre du menu sauvegardé'),
+                        backgroundColor: AppColors.success,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text('Erreur : $e'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  } finally {
+                    if (mounted) setState(() => _sidebarSaving = false);
+                  }
+                },
+                icon: _sidebarSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save),
+                label: const Text('Sauvegarder'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 16),
         ],
       ),
     );

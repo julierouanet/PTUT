@@ -28,6 +28,9 @@ class DataService extends ChangeNotifier {
   List<InventoryItem> inventory = [];
   List<User>          users     = [];
 
+  /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
+  Map<String, List<String>> sidebarOrder = {};
+
   bool isLoading = false;
   bool isLoaded  = false;
 
@@ -43,6 +46,7 @@ class DataService extends ChangeNotifier {
     await _loadIssues();
     await _loadInventory();
     await _loadUsers();
+    await _loadSidebarConfig();
 
     isLoading = false;
     isLoaded  = true;
@@ -106,6 +110,27 @@ class DataService extends ChangeNotifier {
   /// Recharge uniquement les utilisateurs depuis l'API.
   Future<void> reloadUsers() async {
     await _loadUsers();
+    notifyListeners();
+  }
+
+  Future<void> _loadSidebarConfig() async {
+    try {
+      final roles = ['admin', 'supervisor', 'technician', 'hospitalStaff'];
+      final results = <String, List<String>>{};
+      for (final role in roles) {
+        final order = await DbApiService.instance.getSidebarConfig(role);
+        if (order.isNotEmpty) results[role] = order;
+      }
+      sidebarOrder = results;
+    } catch (e) {
+      debugPrint('DataService: sidebar config — fallback default ($e)');
+    }
+  }
+
+  /// Sauvegarde l'ordre de la sidebar pour [role] et notifie les listeners.
+  Future<void> saveSidebarConfig(String role, List<String> order) async {
+    await DbApiService.instance.updateSidebarConfig(role, order);
+    sidebarOrder = Map.from(sidebarOrder)..[role] = order;
     notifyListeners();
   }
 }

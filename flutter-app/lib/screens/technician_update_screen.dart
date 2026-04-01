@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -10,7 +11,22 @@ import '../models/equipment.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 
-/// Technician update screen - two tabs: available incidents & my interventions
+/// Événement unifié pour l'onglet Agenda du technicien.
+class _AgendaEvent {
+  final String title;       // Nom de l'équipement
+  final String subtitle;    // Type d'incident / intervention
+  final String type;        // 'in_progress' | 'resolved' | 'maintenance' | 'future_maintenance'
+  final DateTime date;
+
+  const _AgendaEvent({
+    required this.title,
+    required this.subtitle,
+    required this.type,
+    required this.date,
+  });
+}
+
+/// Technician update screen - three tabs: available incidents, my interventions, agenda
 class TechnicianUpdateScreen extends StatefulWidget {
   final String? issueId;
 
@@ -27,6 +43,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // ── Onglet "Mes interventions" ──────────────────────────────────────────────
   String? _selectedIssueId;
   String _repairStatus = 'Diagnostic en cours';
+
+  // ── Onglet "Agenda" ─────────────────────────────────────────────────────────
+  DateTime _focusedDay = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
   final _diagnosisController = TextEditingController();
   final _actionsController   = TextEditingController();
   final _partsController     = TextEditingController();
@@ -85,7 +105,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     super.initState();
     // Si on arrive avec un issueId (depuis détail), ouvrir directement "Mes interventions"
     final startTab = widget.issueId != null ? 1 : 0;
-    _tabController = TabController(length: 2, vsync: this, initialIndex: startTab);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: startTab);
     if (widget.issueId != null) {
       _selectedIssueId = widget.issueId;
       _loadIssueData();

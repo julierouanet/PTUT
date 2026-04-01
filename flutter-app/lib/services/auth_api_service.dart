@@ -122,4 +122,46 @@ class AuthApiService {
       throw Exception(body['error'] ?? 'Erreur suppression utilisateur');
     }
   }
+
+  // ── Demandes de changement de département ─────────────────────────────────
+
+  /// Envoie une demande de changement de département (utilisateur connecté).
+  Future<void> requestDepartmentChange(String requestedDepartment) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.usersUrl}/department-request',
+      {'requested_department': requestedDepartment},
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur lors de la demande');
+    }
+  }
+
+  /// Récupère toutes les demandes (admin seulement). [status] = pending | approved | rejected
+  Future<List<Map<String, dynamic>>> getDepartmentRequests({String? status}) async {
+    var url = ApiConfig.deptRequestsUrl;
+    if (status != null) url += '?status=${Uri.encodeComponent(status)}';
+    final response = await ApiClient.get(url);
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}');
+    }
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Approuve ou rejette une demande (admin seulement).
+  Future<void> resolveDepartmentRequest(
+    String requestId, {
+    required String status,
+    String? adminNote,
+  }) async {
+    final url = '${ApiConfig.deptRequestsUrl}/$requestId';
+    final response = await ApiClient.put(url, {
+      'status': status,
+      if (adminNote != null && adminNote.isNotEmpty) 'admin_note': adminNote,
+    });
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur résolution demande');
+    }
+  }
 }

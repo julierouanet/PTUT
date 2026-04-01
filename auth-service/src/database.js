@@ -46,6 +46,24 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id);
   `);
 
+  // Table des demandes de changement de département
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS department_change_requests (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      user_name TEXT NOT NULL,
+      current_department TEXT NOT NULL,
+      requested_department TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      admin_id TEXT,
+      admin_note TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      resolved_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_dept_req_user   ON department_change_requests(user_id);
+    CREATE INDEX IF NOT EXISTS idx_dept_req_status ON department_change_requests(status);
+  `);
+
   // Migration : ajout des colonnes first_name et last_name
   const cols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
   if (!cols.includes('first_name')) {

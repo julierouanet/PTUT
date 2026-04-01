@@ -27,7 +27,12 @@
       "Bash(npm test:*)",
       "Bash(npm install:*)",
       "Bash(npx jest:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(find C:UsersPersoDesktopPTUT-1 -maxdepth 3 -type f \\\\\\(-name *.md -o -name *.txt \\\\\\) ! -path */node_modules/* ! -path */.git/* ! -path */flutter-app/*)",
+      "Bash(xargs ls:*)",
+      "Bash(find C:UsersPersoDesktopPTUT-1 -maxdepth 2 -type f ! -path */node_modules/* ! -path */.git/* ! -path */flutter-app/* -name *)",
+      "Bash(grep -E \"\\\\.\\(txt|md|doc|docx\\)$\")",
+      "Bash(find C:UsersPersoDesktopPTUT-1 -type d -maxdepth 2 ! -path */node_modules/* ! -path */.git/*)"
     ]
   }
 }

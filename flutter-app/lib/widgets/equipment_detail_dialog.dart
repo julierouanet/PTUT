@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../models/equipment.dart';
 import '../theme/app_theme.dart';
 import 'status_badge.dart';
+import 'equipment_history_dialog.dart';
 
 /// Dialogue de détail d'un équipement — widget réutilisable.
 ///
@@ -124,22 +125,29 @@ class EquipmentDetailDialog extends StatelessWidget {
                 const SizedBox(height: 8),
               ],
 
-              // ── Bouton "Signaler un problème" ────────────────────────────
-              if (onReport != null)
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          onReport!();
-                        },
-                        icon: const Icon(Icons.report_problem_outlined),
-                        label: Text(l10n.equipmentReportProblem),
-                      ),
-                    ),
-                  ],
+              // ── Boutons bas de page ──────────────────────────────────────
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                    icon: const Icon(Icons.history, size: 16),
+                    label: const Text('Historique'),
+                  ),
                 ),
+                if (onReport != null) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onReport!();
+                      },
+                      icon: const Icon(Icons.report_problem_outlined, size: 16),
+                      label: Text(l10n.equipmentReportProblem),
+                    ),
+                  ),
+                ],
+              ]),
             ],
           ),
         ),

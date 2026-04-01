@@ -83,12 +83,14 @@ class DbApiService {
   Future<List<Map<String, dynamic>>> getIssues({
     String? status,
     String? department,
+    String? equipmentId,
   }) async {
     var url = ApiConfig.issuesUrl;
     final params = <String>[];
-    if (status     != null) params.add('status=${Uri.encodeComponent(status)}');
-    if (department != null) params.add('department=${Uri.encodeComponent(department)}');
-    if (params.isNotEmpty)  url += '?${params.join('&')}';
+    if (status      != null) params.add('status=${Uri.encodeComponent(status)}');
+    if (department  != null) params.add('department=${Uri.encodeComponent(department)}');
+    if (equipmentId != null) params.add('equipment_id=${Uri.encodeComponent(equipmentId)}');
+    if (params.isNotEmpty)   url += '?${params.join('&')}';
 
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
@@ -241,6 +243,32 @@ class DbApiService {
     } catch (_) {
       return body;
     }
+  }
+
+  // ── CONFIGURATION SIDEBAR ─────────────────────────────────────────────────
+
+  /// Récupère l'ordre de la sidebar pour [role].
+  /// Retourne une liste de screen_type (strings) dans l'ordre configuré.
+  /// Si aucune config, retourne [].
+  Future<List<String>> getSidebarConfig(String role) async {
+    final url = '${ApiConfig.sidebarUrl}?role=${Uri.encodeComponent(role)}';
+    try {
+      final response = await ApiClient.get(url);
+      if (response.statusCode >= 400) return [];
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return List<String>.from(data['order'] as List? ?? []);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Sauvegarde l'ordre de la sidebar pour [role] (admin seulement).
+  Future<void> updateSidebarConfig(String role, List<String> order) async {
+    final response = await ApiClient.put(
+      ApiConfig.sidebarUrl,
+      {'role': role, 'order': order},
+    );
+    _checkStatus(response, ApiConfig.sidebarUrl);
   }
 }
 

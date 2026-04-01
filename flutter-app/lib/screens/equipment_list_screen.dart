@@ -6,6 +6,7 @@ import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
+import '../widgets/equipment_history_dialog.dart';
 import '../services/config_service.dart';
 import '../services/auth_service.dart';
 
@@ -208,6 +209,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 color: AppColors.primary,
                                 onPressed: () => _showEquipmentDetail(eq),
                                 tooltip: l10n.commonDetails,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.history, size: 18),
+                                color: AppColors.warning,
+                                onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                                tooltip: 'Historique',
                               ),
                               if (isAdmin)
                                 IconButton(

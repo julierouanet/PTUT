@@ -6,6 +6,37 @@ import '../services/auth_api_service.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
 
+/// Modèle léger pour une demande de changement de département.
+class _DeptRequest {
+  final String id;
+  final String userId;
+  final String userName;
+  final String currentDepartment;
+  final String requestedDepartment;
+  final String status;
+  final String createdAt;
+
+  const _DeptRequest({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.currentDepartment,
+    required this.requestedDepartment,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory _DeptRequest.fromJson(Map<String, dynamic> j) => _DeptRequest(
+    id: j['id'] as String,
+    userId: j['user_id'] as String,
+    userName: j['user_name'] as String,
+    currentDepartment: j['current_department'] as String,
+    requestedDepartment: j['requested_department'] as String,
+    status: j['status'] as String,
+    createdAt: j['created_at'] as String? ?? '',
+  );
+}
+
 /// User management screen - Admin only
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -17,6 +48,30 @@ class UserManagementScreen extends StatefulWidget {
 class _UserManagementScreenState extends State<UserManagementScreen> {
   String _roleFilter = 'all'; // internal key
   String _searchTerm = '';
+
+  // Demandes de changement de département
+  List<_DeptRequest> _deptRequests = [];
+  bool _deptRequestsLoading = false;
+  bool _deptRequestsExpanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeptRequests();
+  }
+
+  Future<void> _loadDeptRequests() async {
+    setState(() => _deptRequestsLoading = true);
+    try {
+      final raw = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
+      setState(() {
+        _deptRequests = raw.map((j) => _DeptRequest.fromJson(j)).toList();
+        _deptRequestsLoading = false;
+      });
+    } catch (_) {
+      setState(() => _deptRequestsLoading = false);
+    }
+  }
 
   List<User> get _filteredUsers {
     return DataService().users.where((user) {
@@ -147,6 +202,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
             const SizedBox(height: 20),
 
+            // Section demandes de changement de département
+            _buildDeptRequestsSection(),
+            const SizedBox(height: 20),
+
             // Users table
             SizedBox(
               width: double.infinity,
@@ -226,6 +285,163 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ),
       ),
     );
+  }
+
+  // ── Demandes de changement de département ─────────────────────────────────
+
+  Widget _buildDeptRequestsSection() {
+    final count = _deptRequests.length;
+    return Card(
+      child: ExpansionTile(
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.swap_horiz, color: AppColors.warning),
+            if (count > 0)
+              Positioned(
+                right: -6, top: -4,
+                child: Container(
+                  width: 16, height: 16,
+                  decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                  child: Center(
+                    child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Demandes de changement de département', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          _deptRequestsLoading ? 'Chargement…' : '$count demande${count > 1 ? 's' : ''} en attente',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        initiallyExpanded: _deptRequestsExpanded,
+        onExpansionChanged: (v) => setState(() => _deptRequestsExpanded = v),
+        children: [
+          if (_deptRequestsLoading)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_deptRequests.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Text('Aucune demande en attente.', style: TextStyle(color: AppColors.textSecondary)),
+            )
+          else
+            ...  _deptRequests.map((req) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.warningLight,
+                child: Text(
+                  req.userName.isNotEmpty ? req.userName[0].toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+                ),
+              ),
+              title: Text(req.userName, style: const TextStyle(fontWeight: FontWeight.w500)),
+              subtitle: Row(children: [
+                Text(req.currentDepartment, style: const TextStyle(fontSize: 12)),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textMuted)),
+                Text(req.requestedDepartment, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              ]),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+                    tooltip: 'Approuver',
+                    onPressed: () => _resolveDeptRequest(req, 'approved'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                    tooltip: 'Rejeter',
+                    onPressed: () => _resolveDeptRequest(req, 'rejected'),
+                  ),
+                ],
+              ),
+            )),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolveDeptRequest(_DeptRequest req, String status) async {
+    final noteCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(
+            status == 'approved' ? Icons.check_circle_outline : Icons.cancel_outlined,
+            color: status == 'approved' ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 8),
+          Text(status == 'approved' ? 'Approuver la demande' : 'Rejeter la demande'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(text: TextSpan(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              children: [
+                TextSpan(text: req.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const TextSpan(text: ' : '),
+                TextSpan(text: req.currentDepartment),
+                const TextSpan(text: ' → '),
+                TextSpan(text: req.requestedDepartment, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ],
+            )),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Note (optionnel)',
+                hintText: 'Raison de la décision…',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(status == 'approved' ? 'Approuver' : 'Rejeter'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AuthApiService.instance.resolveDepartmentRequest(
+        req.id, status: status, adminNote: noteCtrl.text.trim(),
+      );
+      await DataService().reloadUsers();
+      await _loadDeptRequests();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'approved'
+              ? 'Demande approuvée — département mis à jour'
+              : 'Demande rejetée'),
+          backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
   }
 
   Widget _buildRoleCardWidget(String label, int count, IconData icon, Color color) {

@@ -164,10 +164,24 @@ class _MainScaffoldState extends State<MainScaffold> {
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
-    return _allNavItems(l10n).where((item) {
+    final visible = _allNavItems(l10n).where((item) {
       if (item.requiredPermission == null) return true;
       return _authService.hasPermission(item.requiredPermission!);
     }).toList();
+
+    // Appliquer l'ordre configuré par l'admin pour ce rôle (si disponible)
+    final roleName = _authService.currentUser?.role.name ?? '';
+    final order = DataService().sidebarOrder[roleName];
+    if (order != null && order.isNotEmpty) {
+      visible.sort((a, b) {
+        final ai = order.indexOf(a.screenType.name);
+        final bi = order.indexOf(b.screenType.name);
+        final aIdx = ai == -1 ? order.length : ai;
+        final bIdx = bi == -1 ? order.length : bi;
+        return aIdx.compareTo(bIdx);
+      });
+    }
+    return visible;
   }
 
   bool get _canGoBack => _history.isNotEmpty;
