@@ -370,6 +370,299 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
+  // ── Onglet 2 : Agenda ────────────────────────────────────────────────────────
+
+  /// Parse une date ISO ou YYYY-MM-DD depuis une chaîne.
+  DateTime? _parseDate(String dateStr) {
+    if (dateStr.isEmpty) return null;
+    try {
+      return DateTime.parse(dateStr.split('T').first);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Tous les événements du technicien (incidents + maintenances).
+  List<_AgendaEvent> get _allAgendaEvents {
+    final events = <_AgendaEvent>[];
+    final techName = _currentTechnicianName;
+
+    // Incidents en cours ou résolus assignés à ce technicien
+    for (final issue in DataService().issues) {
+      if (issue.assignedTechnician != techName) continue;
+      if (issue.status != IssueStatus.inProgress && issue.status != IssueStatus.resolved) continue;
+      final date = _parseDate(issue.createdAt);
+      if (date == null) continue;
+      events.add(_AgendaEvent(
+        title: issue.equipmentName,
+        subtitle: issue.type,
+        type: issue.status == IssueStatus.inProgress ? 'in_progress' : 'resolved',
+        date: date,
+      ));
+    }
+
+    // Maintenances passées impliquant ce technicien (par nom)
+    for (final eq in DataService().equipment) {
+      for (final rec in eq.maintenanceHistory) {
+        if (rec.technician != techName) continue;
+        final date = _parseDate(rec.date);
+        if (date == null) continue;
+        events.add(_AgendaEvent(
+          title: eq.name,
+          subtitle: rec.intervention,
+          type: 'maintenance',
+          date: date,
+        ));
+      }
+      // Maintenances futures
+      for (final rec in eq.futureMaintenance) {
+        if (rec.technician != techName) continue;
+        final date = _parseDate(rec.date);
+        if (date == null) continue;
+        events.add(_AgendaEvent(
+          title: eq.name,
+          subtitle: rec.intervention,
+          type: 'future_maintenance',
+          date: date,
+        ));
+      }
+    }
+
+    return events;
+  }
+
+  /// Événements pour un jour donné.
+  List<_AgendaEvent> _eventsForDay(DateTime day) {
+    return _allAgendaEvents.where((e) =>
+      e.date.year == day.year &&
+      e.date.month == day.month &&
+      e.date.day == day.day
+    ).toList();
+  }
+
+  String _monthName(int month) {
+    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    return months[month - 1];
+  }
+
+  Widget _buildAgendaTab(bool isMobile) {
+    final selectedEvents = _eventsForDay(_selectedDay);
+    final allEvents = _allAgendaEvents;
+
+    // Grouper par mois YYYY-MM pour la liste historique
+    final Map<String, List<_AgendaEvent>> byMonth = {};
+    for (final e in allEvents) {
+      final key = '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}';
+      byMonth.putIfAbsent(key, () => []).add(e);
+    }
+    final monthKeys = byMonth.keys.toList()..sort((a, b) => b.compareTo(a));
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header ────────────────────────────────────────────────────────
+          Text(
+            'Agenda',
+            style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Votre calendrier d\'interventions et de maintenances planifiées.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Légende ───────────────────────────────────────────────────────
+          Wrap(spacing: 12, runSpacing: 4, children: [
+            _legendItem(AppColors.warning,  Icons.build_circle_outlined, 'En cours'),
+            _legendItem(AppColors.success,  Icons.check_circle_outlined, 'Résolu'),
+            _legendItem(AppColors.textSecondary, Icons.build_outlined, 'Maintenance passée'),
+            _legendItem(AppColors.primary,  Icons.event_repeat, 'Planifiée'),
+          ]),
+          const SizedBox(height: 12),
+
+          // ── Calendrier ────────────────────────────────────────────────────
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: TableCalendar<_AgendaEvent>(
+                firstDay: DateTime.now().subtract(const Duration(days: 365)),
+                lastDay: DateTime.now().add(const Duration(days: 365)),
+                focusedDay: _focusedDay,
+                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                eventLoader: _eventsForDay,
+                calendarStyle: const CalendarStyle(
+                  todayDecoration: BoxDecoration(color: AppColors.primaryLight, shape: BoxShape.circle),
+                  todayTextStyle: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                  selectedDecoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                  markerDecoration: BoxDecoration(color: AppColors.warning, shape: BoxShape.circle),
+                  outsideDaysVisible: false,
+                  markersMaxCount: 3,
+                ),
+                headerStyle: const HeaderStyle(
+                  formatButtonVisible: false,
+                  titleCentered: true,
+                  titleTextStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                ),
+                onDaySelected: (selectedDay, focusedDay) {
+                  setState(() {
+                    _selectedDay = selectedDay;
+                    _focusedDay  = focusedDay;
+                  });
+                },
+                onPageChanged: (focusedDay) {
+                  setState(() => _focusedDay = focusedDay);
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Événements du jour sélectionné ───────────────────────────────
+          Text(
+            'Événements du ${_selectedDay.day.toString().padLeft(2, '0')}/${_selectedDay.month.toString().padLeft(2, '0')}/${_selectedDay.year}',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          selectedEvents.isEmpty
+              ? Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(children: const [
+                      Icon(Icons.event_available, color: AppColors.textSecondary),
+                      SizedBox(width: 12),
+                      Text('Aucun événement ce jour.', style: TextStyle(color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                )
+              : Card(
+                  child: Column(
+                    children: selectedEvents.asMap().entries.map((entry) {
+                      final isLast = entry.key == selectedEvents.length - 1;
+                      return Column(children: [
+                        _buildEventTile(entry.value),
+                        if (!isLast) const Divider(height: 1, indent: 56),
+                      ]);
+                    }).toList(),
+                  ),
+                ),
+          const SizedBox(height: 24),
+
+          // ── Historique complet ────────────────────────────────────────────
+          if (allEvents.isNotEmpty) ...[
+            const Text('Historique complet', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            ...monthKeys.map((key) {
+              final events = List<_AgendaEvent>.from(byMonth[key]!)
+                ..sort((a, b) => b.date.compareTo(a.date));
+              final parts = key.split('-');
+              final monthLabel = '${_monthName(int.parse(parts[1]))} ${parts[0]}';
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(color: AppColors.primaryLight, borderRadius: BorderRadius.circular(12)),
+                        child: Text(monthLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('${events.length} événement${events.length > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    ]),
+                  ),
+                  Card(
+                    child: Column(
+                      children: events.asMap().entries.map((entry) {
+                        final isLast = entry.key == events.length - 1;
+                        return Column(children: [
+                          _buildEventTile(entry.value),
+                          if (!isLast) const Divider(height: 1, indent: 56),
+                        ]);
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              );
+            }),
+          ] else ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(children: [
+                  const Icon(Icons.calendar_today_outlined, size: 40, color: AppColors.textSecondary),
+                  const SizedBox(height: 12),
+                  const Text('Aucune intervention enregistrée', style: TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 4),
+                  const Text('Les incidents que vous prendrez en charge apparaîtront ici.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13), textAlign: TextAlign.center),
+                ]),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEventTile(_AgendaEvent event) {
+    final IconData icon;
+    final Color color;
+    final String statusLabel;
+
+    switch (event.type) {
+      case 'in_progress':
+        icon = Icons.build_circle_outlined;
+        color = AppColors.warning;
+        statusLabel = 'En cours';
+      case 'resolved':
+        icon = Icons.check_circle_outline;
+        color = AppColors.success;
+        statusLabel = 'Résolu';
+      case 'future_maintenance':
+        icon = Icons.event_repeat;
+        color = AppColors.primary;
+        statusLabel = 'Planifiée';
+      default: // 'maintenance'
+        icon = Icons.build_outlined;
+        color = AppColors.textSecondary;
+        statusLabel = 'Effectuée';
+    }
+
+    return ListTile(
+      leading: Container(
+        width: 36, height: 36,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+      title: Text(event.title, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+      subtitle: Text(
+        '${event.subtitle}  ·  $statusLabel',
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+      trailing: Text(
+        '${event.date.day.toString().padLeft(2, '0')}/${event.date.month.toString().padLeft(2, '0')}/${event.date.year}',
+        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+      ),
+    );
+  }
+
+  Widget _legendItem(Color color, IconData icon, String label) {
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, color: color, size: 14),
+      const SizedBox(width: 4),
+      Text(label, style: TextStyle(fontSize: 11, color: color)),
+    ]);
+  }
+
   // ── Helpers visuels ──────────────────────────────────────────────────────────
 
   Color _urgencyBgColor(IssueUrgency u) {
