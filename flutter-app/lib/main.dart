@@ -130,7 +130,7 @@ class _LoadingScreen extends StatelessWidget {
 enum _HubModule { equipment, settings, inventory }
 
 class _AppRoot extends StatefulWidget {
-  const _AppRoot({super.key});
+  const _AppRoot();
   @override
   State<_AppRoot> createState() => _AppRootState();
 }
