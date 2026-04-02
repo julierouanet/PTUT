@@ -36,6 +36,7 @@ const List<MapEntry<String, String>> _kAllPermissions = [
   MapEntry('manageCategories',  'Gérer les catégories'),
   MapEntry('generateReports',   'Générer des rapports'),
   MapEntry('viewInventory',     'Consulter l\'inventaire'),
+  MapEntry('changeDepartment',  'Changer son département directement'),
 ];
 
 // Définition d'une page : label, icône, permissions associées

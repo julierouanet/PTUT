@@ -125,6 +125,18 @@ class AuthApiService {
 
   // ── Demandes de changement de département ─────────────────────────────────
 
+  /// Change directement le département (si permission changeDepartment accordée).
+  Future<void> changeDepartmentDirect(String department) async {
+    final response = await ApiClient.put(
+      '${ApiConfig.usersUrl}/me/department',
+      {'department': department},
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur lors du changement');
+    }
+  }
+
   /// Envoie une demande de changement de département (utilisateur connecté).
   Future<void> requestDepartmentChange(String requestedDepartment) async {
     final response = await ApiClient.post(

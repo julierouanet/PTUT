@@ -285,6 +285,38 @@ router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
 
 // ── Demandes de changement de département ──────────────────────────────────
 
+// PUT /api/users/me/department  (changement direct si permission changeDepartment)
+router.put('/me/department', verifyToken, (req, res) => {
+  const db = getDb();
+  const { department } = req.body;
+  if (!department) {
+    return res.status(400).json({ error: 'Département requis' });
+  }
+  const user = db.prepare('SELECT id, name, department, role FROM users WHERE id = ?').get(req.user.id);
+  if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
+
+  // Vérifier la permission changeDepartment dans role_permissions (ou être admin)
+  const isAdmin = user.role === 'admin';
+  if (!isAdmin) {
+    const perm = db.prepare(
+      "SELECT 1 FROM role_permissions WHERE role_name = ? AND permission = 'changeDepartment'"
+    ).get(user.role);
+    if (!perm) return res.status(403).json({ error: 'Permission insuffisante' });
+  }
+
+  db.prepare('UPDATE users SET department = ? WHERE id = ?').run(department, user.id);
+
+  sendLog({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    action: 'direct_dept_change', target_type: 'user',
+    target_id: user.id, target_name: user.name,
+    details: { from: user.department, to: department },
+    ...reqMeta(req),
+  });
+
+  res.json({ message: 'Département mis à jour', department });
+});
+
 // POST /api/users/department-request  (user connecté)
 router.post('/department-request', verifyToken, (req, res) => {
   const db = getDb();

@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/notification_service.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
 
@@ -52,6 +53,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   List<_DeptRequest> _deptRequests = [];
   bool _deptRequestsLoading = false;
   bool _deptRequestsExpanded = false;
+  final _deptTileController = ExpansionTileController();
 
   @override
   void initState() {
@@ -65,11 +67,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     setState(() => _deptRequestsLoading = true);
     try {
       final raw = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
+      final requests = raw.map((j) => _DeptRequest.fromJson(j)).toList();
       setState(() {
-        _deptRequests = raw.map((j) => _DeptRequest.fromJson(j)).toList();
+        _deptRequests = requests;
         _deptRequestsLoading = false;
       });
-    } catch (_) {
+      // Auto-expand and notify if there are pending requests
+      if (requests.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            try { _deptTileController.expand(); } catch (_) {}
+          }
+        });
+        NotificationService().updateDeptRequestNotifications(
+          requests.map((r) => (
+            id: r.id,
+            userName: r.userName,
+            fromDept: r.currentDepartment,
+            toDept: r.requestedDepartment,
+            createdAt: DateTime.tryParse(r.createdAt) ?? DateTime.now(),
+          )).toList(),
+        );
+      }
+    } catch (e) {
       setState(() => _deptRequestsLoading = false);
     }
   }
@@ -306,6 +326,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final count = _deptRequests.length;
     return Card(
       child: ExpansionTile(
+        controller: _deptTileController,
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -435,6 +456,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       await AuthApiService.instance.resolveDepartmentRequest(
         req.id, status: status, adminNote: noteCtrl.text.trim(),
       );
+      NotificationService().markAsRead('notif-dept-${req.id}');
       await DataService().reloadUsers();
       await _loadDeptRequests();
       if (mounted) setState(() {});

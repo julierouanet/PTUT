@@ -5,6 +5,7 @@ import '../services/auth_service.dart';
 import '../services/auth_api_service.dart';
 import '../services/config_service.dart';
 import '../providers/locale_provider.dart';
+import '../models/user_role.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
 class AccountSettingsScreen extends StatefulWidget {
@@ -120,17 +121,45 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     onTap: () => _showChangePasswordDialog(l10n),
                   ),
                   const Divider(height: 1, indent: 16, endIndent: 16),
-                  // Demande de changement de département
-                  ListTile(
-                    leading: const Icon(Icons.swap_horiz, color: AppColors.warning),
-                    title: Text(l10n.accountDepartmentChange, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text(
-                      currentUser?.department ?? '',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                    onTap: () => _showDepartmentRequestDialog(),
-                  ),
+                  // Changement de département (direct ou par demande selon permission)
+                  Builder(builder: (context) {
+                    final canChangeDirect = currentUser?.hasPermission(Permission.changeDepartment) == true;
+                    return ListTile(
+                      leading: Icon(
+                        canChangeDirect ? Icons.swap_horiz : Icons.swap_horiz,
+                        color: canChangeDirect ? AppColors.primary : AppColors.warning,
+                      ),
+                      title: Text(
+                        canChangeDirect ? 'Changer de département' : l10n.accountDepartmentChange,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        canChangeDirect
+                            ? (currentUser?.department ?? '')
+                            : currentUser?.department ?? '',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canChangeDirect)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text('Direct', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                        ],
+                      ),
+                      onTap: canChangeDirect
+                          ? () => _showDirectDepartmentDialog()
+                          : () => _showDepartmentRequestDialog(),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -288,6 +317,107 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
               ]),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Dialog : changement direct de département (si permission) ─────────────
+
+  void _showDirectDepartmentDialog() {
+    final user = _authService.currentUser;
+    final departments = ConfigService().departmentNames;
+    String selectedDept = (user?.department != null && departments.contains(user!.department))
+        ? user.department
+        : departments.first;
+    bool loading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Changer de département', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Votre département sera modifié immédiatement.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  const Icon(Icons.business, size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  const Text('Actuel : ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(user?.department ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedDept,
+                  decoration: const InputDecoration(
+                    labelText: 'Nouveau département',
+                    prefixIcon: Icon(Icons.swap_horiz),
+                  ),
+                  items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedDept = v!),
+                ),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : () => Navigator.pop(ctx),
+                      child: const Text('Annuler'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: loading || selectedDept == user?.department ? null : () async {
+                        setDialogState(() => loading = true);
+                        try {
+                          await AuthApiService.instance.changeDepartmentDirect(selectedDept);
+                          await _authService.refreshCurrentUser();
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Département mis à jour'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        } catch (e) {
+                          setDialogState(() => loading = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(AppLocalizations.of(context)!.commonApiError),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        }
+                      },
+                      child: loading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Confirmer'),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
           ),
         ),
       ),

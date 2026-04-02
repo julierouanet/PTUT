@@ -44,7 +44,8 @@
       "Bash(powershell -Command \":*)",
       "Bash(grep -rn \"Text\\(''Erreur.*$e''\\)\" lib/screens/)",
       "Bash(grep -n \"class Issue\\\\b\\\\|class MaintenanceIssue\\\\|\\\\.equipmentName\\\\|\\\\.urgency\\\\|\\\\.description\\\\|\\\\.reporter\\\\|\\\\.createdAt\\\\|\\\\.status\\\\|\\\\.id\\\\b\" /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib/models/*.dart)",
-      "Bash(xargs grep:*)"
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"notification\\\\|Notification\\\\|push\\\\|badge\\\\|bell\" /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib/services/*.dart)"
     ]
   }
 }

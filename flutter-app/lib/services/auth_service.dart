@@ -117,6 +117,17 @@ class AuthService extends ChangeNotifier {
     return false;
   }
 
+  /// Recharge le profil de l'utilisateur connecté depuis l'API.
+  Future<void> refreshCurrentUser() async {
+    try {
+      final userData = await AuthApiService.instance.getMe();
+      if (userData != null && _currentUser != null) {
+        _currentUser = _userFromApiResponse(userData);
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
   /// Appelé quand la session JWT expire (refresh token invalide).
   void handleSessionExpired() {
     _sessionExpiredMessage = 'Votre session a expiré. Veuillez vous reconnecter.';
@@ -227,6 +238,12 @@ class AuthService extends ChangeNotifier {
     final firstName = data['first_name'] as String? ?? '';
     final lastName  = data['last_name']  as String? ?? '';
 
+    // Use permissions from API if available, otherwise fall back to role defaults
+    final rawPerms = data['permissions'] as List<dynamic>?;
+    final permissions = rawPerms != null
+        ? rawPerms.map((p) => _parsePermission(p as String)).whereType<Permission>().toList()
+        : getPermissionsForRole(role);
+
     return User(
       id:          data['id']         as String? ?? '',
       name:        name,
@@ -235,10 +252,18 @@ class AuthService extends ChangeNotifier {
       email:       data['email']      as String? ?? '',
       department:  data['department'] as String? ?? '',
       role:        role,
-      permissions: getPermissionsForRole(role),
+      permissions: permissions,
       phone:       data['phone']      as String?,
       createdAt:   data['created_at'] as String? ?? '',
     );
+  }
+
+  Permission? _parsePermission(String p) {
+    try {
+      return Permission.values.firstWhere((e) => e.name == p);
+    } catch (_) {
+      return null;
+    }
   }
 
   UserRole _parseRole(String role) {

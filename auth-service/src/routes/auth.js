@@ -58,10 +58,15 @@ router.post('/login', async (req, res) => {
   console.log(`[AUTH] Login réussi (rôle: ${user.role})`);
   sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
 
+  const userPerms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(user.role);
   res.json({
     accessToken,
     refreshToken,
-    user: { id: user.id, name: user.name, first_name: user.first_name, last_name: user.last_name, email: user.email, role: user.role, department: user.department, phone: user.phone },
+    user: {
+      id: user.id, name: user.name, first_name: user.first_name, last_name: user.last_name,
+      email: user.email, role: user.role, department: user.department, phone: user.phone,
+      permissions: userPerms.map(p => p.permission),
+    },
   });
 });
 
@@ -151,7 +156,8 @@ router.get('/me', verifyToken, (req, res) => {
     return res.status(404).json({ error: 'Utilisateur introuvable' });
   }
 
-  res.json(user);
+  const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(user.role);
+  res.json({ ...user, permissions: perms.map(p => p.permission) });
 });
 
 module.exports = router;
