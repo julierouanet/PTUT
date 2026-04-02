@@ -137,6 +137,7 @@
   "@issuesAndMore": { "placeholders": { "count": { "type": "int" } } },
   "issuesAllIssues": "All issues",
 
+  "issuesApproved": "Approved",
   "issuesTitle": "Issue Tracking",
   "issuesSubtitle": "Manage and track equipment issues",
   "issuesOpen": "Open",
@@ -365,5 +366,59 @@
   "notifTimeHours": "{n} h ago",
   "@notifTimeHours": { "placeholders": { "n": { "type": "int" } } },
   "notifTimeDays": "{n} d ago",
-  "@notifTimeDays": { "placeholders": { "n": { "type": "int" } } }
+  "@notifTimeDays": { "placeholders": { "n": { "type": "int" } } },
+
+  "hubSelectModule": "Select a module",
+  "hubSelectModuleSubtitle": "Choose the module you want to access",
+  "hubOpenModule": "Open {title}",
+  "@hubOpenModule": { "placeholders": { "title": { "type": "String" } } },
+
+  "issueTrackingTab": "Issue tracking",
+  "issueValidationTab": "To validate",
+  "issueValidationTitle": "Issues to validate",
+  "issueValidationSubtitleAll": "All open issues awaiting validation",
+  "issueValidationSubtitleDept": "Open issues from department \"{dept}\" awaiting validation",
+  "@issueValidationSubtitleDept": { "placeholders": { "dept": { "type": "String" } } },
+  "issueValidationOpenCount": "{count} open issue(s)",
+  "@issueValidationOpenCount": { "placeholders": { "count": { "type": "int" } } },
+  "issueValidationNone": "No open issues to validate",
+  "issueValidationDetails": "Details",
+  "issueValidationValidate": "Validate",
+  "issueValidationConfirmTitle": "Validate issue",
+  "issueValidationConfirmContent": "Confirm validation of the issue on:",
+  "issueValidationUrgencyLabel": "Urgency level:",
+  "issueValidationConfirmMessage": "The issue will be moved to \"Approved\" status and assigned to the technical team.",
+  "issueValidationSuccess": "Issue on \"{equipment}\" successfully validated.",
+  "@issueValidationSuccess": { "placeholders": { "equipment": { "type": "String" } } },
+  "issueValidationError": "Validation error: {error}",
+  "@issueValidationError": { "placeholders": { "error": { "type": "String" } } },
+  "issueValidationSignaledBy": "Reported by {reporter} \u2022 {date}",
+  "@issueValidationSignaledBy": { "placeholders": { "reporter": { "type": "String" }, "date": { "type": "String" } } },
+  "issueUrgencyLabel": "Urgency level",
+
+  "settingsMenuOrder": "Menu order",
+  "settingsMenuOrderRole": "Configure for role:",
+  "settingsMenuOrderHint": "Drag items to change their order in the navigation bar.",
+  "settingsMenuOrderReset": "Reset",
+  "settingsMenuOrderResetDone": "Default order restored (not yet saved)",
+  "settingsMenuOrderSave": "Save",
+  "settingsMenuOrderSaved": "Menu order saved",
+
+  "backToModules": "\u2190 Modules",
+  "backToModulesLabel": "Back to modules",
+
+  "equipmentRevisionColumn": "Revision",
+
+  "accountDepartmentChange": "Change department",
+  "accountDepartmentChangeTitle": "Change request",
+  "accountDepartmentChangeSubtitle": "Your request will be submitted to an administrator for approval.",
+  "accountDepartmentCurrent": "Current: ",
+  "accountDepartmentNew": "New department",
+  "accountDepartmentRequestSent": "Request sent - awaiting admin approval",
+  "accountDepartmentRequestSend": "Send request",
+
+  "commonApiError": "An error occurred. Please try again.",
+  "commonNetworkError": "Unable to connect to the server. Check your connection.",
+  "commonDeleteError": "Unable to delete this item. Please try again.",
+  "commonSaveError": "Unable to save. Please try again."
 }

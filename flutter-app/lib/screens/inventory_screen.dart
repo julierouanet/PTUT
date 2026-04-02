@@ -143,69 +143,155 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
             const SizedBox(height: 20),
 
-            // Inventory table - FULL WIDTH
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: [
-                        DataColumn(label: Text(l10n.inventoryItem)),
-                        DataColumn(label: Text(l10n.commonCategory)),
-                        DataColumn(label: Text(l10n.inventoryCurrentStock), numeric: true),
-                        DataColumn(label: Text(l10n.inventoryMinStock), numeric: true),
-                        DataColumn(label: Text(l10n.inventoryUnit)),
-                        DataColumn(label: Text(l10n.commonStatus)),
-                        DataColumn(label: Text(l10n.inventoryLastRestocked)),
-                        DataColumn(label: Text(l10n.commonActions)),
-                      ],
-                      rows: _filteredItems.map((item) => DataRow(
-                        cells: [
-                          DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                          DataCell(Text(item.category.displayName)),
-                          DataCell(Text(
-                            '${item.currentStock}',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: item.status == StockStatus.outOfStock
-                                ? AppColors.error
-                                : item.status == StockStatus.low
-                                  ? AppColors.warning
-                                  : AppColors.textPrimary,
-                            ),
-                          )),
-                          DataCell(Text('${item.minStock}')),
-                          DataCell(Text(item.unit)),
-                          DataCell(_buildStockStatusBadge(item.status)),
-                          DataCell(Text(item.lastRestocked)),
-                          DataCell(Row(
-                            mainAxisSize: MainAxisSize.min,
+            // Inventory list — cards on mobile, table on desktop
+            if (isMobile)
+              Column(
+                children: _filteredItems.map((item) {
+                  final stockColor = item.status == StockStatus.outOfStock
+                      ? AppColors.error
+                      : item.status == StockStatus.low
+                          ? AppColors.warning
+                          : AppColors.textPrimary;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18),
-                                color: AppColors.warning,
-                                tooltip: l10n.commonEdit,
-                                onPressed: () => _showItemDialog(item),
+                              Expanded(
+                                child: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                color: AppColors.error,
-                                tooltip: l10n.commonDelete,
-                                onPressed: () => _confirmDeleteItem(item),
+                              _buildStockStatusBadge(item.status),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l10n.commonCategory, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                    Text(item.category.displayName, style: const TextStyle(fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l10n.inventoryCurrentStock, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                    Text('${item.currentStock} ${item.unit}', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: stockColor)),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(l10n.inventoryMinStock, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                    Text('${item.minStock} ${item.unit}', style: const TextStyle(fontSize: 13)),
+                                  ],
+                                ),
                               ),
                             ],
-                          )),
+                          ),
+                          const Divider(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(item.lastRestocked, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                              Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 20),
+                                    color: AppColors.warning,
+                                    tooltip: l10n.commonEdit,
+                                    onPressed: () => _showItemDialog(item),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 20),
+                                    color: AppColors.error,
+                                    tooltip: l10n.commonDelete,
+                                    onPressed: () => _confirmDeleteItem(item),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ],
-                      )).toList(),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(AppColors.background),
+                        columns: [
+                          DataColumn(label: Text(l10n.inventoryItem)),
+                          DataColumn(label: Text(l10n.commonCategory)),
+                          DataColumn(label: Text(l10n.inventoryCurrentStock), numeric: true),
+                          DataColumn(label: Text(l10n.inventoryMinStock), numeric: true),
+                          DataColumn(label: Text(l10n.inventoryUnit)),
+                          DataColumn(label: Text(l10n.commonStatus)),
+                          DataColumn(label: Text(l10n.inventoryLastRestocked)),
+                          DataColumn(label: Text(l10n.commonActions)),
+                        ],
+                        rows: _filteredItems.map((item) => DataRow(
+                          cells: [
+                            DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                            DataCell(Text(item.category.displayName)),
+                            DataCell(Text(
+                              '${item.currentStock}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: item.status == StockStatus.outOfStock
+                                  ? AppColors.error
+                                  : item.status == StockStatus.low
+                                    ? AppColors.warning
+                                    : AppColors.textPrimary,
+                              ),
+                            )),
+                            DataCell(Text('${item.minStock}')),
+                            DataCell(Text(item.unit)),
+                            DataCell(_buildStockStatusBadge(item.status)),
+                            DataCell(Text(item.lastRestocked)),
+                            DataCell(Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.edit, size: 18),
+                                  color: AppColors.warning,
+                                  tooltip: l10n.commonEdit,
+                                  onPressed: () => _showItemDialog(item),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  color: AppColors.error,
+                                  tooltip: l10n.commonDelete,
+                                  onPressed: () => _confirmDeleteItem(item),
+                                ),
+                              ],
+                            )),
+                          ],
+                        )).toList(),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -220,38 +306,60 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final minStockCtrl = TextEditingController(text: existing != null ? '${existing.minStock}' : '');
     final unitCtrl     = TextEditingController(text: existing?.unit ?? '');
     InventoryCategory selectedCategory = existing?.category ?? InventoryCategory.consommableMedical;
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text(isEdit ? l10n.inventoryEditItem : l10n.inventoryNewItemTitle),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: nameCtrl,     decoration: InputDecoration(labelText: l10n.inventoryNameLabel)),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<InventoryCategory>(
-                  value: selectedCategory,
-                  decoration: InputDecoration(labelText: l10n.inventoryCategoryLabel),
-                  items: InventoryCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.displayName))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedCategory = v!),
-                ),
-                const SizedBox(height: 12),
-                TextField(controller: stockCtrl,    keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.inventoryCurrentStockLabel)),
-                const SizedBox(height: 12),
-                TextField(controller: minStockCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.inventoryMinStockLabel)),
-                const SizedBox(height: 12),
-                TextField(controller: unitCtrl,     decoration: InputDecoration(labelText: l10n.inventoryUnitLabel)),
-              ],
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameCtrl,
+                    decoration: InputDecoration(labelText: l10n.inventoryNameLabel),
+                    validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<InventoryCategory>(
+                    value: selectedCategory,
+                    decoration: InputDecoration(labelText: l10n.inventoryCategoryLabel),
+                    items: InventoryCategory.values.map((c) => DropdownMenuItem(value: c, child: Text(c.displayName))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedCategory = v!),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: stockCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: l10n.inventoryCurrentStockLabel),
+                    validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: minStockCtrl,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(labelText: l10n.inventoryMinStockLabel),
+                    validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: unitCtrl,
+                    decoration: InputDecoration(labelText: l10n.inventoryUnitLabel),
+                    validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
             ElevatedButton(
               onPressed: () async {
-                if (nameCtrl.text.isEmpty || stockCtrl.text.isEmpty || minStockCtrl.text.isEmpty || unitCtrl.text.isEmpty) return;
+                if (!formKey.currentState!.validate()) return;
                 final data = {
                   'id':            isEdit ? existing.id : 'inv-${DateTime.now().millisecondsSinceEpoch}',
                   'name':          nameCtrl.text,
@@ -280,7 +388,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   if (ctx.mounted) Navigator.pop(ctx);
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text('Erreur: $e'),
+                      content: Text(AppLocalizations.of(context)!.commonApiError),
                       backgroundColor: AppColors.error,
                       behavior: SnackBarBehavior.floating,
                     ));
@@ -322,7 +430,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Erreur: $e'),
+                    content: Text(AppLocalizations.of(context)!.commonApiError),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                   ));

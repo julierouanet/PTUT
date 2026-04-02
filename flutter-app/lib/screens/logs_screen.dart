@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
@@ -233,7 +233,7 @@ class _LogsScreenState extends State<LogsScreen> {
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur : $e'),
+          content: Text(AppLocalizations.of(context)!.commonApiError),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));

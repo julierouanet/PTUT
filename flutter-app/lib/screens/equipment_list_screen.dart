@@ -167,84 +167,152 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Equipment Table - FULL WIDTH
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: [
-                        DataColumn(label: Text(l10n.equipmentName)),
-                        DataColumn(label: Text(l10n.commonDepartment)),
-                        DataColumn(label: Text(l10n.commonCategory)),
-                        DataColumn(label: Text(l10n.equipmentSerialNumber)),
-                        DataColumn(label: Text(l10n.commonStatus)),
-                        const DataColumn(label: Text('Révision')),
-                        DataColumn(label: Text(l10n.commonActions)),
-                      ],
-                      rows: _filteredEquipment.map((eq) => DataRow(
-                        cells: [
-                          DataCell(Text(eq.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                          DataCell(Text(eq.department)),
-                          DataCell(Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.background,
-                              borderRadius: BorderRadius.circular(4),
+            // Equipment list — cards on mobile, table on desktop
+            if (isMobile)
+              Column(
+                children: _filteredEquipment.map((eq) => Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(eq.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
                             ),
-                            child: Text(eq.category, style: const TextStyle(fontSize: 13)),
-                          )),
-                          DataCell(Text(eq.serialNumber)),
-                          DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
-                          DataCell(_buildRevisionCell(eq.nextRevisionDate)),
-                          DataCell(Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
+                            StatusBadge(status: eq.status.displayName, isCompact: true),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildCardRow(l10n.commonDepartment, eq.department),
+                        _buildCardRow(l10n.commonCategory, eq.category),
+                        _buildCardRow(l10n.equipmentSerialNumber, eq.serialNumber),
+                        if (eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty)
+                          _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.visibility, size: 20),
+                              color: AppColors.primary,
+                              onPressed: () => _showEquipmentDetail(eq),
+                              tooltip: l10n.commonDetails,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.history, size: 20),
+                              color: AppColors.warning,
+                              onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                              tooltip: 'Historique',
+                            ),
+                            if (isAdmin)
                               IconButton(
-                                icon: const Icon(Icons.visibility, size: 18),
-                                color: AppColors.primary,
-                                onPressed: () => _showEquipmentDetail(eq),
-                                tooltip: l10n.commonDetails,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.history, size: 18),
+                                icon: const Icon(Icons.edit, size: 20),
                                 color: AppColors.warning,
-                                onPressed: () => EquipmentHistoryDialog.show(context, eq),
-                                tooltip: 'Historique',
+                                onPressed: () => _showEditEquipmentDialog(eq),
+                                tooltip: l10n.commonEdit,
                               ),
-                              if (isAdmin)
-                                IconButton(
-                                  icon: const Icon(Icons.edit, size: 18),
-                                  color: AppColors.warning,
-                                  onPressed: () => _showEditEquipmentDialog(eq),
-                                  tooltip: l10n.commonEdit,
-                                ),
+                            IconButton(
+                              icon: const Icon(Icons.report_problem_outlined, size: 20),
+                              color: AppColors.error,
+                              onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
+                              tooltip: l10n.commonReport,
+                            ),
+                            if (isAdmin)
                               IconButton(
-                                icon: const Icon(Icons.report_problem_outlined, size: 18),
+                                icon: const Icon(Icons.delete_outline, size: 20),
                                 color: AppColors.error,
-                                onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                                tooltip: l10n.commonReport,
+                                onPressed: () => _confirmDelete(eq),
+                                tooltip: l10n.commonDelete,
                               ),
-                              if (isAdmin)
-                                IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18),
-                                  color: AppColors.error,
-                                  onPressed: () => _confirmDelete(eq),
-                                  tooltip: l10n.commonDelete,
-                                ),
-                            ],
-                          )),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                )).toList(),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
+                      child: DataTable(
+                        headingRowColor: WidgetStateProperty.all(AppColors.background),
+                        columns: [
+                          DataColumn(label: Text(l10n.equipmentName)),
+                          DataColumn(label: Text(l10n.commonDepartment)),
+                          DataColumn(label: Text(l10n.commonCategory)),
+                          DataColumn(label: Text(l10n.equipmentSerialNumber)),
+                          DataColumn(label: Text(l10n.commonStatus)),
+                          DataColumn(label: Text(l10n.equipmentRevisionColumn)),
+                          DataColumn(label: Text(l10n.commonActions)),
                         ],
-                      )).toList(),
+                        rows: _filteredEquipment.map((eq) => DataRow(
+                          cells: [
+                            DataCell(Text(eq.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+                            DataCell(Text(eq.department)),
+                            DataCell(Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(eq.category, style: const TextStyle(fontSize: 13)),
+                            )),
+                            DataCell(Text(eq.serialNumber)),
+                            DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
+                            DataCell(_buildRevisionCell(eq.nextRevisionDate)),
+                            DataCell(Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.visibility, size: 18),
+                                  color: AppColors.primary,
+                                  onPressed: () => _showEquipmentDetail(eq),
+                                  tooltip: l10n.commonDetails,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.history, size: 18),
+                                  color: AppColors.warning,
+                                  onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                                  tooltip: 'Historique',
+                                ),
+                                if (isAdmin)
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    color: AppColors.warning,
+                                    onPressed: () => _showEditEquipmentDialog(eq),
+                                    tooltip: l10n.commonEdit,
+                                  ),
+                                IconButton(
+                                  icon: const Icon(Icons.report_problem_outlined, size: 18),
+                                  color: AppColors.error,
+                                  onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
+                                  tooltip: l10n.commonReport,
+                                ),
+                                if (isAdmin)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, size: 18),
+                                    color: AppColors.error,
+                                    onPressed: () => _confirmDelete(eq),
+                                    tooltip: l10n.commonDelete,
+                                  ),
+                              ],
+                            )),
+                          ],
+                        )).toList(),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
@@ -276,6 +344,22 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     );
   }
 
+  Widget _buildCardRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          ),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
+    );
+  }
+
   void _showAddEquipmentDialog() {
     _showEquipmentFormDialog(null);
   }
@@ -297,6 +381,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     String selectedCategory = existingEquipment?.category ?? _configService.categoryNames.first;
     EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
     String? selectedRevisionDate = existingEquipment?.nextRevisionDate;
+    final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
@@ -340,139 +425,144 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
                 // Form
                 Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Name
-                        TextField(
-                          controller: nameController,
-                          decoration: InputDecoration(
-                            labelText: l10n.equipmentNameLabel,
-                            hintText: l10n.equipmentNameHint,
-                            prefixIcon: const Icon(Icons.inventory_2),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Serial number
-                        TextField(
-                          controller: serialController,
-                          decoration: InputDecoration(
-                            labelText: l10n.equipmentSerialLabel,
-                            hintText: l10n.equipmentSerialHint,
-                            prefixIcon: const Icon(Icons.qr_code),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Department and Category
-                        DropdownButtonFormField<String>(
-                          value: selectedDepartment,
-                          decoration: InputDecoration(labelText: l10n.equipmentDepartmentLabel, prefixIcon: const Icon(Icons.business)),
-                          items: _configService.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                          onChanged: (v) => setDialogState(() => selectedDepartment = v!),
-                        ),
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          value: selectedCategory,
-                          decoration: InputDecoration(labelText: l10n.equipmentCategoryLabel, prefixIcon: const Icon(Icons.category)),
-                          items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                          onChanged: (v) => setDialogState(() => selectedCategory = v!),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Supplier
-                        TextField(
-                          controller: supplierController,
-                          decoration: InputDecoration(
-                            labelText: l10n.equipmentSupplier,
-                            hintText: l10n.equipmentSupplierHint,
-                            prefixIcon: const Icon(Icons.local_shipping),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Location
-                        TextField(
-                          controller: locationController,
-                          decoration: InputDecoration(
-                            labelText: l10n.equipmentLocation,
-                            hintText: l10n.equipmentLocationHint,
-                            prefixIcon: const Icon(Icons.location_on),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Status
-                        DropdownButtonFormField<EquipmentStatus>(
-                          value: selectedStatus,
-                          decoration: InputDecoration(
-                            labelText: l10n.commonStatus,
-                            prefixIcon: const Icon(Icons.info_outline),
-                          ),
-                          items: EquipmentStatus.values.map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Row(
-                              children: [
-                                _getStatusIcon(s),
-                                const SizedBox(width: 8),
-                                Text(s.displayName),
-                              ],
+                  child: Form(
+                    key: formKey,
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Name
+                          TextFormField(
+                            controller: nameController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentNameLabel,
+                              hintText: l10n.equipmentNameHint,
+                              prefixIcon: const Icon(Icons.inventory_2),
                             ),
-                          )).toList(),
-                          onChanged: (v) => setDialogState(() => selectedStatus = v!),
-                        ),
-                        const SizedBox(height: 16),
+                            validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                          ),
+                          const SizedBox(height: 16),
 
-                        // Date de prochaine révision
-                        InkWell(
-                          onTap: () async {
-                            final now = DateTime.now();
-                            final initial = selectedRevisionDate != null
-                                ? DateTime.tryParse(selectedRevisionDate!) ?? now
-                                : now;
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: initial.isAfter(now) ? initial : now.add(const Duration(days: 30)),
-                              firstDate: now,
-                              lastDate: DateTime(now.year + 10),
-                              locale: const Locale('fr'),
-                            );
-                            if (picked != null) {
-                              setDialogState(() => selectedRevisionDate = picked.toIso8601String().substring(0, 10));
-                            }
-                          },
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Prochaine révision',
-                              prefixIcon: Icon(Icons.event),
-                              suffixIcon: Icon(Icons.calendar_today, size: 18),
+                          // Serial number
+                          TextFormField(
+                            controller: serialController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentSerialLabel,
+                              hintText: l10n.equipmentSerialHint,
+                              prefixIcon: const Icon(Icons.qr_code),
                             ),
-                            child: Text(
-                              selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
-                                  ? _formatDateDisplay(selectedRevisionDate!)
-                                  : 'Sélectionner une date (optionnel)',
-                              style: TextStyle(
-                                color: selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
-                                    ? null
-                                    : AppColors.textSecondary,
+                            validator: (v) => (v == null || v.isEmpty) ? l10n.commonFillRequiredFields : null,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Department and Category
+                          DropdownButtonFormField<String>(
+                            value: selectedDepartment,
+                            decoration: InputDecoration(labelText: l10n.equipmentDepartmentLabel, prefixIcon: const Icon(Icons.business)),
+                            items: _configService.departmentNames.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                            onChanged: (v) => setDialogState(() => selectedDepartment = v!),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: selectedCategory,
+                            decoration: InputDecoration(labelText: l10n.equipmentCategoryLabel, prefixIcon: const Icon(Icons.category)),
+                            items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                            onChanged: (v) => setDialogState(() => selectedCategory = v!),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Supplier
+                          TextField(
+                            controller: supplierController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentSupplier,
+                              hintText: l10n.equipmentSupplierHint,
+                              prefixIcon: const Icon(Icons.local_shipping),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Location
+                          TextField(
+                            controller: locationController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentLocation,
+                              hintText: l10n.equipmentLocationHint,
+                              prefixIcon: const Icon(Icons.location_on),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Status
+                          DropdownButtonFormField<EquipmentStatus>(
+                            value: selectedStatus,
+                            decoration: InputDecoration(
+                              labelText: l10n.commonStatus,
+                              prefixIcon: const Icon(Icons.info_outline),
+                            ),
+                            items: EquipmentStatus.values.map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Row(
+                                children: [
+                                  _getStatusIcon(s),
+                                  const SizedBox(width: 8),
+                                  Text(s.displayName),
+                                ],
+                              ),
+                            )).toList(),
+                            onChanged: (v) => setDialogState(() => selectedStatus = v!),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Date de prochaine révision
+                          InkWell(
+                            onTap: () async {
+                              final now = DateTime.now();
+                              final initial = selectedRevisionDate != null
+                                  ? DateTime.tryParse(selectedRevisionDate!) ?? now
+                                  : now;
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: initial.isAfter(now) ? initial : now.add(const Duration(days: 30)),
+                                firstDate: now,
+                                lastDate: DateTime(now.year + 10),
+                                locale: const Locale('fr'),
+                              );
+                              if (picked != null) {
+                                setDialogState(() => selectedRevisionDate = picked.toIso8601String().substring(0, 10));
+                              }
+                            },
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Prochaine révision',
+                                prefixIcon: Icon(Icons.event),
+                                suffixIcon: Icon(Icons.calendar_today, size: 18),
+                              ),
+                              child: Text(
+                                selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
+                                    ? _formatDateDisplay(selectedRevisionDate!)
+                                    : 'Sélectionner une date (optionnel)',
+                                style: TextStyle(
+                                  color: selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty
+                                      ? null
+                                      : AppColors.textSecondary,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        if (selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty)
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: () => setDialogState(() => selectedRevisionDate = null),
-                              icon: const Icon(Icons.clear, size: 14),
-                              label: const Text('Supprimer la date'),
-                              style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                          if (selectedRevisionDate != null && selectedRevisionDate!.isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => setDialogState(() => selectedRevisionDate = null),
+                                icon: const Icon(Icons.clear, size: 14),
+                                label: const Text('Supprimer la date'),
+                                style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                              ),
                             ),
-                          ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -496,16 +586,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         flex: 2,
                         child: ElevatedButton.icon(
                           onPressed: () async {
-                            if (nameController.text.isEmpty || serialController.text.isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(l10n.commonFillRequiredFields),
-                                  backgroundColor: AppColors.error,
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                              return;
-                            }
+                            if (!formKey.currentState!.validate()) return;
 
                             final data = {
                               'id':                 isEdit ? existingEquipment.id : 'eq-${DateTime.now().millisecondsSinceEpoch}',
@@ -542,7 +623,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             } catch (e) {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text('Erreur: $e'),
+                                  content: Text(AppLocalizations.of(context)!.commonApiError),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                 ));
@@ -609,7 +690,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Erreur: $e'),
+                    content: Text(AppLocalizations.of(context)!.commonApiError),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                   ));

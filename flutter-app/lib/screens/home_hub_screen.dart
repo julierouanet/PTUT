@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import 'account_settings_screen.dart';
@@ -18,6 +19,7 @@ class HomeHubScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final user = AuthService().currentUser;
     final size = MediaQuery.of(context).size;
     final isWide = size.width > 700;
@@ -34,18 +36,18 @@ class HomeHubScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Sélectionnez un module',
-                      style: TextStyle(
+                    Text(
+                      l10n.hubSelectModule,
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      'Choisissez le module auquel vous souhaitez accéder',
-                      style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    Text(
+                      l10n.hubSelectModuleSubtitle,
+                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 32),
                     if (isWide)
@@ -314,9 +316,11 @@ class _HubModuleCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     elevation: 0,
                   ),
-                  child: Text(
-                    'Ouvrir $title',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  child: Builder(
+                    builder: (ctx) => Text(
+                      AppLocalizations.of(ctx)!.hubOpenModule(title),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                    ),
                   ),
                 ),
               ),

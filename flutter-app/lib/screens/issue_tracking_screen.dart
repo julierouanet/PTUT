@@ -106,9 +106,9 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorColor: AppColors.primary,
-            tabs: const [
-              Tab(icon: Icon(Icons.list_alt, size: 18), text: 'Suivi des incidents'),
-              Tab(icon: Icon(Icons.pending_actions, size: 18), text: 'À valider'),
+            tabs: [
+              Tab(icon: const Icon(Icons.list_alt, size: 18), text: AppLocalizations.of(context)!.issueTrackingTab),
+              Tab(icon: const Icon(Icons.pending_actions, size: 18), text: AppLocalizations.of(context)!.issueValidationTab),
             ],
           ),
         ),
@@ -130,6 +130,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   Widget _buildMainContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final statuses = [l10n.commonAll, 'Ouvert', 'Approuvé', 'En cours', 'Résolu'];
+    // Note: ces valeurs doivent correspondre aux displayName du modèle IssueStatus
 
     final openCount       = DataService().issues.where((i) => i.status == IssueStatus.open).length;
     final approvedCount   = DataService().issues.where((i) => i.status == IssueStatus.approved).length;
@@ -155,7 +156,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             if (isMobile) ...[
               Wrap(spacing: 8, runSpacing: 8, children: [
                 _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
-                _buildMiniStat('Approuvé',            approvedCount,   AppColors.primary),
+                _buildMiniStat(l10n.issuesApproved,   approvedCount,   AppColors.primary),
                 _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
                 _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
               ]),
@@ -172,7 +173,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               Row(children: [
                 _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
                 const SizedBox(width: 12),
-                _buildMiniStat('Approuvé',            approvedCount,   AppColors.primary),
+                _buildMiniStat(l10n.issuesApproved,   approvedCount,   AppColors.primary),
                 const SizedBox(width: 12),
                 _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
                 const SizedBox(width: 12),
@@ -272,6 +273,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   // ── Onglet "À valider" ─────────────────────────────────────────────────────
 
   Widget _buildValidationTab(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < 600;
     final issues = _openIssuesForValidation;
     final role = _authService.currentRole;
@@ -287,14 +289,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
           children: [
             // ── Header ───────────────────────────────────────────────────────
             Text(
-              'Incidents à valider',
+              l10n.issueValidationTitle,
               style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
             Text(
               isAdmin
-                  ? 'Tous les incidents ouverts en attente de validation'
-                  : 'Incidents ouverts du département "$dept" en attente de validation',
+                  ? l10n.issueValidationSubtitleAll
+                  : l10n.issueValidationSubtitleDept(dept),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
@@ -311,7 +313,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Text('${issues.length}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.error)),
                   const SizedBox(width: 8),
-                  const Text('incident(s) ouvert(s)', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
+                  Text(l10n.issueValidationOpenCount(issues.length), style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
                 ]),
               ),
             ]),
@@ -327,7 +329,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                           Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
                           SizedBox(width: 12),
-                          Text('Aucun incident ouvert à valider', style: TextStyle(color: AppColors.textSecondary)),
+                          Text(l10n.issueValidationNone, style: const TextStyle(color: AppColors.textSecondary)),
                         ]),
                       )
                     : Column(
@@ -368,14 +370,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               const SizedBox(height: 8),
               Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 4),
-              Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationSignaledBy(issue.reporter, issue.createdAt), style: const TextStyle(color: AppColors.textMuted, fontSize: 12))),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _showIssueDetail(issue),
                     icon: const Icon(Icons.info_outline, size: 16),
-                    label: const Text('Détails'),
+                    label: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationDetails)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -383,7 +385,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                   child: ElevatedButton.icon(
                     onPressed: _isValidating ? null : () => _showValidateDialog(issue),
                     icon: const Icon(Icons.check_circle_outline, size: 16),
-                    label: const Text('Valider'),
+                    label: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationValidate)),
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
                   ),
                 ),
@@ -416,7 +418,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                   const SizedBox(height: 4),
                   Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationSignaledBy(issue.reporter, issue.createdAt), style: const TextStyle(color: AppColors.textMuted, fontSize: 12))),
                 ]),
               ),
               const SizedBox(width: 16),
@@ -425,13 +427,13 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               OutlinedButton.icon(
                 onPressed: () => _showIssueDetail(issue),
                 icon: const Icon(Icons.info_outline, size: 16),
-                label: const Text('Détails'),
+                label: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationDetails)),
               ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: _isValidating ? null : () => _showValidateDialog(issue),
                 icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: const Text('Valider'),
+                label: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationValidate)),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
               ),
             ]),
@@ -439,21 +441,22 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   }
 
   void _showValidateDialog(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
     IssueUrgency selectedUrgency = issue.urgency;
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Valider l\'incident'),
+          title: Text(l10n.issueValidationConfirmTitle),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Confirmer la validation de l\'incident sur :'),
+            Text(l10n.issueValidationConfirmContent),
             const SizedBox(height: 8),
             Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 16),
-            const Text('Niveau d\'urgence :', style: TextStyle(fontWeight: FontWeight.w500)),
+            Text(l10n.issueValidationUrgencyLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Row(
               children: IssueUrgency.values.map((u) {
@@ -476,15 +479,15 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               }).toList(),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'L\'incident passera au statut "Approuvé" et sera assigné à l\'équipe technique.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            Text(
+              l10n.issueValidationConfirmMessage,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ]),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Annuler'),
+              child: Text(l10n.commonCancel),
             ),
             ElevatedButton.icon(
               onPressed: () async {
@@ -492,7 +495,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 await _validateIssue(issue, urgency: selectedUrgency);
               },
               icon: const Icon(Icons.check_circle_outline, size: 16),
-              label: const Text('Confirmer'),
+              label: Text(l10n.commonSave),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.success, foregroundColor: Colors.white),
             ),
           ],
@@ -518,20 +521,24 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       });
       await DataService().reloadIssues();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Incident sur "${issue.equipmentName}" validé avec succès.'),
+            content: Text(l10n.issueValidationSuccess(issue.equipmentName)),
             backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
     } catch (e) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erreur lors de la validation : $e'),
+            content: Text(l10n.issueValidationError(l10n.commonApiError)),
             backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

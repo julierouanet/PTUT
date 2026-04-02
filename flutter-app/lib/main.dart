@@ -437,20 +437,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               icon: const Icon(Icons.menu, color: AppColors.textSecondary),
               onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
               tooltip: l10n.tooltipMenu,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
-            const SizedBox(width: 4),
           ],
           if (isWide && widget.onBackToHub != null) ...[
             IconButton(
               icon: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
               onPressed: widget.onBackToHub,
-              tooltip: 'Retour aux modules',
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
+              tooltip: l10n.backToModulesLabel,
             ),
-            const SizedBox(width: 4),
           ],
           // Bouton retour
           if (_canGoBack) ...[
@@ -458,10 +452,8 @@ class _MainScaffoldState extends State<MainScaffold> {
               icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
               onPressed: _goBack,
               tooltip: l10n.tooltipBack,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
           ],
           Text(
             currentLabel,
@@ -476,16 +468,12 @@ class _MainScaffoldState extends State<MainScaffold> {
             icon: const Icon(Icons.smartphone_outlined, color: AppColors.textSecondary),
             onPressed: () => _showPhonePreview(context),
             tooltip: l10n.tooltipMobilePreview,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
             tooltip: l10n.tooltipAccountSettings,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
           const SizedBox(width: 8),
           NotificationBell(onNavigate: _navigateByScreenType),
@@ -559,7 +547,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
               child: ListTile(
                 leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20),
-                title: const Text('← Modules', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14)),
+                title: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14))),
                 dense: true,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 tileColor: AppColors.primaryLight,
@@ -621,8 +609,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                   icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
                   tooltip: l10n.tooltipAccountSettings,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -690,7 +676,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           if (widget.onBackToHub != null)
             ListTile(
               leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
-              title: const Text('← Modules', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+              title: Text(l10n.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
               tileColor: AppColors.primaryLight,
               onTap: () { Navigator.pop(context); widget.onBackToHub!(); },
             ),
@@ -753,8 +739,6 @@ class _PhonePreviewDialog extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white70),
                   onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),

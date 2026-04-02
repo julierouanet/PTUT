@@ -32,7 +32,17 @@
       "Bash(xargs ls:*)",
       "Bash(find C:UsersPersoDesktopPTUT-1 -maxdepth 2 -type f ! -path */node_modules/* ! -path */.git/* ! -path */flutter-app/* -name *)",
       "Bash(grep -E \"\\\\.\\(txt|md|doc|docx\\)$\")",
-      "Bash(find C:UsersPersoDesktopPTUT-1 -type d -maxdepth 2 ! -path */node_modules/* ! -path */.git/*)"
+      "Bash(find C:UsersPersoDesktopPTUT-1 -type d -maxdepth 2 ! -path */node_modules/* ! -path */.git/*)",
+      "Bash(grep -n \"class \" /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib/screens/*.dart)",
+      "Bash(wc -l /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib/screens/*.dart)",
+      "Bash(grep -n \"Erreur: $e\" lib/screens/user_management_screen.dart)",
+      "Bash(grep -n \"Erreur: $e\" lib/screens/technician_update_screen.dart)",
+      "Bash(grep -rn \"Erreur: $e\\\\|''Erreur : $e''\" lib/)",
+      "Bash(sed -i \"s/content: Text\\(''Erreur : $e''\\),/content: Text\\(AppLocalizations.of\\(context\\)!.commonApiError\\),/g\" lib/screens/account_settings_screen.dart lib/screens/user_management_screen.dart lib/screens/technician_update_screen.dart lib/screens/logs_screen.dart)",
+      "Bash(sed -i \"s/content: Text\\(''Erreur: $e''\\),/content: Text\\(AppLocalizations.of\\(context\\)!.commonApiError\\),/g\" lib/screens/user_management_screen.dart lib/screens/technician_update_screen.dart)",
+      "Bash(grep -rn \"Erreur.*$e\" lib/)",
+      "Bash(powershell -Command \":*)",
+      "Bash(grep -rn \"Text\\(''Erreur.*$e''\\)\" lib/screens/)"
     ]
   }
 }

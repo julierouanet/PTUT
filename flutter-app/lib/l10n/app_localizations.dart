@@ -800,6 +800,12 @@ abstract class AppLocalizations {
   /// **'Signaler un probleme'**
   String get equipmentReportProblem;
 
+  /// No description provided for @issuesApproved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Approuve'**
+  String get issuesApproved;
+
   /// No description provided for @issuesTitle.
   ///
   /// In fr, this message translates to:
@@ -2131,6 +2137,252 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Il y a {n} j'**
   String notifTimeDays(int n);
+
+  /// No description provided for @hubSelectModule.
+  ///
+  /// In fr, this message translates to:
+  /// **'Selectionnez un module'**
+  String get hubSelectModule;
+
+  /// No description provided for @hubSelectModuleSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez le module auquel vous souhaitez acceder'**
+  String get hubSelectModuleSubtitle;
+
+  /// No description provided for @hubOpenModule.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir {title}'**
+  String hubOpenModule(String title);
+
+  /// No description provided for @issueTrackingTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivi des incidents'**
+  String get issueTrackingTab;
+
+  /// No description provided for @issueValidationTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'A valider'**
+  String get issueValidationTab;
+
+  /// No description provided for @issueValidationTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents a valider'**
+  String get issueValidationTitle;
+
+  /// No description provided for @issueValidationSubtitleAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les incidents ouverts en attente de validation'**
+  String get issueValidationSubtitleAll;
+
+  /// No description provided for @issueValidationSubtitleDept.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents ouverts du departement \"{dept}\" en attente de validation'**
+  String issueValidationSubtitleDept(String dept);
+
+  /// No description provided for @issueValidationOpenCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s) ouvert(s)'**
+  String issueValidationOpenCount(int count);
+
+  /// No description provided for @issueValidationNone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident ouvert a valider'**
+  String get issueValidationNone;
+
+  /// No description provided for @issueValidationDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Details'**
+  String get issueValidationDetails;
+
+  /// No description provided for @issueValidationValidate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider'**
+  String get issueValidationValidate;
+
+  /// No description provided for @issueValidationConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider l\'incident'**
+  String get issueValidationConfirmTitle;
+
+  /// No description provided for @issueValidationConfirmContent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la validation de l\'incident sur :'**
+  String get issueValidationConfirmContent;
+
+  /// No description provided for @issueValidationUrgencyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Niveau d\'urgence :'**
+  String get issueValidationUrgencyLabel;
+
+  /// No description provided for @issueValidationConfirmMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'incident passera au statut \"Approuve\" et sera assigne a l\'equipe technique.'**
+  String get issueValidationConfirmMessage;
+
+  /// No description provided for @issueValidationSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident sur \"{equipment}\" valide avec succes.'**
+  String issueValidationSuccess(String equipment);
+
+  /// No description provided for @issueValidationError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la validation : {error}'**
+  String issueValidationError(String error);
+
+  /// No description provided for @issueValidationSignaledBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signale par {reporter} • {date}'**
+  String issueValidationSignaledBy(String reporter, String date);
+
+  /// No description provided for @issueUrgencyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Niveau d\'urgence'**
+  String get issueUrgencyLabel;
+
+  /// No description provided for @settingsMenuOrder.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ordre du menu'**
+  String get settingsMenuOrder;
+
+  /// No description provided for @settingsMenuOrderRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configurer pour le role :'**
+  String get settingsMenuOrderRole;
+
+  /// No description provided for @settingsMenuOrderHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Faites glisser les elements pour changer leur ordre dans la barre de navigation.'**
+  String get settingsMenuOrderHint;
+
+  /// No description provided for @settingsMenuOrderReset.
+  ///
+  /// In fr, this message translates to:
+  /// **'Reinitialiser'**
+  String get settingsMenuOrderReset;
+
+  /// No description provided for @settingsMenuOrderResetDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ordre par defaut restaure (non encore sauvegarde)'**
+  String get settingsMenuOrderResetDone;
+
+  /// No description provided for @settingsMenuOrderSave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegarder'**
+  String get settingsMenuOrderSave;
+
+  /// No description provided for @settingsMenuOrderSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ordre du menu sauvegarde'**
+  String get settingsMenuOrderSaved;
+
+  /// No description provided for @backToModules.
+  ///
+  /// In fr, this message translates to:
+  /// **'← Modules'**
+  String get backToModules;
+
+  /// No description provided for @backToModulesLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour aux modules'**
+  String get backToModulesLabel;
+
+  /// No description provided for @equipmentRevisionColumn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Revision'**
+  String get equipmentRevisionColumn;
+
+  /// No description provided for @accountDepartmentChange.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer de departement'**
+  String get accountDepartmentChange;
+
+  /// No description provided for @accountDepartmentChangeTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande de changement'**
+  String get accountDepartmentChangeTitle;
+
+  /// No description provided for @accountDepartmentChangeSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre demande sera soumise a un administrateur pour validation.'**
+  String get accountDepartmentChangeSubtitle;
+
+  /// No description provided for @accountDepartmentCurrent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actuel : '**
+  String get accountDepartmentCurrent;
+
+  /// No description provided for @accountDepartmentNew.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau departement'**
+  String get accountDepartmentNew;
+
+  /// No description provided for @accountDepartmentRequestSent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande envoyee - en attente de validation admin'**
+  String get accountDepartmentRequestSent;
+
+  /// No description provided for @accountDepartmentRequestSend.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer la demande'**
+  String get accountDepartmentRequestSend;
+
+  /// No description provided for @commonApiError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Une erreur est survenue. Veuillez reessayer.'**
+  String get commonApiError;
+
+  /// No description provided for @commonNetworkError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de se connecter au serveur. Verifiez votre connexion.'**
+  String get commonNetworkError;
+
+  /// No description provided for @commonDeleteError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de supprimer cet element. Veuillez reessayer.'**
+  String get commonDeleteError;
+
+  /// No description provided for @commonSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'enregistrer. Veuillez reessayer.'**
+  String get commonSaveError;
 }
 
 class _AppLocalizationsDelegate

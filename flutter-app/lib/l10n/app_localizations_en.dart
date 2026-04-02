@@ -367,6 +367,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get equipmentReportProblem => 'Report a problem';
 
   @override
+  String get issuesApproved => 'Approved';
+
+  @override
   String get issuesTitle => 'Issue Tracking';
 
   @override
@@ -1093,4 +1096,148 @@ class AppLocalizationsEn extends AppLocalizations {
   String notifTimeDays(int n) {
     return '$n d ago';
   }
+
+  @override
+  String get hubSelectModule => 'Select a module';
+
+  @override
+  String get hubSelectModuleSubtitle => 'Choose the module you want to access';
+
+  @override
+  String hubOpenModule(String title) {
+    return 'Open $title';
+  }
+
+  @override
+  String get issueTrackingTab => 'Issue tracking';
+
+  @override
+  String get issueValidationTab => 'To validate';
+
+  @override
+  String get issueValidationTitle => 'Issues to validate';
+
+  @override
+  String get issueValidationSubtitleAll =>
+      'All open issues awaiting validation';
+
+  @override
+  String issueValidationSubtitleDept(String dept) {
+    return 'Open issues from department \"$dept\" awaiting validation';
+  }
+
+  @override
+  String issueValidationOpenCount(int count) {
+    return '$count open issue(s)';
+  }
+
+  @override
+  String get issueValidationNone => 'No open issues to validate';
+
+  @override
+  String get issueValidationDetails => 'Details';
+
+  @override
+  String get issueValidationValidate => 'Validate';
+
+  @override
+  String get issueValidationConfirmTitle => 'Validate issue';
+
+  @override
+  String get issueValidationConfirmContent =>
+      'Confirm validation of the issue on:';
+
+  @override
+  String get issueValidationUrgencyLabel => 'Urgency level:';
+
+  @override
+  String get issueValidationConfirmMessage =>
+      'The issue will be moved to \"Approved\" status and assigned to the technical team.';
+
+  @override
+  String issueValidationSuccess(String equipment) {
+    return 'Issue on \"$equipment\" successfully validated.';
+  }
+
+  @override
+  String issueValidationError(String error) {
+    return 'Validation error: $error';
+  }
+
+  @override
+  String issueValidationSignaledBy(String reporter, String date) {
+    return 'Reported by $reporter • $date';
+  }
+
+  @override
+  String get issueUrgencyLabel => 'Urgency level';
+
+  @override
+  String get settingsMenuOrder => 'Menu order';
+
+  @override
+  String get settingsMenuOrderRole => 'Configure for role:';
+
+  @override
+  String get settingsMenuOrderHint =>
+      'Drag items to change their order in the navigation bar.';
+
+  @override
+  String get settingsMenuOrderReset => 'Reset';
+
+  @override
+  String get settingsMenuOrderResetDone =>
+      'Default order restored (not yet saved)';
+
+  @override
+  String get settingsMenuOrderSave => 'Save';
+
+  @override
+  String get settingsMenuOrderSaved => 'Menu order saved';
+
+  @override
+  String get backToModules => '← Modules';
+
+  @override
+  String get backToModulesLabel => 'Back to modules';
+
+  @override
+  String get equipmentRevisionColumn => 'Revision';
+
+  @override
+  String get accountDepartmentChange => 'Change department';
+
+  @override
+  String get accountDepartmentChangeTitle => 'Change request';
+
+  @override
+  String get accountDepartmentChangeSubtitle =>
+      'Your request will be submitted to an administrator for approval.';
+
+  @override
+  String get accountDepartmentCurrent => 'Current: ';
+
+  @override
+  String get accountDepartmentNew => 'New department';
+
+  @override
+  String get accountDepartmentRequestSent =>
+      'Request sent - awaiting admin approval';
+
+  @override
+  String get accountDepartmentRequestSend => 'Send request';
+
+  @override
+  String get commonApiError => 'An error occurred. Please try again.';
+
+  @override
+  String get commonNetworkError =>
+      'Unable to connect to the server. Check your connection.';
+
+  @override
+  String get commonDeleteError =>
+      'Unable to delete this item. Please try again.';
+
+  @override
+  String get commonSaveError => 'Unable to save. Please try again.';
 }

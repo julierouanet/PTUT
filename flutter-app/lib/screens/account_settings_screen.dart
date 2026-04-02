@@ -1,8 +1,9 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/config_service.dart';
 import '../providers/locale_provider.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
@@ -122,7 +123,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   // Demande de changement de département
                   ListTile(
                     leading: const Icon(Icons.swap_horiz, color: AppColors.warning),
-                    title: const Text('Changer de département', style: TextStyle(fontWeight: FontWeight.w500)),
+                    title: Text(l10n.accountDepartmentChange, style: const TextStyle(fontWeight: FontWeight.w500)),
                     subtitle: Text(
                       currentUser?.department ?? '',
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -296,9 +297,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   // ── Dialog : demande de changement de département ─────────────────────────
 
   void _showDepartmentRequestDialog() {
+    final l10n = AppLocalizations.of(context)!;
     final user = _authService.currentUser;
-    final departments = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
-    String selectedDept = user?.department ?? departments.first;
+    final departments = ConfigService().departmentNames;
+    String selectedDept = (user?.department != null && departments.contains(user!.department))
+        ? user.department
+        : departments.first;
     bool loading = false;
 
     showDialog(
@@ -316,28 +320,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Demande de changement', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(l10n.accountDepartmentChangeTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Votre demande sera soumise à un administrateur pour validation.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                Text(
+                  l10n.accountDepartmentChangeSubtitle,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 20),
                 Row(children: [
                   const Icon(Icons.business, size: 18, color: AppColors.textSecondary),
                   const SizedBox(width: 8),
-                  Text('Actuel : ', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(l10n.accountDepartmentCurrent, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   Text(user?.department ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ]),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedDept,
-                  decoration: const InputDecoration(
-                    labelText: 'Nouveau département',
-                    prefixIcon: Icon(Icons.swap_horiz),
+                  decoration: InputDecoration(
+                    labelText: l10n.accountDepartmentNew,
+                    prefixIcon: const Icon(Icons.swap_horiz),
                   ),
                   items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: (v) => setDialogState(() => selectedDept = v!),
@@ -347,7 +351,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: loading ? null : () => Navigator.pop(ctx),
-                      child: const Text('Annuler'),
+                      child: Text(l10n.commonCancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -359,8 +363,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           await AuthApiService.instance.requestDepartmentChange(selectedDept);
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text('Demande envoyée — en attente de validation admin'),
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(l10n.accountDepartmentRequestSent),
                               backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
                             ));
@@ -369,7 +373,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           setDialogState(() => loading = false);
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text('Erreur : $e'),
+                              content: Text(AppLocalizations.of(context)!.commonApiError),
                               backgroundColor: AppColors.error,
                               behavior: SnackBarBehavior.floating,
                             ));
@@ -378,7 +382,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       },
                       child: loading
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Envoyer la demande'),
+                          : Text(l10n.accountDepartmentRequestSend),
                     ),
                   ),
                 ]),

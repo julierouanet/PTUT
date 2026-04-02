@@ -107,10 +107,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 const SizedBox(width: 8),
                 Text(l10n.settingsCategoriesTab(_configService.categories.length)),
               ])),
-              const Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.menu, size: 18),
-                SizedBox(width: 8),
-                Text('Ordre du menu'),
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.menu, size: 18),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.settingsMenuOrder),
               ])),
             ],
           ),
@@ -282,6 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   // ── Onglet : ordre du menu ─────────────────────────────────────────────────
 
   Widget _buildSidebarOrderTab() {
+    final l10n = AppLocalizations.of(context)!;
     // Ordre actuel pour le rôle sélectionné (ou ordre par défaut)
     final defaultOrder = ['dashboard', 'equipment', 'issueTracking', 'issueForm',
       'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
@@ -302,7 +303,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             children: [
               const Icon(Icons.badge_outlined, color: AppColors.primary),
               const SizedBox(width: 12),
-              const Text('Configurer pour le rôle :', style: TextStyle(fontWeight: FontWeight.w500)),
+              Text(l10n.settingsMenuOrderRole, style: const TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<UserRole>(
@@ -318,9 +319,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Faites glisser les éléments pour changer leur ordre dans la barre de navigation.',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          Text(
+            l10n.settingsMenuOrderHint,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 12),
           Expanded(
@@ -369,13 +370,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   setState(() {
                     _sidebarOrder = Map.from(_sidebarOrder)..remove(_selectedRole.name);
                   });
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Ordre par défaut restauré (non encore sauvegardé)'),
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.settingsMenuOrderResetDone),
                     behavior: SnackBarBehavior.floating,
                   ));
                 },
                 icon: const Icon(Icons.restore),
-                label: const Text('Réinitialiser'),
+                label: Text(l10n.settingsMenuOrderReset),
               ),
             ),
             const SizedBox(width: 12),
@@ -389,8 +390,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     );
                     await DataService().saveSidebarConfig(_selectedRole.name, order);
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                        content: Text('Ordre du menu sauvegardé'),
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(l10n.settingsMenuOrderSaved),
                         backgroundColor: AppColors.success,
                         behavior: SnackBarBehavior.floating,
                       ));
@@ -398,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text('Erreur : $e'),
+                        content: Text(l10n.commonSaveError),
                         backgroundColor: AppColors.error,
                         behavior: SnackBarBehavior.floating,
                       ));
@@ -410,7 +411,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 icon: _sidebarSaving
                     ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.save),
-                label: const Text('Sauvegarder'),
+                label: Text(l10n.settingsMenuOrderSave),
               ),
             ),
           ]),

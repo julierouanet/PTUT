@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -695,7 +695,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text('Erreur : $e'),
+                                  content: Text(AppLocalizations.of(context)!.commonApiError),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                 ));
@@ -816,7 +816,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                  content: Text('Erreur : $e'),
+                                  content: Text(AppLocalizations.of(context)!.commonApiError),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                 ));
@@ -868,7 +868,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur : $e'),
+          content: Text(AppLocalizations.of(context)!.commonApiError),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1038,7 +1038,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur : $e'),
+          content: Text(AppLocalizations.of(context)!.commonApiError),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1238,7 +1238,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Erreur: $e'),
+                                content: Text(AppLocalizations.of(context)!.commonApiError),
                                 backgroundColor: AppColors.error,
                                 behavior: SnackBarBehavior.floating,
                               ));
@@ -1326,7 +1326,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur: $e'),
+          content: Text(AppLocalizations.of(context)!.commonApiError),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1378,7 +1378,7 @@ class _UserManagementScreenState extends State<UserManagementScreen>
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Erreur: $e'),
+                    content: Text(AppLocalizations.of(context)!.commonApiError),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                   ));

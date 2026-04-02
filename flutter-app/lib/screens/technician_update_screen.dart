@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -753,7 +753,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur : $e'),
+        content: Text(AppLocalizations.of(context)!.commonApiError),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
@@ -954,7 +954,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur: $e'),
+        content: Text(AppLocalizations.of(context)!.commonApiError),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
@@ -997,7 +997,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Erreur: $e'),
+        content: Text(AppLocalizations.of(context)!.commonApiError),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));

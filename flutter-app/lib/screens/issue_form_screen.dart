@@ -214,7 +214,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                     // Urgency
                     const SizedBox(height: 24),
                     Text(
-                      "Niveau d'urgence",
+                      l10n.issueUrgencyLabel,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
