@@ -6,6 +6,8 @@ import '../models/user.dart';
 import '../data/mock_data.dart';
 import 'db_api_service.dart';
 import 'auth_api_service.dart';
+import 'auth_service.dart';
+import '../models/user_role.dart';
 
 /// Fournit les données métier (équipements, incidents, inventaire, utilisateurs).
 ///
@@ -23,10 +25,11 @@ class DataService extends ChangeNotifier {
     users     = List.from(mockUsers);
   }
 
-  List<Equipment>     equipment = [];
-  List<Issue>         issues    = [];
-  List<InventoryItem> inventory = [];
-  List<User>          users     = [];
+  List<Equipment>             equipment     = [];
+  List<Issue>                 issues        = [];
+  List<InventoryItem>         inventory     = [];
+  List<User>                  users         = [];
+  List<Map<String, dynamic>>  deptRequests  = [];
 
   /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
   Map<String, List<String>> sidebarOrder = {};
@@ -51,6 +54,7 @@ class DataService extends ChangeNotifier {
     await _loadUsers();
     await _loadSidebarConfig();
     await _loadRolesConfig();
+    await _loadDeptRequests();
 
     isLoading = false;
     isLoaded  = true;
@@ -91,6 +95,23 @@ class DataService extends ChangeNotifier {
     } catch (e) {
       debugPrint('DataService: utilisateurs — fallback mock ($e)');
     }
+  }
+
+  Future<void> _loadDeptRequests() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
+    try {
+      deptRequests = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
+    } catch (e) {
+      debugPrint('DataService: demandes département — erreur ($e)');
+      deptRequests = [];
+    }
+  }
+
+  /// Recharge les demandes de département en attente (admin seulement).
+  Future<void> reloadDeptRequests() async {
+    await _loadDeptRequests();
+    notifyListeners();
   }
 
   /// Recharge uniquement les équipements depuis l'API.

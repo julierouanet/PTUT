@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
@@ -66,31 +67,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   Future<void> _loadDeptRequests() async {
     setState(() => _deptRequestsLoading = true);
     try {
-      final raw = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
-      final requests = raw.map((j) => _DeptRequest.fromJson(j)).toList();
+      await DataService().reloadDeptRequests();
+      final requests = DataService().deptRequests
+          .map((j) => _DeptRequest.fromJson(j))
+          .toList();
       setState(() {
         _deptRequests = requests;
         _deptRequestsLoading = false;
       });
-      // Auto-expand and notify if there are pending requests
+      NotificationService().generateFromLoadedData();
       if (requests.isNotEmpty) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             try { _deptTileController.expand(); } catch (_) {}
           }
         });
-        NotificationService().updateDeptRequestNotifications(
-          requests.map((r) => (
-            id: r.id,
-            userName: r.userName,
-            fromDept: r.currentDepartment,
-            toDept: r.requestedDepartment,
-            createdAt: DateTime.tryParse(r.createdAt) ?? DateTime.now(),
-          )).toList(),
-        );
       }
     } catch (e) {
       setState(() => _deptRequestsLoading = false);
+      debugPrint('UserManagement: erreur chargement demandes dept — $e');
     }
   }
 
@@ -297,11 +292,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 onPressed: () => _toggleUserStatus(user),
                                 tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                color: AppColors.error,
-                                onPressed: () => _confirmDeleteUser(user),
-                                tooltip: l10n.commonDelete,
+                              Tooltip(
+                                message: user.id == AuthService().currentUser?.id
+                                    ? 'Impossible de supprimer son propre compte'
+                                    : l10n.commonDelete,
+                                child: IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  color: user.id == AuthService().currentUser?.id
+                                      ? AppColors.textMuted
+                                      : AppColors.error,
+                                  onPressed: user.id == AuthService().currentUser?.id
+                                      ? null
+                                      : () => _confirmDeleteUser(user),
+                                ),
                               ),
                             ],
                           )),
@@ -456,7 +459,6 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       await AuthApiService.instance.resolveDepartmentRequest(
         req.id, status: status, adminNote: noteCtrl.text.trim(),
       );
-      NotificationService().markAsRead('notif-dept-${req.id}');
       await DataService().reloadUsers();
       await _loadDeptRequests();
       if (mounted) setState(() {});

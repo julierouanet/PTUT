@@ -44,26 +44,6 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  /// Met à jour les notifications de demandes de changement de département (admin).
-  /// Appelé après chargement des demandes en attente.
-  void updateDeptRequestNotifications(
-    List<({String id, String userName, String fromDept, String toDept, DateTime createdAt})> requests,
-  ) {
-    _notifications.removeWhere((n) => n.type == NotificationType.deptRequest);
-    for (final req in requests) {
-      _notifications.add(AppNotification(
-        id:            'notif-dept-${req.id}',
-        type:          NotificationType.deptRequest,
-        equipmentName: req.toDept,
-        department:    req.fromDept,
-        userName:      req.userName,
-        createdAt:     req.createdAt,
-      ));
-    }
-    _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    notifyListeners();
-  }
-
   /// Réinitialise et régénère les notifications selon l'état courant des données.
   /// Appelé au chargement initial et après chaque mise à jour d'un incident.
   void generateFromLoadedData() {
@@ -125,6 +105,26 @@ class NotificationService extends ChangeNotifier {
             linkedIssueId: issue.id,
           ));
         }
+      }
+    }
+
+    // ── Admins : demandes de changement de département en attente ──
+    if (isManager) {
+      for (final req in DataService().deptRequests) {
+        DateTime reqDate;
+        try {
+          reqDate = DateTime.parse(req['created_at'] as String? ?? '');
+        } catch (_) {
+          reqDate = now;
+        }
+        generated.add(AppNotification(
+          id:            'notif-dept-${req['id']}',
+          type:          NotificationType.deptRequest,
+          equipmentName: req['requested_department'] as String? ?? '',
+          department:    req['current_department']   as String? ?? '',
+          userName:      req['user_name']            as String?,
+          createdAt:     reqDate,
+        ));
       }
     }
 

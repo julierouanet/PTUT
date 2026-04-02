@@ -117,7 +117,8 @@ function initTables() {
     technician:    ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'],
     admin:         ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
                     'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
-                    'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory'],
+                    'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
+                    'changeDepartment'],
   };
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
   for (const [roleName, perms] of Object.entries(defaultPerms)) {
