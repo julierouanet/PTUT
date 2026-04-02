@@ -43,6 +43,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // ── Onglet "Mes interventions" ──────────────────────────────────────────────
   String? _selectedIssueId;
   String _repairStatus = 'Diagnostic en cours';
+  String _interventionSearch = '';
 
   // ── Onglet "Agenda" ─────────────────────────────────────────────────────────
   DateTime _focusedDay = DateTime.now();
@@ -764,6 +765,17 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   Widget _buildMyInterventionsTab(AppLocalizations l10n, bool isMobile) {
     final myIssues = _myIssues;
+    final query = _interventionSearch.toLowerCase();
+    final filtered = query.isEmpty
+        ? myIssues
+        : myIssues.where((i) =>
+            i.equipmentName.toLowerCase().contains(query) ||
+            i.description.toLowerCase().contains(query) ||
+            i.department.toLowerCase().contains(query) ||
+            i.type.toLowerCase().contains(query),
+          ).toList();
+
+    final crossAxisCount = isMobile ? 1 : 3;
 
     return Align(
       alignment: Alignment.topLeft,
@@ -778,147 +790,255 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             ),
             const SizedBox(height: 4),
             Text(l10n.techSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Barre de recherche
+            TextField(
+              onChanged: (v) => setState(() => _interventionSearch = v),
+              decoration: const InputDecoration(
+                hintText: 'Rechercher une intervention…',
+                prefixIcon: Icon(Icons.search),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 16),
 
             if (myIssues.isEmpty)
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: isMobile
-                      ? const Column(children: [
-                          Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
-                          SizedBox(height: 12),
-                          Text('Aucune intervention en cours', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                          Text('Rendez-vous dans "Incidents disponibles" pour prendre en charge un incident.', style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
-                        ])
-                      : const Row(children: [
-                          Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
-                          SizedBox(width: 20),
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text('Aucune intervention en cours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500)),
-                              Text('Rendez-vous dans "Incidents disponibles" pour prendre en charge un incident.', style: TextStyle(color: AppColors.textSecondary)),
-                            ]),
-                          ),
-                        ]),
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: const [
+                      Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
+                      SizedBox(height: 12),
+                      Text('Aucune intervention en cours', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                      SizedBox(height: 4),
+                      Text(
+                        'Rendez-vous dans "Incidents disponibles" pour prendre en charge un incident.',
+                        style: TextStyle(color: AppColors.textSecondary),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: Card(
+            else if (filtered.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('Aucun résultat', style: TextStyle(color: AppColors.textSecondary))),
+              )
+            else ...[
+              // Grille de cartes
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: isMobile ? 2.4 : 1.6,
+                ),
+                itemCount: filtered.length,
+                itemBuilder: (_, i) {
+                  final issue = filtered[i];
+                  final isSelected = _selectedIssueId == issue.id;
+                  return _buildInterventionCard(issue, isSelected, l10n);
+                },
+              ),
+
+              // Formulaire de mise à jour pour l'incident sélectionné
+              if (_selectedIssue != null) ...[
+                const SizedBox(height: 24),
+                Card(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Sélection de l'incident
-                        Text(l10n.techSelectIssue, style: const TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<String>(
-                          value: _selectedIssueId,
-                          decoration: InputDecoration(hintText: l10n.techSelectIssueHint),
-                          items: myIssues.map((issue) => DropdownMenuItem(
-                            value: issue.id,
-                            child: Text('${issue.id} — ${issue.equipmentName}'),
-                          )).toList(),
-                          onChanged: (value) {
-                            setState(() => _selectedIssueId = value);
-                            _loadIssueData();
-                          },
-                        ),
-
-                        if (_selectedIssue != null) ...[
-                          const SizedBox(height: 16),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.warningLight,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Row(children: [
-                                Expanded(child: Text(_selectedIssue!.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600))),
-                                UrgencyBadge(urgency: _selectedIssue!.urgency, isCompact: true),
-                              ]),
-                              const SizedBox(height: 4),
-                              Text(_selectedIssue!.description, style: const TextStyle(fontSize: 13)),
-                              const SizedBox(height: 8),
-                              Text(
-                                l10n.techReportedByDate(_selectedIssue!.reporter, _selectedIssue!.createdAt),
-                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                              ),
+                        // Récapitulatif de l'incident sélectionné
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Row(children: [
+                              Expanded(child: Text(_selectedIssue!.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                              UrgencyBadge(urgency: _selectedIssue!.urgency, isCompact: true),
                             ]),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Statut de réparation
-                          Text(l10n.techRepairStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 8),
-                          DropdownButtonFormField<String>(
-                            value: _repairStatus,
-                            items: _repairStatuses.map((status) => DropdownMenuItem(
-                              value: status,
-                              child: Text(_getRepairStatusDisplay(status, l10n)),
-                            )).toList(),
-                            onChanged: (value) => setState(() => _repairStatus = value!),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Diagnostic
-                          Text(l10n.techDiagnosis, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _diagnosisController,
-                            maxLines: 3,
-                            decoration: InputDecoration(hintText: l10n.techDiagnosisHint),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Actions
-                          Text(l10n.techActionsTaken, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _actionsController,
-                            maxLines: 3,
-                            decoration: InputDecoration(hintText: l10n.techActionsHint),
-                          ),
-                          const SizedBox(height: 24),
-
-                          // Pièces
-                          Text(l10n.techPartsReplaced, style: const TextStyle(fontWeight: FontWeight.w500)),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _partsController,
-                            decoration: InputDecoration(hintText: l10n.techPartsHint),
-                          ),
-                          const SizedBox(height: 32),
-
-                          // Boutons
-                          Row(children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: _isSaving ? null : _saveProgress,
-                                child: Text(l10n.techSave),
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed: (_repairStatus == 'Réparé' && !_isSaving) ? _markResolved : null,
-                                icon: const Icon(Icons.check),
-                                label: Text(l10n.techMarkResolved),
-                                style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                              ),
+                            const SizedBox(height: 4),
+                            Text(_selectedIssue!.description, style: const TextStyle(fontSize: 13)),
+                            const SizedBox(height: 8),
+                            Text(
+                              l10n.techReportedByDate(_selectedIssue!.reporter, _selectedIssue!.createdAt),
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ]),
-                        ],
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Statut de réparation
+                        Text(l10n.techRepairStatus, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        DropdownButtonFormField<String>(
+                          value: _repairStatus,
+                          items: _repairStatuses.map((status) => DropdownMenuItem(
+                            value: status,
+                            child: Text(_getRepairStatusDisplay(status, l10n)),
+                          )).toList(),
+                          onChanged: (value) => setState(() => _repairStatus = value!),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Diagnostic
+                        Text(l10n.techDiagnosis, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _diagnosisController,
+                          maxLines: 3,
+                          decoration: InputDecoration(hintText: l10n.techDiagnosisHint),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Actions
+                        Text(l10n.techActionsTaken, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _actionsController,
+                          maxLines: 3,
+                          decoration: InputDecoration(hintText: l10n.techActionsHint),
+                        ),
+                        const SizedBox(height: 24),
+
+                        // Pièces
+                        Text(l10n.techPartsReplaced, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _partsController,
+                          decoration: InputDecoration(hintText: l10n.techPartsHint),
+                        ),
+                        const SizedBox(height: 32),
+
+                        // Boutons
+                        Row(children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _isSaving ? null : _saveProgress,
+                              child: Text(l10n.techSave),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: (_repairStatus == 'Réparé' && !_isSaving) ? _markResolved : null,
+                              icon: const Icon(Icons.check),
+                              label: Text(l10n.techMarkResolved),
+                              style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+                            ),
+                          ),
+                        ]),
                       ],
                     ),
                   ),
                 ),
-              ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInterventionCard(Issue issue, bool isSelected, AppLocalizations l10n) {
+    Color urgencyColor;
+    switch (issue.urgency) {
+      case IssueUrgency.urgent: urgencyColor = AppColors.error;   break;
+      case IssueUrgency.moyen:  urgencyColor = AppColors.warning; break;
+      case IssueUrgency.faible: urgencyColor = AppColors.success; break;
+    }
+
+    return InkWell(
+      onTap: () {
+        setState(() => _selectedIssueId = issue.id);
+        _loadIssueData();
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+            width: isSelected ? 2 : 1,
+          ),
+          color: isSelected ? AppColors.primary.withOpacity(0.05) : Colors.white,
+          boxShadow: isSelected
+              ? [BoxShadow(color: AppColors.primary.withOpacity(0.15), blurRadius: 8, offset: const Offset(0, 2))]
+              : [const BoxShadow(color: Color(0x0A000000), blurRadius: 4, offset: Offset(0, 1))],
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 4,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: urgencyColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        issue.equipmentName,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        issue.department,
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                UrgencyBadge(urgency: issue.urgency, isCompact: true),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              issue.description,
+              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                const Icon(Icons.calendar_today, size: 11, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    issue.createdAt,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (isSelected)
+                  const Icon(Icons.check_circle, size: 16, color: AppColors.primary),
+              ],
+            ),
           ],
         ),
       ),

@@ -5,6 +5,27 @@ import '../services/config_service.dart';
 import '../services/data_service.dart';
 import '../models/user_role.dart';
 
+// Définition d'une page : label, icône, permissions associées
+class _PageDef {
+  final String label;
+  final IconData icon;
+  final List<Permission> permissions;
+  const _PageDef(this.label, this.icon, this.permissions);
+}
+
+const Map<String, _PageDef> _pageDefs = {
+  'dashboard':     _PageDef('Tableau de bord',  Icons.dashboard_outlined,        [Permission.viewEquipment]),
+  'equipment':     _PageDef('Équipements',        Icons.inventory_2_outlined,     [Permission.viewEquipment, Permission.manageEquipment]),
+  'issueTracking': _PageDef('Suivi incidents',    Icons.troubleshoot_outlined,    [Permission.trackIssues, Permission.approveRequests, Permission.assignTasks]),
+  'issueForm':     _PageDef('Signaler incident',  Icons.report_problem_outlined,  [Permission.reportIssue]),
+  'technician':    _PageDef('Technicien',          Icons.build_outlined,           [Permission.updateRepairs, Permission.registerParts]),
+  'inventory':     _PageDef('Inventaire',          Icons.inventory_outlined,       [Permission.viewInventory]),
+  'reports':       _PageDef('Rapports',            Icons.analytics_outlined,       [Permission.generateReports]),
+  'users':         _PageDef('Utilisateurs',        Icons.people_outlined,          [Permission.manageUsers]),
+  'settings':      _PageDef('Paramètres',          Icons.settings_outlined,        [Permission.manageDepartments, Permission.manageCategories]),
+  'logs':          _PageDef('Journaux',            Icons.history_outlined,         [Permission.manageUsers]),
+};
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -20,6 +41,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   UserRole _selectedRole = UserRole.admin;
   late Map<String, List<String>> _sidebarOrder;
   bool _sidebarSaving = false;
+
+  // État de l'onglet "Gestion des rôles"
+  UserRole _roleTabRole = UserRole.admin;
+  // role.name → screenKey → enabled
+  late Map<String, Map<String, bool>> _pagesEnabled;
+  // role.name → permission.name → enabled
+  late Map<String, Map<String, bool>> _permissionsEnabled;
+  bool _roleSaving = false;
 
   /// Noms lisibles des types d'écrans
   static const Map<String, String> _screenLabels = {
@@ -38,10 +67,28 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _configService.addListener(_onConfigChange);
     // Charger la config actuelle depuis DataService (déjà chargée au login)
     _sidebarOrder = Map.from(DataService().sidebarOrder);
+
+    // Initialiser les accès pages et fonctions depuis les valeurs par défaut
+    const allScreens = ['dashboard', 'equipment', 'issueTracking', 'issueForm',
+      'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
+    _pagesEnabled = {};
+    _permissionsEnabled = {};
+    for (final role in UserRole.values) {
+      final order = DataService().sidebarOrder[role.name];
+      _pagesEnabled[role.name] = {
+        for (final s in allScreens)
+          s: order == null ? true : order.contains(s),
+      };
+      final rolePerms = getPermissionsForRole(role).map((p) => p.name).toSet();
+      _permissionsEnabled[role.name] = {
+        for (final p in Permission.values)
+          p.name: rolePerms.contains(p.name),
+      };
+    }
   }
 
   @override
@@ -112,6 +159,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 const SizedBox(width: 8),
                 Text(AppLocalizations.of(context)!.settingsMenuOrder),
               ])),
+              const Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.admin_panel_settings, size: 18),
+                SizedBox(width: 8),
+                Text('Gestion des rôles'),
+              ])),
             ],
           ),
         ),
@@ -119,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         Expanded(
           child: TabBarView(
             controller: _tabController,
-            children: [_buildDepartmentsTab(), _buildCategoriesTab(), _buildSidebarOrderTab()],
+            children: [_buildDepartmentsTab(), _buildCategoriesTab(), _buildSidebarOrderTab(), _buildRoleManagementTab()],
           ),
         ),
       ],
@@ -416,6 +468,193 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             ),
           ]),
           const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ── Onglet : gestion des rôles ────────────────────────────────────────────
+
+  Widget _buildRoleManagementTab() {
+    final pages = _pagesEnabled[_roleTabRole.name]!;
+    final perms  = _permissionsEnabled[_roleTabRole.name]!;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+      child: Column(
+        children: [
+          // Sélecteur de rôle
+          Row(
+            children: [
+              const Icon(Icons.badge_outlined, color: AppColors.primary),
+              const SizedBox(width: 12),
+              const Text('Rôle', style: TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: DropdownButtonFormField<UserRole>(
+                  value: _roleTabRole,
+                  decoration: const InputDecoration(isDense: true),
+                  items: UserRole.values.map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(r.displayName),
+                  )).toList(),
+                  onChanged: (r) { if (r != null) setState(() => _roleTabRole = r); },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Cochez les pages accessibles et les fonctions autorisées pour ce rôle.',
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 12),
+
+          // Liste des pages
+          Expanded(
+            child: Card(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: _pageDefs.entries.map((entry) {
+                  final screenKey = entry.key;
+                  final def = entry.value;
+                  final pageEnabled = pages[screenKey] ?? false;
+                  final pagePerms = def.permissions;
+
+                  return Column(
+                    children: [
+                      // En-tête de la page (checkbox + ExpansionTile)
+                      Theme(
+                        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                        child: ExpansionTile(
+                          leading: Checkbox(
+                            value: pageEnabled,
+                            activeColor: AppColors.primary,
+                            onChanged: (v) => setState(() {
+                              _pagesEnabled[_roleTabRole.name]![screenKey] = v ?? false;
+                            }),
+                          ),
+                          title: Row(
+                            children: [
+                              Icon(def.icon, size: 18, color: pageEnabled ? AppColors.primary : AppColors.textSecondary),
+                              const SizedBox(width: 10),
+                              Text(
+                                def.label,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Fonctions sous la page
+                          children: pagePerms.isEmpty
+                              ? [
+                                  const Padding(
+                                    padding: EdgeInsets.fromLTRB(56, 0, 16, 12),
+                                    child: Text('Aucune fonction spécifique', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  ),
+                                ]
+                              : pagePerms.map((perm) {
+                                  final permEnabled = perms[perm.name] ?? false;
+                                  return Padding(
+                                    padding: const EdgeInsets.fromLTRB(56, 0, 16, 4),
+                                    child: Row(
+                                      children: [
+                                        Checkbox(
+                                          value: permEnabled,
+                                          activeColor: AppColors.primary,
+                                          visualDensity: VisualDensity.compact,
+                                          onChanged: pageEnabled
+                                              ? (v) => setState(() {
+                                                  _permissionsEnabled[_roleTabRole.name]![perm.name] = v ?? false;
+                                                })
+                                              : null,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            perm.displayName,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                        ),
+                      ),
+                      const Divider(height: 1, indent: 16, endIndent: 16),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Boutons
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  const allScreens = ['dashboard', 'equipment', 'issueTracking', 'issueForm',
+                    'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
+                  final rolePerms = getPermissionsForRole(_roleTabRole).map((p) => p.name).toSet();
+                  setState(() {
+                    _pagesEnabled[_roleTabRole.name] = {for (final s in allScreens) s: true};
+                    _permissionsEnabled[_roleTabRole.name] = {
+                      for (final p in Permission.values) p.name: rolePerms.contains(p.name),
+                    };
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Réinitialisé aux valeurs par défaut'),
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                },
+                icon: const Icon(Icons.restore),
+                label: const Text('Réinitialiser'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: _roleSaving ? null : () async {
+                  setState(() => _roleSaving = true);
+                  try {
+                    // Sauvegarder les pages activées comme ordre du menu
+                    final pages = _pagesEnabled[_roleTabRole.name]!;
+                    final enabledPages = _pageDefs.keys.where((k) => pages[k] == true).toList();
+                    await DataService().saveSidebarConfig(_roleTabRole.name, enabledPages);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Configuration sauvegardée'),
+                        backgroundColor: AppColors.success,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        content: Text('Erreur lors de la sauvegarde'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                      ));
+                    }
+                  } finally {
+                    if (mounted) setState(() => _roleSaving = false);
+                  }
+                },
+                icon: _roleSaving
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.save),
+                label: const Text('Sauvegarder'),
+              ),
+            ),
+          ]),
         ],
       ),
     );

@@ -133,6 +133,32 @@ class HomeHubScreen extends StatelessWidget {
             ),
             tooltip: 'Paramètres du compte',
           ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.error),
+            tooltip: 'Se déconnecter',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Row(children: const [
+                    Icon(Icons.logout, color: AppColors.error),
+                    SizedBox(width: 12),
+                    Text('Déconnexion'),
+                  ]),
+                  content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Se déconnecter'),
+                    ),
+                  ],
+                ),
+              );
+              if (confirmed == true) await AuthService().logoutApi();
+            },
+          ),
         ],
       ),
     );
