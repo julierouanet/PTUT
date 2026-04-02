@@ -293,10 +293,6 @@ router.post('/department-request', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Département demandé requis' });
   }
 
-  const VALID_DEPARTMENTS = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
-  if (!VALID_DEPARTMENTS.includes(requested_department)) {
-    return res.status(400).json({ error: 'Département invalide' });
-  }
   const user = db.prepare('SELECT id, name, department FROM users WHERE id = ?').get(req.user.id);
   if (!user) return res.status(404).json({ error: 'Utilisateur introuvable' });
   if (user.department === requested_department) {
