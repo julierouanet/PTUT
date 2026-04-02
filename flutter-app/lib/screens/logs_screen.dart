@@ -1,5 +1,6 @@
 ﻿import 'dart:convert';
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 

@@ -324,11 +324,11 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               width: double.infinity,
               child: Card(
                 child: issues.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(32),
+                    ? Padding(
+                        padding: const EdgeInsets.all(32),
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
-                          SizedBox(width: 12),
+                          const Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
+                          const SizedBox(width: 12),
                           Text(l10n.issueValidationNone, style: const TextStyle(color: AppColors.textSecondary)),
                         ]),
                       )
