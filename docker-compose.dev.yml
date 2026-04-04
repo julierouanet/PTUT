@@ -1,0 +1,58 @@
+# ============================================================
+# DÉVELOPPEMENT — dev.app.lucaslopvet.fr / dev.auth.lucaslopvet.fr / dev.DB.lucaslopvet.fr
+# ============================================================
+services:
+
+  auth-service-dev:
+    build: ./auth-service
+    container_name: auth-service-dev
+    restart: unless-stopped
+    ports:
+      - "3003:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DB_PATH: /data/auth.db
+      JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET_DEV:-kabutare-dev-refresh-secret}
+      DB_SERVICE_URL: http://db-service-dev:3002
+      INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
+    volumes:
+      - auth_data_dev:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  db-service-dev:
+    build: ./db-service
+    container_name: db-service-dev
+    restart: unless-stopped
+    ports:
+      - "3004:3002"
+    environment:
+      PORT: 3002
+      NODE_ENV: development
+      DB_PATH: /data/hospital.db
+      JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
+      AUTH_SERVICE_URL: http://auth-service-dev:3001
+      INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
+    volumes:
+      - db_data_dev:/data
+    depends_on:
+      auth-service-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  auth_data_dev:
+    name: auth_data_dev
+  db_data_dev:
+    name: db_data_dev

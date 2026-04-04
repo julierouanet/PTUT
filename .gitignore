@@ -1,0 +1,34 @@
+# ── Secrets ───────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── SQLite databases ──────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+
+# ── Node.js ───────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── Flutter / Dart ────────────────────────────────────────────
+flutter-app/.dart_tool/
+flutter-app/build/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+flutter-app/.packages
+flutter-app/pubspec.lock
+flutter-app/.pub-cache/
+
+# ── Docker ────────────────────────────────────────────────────
+docker-data/
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp

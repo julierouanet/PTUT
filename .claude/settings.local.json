@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/Perso/Desktop/PTUT-1/auth-service/src -type f -name *.js)",
+      "Bash(for f:*)",
+      "Bash(do echo:*)",
+      "Read(//c/Users/Perso/Desktop/PTUT-1/**)",
+      "Bash(done)",
+      "Bash(grep -v \"//.*mock\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git -C \"C:/Users/Perso/Desktop/PTUT-1\" add Jenkinsfile)",
+      "Bash(git -C \"C:/Users/Perso/Desktop/PTUT-1\" diff --staged)",
+      "Bash(git -C:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter gen-l10n:*)",
+      "Bash(find C:UsersPersoDesktopPTUT-1flutter-app -name app_localizations* -type f)",
+      "Bash(sed -i \"s|import ''package:flutter_gen/gen_l10n/app_localizations.dart'';|import ''../l10n/app_localizations.dart'';|g\" lib/screens/*.dart)",
+      "Bash(sed -i \"s|import ''package:flutter_gen/gen_l10n/app_localizations.dart'';|import ''l10n/app_localizations.dart'';|g\" lib/main.dart)",
+      "Bash(tree /c/Users/Perso/Desktop/PTUT-1/flutter-app/lib -I *.lock)",
+      "Bash(flutter run:*)",
+      "Bash(grep -r kabutare C:UsersPersoDesktopPTUT-1/auth-service --include=*.js -l)",
+      "Bash(echo \"Exit: $?\")"
+    ]
+  }
+}
