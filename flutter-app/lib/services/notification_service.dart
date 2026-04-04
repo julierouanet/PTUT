@@ -2,10 +2,10 @@ import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
 import '../models/issue.dart';
 import '../models/user_role.dart';
+import '../models/inventory_item.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 
-/// Service de notifications in-app — singleton + ChangeNotifier
 class NotificationService extends ChangeNotifier {
   static final NotificationService _instance = NotificationService._();
   factory NotificationService() => _instance;
@@ -13,21 +13,15 @@ class NotificationService extends ChangeNotifier {
 
   List<AppNotification> _notifications = [];
 
-  /// Toutes les notifications (plus récentes en premier)
   List<AppNotification> get all => List.unmodifiable(_notifications);
-
-  /// Nombre de notifications non lues
   int get unreadCount => _notifications.where((n) => !n.read).length;
 
-  /// Ajouter une notification en tête de liste
   void addNotification(AppNotification notification) {
-    // Évite les doublons (même id)
     if (_notifications.any((n) => n.id == notification.id)) return;
     _notifications.insert(0, notification);
     notifyListeners();
   }
 
-  /// Marquer une notification comme lue
   void markAsRead(String id) {
     final index = _notifications.indexWhere((n) => n.id == id);
     if (index != -1 && !_notifications[index].read) {
@@ -36,7 +30,6 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  /// Marquer toutes comme lues
   void markAllAsRead() {
     if (_notifications.any((n) => !n.read)) {
       _notifications = _notifications.map((n) => n.copyWith(read: true)).toList();
@@ -44,21 +37,18 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  /// Réinitialise et régénère les notifications selon l'état courant des données.
-  /// Appelé au chargement initial et après chaque mise à jour d'un incident.
   void generateFromLoadedData() {
     final user = AuthService().currentUser;
     if (user == null) return;
 
-    final issues    = DataService().issues;
-    final now       = DateTime.now();
-    final weekAgo   = now.subtract(const Duration(days: 7));
+    final issues  = DataService().issues;
+    final now     = DateTime.now();
+    final weekAgo = now.subtract(const Duration(days: 7));
     final isManager = user.role == UserRole.admin || user.role == UserRole.supervisor;
 
     final List<AppNotification> generated = [];
 
     for (final issue in issues) {
-      // Lire la date de création de l'incident
       DateTime issueDate;
       try {
         issueDate = DateTime.parse(issue.createdAt);
@@ -66,7 +56,6 @@ class NotificationService extends ChangeNotifier {
         issueDate = now;
       }
 
-      // ── Admins / Superviseurs : tous les incidents OUVERTS des 7 derniers jours ──
       if (isManager && issue.status == IssueStatus.open) {
         if (issueDate.isAfter(weekAgo)) {
           generated.add(AppNotification(
@@ -80,7 +69,6 @@ class NotificationService extends ChangeNotifier {
         }
       }
 
-      // ── Déclarant : mises à jour de SES incidents ──
       final isReporter = (issue.reporterId != null && issue.reporterId!.isNotEmpty)
           ? issue.reporterId == user.id
           : issue.reporter == user.name;
@@ -108,10 +96,31 @@ class NotificationService extends ChangeNotifier {
       }
     }
 
-    // Les plus récents en premier
+    // ── Alertes de stock (admin et superviseur uniquement) ──
+    if (isManager) {
+      for (final item in DataService().inventory) {
+        if (item.status == StockStatus.outOfStock) {
+          generated.add(AppNotification(
+            id:            'notif-outofstock-${item.id}',
+            type:          NotificationType.outOfStock,
+            equipmentName: item.name,
+            department:    item.category.displayName,
+            createdAt:     now,
+          ));
+        } else if (item.status == StockStatus.low) {
+          generated.add(AppNotification(
+            id:            'notif-lowstock-${item.id}',
+            type:          NotificationType.lowStock,
+            equipmentName: item.name,
+            department:    item.category.displayName,
+            createdAt:     now,
+          ));
+        }
+      }
+    }
+
     generated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Conserver l'état "lu" des notifications existantes
     final Map<String, bool> previousReadState = {
       for (final n in _notifications) n.id: n.read,
     };

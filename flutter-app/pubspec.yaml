@@ -17,6 +17,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.0
   shared_preferences: ^2.3.0
+  printing: ^5.13.1
+  pdf: ^3.10.8
 
 dev_dependencies:
   flutter_test:

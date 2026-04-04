@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+import 'dart:js' as js;
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -23,27 +25,61 @@ class IssueFormScreen extends StatefulWidget {
 class IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
   String? _selectedEquipmentId;
-  String _problemType = 'Panne';
+  final TextEditingController _equipmentSearchController = TextEditingController();
   final _descriptionController = TextEditingController();
+
+  // Domaines et types de problèmes en cascade
+  final Map<String, List<String>> _problemCategories = {
+    'ICT': [
+      'Panne réseau',
+      'Panne matériel informatique',
+      'Problème logiciel',
+      'Problème de connexion',
+      'Autre ICT',
+    ],
+    'Biomédical': [
+      'Panne',
+      'Dysfonctionnement',
+      'Calibration requise',
+      'Usure',
+      'Autre biomédical',
+    ],
+    'Électrique': [
+      'Court-circuit',
+      'Surchauffe',
+      'Fuite électrique',
+      'Panne alimentation',
+      'Autre électrique',
+    ],
+    'Hygiène': [
+      'Contamination',
+      'Nettoyage requis',
+      'Désinfection requise',
+      'Autre hygiène',
+    ],
+    'Général': [
+      'Usure',
+      'Bruit anormal',
+      'Fuite',
+      'Autre',
+    ],
+  };
+
+  String? _selectedDomain;
+  String? _selectedProblemType;
+
+  // Speech to text
+  bool _isListening = false;
+  html.SpeechRecognition? _recognition;
 
   // Photo handling
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
 
-  /// Retourne true si l'utilisateur a commencé à remplir le formulaire.
   bool get hasUnsavedData =>
       _selectedEquipmentId != null ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
-
-  List<String> _problemTypes(AppLocalizations l10n) => [
-    l10n.issueFormBreakdown,
-    l10n.issueFormMalfunction,
-    l10n.issueFormWear,
-    l10n.issueFormAbnormalNoise,
-    l10n.issueFormLeak,
-    l10n.issueFormOther,
-  ];
 
   @override
   void initState() {
@@ -52,24 +88,51 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final l10n = AppLocalizations.of(context)!;
-    // Initialize _problemType with the localized value if still default
-    if (_problemType == 'Panne') {
-      _problemType = l10n.issueFormBreakdown;
-    }
-  }
-
-  @override
   void dispose() {
     _descriptionController.dispose();
+    _equipmentSearchController.dispose();
     super.dispose();
   }
 
   Equipment? get _selectedEquipment {
     if (_selectedEquipmentId == null) return null;
     return DataService().equipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
+  }
+
+  void _toggleListening() {
+    if (_isListening) {
+      _recognition?.stop();
+      setState(() => _isListening = false);
+    } else {
+      _recognition = html.SpeechRecognition();
+      _recognition!.lang = 'fr-FR';
+      _recognition!.continuous = false;
+      _recognition!.interimResults = false;
+
+      _recognition!.addEventListener('result', (event) {
+        try {
+          final jsResults = js.JsObject.fromBrowserObject(event)['results'];
+          final jsResult = jsResults[jsResults['length'] - 1];
+          final transcript = jsResult[0]['transcript'] as String;
+          if (transcript.isNotEmpty) {
+            setState(() => _descriptionController.text = transcript);
+          }
+        } catch (e) {
+          print('Speech result error: $e');
+        }
+      });
+
+      _recognition!.onError.listen((_) {
+        setState(() => _isListening = false);
+      });
+
+      _recognition!.onEnd.listen((_) {
+        setState(() => _isListening = false);
+      });
+
+      _recognition!.start();
+      setState(() => _isListening = true);
+    }
   }
 
   void _pickPhoto() {
@@ -87,10 +150,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
     pickImageFile((String fileName, Uint8List bytes) {
       setState(() {
-        _photos.add(_PhotoItem(
-          name: fileName,
-          bytes: bytes,
-        ));
+        _photos.add(_PhotoItem(name: fileName, bytes: bytes));
       });
     });
   }
@@ -104,30 +164,20 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final problemTypes = _problemTypes(l10n);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Text(
             l10n.issueFormTitle,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          Text(
-            l10n.issueFormSubtitle,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
+          Text(l10n.issueFormSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
           const SizedBox(height: 32),
 
-          // Form
           Card(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -136,26 +186,37 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Equipment selection
-                    Text(
-                      l10n.issueFormEquipment,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+
+                    // Recherche équipement avec Autocomplete
+                    Text(l10n.issueFormEquipment, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEquipmentId,
-                      decoration: InputDecoration(
-                        hintText: l10n.issueFormSelectEquipment,
-                      ),
-                      items: DataService().equipment.map((eq) => DropdownMenuItem(
-                        value: eq.id,
-                        child: Text('${eq.name} (${eq.serialNumber})'),
-                      )).toList(),
-                      onChanged: (value) => setState(() => _selectedEquipmentId = value),
-                      validator: (value) => value == null ? l10n.issueFormSelectEquipment : null,
+                    Autocomplete<Equipment>(
+                      displayStringForOption: (eq) => '${eq.name} (${eq.serialNumber})',
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        if (textEditingValue.text.isEmpty) return DataService().equipment;
+                        return DataService().equipment.where((eq) =>
+                          eq.name.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                          eq.serialNumber.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
+                          eq.department.toLowerCase().contains(textEditingValue.text.toLowerCase())
+                        );
+                      },
+                      onSelected: (Equipment eq) {
+                        setState(() => _selectedEquipmentId = eq.id);
+                      },
+                      fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                        return TextFormField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            hintText: l10n.issueFormSelectEquipment,
+                            prefixIcon: const Icon(Icons.search),
+                          ),
+                          validator: (value) => _selectedEquipmentId == null ? l10n.issueFormSelectEquipment : null,
+                        );
+                      },
                     ),
 
-                    // Show selected equipment info
+                    // Info équipement sélectionné
                     if (_selectedEquipment != null) ...[
                       const SizedBox(height: 16),
                       Container(
@@ -172,16 +233,10 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    _selectedEquipment!.name,
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
-                                  ),
+                                  Text(_selectedEquipment!.name, style: const TextStyle(fontWeight: FontWeight.w500)),
                                   Text(
                                     '${_selectedEquipment!.department} • ${_selectedEquipment!.location}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
+                                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                                   ),
                                 ],
                               ),
@@ -192,82 +247,82 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                     ],
                     const SizedBox(height: 24),
 
-                    // Problem type
-                    Text(
-                      l10n.issueFormProblemType,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Domaine
+                    const Text('Domaine *', style: TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      value: _problemType,
-                      items: problemTypes.map((type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type),
+                      value: _selectedDomain,
+                      decoration: const InputDecoration(hintText: 'Sélectionnez un domaine'),
+                      items: _problemCategories.keys.map((domain) => DropdownMenuItem(
+                        value: domain,
+                        child: Text(domain),
                       )).toList(),
-                      onChanged: (value) => setState(() => _problemType = value!),
+                      onChanged: (value) => setState(() {
+                        _selectedDomain = value;
+                        _selectedProblemType = null;
+                      }),
+                      validator: (value) => value == null ? 'Sélectionnez un domaine' : null,
                     ),
                     const SizedBox(height: 24),
 
-                    // Description
-                    Text(
-                      l10n.issueFormDescription,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Type de problème (cascade)
+                    if (_selectedDomain != null) ...[
+                      const Text('Type de problème *', style: TextStyle(fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedProblemType,
+                        decoration: const InputDecoration(hintText: 'Sélectionnez un type de problème'),
+                        items: _problemCategories[_selectedDomain]!.map((type) => DropdownMenuItem(
+                          value: type,
+                          child: Text(type),
+                        )).toList(),
+                        onChanged: (value) => setState(() => _selectedProblemType = value),
+                        validator: (value) => value == null ? 'Sélectionnez un type de problème' : null,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // Description + Speech to text
+                    Text(l10n.issueFormDescription, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 4,
                       decoration: InputDecoration(
                         hintText: l10n.issueFormDescriptionHint,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _isListening ? Icons.mic : Icons.mic_none,
+                            color: _isListening ? Colors.red : AppColors.primary,
+                          ),
+                          onPressed: _toggleListening,
+                        ),
                       ),
                       validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return l10n.issueFormDescriptionRequired;
-                        }
-                        if (value.length < 10) {
-                          return l10n.issueFormDescriptionMinLength;
-                        }
+                        if (value == null || value.trim().isEmpty) return l10n.issueFormDescriptionRequired;
+                        if (value.length < 10) return l10n.issueFormDescriptionMinLength;
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
 
-                    // Photo upload section
-                    Text(
-                      l10n.issueFormPhotos,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Photos
+                    Text(l10n.issueFormPhotos, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
-                    Text(
-                      l10n.issueFormPhotosHint(_maxPhotos),
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
+                    Text(l10n.issueFormPhotosHint(_maxPhotos), style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                     const SizedBox(height: 12),
-
-                    // Photo grid
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        // Existing photos
-                        ..._photos.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final photo = entry.value;
-                          return _buildPhotoThumbnail(photo, index);
-                        }),
-
-                        // Add photo button
-                        if (_photos.length < _maxPhotos)
-                          _buildAddPhotoButton(),
+                        ..._photos.asMap().entries.map((entry) => _buildPhotoThumbnail(entry.value, entry.key)),
+                        if (_photos.length < _maxPhotos) _buildAddPhotoButton(),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // Reporter — auto-filled from logged-in user
-                    Text(
-                      l10n.issueFormYourName,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Reporter auto-rempli
+                    Text(l10n.issueFormYourName, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
                     Builder(builder: (context) {
                       final user = AuthService().currentUser;
@@ -290,20 +345,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    user?.name ?? '',
-                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                  ),
+                                  Text(user?.name ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                                   if (user?.email != null)
-                                    Text(
-                                      user!.email,
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    ),
+                                    Text(user!.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                   if (user?.department != null && user!.department.isNotEmpty)
-                                    Text(
-                                      user.department,
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    ),
+                                    Text(user.department, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                 ],
                               ),
                             ),
@@ -314,7 +360,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                     }),
                     const SizedBox(height: 32),
 
-                    // Boutons Annuler / Soumettre
+                    // Boutons
                     Row(
                       children: [
                         if (widget.onCancel != null) ...[
@@ -336,9 +382,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                             onPressed: _submitForm,
                             icon: const Icon(Icons.send),
                             label: Text(_photos.isNotEmpty ? l10n.issueFormSubmitWithPhotos(_photos.length) : l10n.issueFormSubmit),
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
+                            style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 14)),
                           ),
                         ),
                       ],
@@ -357,35 +401,21 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return Stack(
       children: [
         Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
+          width: 100, height: 100,
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(11),
-            child: Image.memory(
-              photo.bytes,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: AppColors.background,
-                child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
-              ),
-            ),
+            child: Image.memory(photo.bytes, fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(color: AppColors.background, child: const Icon(Icons.broken_image, color: AppColors.textSecondary))),
           ),
         ),
         Positioned(
-          top: 4,
-          right: 4,
+          top: 4, right: 4,
           child: GestureDetector(
             onTap: () => _removePhoto(index),
             child: Container(
               padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: AppColors.error,
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
               child: const Icon(Icons.close, color: Colors.white, size: 14),
             ),
           ),
@@ -399,8 +429,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return GestureDetector(
       onTap: _pickPhoto,
       child: Container(
-        width: 100,
-        height: 100,
+        width: 100, height: 100,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.primary, style: BorderStyle.solid, width: 2),
@@ -411,10 +440,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           children: [
             const Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
             const SizedBox(height: 4),
-            Text(
-              l10n.issueFormAddPhoto,
-              style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
-            ),
+            Text(l10n.issueFormAddPhoto, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -432,7 +458,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       'equipment_id':    equipment.id,
       'equipment_name':  equipment.name,
       'department':      equipment.department,
-      'type':            _problemType,
+      'type':            _selectedProblemType ?? _selectedDomain ?? '',
       'description':     _descriptionController.text.trim(),
       'reporter':        currentUser?.name ?? 'Inconnu',
       'reporter_id':     currentUser?.id ?? '',
@@ -455,7 +481,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ));
       setState(() {
         _selectedEquipmentId = null;
-        _problemType = l10n.issueFormBreakdown;
+        _selectedDomain = null;
+        _selectedProblemType = null;
         _descriptionController.clear();
         _photos.clear();
       });
@@ -470,10 +497,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 }
 
-/// Photo item model
 class _PhotoItem {
   final String name;
   final Uint8List bytes;
-
   _PhotoItem({required this.name, required this.bytes});
 }
