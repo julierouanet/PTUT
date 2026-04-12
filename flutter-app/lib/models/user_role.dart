@@ -53,7 +53,8 @@ enum Permission {
   manageDepartments,
   manageCategories,
   generateReports,
-  viewInventory;
+  viewInventory,
+  changeDepartment;
 
   String get displayName {
     switch (this) {
@@ -83,6 +84,8 @@ enum Permission {
         return 'Générer des rapports';
       case Permission.viewInventory:
         return 'Consulter l\'inventaire';
+      case Permission.changeDepartment:
+        return 'Changer son département directement';
     }
   }
 }

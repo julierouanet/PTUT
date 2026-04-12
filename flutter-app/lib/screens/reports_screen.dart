@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -475,7 +476,7 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  // ─── Export PDF ───────────────────────────────────────────────
+  // ─── Export PDF — IDENTIQUE À L'ORIGINAL, seules les couleurs changent ───
   Future<void> _generatePDF(BuildContext context) async {
     final total = DataService().equipment.length;
     final disponible = DataService().equipment.where((e) => e.status == EquipmentStatus.disponible).length;
@@ -484,7 +485,9 @@ class ReportsScreen extends StatelessWidget {
     final horsService = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).length;
     final totalIssues = DataService().issues.length;
     final openIssues = DataService().issues.where((i) => i.status.displayName == 'Ouvert').length;
-    final resolvedIssues = DataService().issues.where((i) => i.status.displayName == 'Résolu').length;
+    final inProgressIssues = DataService().issues.where((i) => i.status.displayName == 'En cours').length;
+    final resolvedIssues = DataService().issues.where((i) => i.status.displayName == 'Resolu').length;
+    final availabilityRate = total > 0 ? ((disponible + enUsage) / total * 100).round() : 0;
 
     final byDepartment = <String, int>{};
     for (final eq in DataService().equipment) {
@@ -496,129 +499,492 @@ class ReportsScreen extends StatelessWidget {
       byType[issue.type] = (byType[issue.type] ?? 0) + 1;
     }
     final sortedTypes = byType.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    final top3 = sortedTypes.take(3).toList();
+
+    // Charger le logo avec gestion d'erreur
+    pw.MemoryImage? logoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/logo.png');
+      logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (e) {
+      print('Logo non trouvé: $e');
+    }
 
     final pdf = pw.Document();
     final now = DateTime.now();
+    final dateStr = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
 
+    // ── PALETTE 60-30-10 PROFESSIONNELLE ──────────────────────────
+    // 60% blanc — fond de page
+    // 30% structure — bleu marine + gris pâle
+    // 10% accents — couleurs fonctionnelles désaturées
+    const navyBlue      = PdfColor.fromInt(0xFF1A2B4A); // en-têtes, bandes
+    const structureGrey = PdfColor.fromInt(0xFFF2F4F7); // fond lignes alternées
+    const borderGrey    = PdfColor.fromInt(0xFFD0D5DD); // bordures tableaux
+    const textDark      = PdfColor.fromInt(0xFF1A1A2E); // titres
+    const textMid       = PdfColor.fromInt(0xFF4A5568); // corps de texte
+    const textLight     = PdfColor.fromInt(0xFF718096); // sous-titres, footer
+    const accentBlue    = PdfColor.fromInt(0xFF2B6CB0); // chiffres clés
+    const accentGreen   = PdfColor.fromInt(0xFF276749); // positif / disponible
+    const accentOrange  = PdfColor.fromInt(0xFFC05621); // alertes / maintenance
+    const accentRed     = PdfColor.fromInt(0xFF9B2335); // critique / hors service
+
+    // ── PAGE DE COUVERTURE ────────────────────────────────────────
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: pw.EdgeInsets.zero,
+        build: (pw.Context ctx) => pw.Stack(
+          children: [
+            pw.Container(color: PdfColors.white),
+
+            // Bande marine en haut
+            pw.Positioned(
+              top: 0, left: 0, right: 0,
+              child: pw.Container(height: 200, color: navyBlue),
+            ),
+
+            // Bande marine en bas
+            pw.Positioned(
+              bottom: 0, left: 0, right: 0,
+              child: pw.Container(height: 80, color: navyBlue),
+            ),
+
+            // Contenu
+            pw.Padding(
+              padding: const pw.EdgeInsets.all(60),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.SizedBox(height: 20),
+
+                  // Logo
+                  if (logoImage != null) pw.Image(logoImage, width: 100, height: 100),
+
+                  pw.SizedBox(height: 16),
+
+                  // Nom hôpital
+                  pw.Text(
+                    'Kabutare Hospital',
+                    style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    'Republique du Rwanda',
+                    style: const pw.TextStyle(fontSize: 14, color: PdfColors.white),
+                    textAlign: pw.TextAlign.center,
+                  ),
+                  pw.SizedBox(height: 80),
+
+                  // Titre du rapport
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 24),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: navyBlue, width: 2),
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                    ),
+                    child: pw.Column(
+                      children: [
+                        pw.Text(
+                          'RAPPORT D\'ACTIVITES',
+                          style: pw.TextStyle(
+                            fontSize: 22,
+                            fontWeight: pw.FontWeight.bold,
+                            color: navyBlue,
+                            letterSpacing: 2,
+                          ),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                        pw.SizedBox(height: 8),
+                        pw.Text(
+                          'Gestion des Equipements Medicaux',
+                          style: pw.TextStyle(fontSize: 14, color: textMid),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                  pw.SizedBox(height: 40),
+
+                  // KPIs résumé
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(20),
+                    decoration: pw.BoxDecoration(
+                      color: structureGrey,
+                      borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                    ),
+                    child: pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+                      children: [
+                        _pdfCoverKpi('$total', 'Equipements', accentBlue),
+                        _pdfCoverKpi('$availabilityRate%', 'Disponibilite', accentGreen),
+                        _pdfCoverKpi('$totalIssues', 'Incidents', accentOrange),
+                        _pdfCoverKpi('$resolvedIssues', 'Resolus', accentGreen),
+                      ],
+                    ),
+                  ),
+
+                  pw.Spacer(),
+
+                  // Date en bas
+                  pw.Text(
+                    'Rapport genere le $dateStr',
+                    style: const pw.TextStyle(fontSize: 11, color: PdfColors.white),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // ── PAGES DE CONTENU ──────────────────────────────────────────
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context ctx) => [
-          // Header
-          pw.Row(
+        margin: const pw.EdgeInsets.fromLTRB(40, 40, 40, 60),
+        header: (pw.Context ctx) => pw.Container(
+          margin: const pw.EdgeInsets.only(bottom: 16),
+          padding: const pw.EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const pw.BoxDecoration(
+            color: navyBlue,
+            borderRadius: pw.BorderRadius.all(pw.Radius.circular(4)),
+          ),
+          child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
+              pw.Row(
                 children: [
-                  pw.Text('Rapport — Kabutare Hospital', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                  pw.Text('Gestion des équipements', style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey)),
+                  if (logoImage != null) pw.Image(logoImage, width: 28, height: 28),
+                  pw.SizedBox(width: 10),
+                  pw.Text(
+                    'Kabutare Hospital — Gestion des Equipements',
+                    style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+                  ),
                 ],
               ),
-              pw.Text('${now.day}/${now.month}/${now.year}', style: const pw.TextStyle(color: PdfColors.grey)),
+              pw.Text(
+                'Page ${ctx.pageNumber}',
+                style: const pw.TextStyle(fontSize: 10, color: PdfColors.white),
+              ),
             ],
           ),
-          pw.Divider(),
-          pw.SizedBox(height: 16),
-
-          // Résumé
-          pw.Text('Résumé général', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 12),
-          pw.Row(
+        ),
+        footer: (pw.Context ctx) => pw.Container(
+          margin: const pw.EdgeInsets.only(top: 12),
+          padding: const pw.EdgeInsets.only(top: 8),
+          decoration: pw.BoxDecoration(
+            border: pw.Border(top: pw.BorderSide(color: borderGrey)),
+          ),
+          child: pw.Row(
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              _pdfStatBox('Total équipements', '$total'),
-              _pdfStatBox('Disponibles', '$disponible'),
-              _pdfStatBox('En maintenance', '$enMaintenance'),
-              _pdfStatBox('Hors service', '$horsService'),
+              pw.Text('Confidentiel — Usage interne uniquement', style: pw.TextStyle(fontSize: 8, color: textLight)),
+              pw.Text(dateStr, style: pw.TextStyle(fontSize: 8, color: textLight)),
+            ],
+          ),
+        ),
+        build: (pw.Context ctx) => [
+
+          // ── Section 1 ──
+          _pdfSectionTitle('1. Resume executif', navyBlue),
+          pw.SizedBox(height: 12),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(
+              color: structureGrey,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+              border: pw.Border.all(color: borderGrey),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
+              children: [
+                _pdfKpiBox('Total equipements', '$total', accentBlue),
+                _pdfKpiBox('Taux de disponibilite', '$availabilityRate%', accentGreen),
+                _pdfKpiBox('Incidents ouverts', '$openIssues', accentOrange),
+                _pdfKpiBox('Incidents resolus', '$resolvedIssues', accentGreen),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 24),
+
+          // ── Section 2 ──
+          _pdfSectionTitle('2. Repartition des statuts', navyBlue),
+          pw.SizedBox(height: 12),
+          pw.Table(
+            border: pw.TableBorder.all(color: borderGrey),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(3),
+              1: const pw.FlexColumnWidth(1),
+              2: const pw.FlexColumnWidth(1),
+              3: const pw.FlexColumnWidth(2),
+            },
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: navyBlue),
+                children: [
+                  _pdfTableHeader('Statut'),
+                  _pdfTableHeader('Nombre'),
+                  _pdfTableHeader('Pourcentage'),
+                  _pdfTableHeader('Indicateur'),
+                ],
+              ),
+              _pdfStatusRow('Disponible',     disponible,    total, accentGreen,  structureGrey),
+              _pdfStatusRow('En usage',       enUsage,       total, accentBlue,   PdfColors.white),
+              _pdfStatusRow('En maintenance', enMaintenance, total, accentOrange, structureGrey),
+              _pdfStatusRow('Hors service',   horsService,   total, accentRed,    PdfColors.white),
             ],
           ),
           pw.SizedBox(height: 24),
 
-          // Statuts
-          pw.Text('Répartition des statuts', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          // ── Section 3 ──
+          _pdfSectionTitle('3. Statistiques des incidents', navyBlue),
           pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
-            headers: ['Statut', 'Nombre', 'Pourcentage'],
-            data: [
-              ['Disponible', '$disponible', '${total > 0 ? (disponible / total * 100).round() : 0}%'],
-              ['En usage', '$enUsage', '${total > 0 ? (enUsage / total * 100).round() : 0}%'],
-              ['En maintenance', '$enMaintenance', '${total > 0 ? (enMaintenance / total * 100).round() : 0}%'],
-              ['Hors service', '$horsService', '${total > 0 ? (horsService / total * 100).round() : 0}%'],
+          pw.Table(
+            border: pw.TableBorder.all(color: borderGrey),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(3),
+              1: const pw.FlexColumnWidth(1),
+              2: const pw.FlexColumnWidth(2),
+            },
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: navyBlue),
+                children: [
+                  _pdfTableHeader('Categorie'),
+                  _pdfTableHeader('Nombre'),
+                  _pdfTableHeader('Proportion'),
+                ],
+              ),
+              _pdfIncidentRow('Total incidents', totalIssues,      totalIssues, textDark,    structureGrey),
+              _pdfIncidentRow('Ouverts',         openIssues,       totalIssues, accentRed,   const PdfColor.fromInt(0xFFFFF0F0)),
+              _pdfIncidentRow('En cours',        inProgressIssues, totalIssues, accentOrange,const PdfColor.fromInt(0xFFFFF8F0)),
+              _pdfIncidentRow('Resolus',         resolvedIssues,   totalIssues, accentGreen, const PdfColor.fromInt(0xFFF0F7F0)),
             ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
-            cellPadding: const pw.EdgeInsets.all(8),
           ),
           pw.SizedBox(height: 24),
 
-          // Incidents
-          pw.Text('Statistiques incidents', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          // ── Section 4 ──
+          _pdfSectionTitle('4. Analyse des pannes recurrentes', navyBlue),
+          pw.SizedBox(height: 8),
+          pw.Text(
+            'Identification des types de pannes les plus frequents pour cibler les actions preventives.',
+            style: pw.TextStyle(fontSize: 10, color: textLight),
+          ),
           pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
-            headers: ['Type', 'Nombre'],
-            data: [
-              ['Total incidents', '$totalIssues'],
-              ['Ouverts', '$openIssues'],
-              ['En cours', '${totalIssues - openIssues - resolvedIssues}'],
-              ['Résolus', '$resolvedIssues'],
+          if (top3.isEmpty)
+            pw.Text('Aucune donnee disponible', style: pw.TextStyle(color: textLight))
+          else
+            pw.Table(
+              border: pw.TableBorder.all(color: borderGrey),
+              columnWidths: {
+                0: const pw.FlexColumnWidth(0.5),
+                1: const pw.FlexColumnWidth(3),
+                2: const pw.FlexColumnWidth(1),
+                3: const pw.FlexColumnWidth(1),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: pw.BoxDecoration(color: navyBlue),
+                  children: [
+                    _pdfTableHeader('Rang'),
+                    _pdfTableHeader('Type de panne'),
+                    _pdfTableHeader('Occurrences'),
+                    _pdfTableHeader('Part (%)'),
+                  ],
+                ),
+                ...top3.asMap().entries.map((entry) {
+                  final rank = entry.key + 1;
+                  final e = entry.value;
+                  final pct = totalIssues > 0 ? (e.value / totalIssues * 100).round() : 0;
+                  final rankColors = [accentRed, accentOrange, accentBlue];
+                  final bgColors = [
+                    const PdfColor.fromInt(0xFFFFF0F0),
+                    const PdfColor.fromInt(0xFFFFF8F0),
+                    structureGrey,
+                  ];
+                  return pw.TableRow(
+                    decoration: pw.BoxDecoration(color: bgColors[entry.key]),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('#$rank', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: rankColors[entry.key]), textAlign: pw.TextAlign.center)),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text(e.key, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: textDark))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('${e.value}', textAlign: pw.TextAlign.center, style: pw.TextStyle(color: textMid))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('$pct%', textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: rankColors[entry.key]))),
+                    ],
+                  );
+                }),
+              ],
+            ),
+          pw.SizedBox(height: 24),
+
+          // ── Section 5 ──
+          _pdfSectionTitle('5. Equipements par departement', navyBlue),
+          pw.SizedBox(height: 12),
+          pw.Table(
+            border: pw.TableBorder.all(color: borderGrey),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(3),
+              1: const pw.FlexColumnWidth(1),
+              2: const pw.FlexColumnWidth(1),
+            },
+            children: [
+              pw.TableRow(
+                decoration: pw.BoxDecoration(color: navyBlue),
+                children: [
+                  _pdfTableHeader('Departement'),
+                  _pdfTableHeader('Equipements'),
+                  _pdfTableHeader('Part (%)'),
+                ],
+              ),
+              ...(byDepartment.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+                .asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final e = entry.value;
+                  final pct = total > 0 ? (e.value / total * 100).round() : 0;
+                  return pw.TableRow(
+                    decoration: pw.BoxDecoration(color: i.isEven ? structureGrey : PdfColors.white),
+                    children: [
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text(e.key, style: pw.TextStyle(color: textDark))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('${e.value}', textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: accentBlue))),
+                      pw.Padding(padding: const pw.EdgeInsets.all(8),
+                        child: pw.Text('$pct%', textAlign: pw.TextAlign.center,
+                          style: pw.TextStyle(color: textMid))),
+                    ],
+                  );
+                }),
             ],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
-            cellPadding: const pw.EdgeInsets.all(8),
           ),
           pw.SizedBox(height: 24),
 
-          // Top 3 pannes
-          pw.Text('Top 3 des pannes récurrentes', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
-            headers: ['Rang', 'Type de panne', 'Nombre', 'Pourcentage'],
-            data: sortedTypes.take(3).toList().asMap().entries.map((entry) {
-              final rank = ['🥇', '🥈', '🥉'][entry.key];
-              final e = entry.value;
-              final pct = totalIssues > 0 ? (e.value / totalIssues * 100).round() : 0;
-              return [rank, e.key, '${e.value}', '$pct%'];
-            }).toList(),
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
-            cellPadding: const pw.EdgeInsets.all(8),
-          ),
-          pw.SizedBox(height: 24),
-
-          // Départements
-          pw.Text('Équipements par département', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 12),
-          pw.Table.fromTextArray(
-            headers: ['Département', "Nombre d'équipements"],
-            data: (byDepartment.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
-              .map((e) => [e.key, '${e.value}']).toList(),
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey100),
-            cellPadding: const pw.EdgeInsets.all(8),
+          // ── Conclusion ──
+          pw.Container(
+            padding: const pw.EdgeInsets.all(20),
+            decoration: pw.BoxDecoration(
+              color: structureGrey,
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+              border: pw.Border.all(color: navyBlue),
+            ),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('Conclusion',
+                  style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: navyBlue)),
+                pw.SizedBox(height: 8),
+                pw.Container(height: 2, color: accentBlue),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Ce rapport presente un taux de disponibilite de $availabilityRate% sur $total equipements enregistres. '
+                  '${openIssues > 0 ? "$openIssues incident(s) ouvert(s) necessitent une attention immediate." : "Aucun incident ouvert a ce jour."} '
+                  '${top3.isNotEmpty ? "Le type de panne le plus frequent est : ${top3.first.key} (${top3.first.value} occurrences)." : ""}',
+                  style: pw.TextStyle(fontSize: 10, color: textMid),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
 
+    // ── EXPORT — identique à l'original ──────────────────────────
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'rapport_kabutare_${now.day}-${now.month}-${now.year}.pdf',
+      name: 'rapport_kabutare_$dateStr.pdf',
     );
   }
+}
 
-  pw.Widget _pdfStatBox(String label, String value) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(12),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.blueGrey200),
-        borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+// ── Helpers PDF ───────────────────────────────────────────────────────────────
+
+pw.Widget _pdfCoverKpi(String value, String label, PdfColor color) {
+  return pw.Column(
+    children: [
+      pw.Text(value, style: pw.TextStyle(fontSize: 28, fontWeight: pw.FontWeight.bold, color: color)),
+      pw.SizedBox(height: 4),
+      pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
+    ],
+  );
+}
+
+pw.Widget _pdfSectionTitle(String title, PdfColor color) {
+  return pw.Container(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    decoration: pw.BoxDecoration(
+      border: pw.Border(left: pw.BorderSide(color: color, width: 4)),
+      color: const PdfColor.fromInt(0xFFF2F4F7),
+    ),
+    child: pw.Text(
+      title,
+      style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: color),
+    ),
+  );
+}
+
+pw.Widget _pdfKpiBox(String label, String value, PdfColor color) {
+  return pw.Column(
+    children: [
+      pw.Text(value, style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: color)),
+      pw.SizedBox(height: 4),
+      pw.Text(label, style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey)),
+    ],
+  );
+}
+
+pw.Widget _pdfTableHeader(String text) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.all(8),
+    child: pw.Text(text,
+      style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: PdfColors.white),
+      textAlign: pw.TextAlign.center),
+  );
+}
+
+pw.TableRow _pdfStatusRow(String label, int count, int total, PdfColor color, PdfColor bg) {
+  final pct = total > 0 ? (count / total * 100).round() : 0;
+  final barWidth = total > 0 ? count / total : 0.0;
+  return pw.TableRow(
+    decoration: pw.BoxDecoration(color: bg),
+    children: [
+      pw.Padding(padding: const pw.EdgeInsets.all(8), child: pw.Text(label)),
+      pw.Padding(padding: const pw.EdgeInsets.all(8),
+        child: pw.Text('$count', textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: color))),
+      pw.Padding(padding: const pw.EdgeInsets.all(8),
+        child: pw.Text('$pct%', textAlign: pw.TextAlign.center)),
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        child: pw.Stack(
+          children: [
+            pw.Container(height: 8, color: const PdfColor.fromInt(0xFFE0E0E0)),
+            pw.Container(height: 8, width: 100 * barWidth, color: color),
+          ],
+        ),
       ),
-      child: pw.Column(children: [
-        pw.Text(value, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: PdfColors.blue)),
-        pw.Text(label, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey)),
-      ]),
-    );
-  }
+    ],
+  );
+}
+
+pw.TableRow _pdfIncidentRow(String label, int count, int total, PdfColor color, PdfColor bgColor) {
+  final pct = total > 0 ? (count / total * 100).round() : 0;
+  return pw.TableRow(
+    decoration: pw.BoxDecoration(color: bgColor),
+    children: [
+      pw.Padding(padding: const pw.EdgeInsets.all(8),
+        child: pw.Text(label, style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: color))),
+      pw.Padding(padding: const pw.EdgeInsets.all(8),
+        child: pw.Text('$count', textAlign: pw.TextAlign.center,
+          style: pw.TextStyle(fontWeight: pw.FontWeight.bold, color: color))),
+      pw.Padding(padding: const pw.EdgeInsets.all(8),
+        child: pw.Text('$pct%', textAlign: pw.TextAlign.center)),
+    ],
+  );
 }

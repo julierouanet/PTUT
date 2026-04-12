@@ -6,6 +6,7 @@ const equipmentRoutes = require('./routes/equipment');
 const issuesRoutes    = require('./routes/issues');
 const inventoryRoutes = require('./routes/inventory');
 const logsRoutes      = require('./routes/logs');
+const sidebarRoutes   = require('./routes/sidebar');
 const debugRoutes     = require('./routes/debug');
 const { getDb } = require('./database');
 
@@ -34,11 +35,12 @@ app.use(cors({
 
 app.use(express.json());
 
-app.use('/api/equipment', equipmentRoutes);
-app.use('/api/issues',    issuesRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/logs',      logsRoutes);
-app.use('/',              debugRoutes);
+app.use('/api/equipment',     equipmentRoutes);
+app.use('/api/issues',        issuesRoutes);
+app.use('/api/inventory',     inventoryRoutes);
+app.use('/api/logs',          logsRoutes);
+app.use('/api/sidebar/config', sidebarRoutes);
+app.use('/',                  debugRoutes);
 
 const server = app.listen(PORT, () => {
   console.log(`DB service running on port ${PORT}`);

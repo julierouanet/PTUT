@@ -1,8 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/auth_api_service.dart';
+import '../services/config_service.dart';
 import '../providers/locale_provider.dart';
+import '../models/user_role.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
 class AccountSettingsScreen extends StatefulWidget {
@@ -48,7 +51,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       radius: 28,
                       backgroundColor: AppColors.primaryLight,
                       child: Text(
-                        (currentUser?.name ?? 'U').substring(0, 1).toUpperCase(),
+                        (currentUser?.fullName ?? 'U').substring(0, 1).toUpperCase(),
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
                       ),
                     ),
@@ -57,7 +60,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(currentUser?.name ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          Text(currentUser?.fullName ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
                           Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                           if (currentUser?.department != null && currentUser!.department.isNotEmpty) ...[
@@ -104,7 +107,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   ListTile(
                     leading: const Icon(Icons.person_outline, color: AppColors.primary),
                     title: Text(l10n.settingsPersonalInfo, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text(currentUser?.name ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    subtitle: Text(currentUser?.fullName ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                     onTap: () => _showPersonalInfoDialog(l10n),
                   ),
@@ -117,6 +120,46 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                     onTap: () => _showChangePasswordDialog(l10n),
                   ),
+                  const Divider(height: 1, indent: 16, endIndent: 16),
+                  // Changement de département (direct ou par demande selon permission)
+                  Builder(builder: (context) {
+                    final canChangeDirect = currentUser?.hasPermission(Permission.changeDepartment) == true;
+                    return ListTile(
+                      leading: Icon(
+                        canChangeDirect ? Icons.swap_horiz : Icons.swap_horiz,
+                        color: canChangeDirect ? AppColors.primary : AppColors.warning,
+                      ),
+                      title: Text(
+                        canChangeDirect ? 'Changer de département' : l10n.accountDepartmentChange,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        canChangeDirect
+                            ? (currentUser?.department ?? '')
+                            : currentUser?.department ?? '',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (canChangeDirect)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLight,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text('Direct', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                            ),
+                          const SizedBox(width: 4),
+                          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                        ],
+                      ),
+                      onTap: canChangeDirect
+                          ? () => _showDirectDepartmentDialog()
+                          : () => _showDepartmentRequestDialog(),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -175,10 +218,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   void _showPersonalInfoDialog(AppLocalizations l10n) {
     final user = _authService.currentUser;
-    final nameCtrl  = TextEditingController(text: user?.name ?? '');
-    final emailCtrl = TextEditingController(text: user?.email ?? '');
-    final phoneCtrl = TextEditingController(text: user?.phone ?? '');
-    final deptCtrl  = TextEditingController(text: user?.department ?? '');
+    final firstNameCtrl = TextEditingController(text: user?.firstName ?? '');
+    final lastNameCtrl  = TextEditingController(text: user?.lastName ?? '');
+    final emailCtrl     = TextEditingController(text: user?.email ?? '');
+    final phoneCtrl     = TextEditingController(text: user?.phone ?? '');
 
     showDialog(
       context: context,
@@ -199,13 +242,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              TextField(
-                controller: nameCtrl,
-                decoration: InputDecoration(
-                  labelText: l10n.settingsFullName,
-                  hintText: l10n.settingsFullNameHint,
-                  prefixIcon: const Icon(Icons.person_outline),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: firstNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Prénom',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: lastNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Nom',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 12),
               TextField(
@@ -226,15 +284,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   prefixIcon: const Icon(Icons.phone_outlined),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: deptCtrl,
-                decoration: InputDecoration(
-                  labelText: l10n.commonDepartment,
-                  hintText: l10n.settingsDepartmentHint,
-                  prefixIcon: const Icon(Icons.business_outlined),
-                ),
-              ),
               const SizedBox(height: 24),
               Row(children: [
                 Expanded(
@@ -249,10 +298,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     onPressed: () async {
                       Navigator.pop(ctx);
                       final ok = await _authService.updateProfile(
-                        name:       nameCtrl.text.trim(),
+                        firstName:  firstNameCtrl.text.trim(),
+                        lastName:   lastNameCtrl.text.trim(),
                         email:      emailCtrl.text.trim(),
                         phone:      phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
-                        department: deptCtrl.text.trim(),
                       );
                       if (mounted) {
                         setState(() {});
@@ -268,6 +317,207 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 ),
               ]),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Dialog : changement direct de département (si permission) ─────────────
+
+  void _showDirectDepartmentDialog() {
+    final user = _authService.currentUser;
+    final departments = ConfigService().departmentNames;
+    String selectedDept = (user?.department != null && departments.contains(user!.department))
+        ? user.department
+        : departments.first;
+    bool loading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Changer de département', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Votre département sera modifié immédiatement.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  const Icon(Icons.business, size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  const Text('Actuel : ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(user?.department ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedDept,
+                  decoration: const InputDecoration(
+                    labelText: 'Nouveau département',
+                    prefixIcon: Icon(Icons.swap_horiz),
+                  ),
+                  items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedDept = v!),
+                ),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : () => Navigator.pop(ctx),
+                      child: const Text('Annuler'),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: loading || selectedDept == user?.department ? null : () async {
+                        setDialogState(() => loading = true);
+                        try {
+                          await AuthApiService.instance.changeDepartmentDirect(selectedDept);
+                          await _authService.refreshCurrentUser();
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            setState(() {});
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                              content: Text('Département mis à jour'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        } catch (e) {
+                          setDialogState(() => loading = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(AppLocalizations.of(context)!.commonApiError),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        }
+                      },
+                      child: loading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Confirmer'),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Dialog : demande de changement de département ─────────────────────────
+
+  void _showDepartmentRequestDialog() {
+    final l10n = AppLocalizations.of(context)!;
+    final user = _authService.currentUser;
+    final departments = ConfigService().departmentNames;
+    String selectedDept = (user?.department != null && departments.contains(user!.department))
+        ? user.department
+        : departments.first;
+    bool loading = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(l10n.accountDepartmentChangeTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.accountDepartmentChangeSubtitle,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                Row(children: [
+                  const Icon(Icons.business, size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Text(l10n.accountDepartmentCurrent, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(user?.department ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                ]),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedDept,
+                  decoration: InputDecoration(
+                    labelText: l10n.accountDepartmentNew,
+                    prefixIcon: const Icon(Icons.swap_horiz),
+                  ),
+                  items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                  onChanged: (v) => setDialogState(() => selectedDept = v!),
+                ),
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : () => Navigator.pop(ctx),
+                      child: Text(l10n.commonCancel),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: loading || selectedDept == user?.department ? null : () async {
+                        setDialogState(() => loading = true);
+                        try {
+                          await AuthApiService.instance.requestDepartmentChange(selectedDept);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(l10n.accountDepartmentRequestSent),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        } catch (e) {
+                          setDialogState(() => loading = false);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(AppLocalizations.of(context)!.commonApiError),
+                              backgroundColor: AppColors.error,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        }
+                      },
+                      child: loading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(l10n.accountDepartmentRequestSend),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
           ),
         ),
       ),

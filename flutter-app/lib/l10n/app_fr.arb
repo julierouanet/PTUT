@@ -129,6 +129,7 @@
   "equipmentMaintenanceHistory": "Historique de maintenance",
   "equipmentReportProblem": "Signaler un probleme",
 
+  "issuesApproved": "Approuve",
   "issuesTitle": "Suivi des incidents",
   "issuesSubtitle": "Gerer et suivre les incidents des equipements",
   "issuesOpen": "Ouverts",
@@ -387,5 +388,59 @@
   "notifTimeHours": "Il y a {n} h",
   "@notifTimeHours": { "placeholders": { "n": { "type": "int" } } },
   "notifTimeDays": "Il y a {n} j",
-  "@notifTimeDays": { "placeholders": { "n": { "type": "int" } } }
+  "@notifTimeDays": { "placeholders": { "n": { "type": "int" } } },
+
+  "hubSelectModule": "Selectionnez un module",
+  "hubSelectModuleSubtitle": "Choisissez le module auquel vous souhaitez acceder",
+  "hubOpenModule": "Ouvrir {title}",
+  "@hubOpenModule": { "placeholders": { "title": { "type": "String" } } },
+
+  "issueTrackingTab": "Suivi des incidents",
+  "issueValidationTab": "A valider",
+  "issueValidationTitle": "Incidents a valider",
+  "issueValidationSubtitleAll": "Tous les incidents ouverts en attente de validation",
+  "issueValidationSubtitleDept": "Incidents ouverts du departement \"{dept}\" en attente de validation",
+  "@issueValidationSubtitleDept": { "placeholders": { "dept": { "type": "String" } } },
+  "issueValidationOpenCount": "{count} incident(s) ouvert(s)",
+  "@issueValidationOpenCount": { "placeholders": { "count": { "type": "int" } } },
+  "issueValidationNone": "Aucun incident ouvert a valider",
+  "issueValidationDetails": "Details",
+  "issueValidationValidate": "Valider",
+  "issueValidationConfirmTitle": "Valider l'incident",
+  "issueValidationConfirmContent": "Confirmer la validation de l'incident sur :",
+  "issueValidationUrgencyLabel": "Niveau d'urgence :",
+  "issueValidationConfirmMessage": "L'incident passera au statut \"Approuve\" et sera assigne a l'equipe technique.",
+  "issueValidationSuccess": "Incident sur \"{equipment}\" valide avec succes.",
+  "@issueValidationSuccess": { "placeholders": { "equipment": { "type": "String" } } },
+  "issueValidationError": "Erreur lors de la validation : {error}",
+  "@issueValidationError": { "placeholders": { "error": { "type": "String" } } },
+  "issueValidationSignaledBy": "Signale par {reporter} \u2022 {date}",
+  "@issueValidationSignaledBy": { "placeholders": { "reporter": { "type": "String" }, "date": { "type": "String" } } },
+  "issueUrgencyLabel": "Niveau d'urgence",
+
+  "settingsMenuOrder": "Ordre du menu",
+  "settingsMenuOrderRole": "Configurer pour le role :",
+  "settingsMenuOrderHint": "Faites glisser les elements pour changer leur ordre dans la barre de navigation.",
+  "settingsMenuOrderReset": "Reinitialiser",
+  "settingsMenuOrderResetDone": "Ordre par defaut restaure (non encore sauvegarde)",
+  "settingsMenuOrderSave": "Sauvegarder",
+  "settingsMenuOrderSaved": "Ordre du menu sauvegarde",
+
+  "backToModules": "\u2190 Modules",
+  "backToModulesLabel": "Retour aux modules",
+
+  "equipmentRevisionColumn": "Revision",
+
+  "accountDepartmentChange": "Changer de departement",
+  "accountDepartmentChangeTitle": "Demande de changement",
+  "accountDepartmentChangeSubtitle": "Votre demande sera soumise a un administrateur pour validation.",
+  "accountDepartmentCurrent": "Actuel : ",
+  "accountDepartmentNew": "Nouveau departement",
+  "accountDepartmentRequestSent": "Demande envoyee - en attente de validation admin",
+  "accountDepartmentRequestSend": "Envoyer la demande",
+
+  "commonApiError": "Une erreur est survenue. Veuillez reessayer.",
+  "commonNetworkError": "Impossible de se connecter au serveur. Verifiez votre connexion.",
+  "commonDeleteError": "Impossible de supprimer cet element. Veuillez reessayer.",
+  "commonSaveError": "Impossible d'enregistrer. Veuillez reessayer."
 }

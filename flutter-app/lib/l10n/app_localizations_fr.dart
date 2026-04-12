@@ -370,6 +370,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentReportProblem => 'Signaler un probleme';
 
   @override
+  String get issuesApproved => 'Approuve';
+
+  @override
   String get issuesTitle => 'Suivi des incidents';
 
   @override
@@ -1101,4 +1104,150 @@ class AppLocalizationsFr extends AppLocalizations {
   String notifTimeDays(int n) {
     return 'Il y a $n j';
   }
+
+  @override
+  String get hubSelectModule => 'Selectionnez un module';
+
+  @override
+  String get hubSelectModuleSubtitle =>
+      'Choisissez le module auquel vous souhaitez acceder';
+
+  @override
+  String hubOpenModule(String title) {
+    return 'Ouvrir $title';
+  }
+
+  @override
+  String get issueTrackingTab => 'Suivi des incidents';
+
+  @override
+  String get issueValidationTab => 'A valider';
+
+  @override
+  String get issueValidationTitle => 'Incidents a valider';
+
+  @override
+  String get issueValidationSubtitleAll =>
+      'Tous les incidents ouverts en attente de validation';
+
+  @override
+  String issueValidationSubtitleDept(String dept) {
+    return 'Incidents ouverts du departement \"$dept\" en attente de validation';
+  }
+
+  @override
+  String issueValidationOpenCount(int count) {
+    return '$count incident(s) ouvert(s)';
+  }
+
+  @override
+  String get issueValidationNone => 'Aucun incident ouvert a valider';
+
+  @override
+  String get issueValidationDetails => 'Details';
+
+  @override
+  String get issueValidationValidate => 'Valider';
+
+  @override
+  String get issueValidationConfirmTitle => 'Valider l\'incident';
+
+  @override
+  String get issueValidationConfirmContent =>
+      'Confirmer la validation de l\'incident sur :';
+
+  @override
+  String get issueValidationUrgencyLabel => 'Niveau d\'urgence :';
+
+  @override
+  String get issueValidationConfirmMessage =>
+      'L\'incident passera au statut \"Approuve\" et sera assigne a l\'equipe technique.';
+
+  @override
+  String issueValidationSuccess(String equipment) {
+    return 'Incident sur \"$equipment\" valide avec succes.';
+  }
+
+  @override
+  String issueValidationError(String error) {
+    return 'Erreur lors de la validation : $error';
+  }
+
+  @override
+  String issueValidationSignaledBy(String reporter, String date) {
+    return 'Signale par $reporter • $date';
+  }
+
+  @override
+  String get issueUrgencyLabel => 'Niveau d\'urgence';
+
+  @override
+  String get settingsMenuOrder => 'Ordre du menu';
+
+  @override
+  String get settingsMenuOrderRole => 'Configurer pour le role :';
+
+  @override
+  String get settingsMenuOrderHint =>
+      'Faites glisser les elements pour changer leur ordre dans la barre de navigation.';
+
+  @override
+  String get settingsMenuOrderReset => 'Reinitialiser';
+
+  @override
+  String get settingsMenuOrderResetDone =>
+      'Ordre par defaut restaure (non encore sauvegarde)';
+
+  @override
+  String get settingsMenuOrderSave => 'Sauvegarder';
+
+  @override
+  String get settingsMenuOrderSaved => 'Ordre du menu sauvegarde';
+
+  @override
+  String get backToModules => '← Modules';
+
+  @override
+  String get backToModulesLabel => 'Retour aux modules';
+
+  @override
+  String get equipmentRevisionColumn => 'Revision';
+
+  @override
+  String get accountDepartmentChange => 'Changer de departement';
+
+  @override
+  String get accountDepartmentChangeTitle => 'Demande de changement';
+
+  @override
+  String get accountDepartmentChangeSubtitle =>
+      'Votre demande sera soumise a un administrateur pour validation.';
+
+  @override
+  String get accountDepartmentCurrent => 'Actuel : ';
+
+  @override
+  String get accountDepartmentNew => 'Nouveau departement';
+
+  @override
+  String get accountDepartmentRequestSent =>
+      'Demande envoyee - en attente de validation admin';
+
+  @override
+  String get accountDepartmentRequestSend => 'Envoyer la demande';
+
+  @override
+  String get commonApiError => 'Une erreur est survenue. Veuillez reessayer.';
+
+  @override
+  String get commonNetworkError =>
+      'Impossible de se connecter au serveur. Verifiez votre connexion.';
+
+  @override
+  String get commonDeleteError =>
+      'Impossible de supprimer cet element. Veuillez reessayer.';
+
+  @override
+  String get commonSaveError =>
+      'Impossible d\'enregistrer. Veuillez reessayer.';
 }

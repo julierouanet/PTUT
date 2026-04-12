@@ -768,6 +768,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-001',
     name: 'Admin Système',
+    firstName: 'Admin',
+    lastName: 'Système',
     email: 'admin@kabutare.rw',
     department: 'Administration',
     role: UserRole.admin,
@@ -779,6 +781,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-002',
     name: 'Dr. Habimana Jean',
+    firstName: 'Jean',
+    lastName: 'Habimana',
     email: 'j.habimana@kabutare.rw',
     department: 'Chirurgie',
     role: UserRole.supervisor,
@@ -789,6 +793,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-003',
     name: 'Mme. Uwimana Claire',
+    firstName: 'Claire',
+    lastName: 'Uwimana',
     email: 'c.uwimana@kabutare.rw',
     department: 'Maternité',
     role: UserRole.supervisor,
@@ -800,6 +806,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-004',
     name: 'Tech. Baldé Moussa',
+    firstName: 'Moussa',
+    lastName: 'Baldé',
     email: 'm.balde@kabutare.rw',
     department: 'Administration',
     role: UserRole.technician,
@@ -810,6 +818,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-005',
     name: 'Tech. Cissé Amadou',
+    firstName: 'Amadou',
+    lastName: 'Cissé',
     email: 'a.cisse@kabutare.rw',
     department: 'Administration',
     role: UserRole.technician,
@@ -821,6 +831,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-006',
     name: 'Dr. Traoré Ibrahim',
+    firstName: 'Ibrahim',
+    lastName: 'Traoré',
     email: 'i.traore@kabutare.rw',
     department: 'Bloc opératoire',
     role: UserRole.hospitalStaff,
@@ -831,6 +843,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-007',
     name: 'Inf. Keita Fatou',
+    firstName: 'Fatou',
+    lastName: 'Keita',
     email: 'f.keita@kabutare.rw',
     department: 'Urgences',
     role: UserRole.hospitalStaff,
@@ -841,6 +855,8 @@ final List<User> mockUsers = [
   User(
     id: 'usr-008',
     name: 'Lab. Diallo Oumar',
+    firstName: 'Oumar',
+    lastName: 'Diallo',
     email: 'o.diallo@kabutare.rw',
     department: 'Laboratoire',
     role: UserRole.hospitalStaff,

@@ -229,6 +229,7 @@ class _NotifTile extends StatelessWidget {
       NotificationType.newIssue        => (AppColors.warning, Icons.warning_amber_rounded),
       NotificationType.issueInProgress => (AppColors.primary, Icons.build_rounded),
       NotificationType.issueResolved   => (AppColors.success, Icons.check_circle_rounded),
+      NotificationType.deptRequest     => (AppColors.warning, Icons.swap_horiz_rounded),
       NotificationType.lowStock        => (AppColors.warning, Icons.inventory_2_outlined),
       NotificationType.outOfStock      => (AppColors.error, Icons.remove_shopping_cart_outlined),
     };
@@ -237,6 +238,7 @@ class _NotifTile extends StatelessWidget {
       NotificationType.newIssue        => l10n.notifNewIssue,
       NotificationType.issueInProgress => l10n.notifInProgress,
       NotificationType.issueResolved   => l10n.notifResolved,
+      NotificationType.deptRequest     => 'Demande de changement de département',
       NotificationType.lowStock        => 'Stock bas',
       NotificationType.outOfStock      => 'Rupture de stock',
     };
@@ -245,6 +247,7 @@ class _NotifTile extends StatelessWidget {
       NotificationType.newIssue        => l10n.notifNewIssueBody(notif.equipmentName, notif.department),
       NotificationType.issueInProgress => l10n.notifInProgressBody(notif.equipmentName),
       NotificationType.issueResolved   => l10n.notifResolvedBody(notif.equipmentName),
+      NotificationType.deptRequest     => '${notif.userName ?? 'Utilisateur'} : ${notif.department} → ${notif.equipmentName}',
       NotificationType.lowStock        => '${notif.equipmentName} — stock faible, commande recommandée',
       NotificationType.outOfStock      => '${notif.equipmentName} — rupture totale, commander immédiatement',
     };

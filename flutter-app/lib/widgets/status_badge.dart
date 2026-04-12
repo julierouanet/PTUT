@@ -50,6 +50,9 @@ class IssueStatusBadge extends StatelessWidget {
       case 'Ouvert':
       case 'Open':
         return AppColors.error;
+      case 'Approuvé':
+      case 'Approved':
+        return AppColors.primary;
       case 'En cours':
       case 'In Progress':
         return AppColors.warning;
@@ -66,6 +69,9 @@ class IssueStatusBadge extends StatelessWidget {
       case 'Ouvert':
       case 'Open':
         return AppColors.errorLight;
+      case 'Approuvé':
+      case 'Approved':
+        return AppColors.primaryLight;
       case 'En cours':
       case 'In Progress':
         return AppColors.warningLight;
