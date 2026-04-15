@@ -83,11 +83,6 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   const existing = db.prepare('SELECT id, equipment_name, status, department FROM issues WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
-  // Un technicien ne peut modifier que les incidents de son propre département
-  if (req.user.role === 'technician' && req.user.department && existing.department !== req.user.department) {
-    return res.status(403).json({ error: 'Accès limité aux incidents de votre département' });
-  }
-
   // Validation enum statut et urgence
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(', ')}` });
