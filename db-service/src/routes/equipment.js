@@ -136,7 +136,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         supplier = COALESCE(?, supplier),
         location = COALESCE(?, location),
         next_revision_date = COALESCE(?, next_revision_date),
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = datetime('now','localtime')
     WHERE id = ?
   `).run(name, department, category, serial_number, status, supplier, location, next_revision_date, req.params.id);
 

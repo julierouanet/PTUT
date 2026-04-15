@@ -24,8 +24,8 @@ function initTables() {
       status TEXT NOT NULL DEFAULT 'Disponible',
       supplier TEXT,
       location TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS maintenance_records (
@@ -51,7 +51,7 @@ function initTables() {
       diagnosis TEXT,
       actions TEXT,
       parts_replaced TEXT,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS inventory (
@@ -63,12 +63,12 @@ function initTables() {
       unit TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'Normal',
       last_restocked TEXT,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      timestamp TEXT DEFAULT (datetime('now','localtime')),
       user_id TEXT,
       user_name TEXT NOT NULL,
       user_role TEXT NOT NULL,

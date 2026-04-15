@@ -27,7 +27,10 @@ function extractDeviceType(userAgent) {
 function logAction({ user_id, user_name, user_role, action, target_type, target_id, target_name, details, ip_address, user_agent }) {
   try {
     const db = getDb();
-    const timestamp = new Date().toISOString();
+    // Heure locale au format "YYYY-MM-DD HH:MM:SS" pour cohérence avec les autres tables
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timestamp = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     db.prepare(`
       INSERT INTO logs (timestamp, user_id, user_name, user_role, action, target_type, target_id, target_name, details, ip_address, user_agent)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)

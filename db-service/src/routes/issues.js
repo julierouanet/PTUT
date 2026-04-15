@@ -61,7 +61,7 @@ router.post('/', verifyToken, (req, res) => {
   try {
     db.prepare(`
       INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), 'Ouvert')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Ouvert')
     `).run(id, equipment_id, equipment_name, department, type, description, reporter, reporter_id || null, reporter_email || null, urgencyValue);
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
@@ -104,7 +104,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         actions = COALESCE(?, actions),
         parts_replaced = COALESCE(?, parts_replaced),
         urgency = COALESCE(?, urgency),
-        updated_at = CURRENT_TIMESTAMP
+        updated_at = datetime('now','localtime')
     WHERE id = ?
   `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, req.params.id);
 

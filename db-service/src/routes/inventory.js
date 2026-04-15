@@ -100,8 +100,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         current_stock = ?,
         min_stock = ?,
         status = ?,
-        last_restocked = CASE WHEN ? = 1 THEN date('now') ELSE ? END,
-        updated_at = CURRENT_TIMESTAMP
+        last_restocked = CASE WHEN ? = 1 THEN date('now','localtime') ELSE ? END,
+        updated_at = datetime('now','localtime')
     WHERE id = ?
   `).run(name, category, unit, newStock, newMinStock, status, isRestock ? 1 : 0, existing.last_restocked, req.params.id);
 
