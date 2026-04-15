@@ -5,7 +5,7 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
-const VALID_STATUSES  = ['Ouvert', 'En cours', 'Résolu', 'Annulé'];
+const VALID_STATUSES  = ['Ouvert', 'Approuvé', 'En cours', 'Résolu', 'Annulé'];
 const VALID_URGENCIES = ['Faible', 'Moyen', 'Urgent'];
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 
