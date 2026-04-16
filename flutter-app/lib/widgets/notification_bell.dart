@@ -295,15 +295,17 @@ class _NotifTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (Color iconColor, IconData iconData) = switch (notif.type) {
-      NotificationType.newIssue      => (AppColors.warning, Icons.warning_amber_rounded),
+      NotificationType.newIssue        => (AppColors.warning, Icons.warning_amber_rounded),
       NotificationType.issueInProgress => (AppColors.primary, Icons.build_rounded),
       NotificationType.issueResolved   => (AppColors.success, Icons.check_circle_rounded),
+      NotificationType.deptRequest     => (AppColors.warning, Icons.swap_horiz_rounded),
     };
 
     final String title = switch (notif.type) {
       NotificationType.newIssue        => l10n.notifNewIssue,
       NotificationType.issueInProgress => l10n.notifInProgress,
       NotificationType.issueResolved   => l10n.notifResolved,
+      NotificationType.deptRequest     => 'Demande de changement de département',
     };
 
     final String body = switch (notif.type) {
@@ -313,6 +315,8 @@ class _NotifTile extends StatelessWidget {
         l10n.notifInProgressBody(notif.equipmentName),
       NotificationType.issueResolved =>
         l10n.notifResolvedBody(notif.equipmentName),
+      NotificationType.deptRequest =>
+        '${notif.userName ?? 'Utilisateur'} : ${notif.department} → ${notif.equipmentName}',
     };
 
     return InkWell(

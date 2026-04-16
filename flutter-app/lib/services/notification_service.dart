@@ -108,6 +108,26 @@ class NotificationService extends ChangeNotifier {
       }
     }
 
+    // ── Admins : demandes de changement de département en attente ──
+    if (isManager) {
+      for (final req in DataService().deptRequests) {
+        DateTime reqDate;
+        try {
+          reqDate = DateTime.parse(req['created_at'] as String? ?? '');
+        } catch (_) {
+          reqDate = now;
+        }
+        generated.add(AppNotification(
+          id:            'notif-dept-${req['id']}',
+          type:          NotificationType.deptRequest,
+          equipmentName: req['requested_department'] as String? ?? '',
+          department:    req['current_department']   as String? ?? '',
+          userName:      req['user_name']            as String?,
+          createdAt:     reqDate,
+        ));
+      }
+    }
+
     // Les plus récents en premier
     generated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 

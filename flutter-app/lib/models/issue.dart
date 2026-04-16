@@ -1,6 +1,36 @@
+/// Issue urgency enumeration (3 levels)
+enum IssueUrgency {
+  faible,
+  moyen,
+  urgent;
+
+  String get displayName {
+    switch (this) {
+      case IssueUrgency.faible:
+        return 'Faible';
+      case IssueUrgency.moyen:
+        return 'Moyen';
+      case IssueUrgency.urgent:
+        return 'Urgent';
+    }
+  }
+
+  static IssueUrgency fromString(String? value) {
+    switch (value) {
+      case 'Faible':
+        return IssueUrgency.faible;
+      case 'Urgent':
+        return IssueUrgency.urgent;
+      default:
+        return IssueUrgency.moyen;
+    }
+  }
+}
+
 /// Issue status enumeration
 enum IssueStatus {
   open,
+  approved,
   inProgress,
   resolved;
 
@@ -8,6 +38,8 @@ enum IssueStatus {
     switch (this) {
       case IssueStatus.open:
         return 'Ouvert';
+      case IssueStatus.approved:
+        return 'Approuvé';
       case IssueStatus.inProgress:
         return 'En cours';
       case IssueStatus.resolved:
@@ -20,6 +52,9 @@ enum IssueStatus {
       case 'Open':
       case 'Ouvert':
         return IssueStatus.open;
+      case 'Approved':
+      case 'Approuvé':
+        return IssueStatus.approved;
       case 'In Progress':
       case 'En cours':
         return IssueStatus.inProgress;
@@ -45,6 +80,7 @@ class Issue {
   final String? reporterEmail;
   final String createdAt;
   final IssueStatus status;
+  final IssueUrgency urgency;
   final String? assignedTechnician;
   final String? diagnosis;
   final String? actions;
@@ -62,6 +98,7 @@ class Issue {
     this.reporterEmail,
     required this.createdAt,
     required this.status,
+    this.urgency = IssueUrgency.moyen,
     this.assignedTechnician,
     this.diagnosis,
     this.actions,
@@ -81,6 +118,7 @@ class Issue {
       reporterEmail:      json['reporter_email']       as String?,
       createdAt:          json['created_at']           as String? ?? '',
       status:             IssueStatus.fromString(json['status'] as String? ?? ''),
+      urgency:            IssueUrgency.fromString(json['urgency'] as String?),
       assignedTechnician: json['assigned_technician']  as String?,
       diagnosis:          json['diagnosis']            as String?,
       actions:            json['actions']              as String?,
@@ -100,6 +138,7 @@ class Issue {
     String? reporterEmail,
     String? createdAt,
     IssueStatus? status,
+    IssueUrgency? urgency,
     String? assignedTechnician,
     String? diagnosis,
     String? actions,
@@ -117,6 +156,7 @@ class Issue {
       reporterEmail: reporterEmail ?? this.reporterEmail,
       createdAt:     createdAt     ?? this.createdAt,
       status: status ?? this.status,
+      urgency: urgency ?? this.urgency,
       assignedTechnician: assignedTechnician ?? this.assignedTechnician,
       diagnosis: diagnosis ?? this.diagnosis,
       actions: actions ?? this.actions,

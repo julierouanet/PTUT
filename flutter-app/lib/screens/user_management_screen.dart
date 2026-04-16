@@ -1,10 +1,43 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
+
+/// Modèle léger pour une demande de changement de département.
+class _DeptRequest {
+  final String id;
+  final String userId;
+  final String userName;
+  final String currentDepartment;
+  final String requestedDepartment;
+  final String status;
+  final String createdAt;
+
+  const _DeptRequest({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    required this.currentDepartment,
+    required this.requestedDepartment,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory _DeptRequest.fromJson(Map<String, dynamic> j) => _DeptRequest(
+    id: j['id'] as String,
+    userId: j['user_id'] as String,
+    userName: j['user_name'] as String,
+    currentDepartment: j['current_department'] as String,
+    requestedDepartment: j['requested_department'] as String,
+    status: j['status'] as String,
+    createdAt: j['created_at'] as String? ?? '',
+  );
+}
 
 /// User management screen - Admin only
 class UserManagementScreen extends StatefulWidget {
@@ -15,8 +48,46 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
-  String _roleFilter = 'all'; // internal key
+  String _roleFilter = 'all';
   String _searchTerm = '';
+
+  List<_DeptRequest> _deptRequests = [];
+  bool _deptRequestsLoading = false;
+  bool _deptRequestsExpanded = false;
+  final _deptTileController = ExpansionTileController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDeptRequests();
+  }
+
+  // ── Chargement données ────────────────────────────────────────────────────
+
+  Future<void> _loadDeptRequests() async {
+    setState(() => _deptRequestsLoading = true);
+    try {
+      await DataService().reloadDeptRequests();
+      final requests = DataService().deptRequests
+          .map((j) => _DeptRequest.fromJson(j))
+          .toList();
+      setState(() {
+        _deptRequests = requests;
+        _deptRequestsLoading = false;
+      });
+      NotificationService().generateFromLoadedData();
+      if (requests.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            try { _deptTileController.expand(); } catch (_) {}
+          }
+        });
+      }
+    } catch (e) {
+      setState(() => _deptRequestsLoading = false);
+      debugPrint('UserManagement: erreur chargement demandes dept — $e');
+    }
+  }
 
   List<User> get _filteredUsers {
     return DataService().users.where((user) {
@@ -27,9 +98,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }).toList();
   }
 
+  // ── Build principal ───────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    return _buildUsersTab(context, l10n);
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 1 : UTILISATEURS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildUsersTab(BuildContext context, AppLocalizations l10n) {
     final users = DataService().users;
     final roleStats = {
       'all': users.length,
@@ -147,6 +228,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             ),
             const SizedBox(height: 20),
 
+            // Section demandes de changement de département
+            _buildDeptRequestsSection(),
+            const SizedBox(height: 20),
+
             // Users table
             SizedBox(
               width: double.infinity,
@@ -179,7 +264,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 ),
                               ),
                               const SizedBox(width: 12),
-                              Text(user.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                              Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
                             ],
                           )),
                           DataCell(Text(user.email)),
@@ -207,11 +292,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 onPressed: () => _toggleUserStatus(user),
                                 tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 18),
-                                color: AppColors.error,
-                                onPressed: () => _confirmDeleteUser(user),
-                                tooltip: l10n.commonDelete,
+                              Tooltip(
+                                message: user.id == AuthService().currentUser?.id
+                                    ? 'Impossible de supprimer son propre compte'
+                                    : l10n.commonDelete,
+                                child: IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  color: user.id == AuthService().currentUser?.id
+                                      ? AppColors.textMuted
+                                      : AppColors.error,
+                                  onPressed: user.id == AuthService().currentUser?.id
+                                      ? null
+                                      : () => _confirmDeleteUser(user),
+                                ),
                               ),
                             ],
                           )),
@@ -227,6 +320,171 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       ),
     );
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 1 — SECTION DEMANDES DE DÉPARTEMENT
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildDeptRequestsSection() {
+    final count = _deptRequests.length;
+    return Card(
+      child: ExpansionTile(
+        controller: _deptTileController,
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.swap_horiz, color: AppColors.warning),
+            if (count > 0)
+              Positioned(
+                right: -6, top: -4,
+                child: Container(
+                  width: 16, height: 16,
+                  decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                  child: Center(
+                    child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Demandes de changement de département', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          _deptRequestsLoading ? 'Chargement…' : '$count demande${count > 1 ? 's' : ''} en attente',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        initiallyExpanded: _deptRequestsExpanded,
+        onExpansionChanged: (v) => setState(() => _deptRequestsExpanded = v),
+        children: [
+          if (_deptRequestsLoading)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_deptRequests.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Text('Aucune demande en attente.', style: TextStyle(color: AppColors.textSecondary)),
+            )
+          else
+            ...  _deptRequests.map((req) => ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              leading: CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.warningLight,
+                child: Text(
+                  req.userName.isNotEmpty ? req.userName[0].toUpperCase() : '?',
+                  style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+                ),
+              ),
+              title: Text(req.userName, style: const TextStyle(fontWeight: FontWeight.w500)),
+              subtitle: Row(children: [
+                Text(req.currentDepartment, style: const TextStyle(fontSize: 12)),
+                const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textMuted)),
+                Text(req.requestedDepartment, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+              ]),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+                    tooltip: 'Approuver',
+                    onPressed: () => _resolveDeptRequest(req, 'approved'),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                    tooltip: 'Rejeter',
+                    onPressed: () => _resolveDeptRequest(req, 'rejected'),
+                  ),
+                ],
+              ),
+            )),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolveDeptRequest(_DeptRequest req, String status) async {
+    final noteCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(
+            status == 'approved' ? Icons.check_circle_outline : Icons.cancel_outlined,
+            color: status == 'approved' ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 8),
+          Text(status == 'approved' ? 'Approuver la demande' : 'Rejeter la demande'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(text: TextSpan(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              children: [
+                TextSpan(text: req.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const TextSpan(text: ' : '),
+                TextSpan(text: req.currentDepartment),
+                const TextSpan(text: ' → '),
+                TextSpan(text: req.requestedDepartment, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ],
+            )),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Note (optionnel)',
+                hintText: 'Raison de la décision…',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(status == 'approved' ? 'Approuver' : 'Rejeter'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AuthApiService.instance.resolveDepartmentRequest(
+        req.id, status: status, adminNote: noteCtrl.text.trim(),
+      );
+      await DataService().reloadUsers();
+      await _loadDeptRequests();
+      if (mounted) setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'approved'
+              ? 'Demande approuvée — département mis à jour'
+              : 'Demande rejetée'),
+          backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.commonApiError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // WIDGETS COMMUNS
+  // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildRoleCardWidget(String label, int count, IconData icon, Color color) {
     return Card(
@@ -293,12 +551,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════════════════
+  // DIALOGS UTILISATEURS
+  // ══════════════════════════════════════════════════════════════════════════
+
   void _showUserDialog(User? user) {
     final l10n = AppLocalizations.of(context)!;
-    final isEdit   = user != null;
-    final nameCtrl  = TextEditingController(text: user?.name ?? '');
-    final emailCtrl = TextEditingController(text: user?.email ?? '');
-    final phoneCtrl = TextEditingController(text: user?.phone ?? '');
+    final isEdit        = user != null;
+    final firstNameCtrl = TextEditingController(text: user?.firstName ?? '');
+    final lastNameCtrl  = TextEditingController(text: user?.lastName ?? '');
+    final emailCtrl     = TextEditingController(text: user?.email ?? '');
+    final phoneCtrl     = TextEditingController(text: user?.phone ?? '');
     final passCtrl  = TextEditingController();
     String selectedRole       = user?.role.name ?? UserRole.hospitalStaff.name;
     String selectedDepartment = user?.department ?? 'IT';
@@ -326,7 +589,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                TextField(controller: nameCtrl,  decoration: InputDecoration(labelText: l10n.usersFullName, prefixIcon: const Icon(Icons.person))),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: firstNameCtrl,
+                        decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: lastNameCtrl,
+                        decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: l10n.usersEmailLabel, prefixIcon: const Icon(Icons.email))),
                 const SizedBox(height: 12),
@@ -362,13 +641,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (nameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
+                          if (firstNameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
                           if (!isEdit && passCtrl.text.isEmpty) return;
+                          final fullName = '${firstNameCtrl.text.trim()} ${lastNameCtrl.text.trim()}'.trim();
                           final data = {
-                            'name':       nameCtrl.text,
-                            'email':      emailCtrl.text,
-                            'department': selectedDepartment,
-                            'role':       selectedRole,
+                            'first_name':  firstNameCtrl.text.trim(),
+                            'last_name':   lastNameCtrl.text.trim(),
+                            'name':        fullName,
+                            'email':       emailCtrl.text,
+                            'department':  selectedDepartment,
+                            'role':        selectedRole,
                             if (phoneCtrl.text.isNotEmpty) 'phone': phoneCtrl.text,
                             if (passCtrl.text.isNotEmpty)  'password': passCtrl.text,
                           };
@@ -379,6 +661,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                               await AuthApiService.instance.createUser(data);
                             }
                             await DataService().reloadUsers();
+                            if (mounted) setState(() {});
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -391,7 +674,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             if (ctx.mounted) Navigator.pop(ctx);
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text('Erreur: $e'),
+                                content: Text(AppLocalizations.of(context)!.commonApiError),
                                 backgroundColor: AppColors.error,
                                 behavior: SnackBarBehavior.floating,
                               ));
@@ -446,7 +729,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   side: BorderSide.none,
                 )).toList(),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 16),
+              const Text(
+                'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
@@ -463,6 +751,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     try {
       final newActive = await AuthApiService.instance.toggleUserStatus(user.id);
       await DataService().reloadUsers();
+      if (mounted) setState(() {});
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(newActive ? l10n.usersAccountActivated : l10n.usersAccountDeactivated),
@@ -473,7 +762,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur: $e'),
+          content: Text(AppLocalizations.of(context)!.commonApiError),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -514,6 +803,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               try {
                 await AuthApiService.instance.deleteUser(user.id, reason: reason.isEmpty ? null : reason);
                 await DataService().reloadUsers();
+                if (mounted) setState(() {});
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.usersDeleted),
@@ -524,7 +814,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Erreur: $e'),
+                    content: Text(AppLocalizations.of(context)!.commonApiError),
                     backgroundColor: AppColors.error,
                     behavior: SnackBarBehavior.floating,
                   ));

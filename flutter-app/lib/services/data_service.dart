@@ -6,6 +6,8 @@ import '../models/user.dart';
 import '../data/mock_data.dart';
 import 'db_api_service.dart';
 import 'auth_api_service.dart';
+import 'auth_service.dart';
+import '../models/user_role.dart';
 
 /// Fournit les données métier (équipements, incidents, inventaire, utilisateurs).
 ///
@@ -23,10 +25,17 @@ class DataService extends ChangeNotifier {
     users     = List.from(mockUsers);
   }
 
-  List<Equipment>     equipment = [];
-  List<Issue>         issues    = [];
-  List<InventoryItem> inventory = [];
-  List<User>          users     = [];
+  List<Equipment>             equipment     = [];
+  List<Issue>                 issues        = [];
+  List<InventoryItem>         inventory     = [];
+  List<User>                  users         = [];
+  List<Map<String, dynamic>>  deptRequests  = [];
+
+  /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
+  Map<String, List<String>> sidebarOrder = {};
+
+  /// Config des rôles : nom du rôle → ensemble des permissions actives
+  Map<String, Set<String>> _rolePermissionsMap = {};
 
   bool isLoading = false;
   bool isLoaded  = false;
@@ -43,6 +52,9 @@ class DataService extends ChangeNotifier {
     await _loadIssues();
     await _loadInventory();
     await _loadUsers();
+    await _loadSidebarConfig();
+    await _loadRolesConfig();
+    await _loadDeptRequests();
 
     isLoading = false;
     isLoaded  = true;
@@ -77,12 +89,31 @@ class DataService extends ChangeNotifier {
   }
 
   Future<void> _loadUsers() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
     try {
       final raw = await AuthApiService.instance.getUsers();
       users = raw.map(User.fromApiJson).toList();
     } catch (e) {
       debugPrint('DataService: utilisateurs — fallback mock ($e)');
     }
+  }
+
+  Future<void> _loadDeptRequests() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
+    try {
+      deptRequests = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
+    } catch (e) {
+      debugPrint('DataService: demandes département — erreur ($e)');
+      deptRequests = [];
+    }
+  }
+
+  /// Recharge les demandes de département en attente (admin seulement).
+  Future<void> reloadDeptRequests() async {
+    await _loadDeptRequests();
+    notifyListeners();
   }
 
   /// Recharge uniquement les équipements depuis l'API.
@@ -106,6 +137,60 @@ class DataService extends ChangeNotifier {
   /// Recharge uniquement les utilisateurs depuis l'API.
   Future<void> reloadUsers() async {
     await _loadUsers();
+    notifyListeners();
+  }
+
+  Future<void> _loadSidebarConfig() async {
+    try {
+      final roles = ['admin', 'supervisor', 'technician', 'hospitalStaff'];
+      final results = <String, List<String>>{};
+      for (final role in roles) {
+        final order = await DbApiService.instance.getSidebarConfig(role);
+        if (order.isNotEmpty) results[role] = order;
+      }
+      sidebarOrder = results;
+    } catch (e) {
+      debugPrint('DataService: sidebar config — fallback default ($e)');
+    }
+  }
+
+  /// Sauvegarde l'ordre de la sidebar pour [role] et notifie les listeners.
+  Future<void> saveSidebarConfig(String role, List<String> order) async {
+    await DbApiService.instance.updateSidebarConfig(role, order);
+    sidebarOrder = Map.from(sidebarOrder)..[role] = order;
+    notifyListeners();
+  }
+
+  Future<void> _loadRolesConfig() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
+    try {
+      final raw = await AuthApiService.instance.getRoles();
+      final map = <String, Set<String>>{};
+      for (final role in raw) {
+        final name = role['name'] as String;
+        final perms = (role['permissions'] as List?)?.cast<String>().toSet() ?? <String>{};
+        map[name] = perms;
+      }
+      _rolePermissionsMap = map;
+    } catch (e) {
+      debugPrint('DataService: roles config — fallback default ($e)');
+    }
+  }
+
+  /// Recharge la configuration des rôles depuis l'API.
+  Future<void> reloadRolesConfig() async {
+    await _loadRolesConfig();
+    notifyListeners();
+  }
+
+  /// Retourne les permissions configurées pour un rôle (null si non chargé).
+  Set<String>? permissionsForRole(String roleName) => _rolePermissionsMap[roleName];
+
+  /// Sauvegarde les permissions d'un rôle et met à jour la config locale.
+  Future<void> saveRolePermissions(String roleName, List<String> permissions) async {
+    await AuthApiService.instance.updateRolePermissions(roleName, permissions);
+    _rolePermissionsMap = Map.from(_rolePermissionsMap)..[roleName] = permissions.toSet();
     notifyListeners();
   }
 }

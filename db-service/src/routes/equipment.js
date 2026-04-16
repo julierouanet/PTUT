@@ -5,6 +5,10 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
+const VALID_STATUSES_EQ   = ['Disponible', 'En service', 'En maintenance', 'Hors service'];
+const VALID_DEPARTMENTS   = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
+const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
+
 // GET /api/equipment - liste tous les équipements
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
@@ -34,7 +38,7 @@ router.get('/', verifyToken, (req, res) => {
 // POST /api/equipment/restore — restaurer un équipement supprimé (admin)
 router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
-  const { id, name, department, category, serial_number, status, supplier, location } = req.body;
+  const { id, name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
 
   if (!id || !name || !department || !category) {
     return res.status(400).json({ error: 'Données de restauration incomplètes' });
@@ -42,9 +46,9 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
 
   try {
     db.prepare(`
-      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null);
+      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location, next_revision_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null, next_revision_date || null);
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'restore_equipment', target_type: 'equipment', target_id: id, target_name: name,
@@ -75,17 +79,31 @@ router.get('/:id', verifyToken, (req, res) => {
 // POST /api/equipment - créer un équipement (admin/supervisor)
 router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
   const db = getDb();
-  const { id, name, department, category, serial_number, status, supplier, location } = req.body;
+  const { id, name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
 
   if (!id || !name || !department || !category) {
     return res.status(400).json({ error: 'Champs requis: id, name, department, category' });
   }
 
+  // Validation format
+  if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 100) {
+    return res.status(400).json({ error: 'ID invalide (alphanumérique, max 100 caractères)' });
+  }
+  if (typeof name !== 'string' || name.length > 255) {
+    return res.status(400).json({ error: 'Nom invalide (max 255 caractères)' });
+  }
+  if (!VALID_DEPARTMENTS.includes(department)) {
+    return res.status(400).json({ error: 'Département invalide' });
+  }
+  if (status && !VALID_STATUSES_EQ.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES_EQ.join(', ')}` });
+  }
+
   try {
     db.prepare(`
-      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null);
+      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location, next_revision_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null, next_revision_date || null);
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
@@ -103,7 +121,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 // PUT /api/equipment/:id - modifier un équipement
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
   const db = getDb();
-  const { name, department, category, serial_number, status, supplier, location } = req.body;
+  const { name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
 
   const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
@@ -117,14 +135,15 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         status = COALESCE(?, status),
         supplier = COALESCE(?, supplier),
         location = COALESCE(?, location),
-        updated_at = CURRENT_TIMESTAMP
+        next_revision_date = COALESCE(?, next_revision_date),
+        updated_at = datetime('now','localtime')
     WHERE id = ?
-  `).run(name, department, category, serial_number, status, supplier, location, req.params.id);
+  `).run(name, department, category, serial_number, status, supplier, location, next_revision_date, req.params.id);
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: name || existing.name,
-    details: { snapshot_before: existing },
+    details: { snapshot_before: { id: existing.id, name: existing.name, status: existing.status, department: existing.department } },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement mis à jour' });
@@ -137,12 +156,19 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
   db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
-  const reason = req.query.reason;
+  const rawReason = req.query.reason;
+  // Sanitisation : longueur max 200 chars, caractères simples uniquement
+  const reason = rawReason && typeof rawReason === 'string'
+    ? rawReason.replace(/[<>'"]/g, '').substring(0, 200)
+    : undefined;
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: existing.name,
-    details: { snapshot: existing, ...(reason ? { reason } : {}) },
+    details: {
+      snapshot: { id: existing.id, name: existing.name, department: existing.department, category: existing.category, status: existing.status },
+      ...(reason ? { reason } : {}),
+    },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement supprimé' });

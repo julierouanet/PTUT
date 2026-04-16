@@ -22,8 +22,8 @@ void main() {
   });
 
   group('Permission', () {
-    test('has 13 permissions', () {
-      expect(Permission.values.length, 13);
+    test('has 14 permissions', () {
+      expect(Permission.values.length, 14);
     });
 
     test('displayName is not empty for all permissions', () {

@@ -24,8 +24,8 @@ function initTables() {
       status TEXT NOT NULL DEFAULT 'Disponible',
       supplier TEXT,
       location TEXT,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS maintenance_records (
@@ -51,7 +51,7 @@ function initTables() {
       diagnosis TEXT,
       actions TEXT,
       parts_replaced TEXT,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS inventory (
@@ -63,12 +63,12 @@ function initTables() {
       unit TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'Normal',
       last_restocked TEXT,
-      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+      updated_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
     CREATE TABLE IF NOT EXISTS logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      timestamp TEXT DEFAULT (datetime('now','localtime')),
       user_id TEXT,
       user_name TEXT NOT NULL,
       user_role TEXT NOT NULL,
@@ -91,6 +91,26 @@ function initTables() {
   // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
   try { db.exec('ALTER TABLE logs ADD COLUMN ip_address TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE logs ADD COLUMN user_agent TEXT'); } catch (_) {}
+
+  // Migration : ajout des colonnes reporter_id, reporter_email dans issues si elles n'existent pas
+  try { db.exec("ALTER TABLE issues ADD COLUMN reporter_id TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE issues ADD COLUMN reporter_email TEXT"); } catch (_) {}
+
+  // Migration : ajout de la colonne urgency dans issues
+  try { db.exec("ALTER TABLE issues ADD COLUMN urgency TEXT DEFAULT 'Moyen'"); } catch (_) {}
+
+  // Migration : ajout de la colonne next_revision_date dans equipment
+  try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
+
+  // Table de configuration de la sidebar par rôle
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS sidebar_config (
+      role        TEXT NOT NULL,
+      screen_type TEXT NOT NULL,
+      sort_order  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (role, screen_type)
+    );
+  `);
 }
 
 function closeDb() {

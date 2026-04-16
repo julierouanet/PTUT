@@ -57,6 +57,7 @@ class Equipment {
   final EquipmentStatus status;
   final String supplier;
   final String location;
+  final String? nextRevisionDate;
   final List<MaintenanceRecord> maintenanceHistory;
   final List<MaintenanceRecord> futureMaintenance;
 
@@ -69,6 +70,7 @@ class Equipment {
     required this.status,
     required this.supplier,
     required this.location,
+    this.nextRevisionDate,
     this.maintenanceHistory = const [],
     this.futureMaintenance = const [],
   });
@@ -89,14 +91,15 @@ class Equipment {
             ))
         .toList();
     return Equipment(
-      id:                 json['id']            as String? ?? '',
-      name:               json['name']          as String? ?? '',
-      department:         json['department']    as String? ?? '',
-      category:           json['category']      as String? ?? '',
-      serialNumber:       json['serial_number'] as String? ?? '',
+      id:                 json['id']                   as String? ?? '',
+      name:               json['name']                 as String? ?? '',
+      department:         json['department']           as String? ?? '',
+      category:           json['category']             as String? ?? '',
+      serialNumber:       json['serial_number']        as String? ?? '',
       status:             EquipmentStatus.fromString(json['status'] as String? ?? ''),
-      supplier:           json['supplier']      as String? ?? '',
-      location:           json['location']      as String? ?? '',
+      supplier:           json['supplier']             as String? ?? '',
+      location:           json['location']             as String? ?? '',
+      nextRevisionDate:   json['next_revision_date']   as String?,
       maintenanceHistory: history,
       futureMaintenance:  future,
     );
@@ -111,6 +114,7 @@ class Equipment {
     EquipmentStatus? status,
     String? supplier,
     String? location,
+    String? nextRevisionDate,
     List<MaintenanceRecord>? maintenanceHistory,
     List<MaintenanceRecord>? futureMaintenance,
   }) {
@@ -123,6 +127,7 @@ class Equipment {
       status: status ?? this.status,
       supplier: supplier ?? this.supplier,
       location: location ?? this.location,
+      nextRevisionDate: nextRevisionDate ?? this.nextRevisionDate,
       maintenanceHistory: maintenanceHistory ?? this.maintenanceHistory,
       futureMaintenance: futureMaintenance ?? this.futureMaintenance,
     );

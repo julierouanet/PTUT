@@ -4,6 +4,8 @@ import 'user_role.dart';
 class User {
   final String id;
   final String name;
+  final String firstName;
+  final String lastName;
   final String email;
   final String department;
   final UserRole role;
@@ -12,11 +14,22 @@ class User {
   final String? phone;
   final String createdAt;
 
+  /// Nom complet calcule a partir de firstName + lastName
+  String get fullName {
+    final full = '$firstName $lastName'.trim();
+    return full.isNotEmpty ? full : name;
+  }
+
   factory User.fromApiJson(Map<String, dynamic> json) {
     final role = _roleFromString(json['role'] as String? ?? 'hospitalStaff');
+    final name = json['name'] as String? ?? '';
+    final firstName = json['first_name'] as String? ?? '';
+    final lastName = json['last_name'] as String? ?? '';
     return User(
       id:          json['id']          as String? ?? '',
-      name:        json['name']        as String? ?? '',
+      name:        name,
+      firstName:   firstName.isNotEmpty ? firstName : (name.split(' ').first),
+      lastName:    lastName.isNotEmpty ? lastName : (name.split(' ').skip(1).join(' ')),
       email:       json['email']       as String? ?? '',
       department:  json['department']  as String? ?? '',
       role:        role,
@@ -39,6 +52,8 @@ class User {
   const User({
     required this.id,
     required this.name,
+    this.firstName = '',
+    this.lastName = '',
     required this.email,
     required this.department,
     required this.role,
@@ -67,6 +82,8 @@ class User {
   User copyWith({
     String? id,
     String? name,
+    String? firstName,
+    String? lastName,
     String? email,
     String? department,
     UserRole? role,
@@ -78,6 +95,8 @@ class User {
     return User(
       id: id ?? this.id,
       name: name ?? this.name,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       department: department ?? this.department,
       role: role ?? this.role,

@@ -40,6 +40,24 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     return res.status(400).json({ error: 'Champs requis: id, name, category, current_stock, min_stock, unit' });
   }
 
+  // Validation format et longueur
+  if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 100) {
+    return res.status(400).json({ error: 'ID invalide (alphanumérique, max 100 caractères)' });
+  }
+  if (typeof name !== 'string' || name.length > 255) {
+    return res.status(400).json({ error: 'Nom invalide (max 255 caractères)' });
+  }
+  const VALID_CATEGORIES_INV = ['Consommable médical', 'Hygiène', 'Bureautique'];
+  if (!VALID_CATEGORIES_INV.includes(category)) {
+    return res.status(400).json({ error: 'Catégorie invalide' });
+  }
+  if (typeof current_stock !== 'number' || typeof min_stock !== 'number' || current_stock < 0 || min_stock < 0) {
+    return res.status(400).json({ error: 'Les stocks doivent être des nombres positifs' });
+  }
+  if (typeof unit !== 'string' || unit.length > 50) {
+    return res.status(400).json({ error: 'Unité invalide (max 50 caractères)' });
+  }
+
   const status = computeStatus(current_stock, min_stock);
 
   try {
@@ -71,9 +89,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   const newMinStock = min_stock     !== undefined ? min_stock     : existing.min_stock;
   const status      = computeStatus(newStock, newMinStock);
 
-  const restocked = (current_stock !== undefined && current_stock > existing.current_stock)
-    ? `date('now')`
-    : `'${existing.last_restocked}'`;
+  const isRestock = current_stock !== undefined && current_stock > existing.current_stock;
+  const newLastRestocked = isRestock ? null : existing.last_restocked; // null → date('now') via CASE
 
   db.prepare(`
     UPDATE inventory
@@ -83,12 +100,11 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
         current_stock = ?,
         min_stock = ?,
         status = ?,
-        last_restocked = ${restocked},
-        updated_at = CURRENT_TIMESTAMP
+        last_restocked = CASE WHEN ? = 1 THEN date('now','localtime') ELSE ? END,
+        updated_at = datetime('now','localtime')
     WHERE id = ?
-  `).run(name, category, unit, newStock, newMinStock, status, req.params.id);
+  `).run(name, category, unit, newStock, newMinStock, status, isRestock ? 1 : 0, existing.last_restocked, req.params.id);
 
-  const isRestock = current_stock !== undefined && current_stock > existing.current_stock;
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: isRestock ? 'restock_inventory' : 'update_inventory',
     target_type: 'inventory', target_id: req.params.id, target_name: name || existing.name,

@@ -17,9 +17,11 @@ import 'screens/logs_screen.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
 import 'services/notification_service.dart';
+import 'services/api_client.dart';
 import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/notification_bell.dart';
+import 'screens/home_hub_screen.dart';
 
 /// Screen types for navigation (no more string matching)
 enum ScreenType {
@@ -38,6 +40,25 @@ enum ScreenType {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocaleProvider().loadSavedLocale();
+
+  // Configurer le callback de session expiree
+  ApiClient.onSessionExpired = () {
+    AuthService().handleSessionExpired();
+  };
+
+  // Tenter l'auto-login si des tokens sont stockes
+  try {
+    if (await ApiClient.hasStoredTokens()) {
+      final restored = await AuthService().restoreSession();
+      if (restored) {
+        await DataService().loadAll();
+        NotificationService().generateFromLoadedData();
+      }
+    }
+  } catch (_) {
+    // En cas d'erreur (secure storage indisponible, etc.), afficher le login normalement
+  }
+
   runApp(const EquipmentManagementApp());
 }
 
@@ -72,7 +93,7 @@ class EquipmentManagementApp extends StatelessWidget {
                 listenable: DataService(),
                 builder: (context, _) {
                   if (DataService().isLoading) return const _LoadingScreen();
-                  return const MainScaffold();
+                  return const _AppRoot();
                 },
               );
             },
@@ -104,9 +125,65 @@ class _LoadingScreen extends StatelessWidget {
   }
 }
 
+// ── Hub root — gère la sélection du module ──────────────────────────────────
+
+enum _HubModule { equipment, settings, inventory }
+
+class _AppRoot extends StatefulWidget {
+  const _AppRoot();
+  @override
+  State<_AppRoot> createState() => _AppRootState();
+}
+
+class _AppRootState extends State<_AppRoot> {
+  _HubModule? _activeModule;
+
+  static const _equipmentScreens = [
+    ScreenType.dashboard,
+    ScreenType.equipment,
+    ScreenType.issueTracking,
+    ScreenType.issueForm,
+    ScreenType.technician,
+    ScreenType.reports,
+  ];
+  static const _settingsScreens = [
+    ScreenType.settings,
+    ScreenType.users,
+    ScreenType.logs,
+  ];
+  static const _inventoryScreens = [ScreenType.inventory];
+
+  List<ScreenType>? _filterFor(_HubModule m) {
+    switch (m) {
+      case _HubModule.equipment: return _equipmentScreens;
+      case _HubModule.settings:  return _settingsScreens;
+      case _HubModule.inventory: return _inventoryScreens;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_activeModule == null) {
+      return HomeHubScreen(
+        onEquipmentModule: () => setState(() => _activeModule = _HubModule.equipment),
+        onSettingsModule:  () => setState(() => _activeModule = _HubModule.settings),
+        onInventoryModule: () => setState(() => _activeModule = _HubModule.inventory),
+      );
+    }
+    return MainScaffold(
+      moduleFilter: _filterFor(_activeModule!),
+      onBackToHub: () => setState(() => _activeModule = null),
+    );
+  }
+}
+
+// ── Main scaffold ────────────────────────────────────────────────────────────
+
 /// Main scaffold with sidebar navigation
 class MainScaffold extends StatefulWidget {
-  const MainScaffold({super.key});
+  final List<ScreenType>? moduleFilter;
+  final VoidCallback? onBackToHub;
+  const MainScaffold({super.key, this.moduleFilter, this.onBackToHub});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -144,10 +221,26 @@ class _MainScaffoldState extends State<MainScaffold> {
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
-    return _allNavItems(l10n).where((item) {
+    final filter = widget.moduleFilter;
+    final visible = _allNavItems(l10n).where((item) {
+      if (filter != null && !filter.contains(item.screenType)) return false;
       if (item.requiredPermission == null) return true;
       return _authService.hasPermission(item.requiredPermission!);
     }).toList();
+
+    // Appliquer l'ordre configuré par l'admin pour ce rôle (si disponible)
+    final roleName = _authService.currentUser?.role.name ?? '';
+    final order = DataService().sidebarOrder[roleName];
+    if (order != null && order.isNotEmpty) {
+      visible.sort((a, b) {
+        final ai = order.indexOf(a.screenType.name);
+        final bi = order.indexOf(b.screenType.name);
+        final aIdx = ai == -1 ? order.length : ai;
+        final bIdx = bi == -1 ? order.length : bi;
+        return aIdx.compareTo(bIdx);
+      });
+    }
+    return visible;
   }
 
   bool get _canGoBack => _history.isNotEmpty;
@@ -344,10 +437,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               icon: const Icon(Icons.menu, color: AppColors.textSecondary),
               onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
               tooltip: l10n.tooltipMenu,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
-            const SizedBox(width: 4),
+          ],
+          if (isWide && widget.onBackToHub != null) ...[
+            IconButton(
+              icon: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
+              onPressed: widget.onBackToHub,
+              tooltip: l10n.backToModulesLabel,
+            ),
           ],
           // Bouton retour
           if (_canGoBack) ...[
@@ -355,10 +452,8 @@ class _MainScaffoldState extends State<MainScaffold> {
               icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
               onPressed: _goBack,
               tooltip: l10n.tooltipBack,
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
           ],
           Text(
             currentLabel,
@@ -373,16 +468,12 @@ class _MainScaffoldState extends State<MainScaffold> {
             icon: const Icon(Icons.smartphone_outlined, color: AppColors.textSecondary),
             onPressed: () => _showPhonePreview(context),
             tooltip: l10n.tooltipMobilePreview,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
             tooltip: l10n.tooltipAccountSettings,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
           ),
           const SizedBox(width: 8),
           NotificationBell(onNavigate: _navigateByScreenType),
@@ -451,6 +542,20 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
           ),
           const Divider(height: 1),
+          if (widget.onBackToHub != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: ListTile(
+                leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20),
+                title: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14))),
+                dense: true,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                tileColor: AppColors.primaryLight,
+                onTap: widget.onBackToHub,
+              ),
+            ),
+            const Divider(height: 1),
+          ],
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -495,7 +600,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(currentUser?.name ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
+                      Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
                       Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ],
                   ),
@@ -504,8 +609,6 @@ class _MainScaffoldState extends State<MainScaffold> {
                   icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
                   onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
                   tooltip: l10n.tooltipAccountSettings,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
@@ -570,6 +673,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               ],
             ),
           ),
+          if (widget.onBackToHub != null)
+            ListTile(
+              leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
+              title: Text(l10n.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+              tileColor: AppColors.primaryLight,
+              onTap: () { Navigator.pop(context); widget.onBackToHub!(); },
+            ),
+          if (widget.onBackToHub != null) const Divider(height: 1),
           ...navItems.asMap().entries.map((entry) {
             final index = entry.key;
             final item = entry.value;
@@ -628,8 +739,6 @@ class _PhonePreviewDialog extends StatelessWidget {
                 IconButton(
                   icon: const Icon(Icons.close, color: Colors.white70),
                   onPressed: () => Navigator.of(context).pop(),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
                 ),
               ],
             ),
