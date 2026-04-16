@@ -89,6 +89,8 @@ class DataService extends ChangeNotifier {
   }
 
   Future<void> _loadUsers() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
     try {
       final raw = await AuthApiService.instance.getUsers();
       users = raw.map(User.fromApiJson).toList();
@@ -160,6 +162,8 @@ class DataService extends ChangeNotifier {
   }
 
   Future<void> _loadRolesConfig() async {
+    final user = AuthService().currentUser;
+    if (user == null || user.role != UserRole.admin) return;
     try {
       final raw = await AuthApiService.instance.getRoles();
       final map = <String, Set<String>>{};

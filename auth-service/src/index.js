@@ -17,6 +17,22 @@ getDb();
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
 
+// CORS doit être AVANT les rate limiters pour que les réponses 429 aient les headers CORS
+app.use(cors({
+  origin: function (origin, callback) {
+    const allowed = [
+      'https://app.lucaslopvet.fr',
+      'https://dev.app.lucaslopvet.fr',
+    ];
+    if (!origin || allowed.includes(origin) || /^http:\/\/localhost:(3000|3001|3002|5000|8080|4200|9000)$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
 // Rate limiter : max 10 tentatives de login par IP par fenêtre de 15 min
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -37,21 +53,6 @@ const writeLimiter = rateLimit({
 });
 app.use('/api/users', writeLimiter);
 app.use('/api/roles', writeLimiter);
-
-app.use(cors({
-  origin: function (origin, callback) {
-    const allowed = [
-      'https://app.lucaslopvet.fr',
-      'https://dev.app.lucaslopvet.fr',
-    ];
-    if (!origin || allowed.includes(origin) || /^http:\/\/localhost:(3000|3001|3002|5000|8080|4200|9000)$/.test(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
 
 app.use(express.json());
 
