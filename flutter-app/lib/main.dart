@@ -22,6 +22,8 @@ import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/notification_bell.dart';
 import 'screens/home_hub_screen.dart';
+import 'dart:ui_web' as ui;        // ← AJOUT
+import 'dart:html' as html;        // ← AJOUT
 
 /// Screen types for navigation (no more string matching)
 enum ScreenType {
@@ -40,6 +42,19 @@ enum ScreenType {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocaleProvider().loadSavedLocale();
+
+  // ── AJOUT : enregistrement de la vue native pour le QR scanner ──
+  ui.platformViewRegistry.registerViewFactory(
+    'qr-marker-view',
+    (int viewId) => html.DivElement()
+      ..id = 'qr-target'
+      ..style.width = '100%'
+      ..style.height = '260px'
+      ..style.background = 'black'
+      ..style.borderRadius = '12px'
+      ..style.overflow = 'hidden',
+  );
+  // ────────────────────────────────────────────────────────────────
 
   // Configurer le callback de session expiree
   ApiClient.onSessionExpired = () {
@@ -200,7 +215,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
-    // Générer les notifications après le premier rendu (données déjà chargées)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       NotificationService().generateFromLoadedData();
     });
@@ -210,7 +224,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   List<_NavItem> _allNavItems(AppLocalizations l10n) => [
     _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
     _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
-    _NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
+    _NavItem(icon: Icons.fact_check_outlined, activeIcon: Icons.fact_check, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
     _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
     _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs),
     _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
@@ -228,7 +242,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       return _authService.hasPermission(item.requiredPermission!);
     }).toList();
 
-    // Appliquer l'ordre configuré par l'admin pour ce rôle (si disponible)
     final roleName = _authService.currentUser?.role.name ?? '';
     final order = DataService().sidebarOrder[roleName];
     if (order != null && order.isNotEmpty) {
@@ -245,8 +258,6 @@ class _MainScaffoldState extends State<MainScaffold> {
 
   bool get _canGoBack => _history.isNotEmpty;
 
-  /// Vérifie si on peut quitter le formulaire de signalement.
-  /// Affiche un dialog de confirmation si des données ont été saisies.
   Future<bool> _canLeaveIssueForm() async {
     final formState = _issueFormKey.currentState;
     if (formState == null || !formState.hasUnsavedData) return true;
@@ -412,7 +423,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  /// Barre de titre en haut du contenu avec la cloche de notifications
   Widget _buildTopBar(
     AppLocalizations l10n,
     List<_NavItem> navItems,
@@ -431,7 +441,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       child: Row(
         children: [
-          // Bouton menu sur écran étroit
           if (!isWide) ...[
             IconButton(
               icon: const Icon(Icons.menu, color: AppColors.textSecondary),
@@ -446,7 +455,6 @@ class _MainScaffoldState extends State<MainScaffold> {
               tooltip: l10n.backToModulesLabel,
             ),
           ],
-          // Bouton retour
           if (_canGoBack) ...[
             IconButton(
               icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
@@ -724,7 +732,6 @@ class _PhonePreviewDialog extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // En-tête
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
@@ -743,7 +750,6 @@ class _PhonePreviewDialog extends StatelessWidget {
               ],
             ),
           ),
-          // Cadre téléphone
           Container(
             width: phoneW * scale + 20,
             height: phoneH * scale + 50,
@@ -758,14 +764,12 @@ class _PhonePreviewDialog extends StatelessWidget {
             child: Column(
               children: [
                 const SizedBox(height: 14),
-                // Encoché / haut-parleur
                 Container(
                   width: 80 * scale,
                   height: 5 * scale,
                   decoration: BoxDecoration(color: const Color(0xFF3A3A3C), borderRadius: BorderRadius.circular(3)),
                 ),
                 const SizedBox(height: 8),
-                // Écran
                 Expanded(
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
@@ -811,7 +815,6 @@ class _PhonePreviewDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                // Indicateur d'accueil
                 Container(
                   width: 100 * scale,
                   height: 4,

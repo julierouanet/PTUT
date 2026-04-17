@@ -4,11 +4,8 @@ import '../theme/app_theme.dart';
 import '../models/notification.dart';
 import '../services/notification_service.dart';
 
-/// Cloche de notifications avec badge et panneau déroulant
 class NotificationBell extends StatefulWidget {
-  /// Callback pour naviguer vers un écran (index ScreenType)
   final Function(int screenIndex, {String? issueId}) onNavigate;
-
   const NotificationBell({super.key, required this.onNavigate});
 
   @override
@@ -65,36 +62,23 @@ class _NotificationBellState extends State<NotificationBell> {
             children: [
               IconButton(
                 icon: Icon(
-                  _overlayEntry != null
-                      ? Icons.notifications
-                      : Icons.notifications_outlined,
-                  color: _overlayEntry != null
-                      ? AppColors.primary
-                      : AppColors.textSecondary,
+                  _overlayEntry != null ? Icons.notifications : Icons.notifications_outlined,
+                  color: _overlayEntry != null ? AppColors.primary : AppColors.textSecondary,
                 ),
                 onPressed: _toggleOverlay,
                 tooltip: l10n.tooltipNotifications,
               ),
               if (count > 0)
                 Positioned(
-                  right: 6,
-                  top: 6,
+                  right: 6, top: 6,
                   child: IgnorePointer(
                     child: Container(
                       constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
                       padding: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
                       child: Text(
                         count > 9 ? '9+' : '$count',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1.7,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, height: 1.7),
                         textAlign: TextAlign.center,
                       ),
                     ),
@@ -108,33 +92,20 @@ class _NotificationBellState extends State<NotificationBell> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Overlay (positionnement + contenu)
-// ─────────────────────────────────────────────────────────────
-
 class _NotificationOverlay extends StatelessWidget {
   final LayerLink layerLink;
   final VoidCallback onClose;
   final Function(int, {String? issueId}) onNavigate;
 
-  const _NotificationOverlay({
-    required this.layerLink,
-    required this.onClose,
-    required this.onNavigate,
-  });
+  const _NotificationOverlay({required this.layerLink, required this.onClose, required this.onNavigate});
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Zone de clic externe pour fermer
         Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: onClose,
-          ),
+          child: GestureDetector(behavior: HitTestBehavior.translucent, onTap: onClose),
         ),
-        // Panneau ancré sous la cloche
         CompositedTransformFollower(
           link: layerLink,
           showWhenUnlinked: false,
@@ -142,7 +113,6 @@ class _NotificationOverlay extends StatelessWidget {
           followerAnchor: Alignment.topRight,
           offset: const Offset(0, 4),
           child: GestureDetector(
-            // Absorbe les taps sur le panneau pour ne pas déclencher le close
             onTap: () {},
             child: Material(
               elevation: 8,
@@ -152,10 +122,7 @@ class _NotificationOverlay extends StatelessWidget {
                 width: 320,
                 child: ListenableBuilder(
                   listenable: NotificationService(),
-                  builder: (context, _) => _NotificationPanel(
-                    onClose: onClose,
-                    onNavigate: onNavigate,
-                  ),
+                  builder: (context, _) => _NotificationPanel(onClose: onClose, onNavigate: onNavigate),
                 ),
               ),
             ),
@@ -165,10 +132,6 @@ class _NotificationOverlay extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────
-// Contenu du panneau
-// ─────────────────────────────────────────────────────────────
 
 class _NotificationPanel extends StatelessWidget {
   final VoidCallback onClose;
@@ -187,63 +150,38 @@ class _NotificationPanel extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── En-tête ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
                 const Icon(Icons.notifications, color: AppColors.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(
-                  l10n.notifTitle,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                Text(l10n.notifTitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textPrimary)),
                 const Spacer(),
                 if (svc.unreadCount > 0)
                   TextButton(
                     onPressed: svc.markAllAsRead,
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(
-                      l10n.notifMarkAllRead,
-                      style: const TextStyle(fontSize: 11),
-                    ),
+                    style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                    child: Text(l10n.notifMarkAllRead, style: const TextStyle(fontSize: 11)),
                   ),
                 const SizedBox(width: 4),
                 InkWell(
                   onTap: onClose,
                   borderRadius: BorderRadius.circular(12),
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(Icons.close, size: 16, color: AppColors.textSecondary),
-                  ),
+                  child: const Padding(padding: EdgeInsets.all(4), child: Icon(Icons.close, size: 16, color: AppColors.textSecondary)),
                 ),
               ],
             ),
           ),
           const Divider(height: 1, color: AppColors.border),
-
-          // ── Liste ou état vide ──
           if (notifs.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-              child: Column(
-                children: [
-                  const Icon(Icons.notifications_none, size: 40, color: AppColors.textMuted),
-                  const SizedBox(height: 8),
-                  Text(
-                    l10n.notifEmpty,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                ],
-              ),
+              child: Column(children: [
+                const Icon(Icons.notifications_none, size: 40, color: AppColors.textMuted),
+                const SizedBox(height: 8),
+                Text(l10n.notifEmpty, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              ]),
             )
           else
             ConstrainedBox(
@@ -252,8 +190,7 @@ class _NotificationPanel extends StatelessWidget {
                 shrinkWrap: true,
                 padding: EdgeInsets.zero,
                 itemCount: notifs.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, color: AppColors.border),
+                separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
                 itemBuilder: (context, index) {
                   final notif = notifs[index];
                   return _NotifTile(
@@ -262,8 +199,10 @@ class _NotificationPanel extends StatelessWidget {
                     onTap: () {
                       NotificationService().markAsRead(notif.id);
                       onClose();
-                      if (notif.linkedIssueId != null) {
-                        // Naviguer vers l'écran Suivi des incidents (index 2)
+                      if (notif.type == NotificationType.lowStock ||
+                          notif.type == NotificationType.outOfStock) {
+                        onNavigate(5);
+                      } else if (notif.linkedIssueId != null) {
                         onNavigate(2, issueId: notif.linkedIssueId);
                       }
                     },
@@ -277,20 +216,12 @@ class _NotificationPanel extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
-// Tuile individuelle
-// ─────────────────────────────────────────────────────────────
-
 class _NotifTile extends StatelessWidget {
   final AppNotification notif;
   final AppLocalizations l10n;
   final VoidCallback onTap;
 
-  const _NotifTile({
-    required this.notif,
-    required this.l10n,
-    required this.onTap,
-  });
+  const _NotifTile({required this.notif, required this.l10n, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -299,6 +230,8 @@ class _NotifTile extends StatelessWidget {
       NotificationType.issueInProgress => (AppColors.primary, Icons.build_rounded),
       NotificationType.issueResolved   => (AppColors.success, Icons.check_circle_rounded),
       NotificationType.deptRequest     => (AppColors.warning, Icons.swap_horiz_rounded),
+      NotificationType.lowStock        => (AppColors.warning, Icons.inventory_2_outlined),
+      NotificationType.outOfStock      => (AppColors.error, Icons.remove_shopping_cart_outlined),
     };
 
     final String title = switch (notif.type) {
@@ -306,17 +239,17 @@ class _NotifTile extends StatelessWidget {
       NotificationType.issueInProgress => l10n.notifInProgress,
       NotificationType.issueResolved   => l10n.notifResolved,
       NotificationType.deptRequest     => 'Demande de changement de département',
+      NotificationType.lowStock        => 'Stock bas',
+      NotificationType.outOfStock      => 'Rupture de stock',
     };
 
     final String body = switch (notif.type) {
-      NotificationType.newIssue =>
-        l10n.notifNewIssueBody(notif.equipmentName, notif.department),
-      NotificationType.issueInProgress =>
-        l10n.notifInProgressBody(notif.equipmentName),
-      NotificationType.issueResolved =>
-        l10n.notifResolvedBody(notif.equipmentName),
-      NotificationType.deptRequest =>
-        '${notif.userName ?? 'Utilisateur'} : ${notif.department} → ${notif.equipmentName}',
+      NotificationType.newIssue        => l10n.notifNewIssueBody(notif.equipmentName, notif.department),
+      NotificationType.issueInProgress => l10n.notifInProgressBody(notif.equipmentName),
+      NotificationType.issueResolved   => l10n.notifResolvedBody(notif.equipmentName),
+      NotificationType.deptRequest     => '${notif.userName ?? 'Utilisateur'} : ${notif.department} → ${notif.equipmentName}',
+      NotificationType.lowStock        => '${notif.equipmentName} — stock faible, commande recommandée',
+      NotificationType.outOfStock      => '${notif.equipmentName} — rupture totale, commander immédiatement',
     };
 
     return InkWell(
@@ -328,56 +261,29 @@ class _NotifTile extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icône colorée
               Container(
                 padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
+                decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.12), shape: BoxShape.circle),
                 child: Icon(iconData, color: iconColor, size: 16),
               ),
               const SizedBox(width: 12),
-
-              // Texte
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: notif.read ? FontWeight.normal : FontWeight.w600,
-                        fontSize: 13,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
+                    Text(title, style: TextStyle(fontWeight: notif.read ? FontWeight.normal : FontWeight.w600, fontSize: 13, color: AppColors.textPrimary)),
                     const SizedBox(height: 2),
-                    Text(
-                      body,
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    Text(body, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(
-                      _timeAgo(notif.createdAt),
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                    ),
+                    Text(_timeAgo(notif.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                   ],
                 ),
               ),
-
-              // Point bleu si non lue
               if (!notif.read)
                 Container(
-                  width: 8,
-                  height: 8,
+                  width: 8, height: 8,
                   margin: const EdgeInsets.only(top: 4, left: 4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
                 ),
             ],
           ),
@@ -388,9 +294,9 @@ class _NotifTile extends StatelessWidget {
 
   String _timeAgo(DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1)  return l10n.notifTimeJustNow;
-    if (diff.inHours < 1)    return l10n.notifTimeMinutes(diff.inMinutes);
-    if (diff.inDays < 1)     return l10n.notifTimeHours(diff.inHours);
+    if (diff.inMinutes < 1) return l10n.notifTimeJustNow;
+    if (diff.inHours < 1)   return l10n.notifTimeMinutes(diff.inMinutes);
+    if (diff.inDays < 1)    return l10n.notifTimeHours(diff.inHours);
     return l10n.notifTimeDays(diff.inDays);
   }
 }

@@ -1,13 +1,18 @@
 /// Types de notifications in-app
-enum NotificationType { newIssue, issueInProgress, issueResolved, deptRequest }
+enum NotificationType { 
+  newIssue, 
+  issueInProgress, 
+  issueResolved,
+  deptRequest,
+  lowStock,
+  outOfStock,
+}
 
 /// Modèle d'une notification in-app
 class AppNotification {
   final String id;
   final NotificationType type;
-  /// Nom de l'équipement concerné (utilisé pour construire le texte affiché)
   final String equipmentName;
-  /// Département de l'équipement (utilisé pour le type newIssue)
   final String department;
   /// Nom de l'utilisateur (utilisé pour le type deptRequest)
   final String? userName;
