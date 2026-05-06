@@ -22,7 +22,7 @@ void _suppressOverflow(WidgetTester tester) {
 
 /// From the hub, opens the Equipment module (Dashboard, Equipment, etc.)
 Future<void> _enterEquipmentModule(WidgetTester tester) async {
-  await tester.tap(find.text('Open Équipement'));
+  await tester.tap(find.text('Open Equipment'));
   await tester.pump();
 }
 
@@ -51,7 +51,7 @@ void main() {
       await tester.pumpWidget(const EquipmentManagementApp());
 
       // Hub screen is shown: the equipment module open button must be present
-      expect(find.text('Open Équipement'), findsOneWidget);
+      expect(find.text('Open Equipment'), findsOneWidget);
     });
 
     testWidgets('app title is set correctly', (tester) async {
