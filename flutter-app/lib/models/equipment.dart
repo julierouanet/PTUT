@@ -5,28 +5,47 @@ enum EquipmentStatus {
   enMaintenance,
   horsService;
 
+  /// Canonical English name (used for storage/API)
   String get displayName {
     switch (this) {
       case EquipmentStatus.disponible:
-        return 'Disponible';
+        return 'Available';
       case EquipmentStatus.enUsage:
-        return 'En usage';
+        return 'In Use';
       case EquipmentStatus.enMaintenance:
-        return 'En maintenance';
+        return 'In Maintenance';
       case EquipmentStatus.horsService:
-        return 'Hors service';
+        return 'Out of Service';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case EquipmentStatus.disponible:
+        return l10n.equipStatusAvailable as String;
+      case EquipmentStatus.enUsage:
+        return l10n.equipStatusInUse as String;
+      case EquipmentStatus.enMaintenance:
+        return l10n.equipStatusInMaintenance as String;
+      case EquipmentStatus.horsService:
+        return l10n.equipStatusOutOfService as String;
     }
   }
 
   static EquipmentStatus fromString(String value) {
     switch (value) {
       case 'Disponible':
+      case 'Available':
         return EquipmentStatus.disponible;
       case 'En usage':
+      case 'In Use':
         return EquipmentStatus.enUsage;
       case 'En maintenance':
+      case 'In Maintenance':
         return EquipmentStatus.enMaintenance;
       case 'Hors service':
+      case 'Out of Service':
         return EquipmentStatus.horsService;
       default:
         return EquipmentStatus.disponible;

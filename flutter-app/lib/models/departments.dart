@@ -19,6 +19,7 @@ enum Department {
   arv,
   pharmacy;
 
+  /// French display name (legacy / storage key)
   String get displayName {
     switch (this) {
       case Department.administration:
@@ -57,6 +58,48 @@ enum Department {
         return 'ARV (Traitement VIH/SIDA)';
       case Department.pharmacy:
         return 'Pharmacie';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case Department.administration:
+        return l10n.deptAdministration as String;
+      case Department.opd:
+        return l10n.deptOpd as String;
+      case Department.internalMedicine:
+        return l10n.deptInternalMedicine as String;
+      case Department.pediatrics:
+        return l10n.deptPediatrics as String;
+      case Department.emergency:
+        return l10n.deptEmergency as String;
+      case Department.laboratory:
+        return l10n.deptLaboratory as String;
+      case Department.stomatology:
+        return l10n.deptStomatology as String;
+      case Department.kinesitherapy:
+        return l10n.deptPhysiotherapy as String;
+      case Department.neonatology:
+        return l10n.deptNeonatology as String;
+      case Department.maternity:
+        return l10n.deptMaternity as String;
+      case Department.surgery:
+        return l10n.deptSurgery as String;
+      case Department.theater:
+        return l10n.deptOperatingTheater as String;
+      case Department.ophthalmology:
+        return l10n.deptOphthalmology as String;
+      case Department.tbMr:
+        return l10n.deptTbMr as String;
+      case Department.gbv:
+        return l10n.deptGbv as String;
+      case Department.mentalHealth:
+        return l10n.deptMentalHealth as String;
+      case Department.arv:
+        return l10n.deptArv as String;
+      case Department.pharmacy:
+        return l10n.deptPharmacy as String;
     }
   }
 
@@ -111,6 +154,7 @@ enum EquipmentCategory {
   sterilization,
   pharmacy;
 
+  /// French display name (legacy / storage key)
   String get displayName {
     switch (this) {
       case EquipmentCategory.ict:
@@ -125,6 +169,24 @@ enum EquipmentCategory {
         return 'Stérilisation et buanderie';
       case EquipmentCategory.pharmacy:
         return 'Pharmacie';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case EquipmentCategory.ict:
+        return l10n.catIct as String;
+      case EquipmentCategory.hygiene:
+        return l10n.catHygiene as String;
+      case EquipmentCategory.biomedical:
+        return l10n.catBiomedical as String;
+      case EquipmentCategory.electrical:
+        return l10n.catElectrical as String;
+      case EquipmentCategory.sterilization:
+        return l10n.catSterilization as String;
+      case EquipmentCategory.pharmacy:
+        return l10n.catPharmacy as String;
     }
   }
 

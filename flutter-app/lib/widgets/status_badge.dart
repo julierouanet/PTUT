@@ -45,19 +45,37 @@ class IssueStatusBadge extends StatelessWidget {
 
   const IssueStatusBadge({super.key, required this.status});
 
-  Color get _color {
+  /// Normalize status to a canonical key for color mapping.
+  /// Accepts both English (canonical) and French (legacy) display names.
+  String get _canonical {
     switch (status) {
       case 'Ouvert':
       case 'Open':
-        return AppColors.error;
+        return 'open';
       case 'Approuvé':
       case 'Approved':
-        return AppColors.primary;
+        return 'approved';
       case 'En cours':
       case 'In Progress':
-        return AppColors.warning;
+        return 'inProgress';
       case 'Résolu':
       case 'Resolved':
+        return 'resolved';
+      default:
+        return status.toLowerCase();
+    }
+  }
+
+  Color get _color {
+    switch (_canonical) {
+      case 'open':
+        return AppColors.error;
+      case 'approved':
+        return AppColors.primary;
+      case 'inprogress':
+      case 'inProgress':
+        return AppColors.warning;
+      case 'resolved':
         return AppColors.success;
       default:
         return AppColors.textSecondary;
@@ -65,18 +83,15 @@ class IssueStatusBadge extends StatelessWidget {
   }
 
   Color get _bgColor {
-    switch (status) {
-      case 'Ouvert':
-      case 'Open':
+    switch (_canonical) {
+      case 'open':
         return AppColors.errorLight;
-      case 'Approuvé':
-      case 'Approved':
+      case 'approved':
         return AppColors.primaryLight;
-      case 'En cours':
-      case 'In Progress':
+      case 'inprogress':
+      case 'inProgress':
         return AppColors.warningLight;
-      case 'Résolu':
-      case 'Resolved':
+      case 'resolved':
         return AppColors.successLight;
       default:
         return AppColors.background;

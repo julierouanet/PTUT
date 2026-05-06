@@ -4,22 +4,37 @@ enum IssueUrgency {
   moyen,
   urgent;
 
+  /// Canonical English name (used for storage/API)
   String get displayName {
     switch (this) {
       case IssueUrgency.faible:
-        return 'Faible';
+        return 'Low';
       case IssueUrgency.moyen:
-        return 'Moyen';
+        return 'Medium';
       case IssueUrgency.urgent:
-        return 'Urgent';
+        return 'High';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case IssueUrgency.faible:
+        return l10n.urgencyLow as String;
+      case IssueUrgency.moyen:
+        return l10n.urgencyMedium as String;
+      case IssueUrgency.urgent:
+        return l10n.urgencyHigh as String;
     }
   }
 
   static IssueUrgency fromString(String? value) {
     switch (value) {
       case 'Faible':
+      case 'Low':
         return IssueUrgency.faible;
       case 'Urgent':
+      case 'High':
         return IssueUrgency.urgent;
       default:
         return IssueUrgency.moyen;
@@ -34,16 +49,31 @@ enum IssueStatus {
   inProgress,
   resolved;
 
+  /// Canonical English name (used for storage/API)
   String get displayName {
     switch (this) {
       case IssueStatus.open:
-        return 'Ouvert';
+        return 'Open';
       case IssueStatus.approved:
-        return 'Approuvé';
+        return 'Approved';
       case IssueStatus.inProgress:
-        return 'En cours';
+        return 'In Progress';
       case IssueStatus.resolved:
-        return 'Résolu';
+        return 'Resolved';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case IssueStatus.open:
+        return l10n.issueStatusOpen as String;
+      case IssueStatus.approved:
+        return l10n.issueStatusApproved as String;
+      case IssueStatus.inProgress:
+        return l10n.issueStatusInProgress as String;
+      case IssueStatus.resolved:
+        return l10n.issueStatusResolved as String;
     }
   }
 
