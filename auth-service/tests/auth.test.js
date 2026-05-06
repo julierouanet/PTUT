@@ -131,7 +131,7 @@ describe('POST /api/auth/login', () => {
       .send({ email: 'inconnu@kabutare.rw', password: 'Password1!' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Identifiants invalides');
+    expect(res.body.error).toBe('Invalid credentials');
   });
 
   test('login avec un mauvais mot de passe retourne 401', async () => {
@@ -140,7 +140,7 @@ describe('POST /api/auth/login', () => {
       .send({ email: TEST_USER.email, password: 'MauvaisMotDePasse!' });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Identifiants invalides');
+    expect(res.body.error).toBe('Invalid credentials');
   });
 
   // ASVS V2.2.1 / ISO A.8.5-5: validation seulement quand toutes les donnees sont fournies
@@ -150,7 +150,7 @@ describe('POST /api/auth/login', () => {
       .send({ password: 'Password1!' });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Email et mot de passe requis');
+    expect(res.body.error).toBe('Email and password are required');
   });
 
   test('login sans mot de passe retourne 400', async () => {
@@ -159,7 +159,7 @@ describe('POST /api/auth/login', () => {
       .send({ email: TEST_USER.email });
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Email et mot de passe requis');
+    expect(res.body.error).toBe('Email and password are required');
   });
 
   test('login avec un body vide retourne 400', async () => {
@@ -177,7 +177,7 @@ describe('POST /api/auth/login', () => {
       .send({ email: INACTIVE_USER.email, password: INACTIVE_USER.password });
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Identifiants invalides');
+    expect(res.body.error).toBe('Invalid credentials');
   });
 
   test('le access token contient les bonnes informations', async () => {
@@ -235,7 +235,7 @@ describe('POST /api/auth/refresh', () => {
       .send({});
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Refresh token manquant');
+    expect(res.body.error).toBe('Missing refresh token');
   });
 
   test('refresh avec un token invalide retourne 403', async () => {
@@ -310,7 +310,7 @@ describe('POST /api/auth/logout', () => {
       .send({ refreshToken });
 
     expect(res.status).toBe(200);
-    expect(res.body.message).toBe('Déconnexion réussie');
+    expect(res.body.message).toBe('Logged out successfully');
   });
 
   // ASVS V3.3.1: apres deconnexion, le token de session est invalide
@@ -362,7 +362,7 @@ describe('GET /api/auth/verify', () => {
       .get('/api/auth/verify');
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Token manquant');
+    expect(res.body.error).toBe('Missing token');
   });
 
   test('verify avec un token invalide retourne 401', async () => {
@@ -371,7 +371,7 @@ describe('GET /api/auth/verify', () => {
       .set('Authorization', 'Bearer token-bidon');
 
     expect(res.status).toBe(401);
-    expect(res.body.error).toBe('Token invalide ou expiré');
+    expect(res.body.error).toBe('Invalid or expired token');
   });
 });
 
@@ -816,7 +816,7 @@ describe('Controle d acces — RBAC', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(403);
-    expect(res.body.error).toBe('Accès réservé aux administrateurs');
+    expect(res.body.error).toBe('Access restricted to administrators');
   });
 
   test('un utilisateur hospitalStaff ne peut pas creer un utilisateur', async () => {
@@ -866,7 +866,7 @@ describe('Controle d acces — RBAC', () => {
       .set('Authorization', `Bearer ${accessToken}`);
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toBe('Impossible de supprimer votre propre compte');
+    expect(res.body.error).toBe('Cannot delete your own account');
   });
 });
 

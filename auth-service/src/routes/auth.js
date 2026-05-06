@@ -25,7 +25,7 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email et mot de passe requis' });
+    return res.status(400).json({ error: 'Email and password are required' });
   }
 
   const db = getDb();
@@ -34,14 +34,14 @@ router.post('/login', async (req, res) => {
   if (!user) {
     console.log('[AUTH] Échec login — email inconnu ou inactif');
     sendAuthLog({ user_id: null, user_name: email, user_role: 'unknown', action: 'login_failed', details: { reason: 'email_inconnu' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
-    return res.status(401).json({ error: 'Identifiants invalides' });
+    return res.status(401).json({ error: 'Invalid credentials' });
   }
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
     console.log('[AUTH] Échec login — mot de passe incorrect');
     sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
-    return res.status(401).json({ error: 'Identifiants invalides' });
+    return res.status(401).json({ error: 'Invalid credentials' });
   }
 
   // Nettoyage des tokens expirés à chaque login
@@ -76,7 +76,7 @@ router.post('/refresh', (req, res) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
-    return res.status(400).json({ error: 'Refresh token manquant' });
+    return res.status(400).json({ error: 'Missing refresh token' });
   }
 
   const db = getDb();
@@ -137,7 +137,7 @@ router.post('/logout', (req, res) => {
   }
 
   console.log('[AUTH] Déconnexion effectuée');
-  res.json({ message: 'Déconnexion réussie' });
+  res.json({ message: 'Logged out successfully' });
 });
 
 // ── GET /api/auth/verify — pour les autres services ──────────────────────────

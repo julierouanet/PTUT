@@ -10,7 +10,7 @@ const router = express.Router();
 // Middleware inline : réservé aux admins
 const requireAdmin = (req, res, next) => {
   if (req.user?.role !== 'admin') {
-    return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
+    return res.status(403).json({ error: 'Access restricted to administrators' });
   }
   next();
 };
@@ -261,7 +261,7 @@ router.patch('/:id/toggle', verifyToken, requireAdmin, (req, res) => {
 router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
   const db = getDb();
   if (req.user.id === req.params.id) {
-    return res.status(400).json({ error: 'Impossible de supprimer votre propre compte' });
+    return res.status(400).json({ error: 'Cannot delete your own account' });
   }
   let reason = req.query.reason;
   if (reason && reason.length > 200) reason = reason.substring(0, 200);
