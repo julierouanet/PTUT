@@ -20,9 +20,9 @@ void _suppressOverflow(WidgetTester tester) {
   addTearDown(() => FlutterError.onError = origOnError);
 }
 
-/// Depuis le hub, ouvre le module Équipement (Dashboard, Équipements, etc.)
+/// From the hub, opens the Equipment module (Dashboard, Equipment, etc.)
 Future<void> _enterEquipmentModule(WidgetTester tester) async {
-  await tester.tap(find.text('Ouvrir Équipement'));
+  await tester.tap(find.text('Open Équipement'));
   await tester.pump();
 }
 
@@ -80,13 +80,13 @@ void main() {
       // Entrer dans le module Équipement depuis le hub
       await _enterEquipmentModule(tester);
 
-      // Les items du module équipement doivent apparaître dans la sidebar
-      expect(find.text('Tableau de bord'), findsWidgets);
-      expect(find.text('Equipements'), findsWidgets);
-      expect(find.text('Suivi incidents'), findsWidgets);
-      expect(find.text('Signaler'), findsWidgets);
-      expect(find.text('Technicien'), findsWidgets);
-      expect(find.text('Rapports'), findsWidgets);
+      // Equipment module nav items must appear in the sidebar
+      expect(find.text('Dashboard'), findsWidgets);
+      expect(find.text('Equipment'), findsWidgets);
+      expect(find.text('Issue Tracking'), findsWidgets);
+      expect(find.text('Report'), findsWidgets);
+      expect(find.text('Technician'), findsWidgets);
+      expect(find.text('Reports'), findsWidgets);
     });
   });
 
@@ -107,18 +107,18 @@ void main() {
       // Entrer dans le module Équipement
       await _enterEquipmentModule(tester);
 
-      // Le personnel voit les items de base
-      expect(find.text('Tableau de bord'), findsWidgets);
-      expect(find.text('Equipements'), findsWidgets);
-      expect(find.text('Signaler'), findsWidgets);
-      expect(find.text('Suivi incidents'), findsWidgets);
+      // Staff sees the basic items
+      expect(find.text('Dashboard'), findsWidgets);
+      expect(find.text('Equipment'), findsWidgets);
+      expect(find.text('Report'), findsWidgets);
+      expect(find.text('Issue Tracking'), findsWidgets);
 
-      // Le personnel ne voit PAS les items admin/tech/superviseur
-      expect(find.text('Utilisateurs'), findsNothing);
-      expect(find.text('Technicien'), findsNothing);
-      expect(find.text('Rapports'), findsNothing);
-      expect(find.text('Gestion'), findsNothing);
-      expect(find.text('Journaux'), findsNothing);
+      // Staff does NOT see admin/tech/supervisor items
+      expect(find.text('Users'), findsNothing);
+      expect(find.text('Technician'), findsNothing);
+      expect(find.text('Reports'), findsNothing);
+      expect(find.text('Settings'), findsNothing);
+      expect(find.text('Activity Logs'), findsNothing);
     });
   });
 
