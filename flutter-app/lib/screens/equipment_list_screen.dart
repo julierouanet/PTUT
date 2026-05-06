@@ -392,7 +392,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
             ],
 
-            const Divider(height: compact ? 12 : 16),
+            Divider(height: compact ? 12 : 16),
 
             // Action buttons
             Row(
