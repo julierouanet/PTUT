@@ -54,21 +54,21 @@ class HomeHubScreen extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(child: _buildEquipmentCard()),
+                          Expanded(child: _buildEquipmentCard(l10n)),
                           const SizedBox(width: 20),
-                          Expanded(child: _buildSettingsCard()),
+                          Expanded(child: _buildSettingsCard(l10n)),
                           const SizedBox(width: 20),
-                          Expanded(child: _buildInventoryCard()),
+                          Expanded(child: _buildInventoryCard(l10n)),
                         ],
                       )
                     else
                       Column(
                         children: [
-                          _buildEquipmentCard(),
+                          _buildEquipmentCard(l10n),
                           const SizedBox(height: 16),
-                          _buildSettingsCard(),
+                          _buildSettingsCard(l10n),
                           const SizedBox(height: 16),
-                          _buildInventoryCard(),
+                          _buildInventoryCard(l10n),
                         ],
                       ),
                     const SizedBox(height: 32),
@@ -83,11 +83,16 @@ class HomeHubScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context, dynamic user) {
+    final l10n = AppLocalizations.of(context)!;
     final hour = DateTime.now().hour;
-    final greeting = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir';
+    final greeting = hour < 12
+        ? l10n.greetingMorning
+        : hour < 18
+            ? l10n.greetingAfternoon
+            : l10n.greetingEvening;
     final firstName = (user?.firstName?.isNotEmpty == true)
         ? user!.firstName
-        : (user?.name ?? 'Utilisateur');
+        : (user?.name ?? l10n.user);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 16, 16),
@@ -110,9 +115,9 @@ class HomeHubScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Kabutare Hospital',
-                  style: TextStyle(
+                Text(
+                  l10n.hospitalName,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 17,
                     color: AppColors.primary,
@@ -131,30 +136,36 @@ class HomeHubScreen extends StatelessWidget {
               context,
               MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
             ),
-            tooltip: 'Paramètres du compte',
+            tooltip: l10n.tooltipAccountSettings,
           ),
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.error),
-            tooltip: 'Se déconnecter',
+            tooltip: l10n.logout,
             onPressed: () async {
               final confirmed = await showDialog<bool>(
                 context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Row(children: const [
-                    Icon(Icons.logout, color: AppColors.error),
-                    SizedBox(width: 12),
-                    Text('Déconnexion'),
-                  ]),
-                  content: const Text('Êtes-vous sûr de vouloir vous déconnecter ?'),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-                      onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Se déconnecter'),
-                    ),
-                  ],
-                ),
+                builder: (ctx) {
+                  final dl10n = AppLocalizations.of(ctx)!;
+                  return AlertDialog(
+                    title: Row(children: [
+                      const Icon(Icons.logout, color: AppColors.error),
+                      const SizedBox(width: 12),
+                      Text(dl10n.logoutConfirmTitle),
+                    ]),
+                    content: Text(dl10n.logoutConfirmMessage),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: Text(dl10n.commonCancel),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: Text(dl10n.logout),
+                      ),
+                    ],
+                  );
+                },
               );
               if (confirmed == true) await AuthService().logoutApi();
             },
@@ -164,48 +175,45 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEquipmentCard() => _HubModuleCard(
+  Widget _buildEquipmentCard(AppLocalizations l10n) => _HubModuleCard(
         color: AppColors.primary,
         lightColor: AppColors.primaryLight,
         icon: Icons.medical_services_outlined,
-        title: 'Équipement',
-        description:
-            'Gérez les équipements médicaux, suivez les incidents et planifiez les interventions.',
-        pages: const [
-          _PageEntry('Tableau de bord', Icons.dashboard_outlined),
-          _PageEntry('Équipement', Icons.inventory_2_outlined),
-          _PageEntry('Suivi incident', Icons.troubleshoot_outlined),
-          _PageEntry('Signaler', Icons.report_problem_outlined),
-          _PageEntry('Technicien', Icons.build_outlined),
-          _PageEntry('Rapport', Icons.analytics_outlined),
+        title: l10n.hubEquipmentTitle,
+        description: l10n.hubEquipmentDesc,
+        pages: [
+          _PageEntry(l10n.navDashboard,      Icons.dashboard_outlined),
+          _PageEntry(l10n.navEquipment,      Icons.inventory_2_outlined),
+          _PageEntry(l10n.navIssueTracking,  Icons.troubleshoot_outlined),
+          _PageEntry(l10n.navReportIssue,    Icons.report_problem_outlined),
+          _PageEntry(l10n.navTechnician,     Icons.build_outlined),
+          _PageEntry(l10n.navReports,        Icons.analytics_outlined),
         ],
         onTap: onEquipmentModule,
       );
 
-  Widget _buildSettingsCard() => _HubModuleCard(
+  Widget _buildSettingsCard(AppLocalizations l10n) => _HubModuleCard(
         color: AppColors.warning,
         lightColor: AppColors.warningLight,
         icon: Icons.settings_outlined,
-        title: 'Paramètres',
-        description:
-            'Administrez les utilisateurs, configurez le système et consultez les journaux.',
-        pages: const [
-          _PageEntry('Gestion', Icons.tune_outlined),
-          _PageEntry('Utilisateurs', Icons.people_outlined),
-          _PageEntry('Journaux', Icons.history_outlined),
+        title: l10n.hubSettingsTitle,
+        description: l10n.hubSettingsDesc,
+        pages: [
+          _PageEntry(l10n.navSettings, Icons.tune_outlined),
+          _PageEntry(l10n.navUsers,    Icons.people_outlined),
+          _PageEntry(l10n.navLogs,     Icons.history_outlined),
         ],
         onTap: onSettingsModule,
       );
 
-  Widget _buildInventoryCard() => _HubModuleCard(
+  Widget _buildInventoryCard(AppLocalizations l10n) => _HubModuleCard(
         color: AppColors.success,
         lightColor: AppColors.successLight,
         icon: Icons.archive_outlined,
-        title: 'Inventaire',
-        description:
-            'Consultez et gérez les stocks de fournitures médicales et consommables.',
-        pages: const [
-          _PageEntry('Inventaire', Icons.inventory_outlined),
+        title: l10n.hubInventoryTitle,
+        description: l10n.hubInventoryDesc,
+        pages: [
+          _PageEntry(l10n.navInventory, Icons.inventory_outlined),
         ],
         onTap: onInventoryModule,
       );

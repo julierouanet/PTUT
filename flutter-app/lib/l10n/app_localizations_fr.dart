@@ -1250,4 +1250,34 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get commonSaveError =>
       'Impossible d\'enregistrer. Veuillez reessayer.';
+
+  @override
+  String get greetingMorning => 'Bonjour';
+
+  @override
+  String get greetingAfternoon => 'Bon après-midi';
+
+  @override
+  String get greetingEvening => 'Bonsoir';
+
+  @override
+  String get hubEquipmentTitle => 'Équipement';
+
+  @override
+  String get hubEquipmentDesc =>
+      'Gérez les équipements médicaux, suivez les incidents et planifiez les interventions.';
+
+  @override
+  String get hubSettingsTitle => 'Paramètres';
+
+  @override
+  String get hubSettingsDesc =>
+      'Administrez les utilisateurs, configurez le système et consultez les journaux.';
+
+  @override
+  String get hubInventoryTitle => 'Inventaire';
+
+  @override
+  String get hubInventoryDesc =>
+      'Consultez et gérez les stocks de fournitures médicales et consommables.';
 }

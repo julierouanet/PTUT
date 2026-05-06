@@ -1240,4 +1240,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonSaveError => 'Unable to save. Please try again.';
+
+  @override
+  String get greetingMorning => 'Good morning';
+
+  @override
+  String get greetingAfternoon => 'Good afternoon';
+
+  @override
+  String get greetingEvening => 'Good evening';
+
+  @override
+  String get hubEquipmentTitle => 'Equipment';
+
+  @override
+  String get hubEquipmentDesc =>
+      'Manage medical equipment, track incidents and plan interventions.';
+
+  @override
+  String get hubSettingsTitle => 'Settings';
+
+  @override
+  String get hubSettingsDesc =>
+      'Manage users, configure the system and view activity logs.';
+
+  @override
+  String get hubInventoryTitle => 'Inventory';
+
+  @override
+  String get hubInventoryDesc =>
+      'View and manage medical supplies and consumables stock.';
 }

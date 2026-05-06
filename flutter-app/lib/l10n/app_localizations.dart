@@ -2383,6 +2383,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Impossible d\'enregistrer. Veuillez reessayer.'**
   String get commonSaveError;
+
+  /// No description provided for @greetingMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get greetingMorning;
+
+  /// No description provided for @greetingAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get greetingAfternoon;
+
+  /// No description provided for @greetingEvening.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get greetingEvening;
+
+  /// No description provided for @hubEquipmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Equipment'**
+  String get hubEquipmentTitle;
+
+  /// No description provided for @hubEquipmentDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage medical equipment, track incidents and plan interventions.'**
+  String get hubEquipmentDesc;
+
+  /// No description provided for @hubSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get hubSettingsTitle;
+
+  /// No description provided for @hubSettingsDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage users, configure the system and view activity logs.'**
+  String get hubSettingsDesc;
+
+  /// No description provided for @hubInventoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory'**
+  String get hubInventoryTitle;
+
+  /// No description provided for @hubInventoryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'View and manage medical supplies and consumables stock.'**
+  String get hubInventoryDesc;
 }
 
 class _AppLocalizationsDelegate
