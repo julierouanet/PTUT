@@ -167,152 +167,281 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Equipment list — cards on mobile, table on desktop
-            if (isMobile)
-              Column(
-                children: _filteredEquipment.map((eq) => Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(eq.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
-                            ),
-                            StatusBadge(status: eq.status.displayName, isCompact: true),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        _buildCardRow(l10n.commonDepartment, eq.department),
-                        _buildCardRow(l10n.commonCategory, eq.category),
-                        _buildCardRow(l10n.equipmentSerialNumber, eq.serialNumber),
-                        if (eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty)
-                          _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
-                        const Divider(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.visibility, size: 20),
-                              color: AppColors.primary,
-                              onPressed: () => _showEquipmentDetail(eq),
-                              tooltip: l10n.commonDetails,
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.history, size: 20),
-                              color: AppColors.warning,
-                              onPressed: () => EquipmentHistoryDialog.show(context, eq),
-                              tooltip: 'Historique',
-                            ),
-                            if (isAdmin)
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 20),
-                                color: AppColors.warning,
-                                onPressed: () => _showEditEquipmentDialog(eq),
-                                tooltip: l10n.commonEdit,
-                              ),
-                            IconButton(
-                              icon: const Icon(Icons.report_problem_outlined, size: 20),
-                              color: AppColors.error,
-                              onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                              tooltip: l10n.commonReport,
-                            ),
-                            if (isAdmin)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, size: 20),
-                                color: AppColors.error,
-                                onPressed: () => _confirmDelete(eq),
-                                tooltip: l10n.commonDelete,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                )).toList(),
-              )
-            else
-              SizedBox(
-                width: double.infinity,
-                child: Card(
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
-                      child: DataTable(
-                        headingRowColor: WidgetStateProperty.all(AppColors.background),
-                        columns: [
-                          DataColumn(label: Text(l10n.equipmentName)),
-                          DataColumn(label: Text(l10n.commonDepartment)),
-                          DataColumn(label: Text(l10n.commonCategory)),
-                          DataColumn(label: Text(l10n.equipmentSerialNumber)),
-                          DataColumn(label: Text(l10n.commonStatus)),
-                          DataColumn(label: Text(l10n.equipmentRevisionColumn)),
-                          DataColumn(label: Text(l10n.commonActions)),
-                        ],
-                        rows: _filteredEquipment.map((eq) => DataRow(
-                          cells: [
-                            DataCell(Text(eq.name, style: const TextStyle(fontWeight: FontWeight.w500))),
-                            DataCell(Text(eq.department)),
-                            DataCell(Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(eq.category, style: const TextStyle(fontSize: 13)),
-                            )),
-                            DataCell(Text(eq.serialNumber)),
-                            DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
-                            DataCell(_buildRevisionCell(eq.nextRevisionDate)),
-                            DataCell(Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.visibility, size: 18),
-                                  color: AppColors.primary,
-                                  onPressed: () => _showEquipmentDetail(eq),
-                                  tooltip: l10n.commonDetails,
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.history, size: 18),
-                                  color: AppColors.warning,
-                                  onPressed: () => EquipmentHistoryDialog.show(context, eq),
-                                  tooltip: 'Historique',
-                                ),
-                                if (isAdmin)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit, size: 18),
-                                    color: AppColors.warning,
-                                    onPressed: () => _showEditEquipmentDialog(eq),
-                                    tooltip: l10n.commonEdit,
-                                  ),
-                                IconButton(
-                                  icon: const Icon(Icons.report_problem_outlined, size: 18),
-                                  color: AppColors.error,
-                                  onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                                  tooltip: l10n.commonReport,
-                                ),
-                                if (isAdmin)
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, size: 18),
-                                    color: AppColors.error,
-                                    onPressed: () => _confirmDelete(eq),
-                                    tooltip: l10n.commonDelete,
-                                  ),
-                              ],
-                            )),
-                          ],
-                        )).toList(),
+            // Equipment list — responsive: mobile list / tablet grid / desktop table
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                if (w < 600) return _buildMobileList(l10n, isAdmin);
+                if (w < 1100) return _buildTabletGrid(l10n, isAdmin);
+                return _buildDesktopTable(l10n, isAdmin);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Responsive list layouts ──────────────────────────────────────────────
+
+  Widget _buildMobileList(AppLocalizations l10n, bool isAdmin) {
+    return Column(
+      children: _filteredEquipment
+          .map((eq) => _buildEquipmentCard(eq, l10n, isAdmin, compact: false))
+          .toList(),
+    );
+  }
+
+  Widget _buildTabletGrid(AppLocalizations l10n, bool isAdmin) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.55,
+      ),
+      itemCount: _filteredEquipment.length,
+      itemBuilder: (_, i) =>
+          _buildEquipmentCard(_filteredEquipment[i], l10n, isAdmin, compact: true),
+    );
+  }
+
+  Widget _buildDesktopTable(AppLocalizations l10n, bool isAdmin) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1400),
+        child: Card(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 800),
+              child: DataTable(
+                headingRowColor: WidgetStateProperty.all(AppColors.background),
+                columns: [
+                  DataColumn(label: Text(l10n.equipmentName)),
+                  DataColumn(label: Text(l10n.equipmentSerialNumber)),
+                  DataColumn(label: Text(l10n.commonDepartment)),
+                  DataColumn(label: Text(l10n.commonCategory)),
+                  DataColumn(label: Text(l10n.commonStatus)),
+                  DataColumn(label: Text(l10n.equipmentRevisionColumn)),
+                  DataColumn(label: Text(l10n.commonActions)),
+                ],
+                rows: _filteredEquipment.map((eq) => DataRow(
+                  cells: [
+                    DataCell(ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: Text(
+                        eq.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    )),
+                    DataCell(Text(
+                      eq.serialNumber,
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    )),
+                    DataCell(Text(eq.department)),
+                    DataCell(Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(eq.category, style: const TextStyle(fontSize: 13)),
+                    )),
+                    DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
+                    DataCell(_buildRevisionCell(eq.nextRevisionDate)),
+                    DataCell(Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility, size: 18),
+                          color: AppColors.primary,
+                          onPressed: () => _showEquipmentDetail(eq),
+                          tooltip: l10n.commonDetails,
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.history, size: 18),
+                          color: AppColors.warning,
+                          onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                          tooltip: 'Historique',
+                        ),
+                        if (isAdmin)
+                          IconButton(
+                            icon: const Icon(Icons.edit, size: 18),
+                            color: AppColors.warning,
+                            onPressed: () => _showEditEquipmentDialog(eq),
+                            tooltip: l10n.commonEdit,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.report_problem_outlined, size: 18),
+                          color: AppColors.error,
+                          onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
+                          tooltip: l10n.commonReport,
+                        ),
+                        if (isAdmin)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            color: AppColors.error,
+                            onPressed: () => _confirmDelete(eq),
+                            tooltip: l10n.commonDelete,
+                          ),
+                      ],
+                    )),
+                  ],
+                )).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEquipmentCard(Equipment eq, AppLocalizations l10n, bool isAdmin, {required bool compact}) {
+    return Card(
+      margin: compact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 12 : 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Name + Status badge
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    eq.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: compact ? 14 : 15,
+                      color: AppColors.textPrimary,
                     ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                StatusBadge(status: eq.status.displayName, isCompact: true),
+              ],
+            ),
+            SizedBox(height: compact ? 6 : 8),
+
+            // Serial number
+            Row(children: [
+              const Icon(Icons.qr_code, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  eq.serialNumber,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'monospace',
+                    color: AppColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 4),
+
+            // Department
+            Row(children: [
+              const Icon(Icons.business, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  eq.department,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ]),
+            const SizedBox(height: 4),
+
+            // Category chip
+            Row(children: [
+              const Icon(Icons.category, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    eq.category,
+                    style: const TextStyle(fontSize: 11),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
+            ]),
+
+            if (!compact && eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
+            ],
+
+            const Divider(height: compact ? 12 : 16),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.visibility, size: compact ? 18 : 20),
+                  color: AppColors.primary,
+                  onPressed: () => _showEquipmentDetail(eq),
+                  tooltip: l10n.commonDetails,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: const EdgeInsets.all(4),
+                ),
+                IconButton(
+                  icon: Icon(Icons.history, size: compact ? 18 : 20),
+                  color: AppColors.warning,
+                  onPressed: () => EquipmentHistoryDialog.show(context, eq),
+                  tooltip: 'Historique',
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: const EdgeInsets.all(4),
+                ),
+                if (isAdmin)
+                  IconButton(
+                    icon: Icon(Icons.edit, size: compact ? 18 : 20),
+                    color: AppColors.warning,
+                    onPressed: () => _showEditEquipmentDialog(eq),
+                    tooltip: l10n.commonEdit,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
+                  ),
+                IconButton(
+                  icon: Icon(Icons.report_problem_outlined, size: compact ? 18 : 20),
+                  color: AppColors.error,
+                  onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
+                  tooltip: l10n.commonReport,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  padding: const EdgeInsets.all(4),
+                ),
+                if (isAdmin)
+                  IconButton(
+                    icon: Icon(Icons.delete_outline, size: compact ? 18 : 20),
+                    color: AppColors.error,
+                    onPressed: () => _confirmDelete(eq),
+                    tooltip: l10n.commonDelete,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                    padding: const EdgeInsets.all(4),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
