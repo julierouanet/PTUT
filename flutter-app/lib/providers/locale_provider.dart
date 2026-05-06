@@ -6,12 +6,12 @@ class LocaleProvider extends ChangeNotifier {
   factory LocaleProvider() => _instance;
   LocaleProvider._internal();
 
-  Locale _locale = const Locale('fr');
+  Locale _locale = const Locale('en');
   Locale get locale => _locale;
 
   Future<void> loadSavedLocale() async {
     final prefs = await SharedPreferences.getInstance();
-    final code = prefs.getString('app_locale') ?? 'fr';
+    final code = prefs.getString('app_locale') ?? 'en';
     _locale = Locale(code);
     notifyListeners();
   }
