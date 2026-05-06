@@ -28,6 +28,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String _problemType = 'Panne';
   IssueUrgency _urgency = IssueUrgency.moyen;
   final _descriptionController = TextEditingController();
+  bool _equipmentError = false;
+  int _autocompleteResetKey = 0;
 
   // Photo handling
   final List<_PhotoItem> _photos = [];
@@ -145,17 +147,77 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _selectedEquipmentId,
-                      decoration: InputDecoration(
-                        hintText: l10n.issueFormSelectEquipment,
-                      ),
-                      items: DataService().equipment.map((eq) => DropdownMenuItem(
-                        value: eq.id,
-                        child: Text('${eq.name} (${eq.serialNumber})'),
-                      )).toList(),
-                      onChanged: (value) => setState(() => _selectedEquipmentId = value),
-                      validator: (value) => value == null ? l10n.issueFormSelectEquipment : null,
+                    Autocomplete<Equipment>(
+                      key: ValueKey(_autocompleteResetKey),
+                      displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
+                      optionsBuilder: (TextEditingValue textEditingValue) {
+                        final query = textEditingValue.text.toLowerCase().trim();
+                        if (query.isEmpty) return const Iterable<Equipment>.empty();
+                        return DataService().equipment.where((eq) =>
+                          eq.name.toLowerCase().contains(query) ||
+                          eq.serialNumber.toLowerCase().contains(query),
+                        );
+                      },
+                      onSelected: (Equipment eq) {
+                        setState(() {
+                          _selectedEquipmentId = eq.id;
+                          _equipmentError = false;
+                        });
+                      },
+                      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+                        return TextField(
+                          controller: textController,
+                          focusNode: focusNode,
+                          onSubmitted: (_) => onFieldSubmitted(),
+                          decoration: InputDecoration(
+                            hintText: l10n.issueFormSelectEquipment,
+                            prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                            suffixIcon: _selectedEquipmentId != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    textController.clear();
+                                    setState(() {
+                                      _selectedEquipmentId = null;
+                                      _equipmentError = false;
+                                    });
+                                  },
+                                )
+                              : null,
+                            errorText: _equipmentError ? l10n.issueFormSelectEquipment : null,
+                          ),
+                        );
+                      },
+                      optionsViewBuilder: (context, onSelected, options) {
+                        return Align(
+                          alignment: Alignment.topLeft,
+                          child: Material(
+                            elevation: 4,
+                            borderRadius: BorderRadius.circular(8),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 250),
+                              child: ListView.builder(
+                                padding: EdgeInsets.zero,
+                                shrinkWrap: true,
+                                itemCount: options.length,
+                                itemBuilder: (context, index) {
+                                  final eq = options.elementAt(index);
+                                  return ListTile(
+                                    dense: true,
+                                    leading: const Icon(Icons.medical_services_outlined, size: 20),
+                                    title: Text(eq.name, style: const TextStyle(fontSize: 14)),
+                                    subtitle: Text(
+                                      'SN: ${eq.serialNumber} • ${eq.department}',
+                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                    ),
+                                    onTap: () => onSelected(eq),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
 
                     // Show selected equipment info
@@ -463,7 +525,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+    final bool equipmentSelected = _selectedEquipmentId != null;
+    if (!equipmentSelected) setState(() => _equipmentError = true);
+    if (!_formKey.currentState!.validate() || !equipmentSelected) return;
 
     final l10n = AppLocalizations.of(context)!;
     final equipment = _selectedEquipment!;
@@ -497,6 +561,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ));
       setState(() {
         _selectedEquipmentId = null;
+        _equipmentError = false;
+        _autocompleteResetKey++;
         _problemType = l10n.issueFormBreakdown;
         _urgency = IssueUrgency.moyen;
         _descriptionController.clear();
