@@ -181,6 +181,23 @@ class EquipmentDetailDialog extends StatelessWidget {
                   color: _revisionColor(eq.nextRevisionDate!),
                 ),
 
+              // ── Maintenance préventive ──────────────────────────────────
+              if ((eq.lastPreventiveMaintenance != null && eq.lastPreventiveMaintenance!.isNotEmpty) ||
+                  (eq.nextPreventiveMaintenance != null && eq.nextPreventiveMaintenance!.isNotEmpty)) ...[
+                const SizedBox(height: 8),
+                _buildSectionTitle(l10n.preventiveSection),
+                _buildPreventiveAlertBanner(l10n, eq),
+                if (eq.lastPreventiveMaintenance != null && eq.lastPreventiveMaintenance!.isNotEmpty)
+                  _buildDetailRow(l10n.lastPreventiveDate, _formatDate(eq.lastPreventiveMaintenance!)),
+                if (eq.nextPreventiveMaintenance != null && eq.nextPreventiveMaintenance!.isNotEmpty)
+                  _buildDetailRow(
+                    l10n.nextPreventiveDate,
+                    _formatDate(eq.nextPreventiveMaintenance!),
+                    icon: Icons.event_available,
+                    color: _preventiveColor(eq.preventiveMaintenanceAlertLevel),
+                  ),
+              ],
+
               if (eq.futureMaintenance.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 _buildSectionTitle(l10n.equipmentFutureMaintenance),
@@ -349,5 +366,53 @@ class EquipmentDetailDialog extends StatelessWidget {
     } catch (_) {
       return AppColors.textSecondary;
     }
+  }
+
+  Color _preventiveColor(String? level) {
+    switch (level) {
+      case 'due':  return AppColors.error;
+      case 'soon': return AppColors.warning;
+      case 'ok':   return AppColors.success;
+      default:     return AppColors.textSecondary;
+    }
+  }
+
+  /// Bandeau d'alerte affiché en haut de la section maintenance préventive
+  /// quand la date est dépassée ou imminente.
+  Widget _buildPreventiveAlertBanner(AppLocalizations l10n, Equipment eq) {
+    final level = eq.preventiveMaintenanceAlertLevel;
+    if (level != 'due' && level != 'soon') return const SizedBox.shrink();
+    final isOverdue = level == 'due';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isOverdue ? AppColors.errorLight : AppColors.warningLight,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: (isOverdue ? AppColors.error : AppColors.warning).withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isOverdue ? Icons.error_outline : Icons.schedule,
+            size: 18,
+            color: isOverdue ? AppColors.error : AppColors.warning,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              isOverdue ? l10n.preventiveAlertOverdue : l10n.preventiveAlertSoon,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isOverdue ? AppColors.error : AppColors.warning,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

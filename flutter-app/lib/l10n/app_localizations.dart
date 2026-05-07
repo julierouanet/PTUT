@@ -2570,6 +2570,42 @@ abstract class AppLocalizations {
   /// **'Maintenance planifiée'**
   String get equipmentFutureMaintenance;
 
+  /// No description provided for @lastPreventiveDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière maintenance préventive'**
+  String get lastPreventiveDate;
+
+  /// No description provided for @nextPreventiveDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prochaine maintenance préventive'**
+  String get nextPreventiveDate;
+
+  /// No description provided for @preventiveAlert.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive à prévoir'**
+  String get preventiveAlert;
+
+  /// No description provided for @preventiveAlertOverdue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive en retard'**
+  String get preventiveAlertOverdue;
+
+  /// No description provided for @preventiveAlertSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive sous 7 jours'**
+  String get preventiveAlertSoon;
+
+  /// No description provided for @preventiveSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive'**
+  String get preventiveSection;
+
   /// No description provided for @equipmentSystemInfoSection.
   ///
   /// In fr, this message translates to:

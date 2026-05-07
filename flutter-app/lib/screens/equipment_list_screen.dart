@@ -236,6 +236,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                   DataColumn(label: Text(l10n.commonCategory)),
                   DataColumn(label: Text(l10n.commonStatus)),
                   DataColumn(label: Text(l10n.equipmentRevisionColumn)),
+                  DataColumn(label: Text(l10n.nextPreventiveDate)),
                   DataColumn(label: Text(l10n.commonActions)),
                 ],
                 rows: _filteredEquipment.map((eq) => DataRow(
@@ -270,6 +271,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     )),
                     DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
                     DataCell(_buildRevisionCell(eq.nextRevisionDate)),
+                    DataCell(_buildPreventiveCell(eq)),
                     DataCell(Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -326,7 +328,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Name + Status badge
+            // Name + Status badge (+ badge maintenance préventive si due/soon)
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -343,6 +345,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                if (_preventiveBadge(eq, l10n) != null) ...[
+                  _preventiveBadge(eq, l10n)!,
+                  const SizedBox(width: 4),
+                ],
                 StatusBadge(status: eq.status.displayName, isCompact: true),
               ],
             ),
@@ -548,6 +554,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
     String? selectedRevisionDate = existingEquipment?.nextRevisionDate;
     String? selectedInstallDate = existingEquipment?.installDate;
+    String? selectedLastPreventiveDate = existingEquipment?.lastPreventiveMaintenance;
+    String? selectedNextPreventiveDate = existingEquipment?.nextPreventiveMaintenance;
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -807,6 +815,30 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                                 style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
                               ),
                             ),
+
+                          const SizedBox(height: 16),
+                          // Dernière maintenance préventive (passé uniquement)
+                          _buildDatePickerField(
+                            context: context,
+                            label: l10n.lastPreventiveDate,
+                            iso: selectedLastPreventiveDate,
+                            onPicked: (iso) => setDialogState(() => selectedLastPreventiveDate = iso),
+                            icon: Icons.history,
+                            firstDate: DateTime(1980),
+                            lastDate: DateTime.now(),
+                          ),
+
+                          const SizedBox(height: 16),
+                          // Prochaine maintenance préventive (futur uniquement)
+                          _buildDatePickerField(
+                            context: context,
+                            label: l10n.nextPreventiveDate,
+                            iso: selectedNextPreventiveDate,
+                            onPicked: (iso) => setDialogState(() => selectedNextPreventiveDate = iso),
+                            icon: Icons.event_available,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(DateTime.now().year + 10),
+                          ),
                         ],
                       ),
                     ),
@@ -847,6 +879,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                               'model':              modelController.text.isNotEmpty ? modelController.text : null,
                               'manuf_year':         int.tryParse(manufYearController.text),
                               'install_date':       selectedInstallDate,
+                              'last_preventive_maintenance': selectedLastPreventiveDate,
+                              'next_preventive_maintenance': selectedNextPreventiveDate,
                             };
 
                             try {
@@ -998,6 +1032,125 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       constraints: const BoxConstraints(maxWidth: 160),
       child: Text(value, overflow: TextOverflow.ellipsis),
     );
+  }
+
+  /// Champ date picker générique réutilisable dans le formulaire de l'équipement.
+  /// Affiche la date au format DD/MM/YYYY ou un placeholder si null. Permet
+  /// d'effacer la date via un bouton secondaire.
+  Widget _buildDatePickerField({
+    required BuildContext context,
+    required String label,
+    required String? iso,
+    required ValueChanged<String?> onPicked,
+    required IconData icon,
+    required DateTime firstDate,
+    required DateTime lastDate,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () async {
+            final initial = iso != null
+                ? DateTime.tryParse(iso) ?? firstDate
+                : firstDate;
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: initial.isBefore(firstDate) ? firstDate : (initial.isAfter(lastDate) ? lastDate : initial),
+              firstDate: firstDate,
+              lastDate: lastDate,
+              locale: const Locale('fr'),
+            );
+            if (picked != null) {
+              onPicked(picked.toIso8601String().substring(0, 10));
+            }
+          },
+          child: InputDecorator(
+            decoration: InputDecoration(
+              labelText: label,
+              prefixIcon: Icon(icon),
+              suffixIcon: const Icon(Icons.calendar_today, size: 18),
+            ),
+            child: Text(
+              iso != null && iso.isNotEmpty
+                  ? _formatDateDisplay(iso)
+                  : l10n.equipmentInstallDateHint,
+              style: TextStyle(
+                color: iso != null && iso.isNotEmpty ? null : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        if (iso != null && iso.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => onPicked(null),
+              icon: const Icon(Icons.clear, size: 14),
+              label: const Text('Supprimer la date'),
+              style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Badge compact "PM" coloré quand la maintenance préventive est échue ou
+  /// imminente. Retourne null si tout va bien (date OK ou non renseignée).
+  Widget? _preventiveBadge(Equipment eq, AppLocalizations l10n) {
+    final level = eq.preventiveMaintenanceAlertLevel;
+    if (level != 'due' && level != 'soon') return null;
+    final isOverdue = level == 'due';
+    final color = isOverdue ? AppColors.error : AppColors.warning;
+    final bg    = isOverdue ? AppColors.errorLight : AppColors.warningLight;
+    return Tooltip(
+      message: isOverdue ? l10n.preventiveAlertOverdue : l10n.preventiveAlertSoon,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(isOverdue ? Icons.error_outline : Icons.schedule, size: 11, color: color),
+          const SizedBox(width: 3),
+          Text('PM',
+              style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w700)),
+        ]),
+      ),
+    );
+  }
+
+  /// Cellule date de maintenance préventive avec badge si due/soon
+  Widget _buildPreventiveCell(Equipment eq) {
+    final iso = eq.nextPreventiveMaintenance;
+    if (iso == null || iso.isEmpty) {
+      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
+    }
+    final level = eq.preventiveMaintenanceAlertLevel;
+    Color color;
+    IconData icon;
+    switch (level) {
+      case 'due':
+        color = AppColors.error;
+        icon = Icons.error_outline;
+        break;
+      case 'soon':
+        color = AppColors.warning;
+        icon = Icons.schedule;
+        break;
+      default:
+        color = AppColors.success;
+        icon = Icons.event_available;
+    }
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(icon, size: 13, color: color),
+      const SizedBox(width: 4),
+      Text(_formatDateDisplay(iso),
+          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
+    ]);
   }
 
   /// Cellule date de révision — colorée selon la proximité

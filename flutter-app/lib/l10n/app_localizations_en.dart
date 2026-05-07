@@ -1338,6 +1338,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get equipmentFutureMaintenance => 'Scheduled maintenance';
 
   @override
+  String get lastPreventiveDate => 'Last preventive maintenance';
+
+  @override
+  String get nextPreventiveDate => 'Next preventive maintenance';
+
+  @override
+  String get preventiveAlert => 'Preventive maintenance due';
+
+  @override
+  String get preventiveAlertOverdue => 'Preventive maintenance overdue';
+
+  @override
+  String get preventiveAlertSoon => 'Preventive maintenance within 7 days';
+
+  @override
+  String get preventiveSection => 'Preventive maintenance';
+
+  @override
   String get equipmentSystemInfoSection => 'System info';
 
   @override

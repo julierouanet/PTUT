@@ -51,6 +51,7 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
   const {
     id, name, department, category, serial_number, status, location,
     manufacturer, model, manuf_year, install_date, next_revision_date,
+    last_preventive_maintenance, next_preventive_maintenance,
   } = req.body;
 
   if (!id || !name || !department || !category) {
@@ -61,9 +62,10 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
     db.prepare(`
       INSERT INTO equipment (
         id, name, department, category, serial_number, status, location,
-        manufacturer, model, manuf_year, install_date, next_revision_date
+        manufacturer, model, manuf_year, install_date, next_revision_date,
+        last_preventive_maintenance, next_preventive_maintenance
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, name, department, category,
       serial_number || null,
@@ -73,6 +75,8 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
       manuf_year != null ? parseInt(manuf_year, 10) || null : null,
       install_date || null,
       next_revision_date || null,
+      last_preventive_maintenance || null,
+      next_preventive_maintenance || null,
     );
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
@@ -108,6 +112,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
   const {
     id, name, department, category, serial_number, status, location,
     manufacturer, model, manuf_year, install_date, next_revision_date,
+    last_preventive_maintenance, next_preventive_maintenance,
   } = req.body;
 
   if (!id || !name || !department || !category) {
@@ -137,9 +142,10 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     db.prepare(`
       INSERT INTO equipment (
         id, name, department, category, serial_number, status, location,
-        manufacturer, model, manuf_year, install_date, next_revision_date
+        manufacturer, model, manuf_year, install_date, next_revision_date,
+        last_preventive_maintenance, next_preventive_maintenance
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, name, department, category,
       serial_number || null,
@@ -147,6 +153,8 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       location || null,
       manufacturer || null, model || null, manufYearInt,
       install_date || null, next_revision_date || null,
+      last_preventive_maintenance || null,
+      next_preventive_maintenance || null,
     );
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
@@ -168,6 +176,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
   const {
     name, department, category, serial_number, status, location,
     manufacturer, model, manuf_year, install_date, next_revision_date,
+    last_preventive_maintenance, next_preventive_maintenance,
   } = req.body;
 
   const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
@@ -186,29 +195,38 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 
   db.prepare(`
     UPDATE equipment
-    SET name               = COALESCE(?, name),
-        department         = COALESCE(?, department),
-        category           = COALESCE(?, category),
-        serial_number      = COALESCE(?, serial_number),
-        status             = COALESCE(?, status),
-        location           = COALESCE(?, location),
-        manufacturer       = COALESCE(?, manufacturer),
-        model              = COALESCE(?, model),
-        manuf_year         = COALESCE(?, manuf_year),
-        install_date       = COALESCE(?, install_date),
-        next_revision_date = COALESCE(?, next_revision_date),
-        updated_at         = datetime('now','localtime')
+    SET name                        = COALESCE(?, name),
+        department                  = COALESCE(?, department),
+        category                    = COALESCE(?, category),
+        serial_number               = COALESCE(?, serial_number),
+        status                      = COALESCE(?, status),
+        location                    = COALESCE(?, location),
+        manufacturer                = COALESCE(?, manufacturer),
+        model                       = COALESCE(?, model),
+        manuf_year                  = COALESCE(?, manuf_year),
+        install_date                = COALESCE(?, install_date),
+        next_revision_date          = COALESCE(?, next_revision_date),
+        last_preventive_maintenance = COALESCE(?, last_preventive_maintenance),
+        next_preventive_maintenance = COALESCE(?, next_preventive_maintenance),
+        updated_at                  = datetime('now','localtime')
     WHERE id = ?
   `).run(
     name, department, category, serial_number, status, location,
     manufacturer, model, manufYearInt, install_date, next_revision_date,
+    last_preventive_maintenance, next_preventive_maintenance,
     req.params.id,
   );
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: name || existing.name,
-    details: { snapshot_before: { id: existing.id, name: existing.name, status: existing.status, department: existing.department } },
+    details: {
+      snapshot_before: {
+        id: existing.id, name: existing.name, status: existing.status, department: existing.department,
+        last_preventive_maintenance: existing.last_preventive_maintenance,
+        next_preventive_maintenance: existing.next_preventive_maintenance,
+      },
+    },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Équipement mis à jour' });

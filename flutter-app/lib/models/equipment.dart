@@ -110,6 +110,10 @@ class Equipment {
   final int? manufYear;
   final String? installDate;
 
+  // ── Maintenance préventive (dates ISO YYYY-MM-DD) ──────────────────────
+  final String? lastPreventiveMaintenance;
+  final String? nextPreventiveMaintenance;
+
   // ── Métadonnées système (lecture seule, fournies par l'API) ────────────
   final String? createdAt;
   final String? updatedAt;
@@ -134,6 +138,8 @@ class Equipment {
     this.model,
     this.manufYear,
     this.installDate,
+    this.lastPreventiveMaintenance,
+    this.nextPreventiveMaintenance,
     this.createdAt,
     this.updatedAt,
     this.tags = const [],
@@ -181,12 +187,33 @@ class Equipment {
       model:              json['model']                as String?,
       manufYear:          manufYear,
       installDate:        json['install_date']         as String?,
+      lastPreventiveMaintenance: json['last_preventive_maintenance'] as String?,
+      nextPreventiveMaintenance: json['next_preventive_maintenance'] as String?,
       createdAt:          json['created_at']           as String?,
       updatedAt:          json['updated_at']           as String?,
       tags:               tags,
       maintenanceHistory: history,
       futureMaintenance:  future,
     );
+  }
+
+  /// Indique si la maintenance préventive est échue ou à effectuer dans les 7
+  /// prochains jours. Retourne null si aucune date n'est planifiée.
+  /// Codomaine : null | 'due' (en retard) | 'soon' (≤ 7 jours) | 'ok'.
+  String? get preventiveMaintenanceAlertLevel {
+    final iso = nextPreventiveMaintenance;
+    if (iso == null || iso.isEmpty || iso.length < 10) return null;
+    try {
+      final date = DateTime.parse(iso.substring(0, 10));
+      final today = DateTime.now();
+      final today0 = DateTime(today.year, today.month, today.day);
+      final diff = date.difference(today0).inDays;
+      if (diff < 0) return 'due';
+      if (diff <= 7) return 'soon';
+      return 'ok';
+    } catch (_) {
+      return null;
+    }
   }
 
   Equipment copyWith({
@@ -202,6 +229,8 @@ class Equipment {
     String? model,
     int? manufYear,
     String? installDate,
+    String? lastPreventiveMaintenance,
+    String? nextPreventiveMaintenance,
     String? createdAt,
     String? updatedAt,
     List<String>? tags,
@@ -221,6 +250,8 @@ class Equipment {
       model: model ?? this.model,
       manufYear: manufYear ?? this.manufYear,
       installDate: installDate ?? this.installDate,
+      lastPreventiveMaintenance: lastPreventiveMaintenance ?? this.lastPreventiveMaintenance,
+      nextPreventiveMaintenance: nextPreventiveMaintenance ?? this.nextPreventiveMaintenance,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,

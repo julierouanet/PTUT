@@ -144,6 +144,26 @@ function initTables() {
   // 2) Suppression définitive de la colonne supplier (SQLite >= 3.35)
   try { db.exec("ALTER TABLE equipment DROP COLUMN supplier"); } catch (_) {}
 
+  // Migration : maintenance préventive (dates planifiées sur l'équipement)
+  try { db.exec("ALTER TABLE equipment ADD COLUMN last_preventive_maintenance TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN next_preventive_maintenance TEXT"); } catch (_) {}
+
+  // Plans de maintenance préventive (1 équipement → N plans, ex : trimestriel,
+  // annuel, calibration, etc.). Le `next_preventive_maintenance` de equipment
+  // peut être calculé/dénormalisé à partir du plus proche plan actif.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS preventive_maintenance_plans (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id          TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      frequency_months      INTEGER NOT NULL,
+      last_completed_date   TEXT,
+      description           TEXT,
+      created_at            TEXT DEFAULT (datetime('now','localtime')),
+      updated_at            TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_pm_plans_equipment ON preventive_maintenance_plans(equipment_id);
+  `);
+
   // Table de configuration de la sidebar par rôle
   db.exec(`
     CREATE TABLE IF NOT EXISTS sidebar_config (
