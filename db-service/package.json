@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "seed": "node seed.js",
+    "import:inventory": "node scripts/import_inventory.js",
     "test": "jest --forceExit --detectOpenHandles"
   },
   "dependencies": {
@@ -14,7 +15,8 @@
     "cors": "^2.8.5",
     "express": "^4.21.0",
     "helmet": "^8.0.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "jest": "^29.7.0",

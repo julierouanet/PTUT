@@ -5,7 +5,12 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
-const VALID_STATUSES_EQ   = ['Disponible', 'En service', 'En maintenance', 'Hors service'];
+const VALID_STATUSES_EQ   = [
+  'Disponible', 'En service', 'En maintenance', 'Hors service',
+  'Inactif',     // équipement non utilisé mais fonctionnel (ex-IDDLE)
+  'À éliminer',  // équipement à mettre au rebut (ex-"to be disposal")
+  'Transféré',   // équipement déplacé vers un autre établissement (ex-KIBIRIZI DH)
+];
 const VALID_DEPARTMENTS   = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
 const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
 

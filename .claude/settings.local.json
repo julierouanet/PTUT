@@ -50,7 +50,8 @@
       "Bash(xargs wc:*)",
       "Bash(pandoc \"C:/Users/Perso/Desktop/PTUT-1/document important/Need Software Kabutare.docx\" -o \"C:/Users/Perso/Desktop/PTUT-1/document important/need_software_temp.md\")",
       "Bash(python scripts/office/unpack.py \"C:/Users/Perso/Desktop/PTUT-1/document important/Need Software Kabutare.docx\" \"C:/Users/Perso/Desktop/PTUT-1/document important/unpacked/\")",
-      "Bash(python -c \":*)"
+      "Bash(python -c \":*)",
+      "Bash(node -e ' *)"
     ]
   }
 }

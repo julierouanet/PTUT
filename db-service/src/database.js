@@ -86,6 +86,26 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_logs_timestamp ON logs(timestamp);
     CREATE INDEX IF NOT EXISTS idx_logs_user ON logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_logs_action ON logs(action);
+
+    -- ── Tables de référence pour l'inventaire physique ───────────────
+    CREATE TABLE IF NOT EXISTS departments (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS equipment_categories (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    -- ── Tags d'équipement (relation N tags ↔ 1 équipement) ───────────
+    CREATE TABLE IF NOT EXISTS equipment_tags (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id TEXT NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      tag_number   TEXT NOT NULL,
+      UNIQUE(equipment_id, tag_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_equipment_tags_tag ON equipment_tags(tag_number);
   `);
 
   // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
@@ -101,6 +121,14 @@ function initTables() {
 
   // Migration : ajout de la colonne next_revision_date dans equipment
   try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
+
+  // Migration : colonnes additionnelles pour l'inventaire physique 2025-2026
+  try { db.exec("ALTER TABLE equipment ADD COLUMN manufacturer TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN model TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN manuf_year INTEGER"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN install_date TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN department_id INTEGER REFERENCES departments(id)"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN category_id INTEGER REFERENCES equipment_categories(id)"); } catch (_) {}
 
   // Table de configuration de la sidebar par rôle
   db.exec(`
