@@ -101,16 +101,23 @@ class Equipment {
   final String category;
   final String serialNumber;
   final EquipmentStatus status;
-  final String supplier;
   final String location;
   final String? nextRevisionDate;
 
-  // ── Champs de l'inventaire physique 2025-2026 ──────────────────────────
+  // ── Inventaire physique 2025-2026 ──────────────────────────────────────
   final String? manufacturer;
   final String? model;
   final int? manufYear;
   final String? installDate;
 
+  // ── Métadonnées système (lecture seule, fournies par l'API) ────────────
+  final String? createdAt;
+  final String? updatedAt;
+
+  // ── Tags d'inventaire (table equipment_tags, relation N↔1) ─────────────
+  final List<String> tags;
+
+  // ── Maintenance (déjà présent) ─────────────────────────────────────────
   final List<MaintenanceRecord> maintenanceHistory;
   final List<MaintenanceRecord> futureMaintenance;
 
@@ -121,13 +128,15 @@ class Equipment {
     required this.category,
     required this.serialNumber,
     required this.status,
-    required this.supplier,
     required this.location,
     this.nextRevisionDate,
     this.manufacturer,
     this.model,
     this.manufYear,
     this.installDate,
+    this.createdAt,
+    this.updatedAt,
+    this.tags = const [],
     this.maintenanceHistory = const [],
     this.futureMaintenance = const [],
   });
@@ -154,6 +163,11 @@ class Equipment {
         ? rawYear
         : (rawYear is String ? int.tryParse(rawYear) : null);
 
+    final rawTags = json['tags'];
+    final tags = rawTags is List
+        ? rawTags.map((t) => t.toString()).toList()
+        : <String>[];
+
     return Equipment(
       id:                 json['id']                   as String? ?? '',
       name:               json['name']                 as String? ?? '',
@@ -161,13 +175,15 @@ class Equipment {
       category:           json['category']             as String? ?? '',
       serialNumber:       json['serial_number']        as String? ?? '',
       status:             EquipmentStatus.fromString(json['status'] as String? ?? ''),
-      supplier:           json['supplier']             as String? ?? '',
       location:           json['location']             as String? ?? '',
       nextRevisionDate:   json['next_revision_date']   as String?,
       manufacturer:       json['manufacturer']         as String?,
       model:              json['model']                as String?,
       manufYear:          manufYear,
       installDate:        json['install_date']         as String?,
+      createdAt:          json['created_at']           as String?,
+      updatedAt:          json['updated_at']           as String?,
+      tags:               tags,
       maintenanceHistory: history,
       futureMaintenance:  future,
     );
@@ -180,13 +196,15 @@ class Equipment {
     String? category,
     String? serialNumber,
     EquipmentStatus? status,
-    String? supplier,
     String? location,
     String? nextRevisionDate,
     String? manufacturer,
     String? model,
     int? manufYear,
     String? installDate,
+    String? createdAt,
+    String? updatedAt,
+    List<String>? tags,
     List<MaintenanceRecord>? maintenanceHistory,
     List<MaintenanceRecord>? futureMaintenance,
   }) {
@@ -197,13 +215,15 @@ class Equipment {
       category: category ?? this.category,
       serialNumber: serialNumber ?? this.serialNumber,
       status: status ?? this.status,
-      supplier: supplier ?? this.supplier,
       location: location ?? this.location,
       nextRevisionDate: nextRevisionDate ?? this.nextRevisionDate,
       manufacturer: manufacturer ?? this.manufacturer,
       model: model ?? this.model,
       manufYear: manufYear ?? this.manufYear,
       installDate: installDate ?? this.installDate,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      tags: tags ?? this.tags,
       maintenanceHistory: maintenanceHistory ?? this.maintenanceHistory,
       futureMaintenance: futureMaintenance ?? this.futureMaintenance,
     );

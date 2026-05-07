@@ -2528,6 +2528,66 @@ abstract class AppLocalizations {
   /// **'Sélectionner une date (optionnel)'**
   String get equipmentInstallDateHint;
 
+  /// No description provided for @equipmentTags.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étiquettes (tags)'**
+  String get equipmentTags;
+
+  /// No description provided for @equipmentNoTags.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune étiquette'**
+  String get equipmentNoTags;
+
+  /// No description provided for @equipmentInternalId.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant interne'**
+  String get equipmentInternalId;
+
+  /// No description provided for @equipmentCreatedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créé le'**
+  String get equipmentCreatedAt;
+
+  /// No description provided for @equipmentUpdatedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifié le'**
+  String get equipmentUpdatedAt;
+
+  /// No description provided for @equipmentNextRevision.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prochaine révision'**
+  String get equipmentNextRevision;
+
+  /// No description provided for @equipmentFutureMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance planifiée'**
+  String get equipmentFutureMaintenance;
+
+  /// No description provided for @equipmentSystemInfoSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations système'**
+  String get equipmentSystemInfoSection;
+
+  /// No description provided for @equipmentInventorySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
+  String get equipmentInventorySection;
+
+  /// No description provided for @equipmentGeneralSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations générales'**
+  String get equipmentGeneralSection;
+
   /// No description provided for @issueStatusOpen.
   ///
   /// In fr, this message translates to:
@@ -3313,12 +3373,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Annuler'**
   String get accountCancelLabel;
-
-  /// No description provided for @equipmentNextRevision.
-  ///
-  /// In fr, this message translates to:
-  /// **'Prochaine révision'**
-  String get equipmentNextRevision;
 
   /// No description provided for @equipmentSelectDate.
   ///

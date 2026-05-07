@@ -130,6 +130,20 @@ function initTables() {
   try { db.exec("ALTER TABLE equipment ADD COLUMN department_id INTEGER REFERENCES departments(id)"); } catch (_) {}
   try { db.exec("ALTER TABLE equipment ADD COLUMN category_id INTEGER REFERENCES equipment_categories(id)"); } catch (_) {}
 
+  // Migration : fusion supplier -> manufacturer (le XLSX d'inventaire physique
+  // ne distingue pas les deux concepts ; la colonne supplier devient redondante).
+  // 1) On copie supplier vers manufacturer si manufacturer est encore NULL
+  //    (idempotent : ne fait rien si la colonne supplier a déjà été droppée).
+  try {
+    db.exec(`
+      UPDATE equipment
+         SET manufacturer = supplier
+       WHERE manufacturer IS NULL AND supplier IS NOT NULL
+    `);
+  } catch (_) {}
+  // 2) Suppression définitive de la colonne supplier (SQLite >= 3.35)
+  try { db.exec("ALTER TABLE equipment DROP COLUMN supplier"); } catch (_) {}
+
   // Table de configuration de la sidebar par rôle
   db.exec(`
     CREATE TABLE IF NOT EXISTS sidebar_config (

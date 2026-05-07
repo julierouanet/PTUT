@@ -30,12 +30,17 @@ router.get('/', verifyToken, (req, res) => {
 
   const equipment = db.prepare(query).all(...params);
 
-  // Attach maintenance records
-  const result = equipment.map(eq => {
-    const history = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC').all(eq.id);
-    const future  = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC').all(eq.id);
-    return { ...eq, maintenanceHistory: history, futureMaintenance: future };
-  });
+  // Attache maintenance records + tags
+  const histStmt   = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC');
+  const futureStmt = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC');
+  const tagsStmt   = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC');
+
+  const result = equipment.map(eq => ({
+    ...eq,
+    maintenanceHistory: histStmt.all(eq.id),
+    futureMaintenance:  futureStmt.all(eq.id),
+    tags:               tagsStmt.all(eq.id).map(r => r.tag_number),
+  }));
 
   res.json(result);
 });
@@ -43,7 +48,10 @@ router.get('/', verifyToken, (req, res) => {
 // POST /api/equipment/restore — restaurer un équipement supprimé (admin)
 router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
-  const { id, name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
+  const {
+    id, name, department, category, serial_number, status, location,
+    manufacturer, model, manuf_year, install_date, next_revision_date,
+  } = req.body;
 
   if (!id || !name || !department || !category) {
     return res.status(400).json({ error: 'Données de restauration incomplètes' });
@@ -51,9 +59,21 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
 
   try {
     db.prepare(`
-      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location, next_revision_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null, next_revision_date || null);
+      INSERT INTO equipment (
+        id, name, department, category, serial_number, status, location,
+        manufacturer, model, manuf_year, install_date, next_revision_date
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, name, department, category,
+      serial_number || null,
+      status || 'Disponible',
+      location || null,
+      manufacturer || null, model || null,
+      manuf_year != null ? parseInt(manuf_year, 10) || null : null,
+      install_date || null,
+      next_revision_date || null,
+    );
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'restore_equipment', target_type: 'equipment', target_id: id, target_name: name,
@@ -77,14 +97,18 @@ router.get('/:id', verifyToken, (req, res) => {
 
   const history = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC').all(eq.id);
   const future  = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC').all(eq.id);
+  const tags    = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC').all(eq.id).map(r => r.tag_number);
 
-  res.json({ ...eq, maintenanceHistory: history, futureMaintenance: future });
+  res.json({ ...eq, maintenanceHistory: history, futureMaintenance: future, tags });
 });
 
 // POST /api/equipment - créer un équipement (admin/supervisor)
 router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
   const db = getDb();
-  const { id, name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
+  const {
+    id, name, department, category, serial_number, status, location,
+    manufacturer, model, manuf_year, install_date, next_revision_date,
+  } = req.body;
 
   if (!id || !name || !department || !category) {
     return res.status(400).json({ error: 'Champs requis: id, name, department, category' });
@@ -97,18 +121,33 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
   if (typeof name !== 'string' || name.length > 255) {
     return res.status(400).json({ error: 'Nom invalide (max 255 caractères)' });
   }
-  if (!VALID_DEPARTMENTS.includes(department)) {
-    return res.status(400).json({ error: 'Département invalide' });
-  }
   if (status && !VALID_STATUSES_EQ.includes(status)) {
     return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES_EQ.join(', ')}` });
+  }
+  // manuf_year : entier optionnel dans une plage plausible
+  let manufYearInt = null;
+  if (manuf_year != null && manuf_year !== '') {
+    manufYearInt = parseInt(manuf_year, 10);
+    if (!Number.isFinite(manufYearInt) || manufYearInt < 1900 || manufYearInt > 2100) {
+      return res.status(400).json({ error: 'Année de fabrication invalide (1900 - 2100)' });
+    }
   }
 
   try {
     db.prepare(`
-      INSERT INTO equipment (id, name, department, category, serial_number, status, supplier, location, next_revision_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, name, department, category, serial_number || null, status || 'Disponible', supplier || null, location || null, next_revision_date || null);
+      INSERT INTO equipment (
+        id, name, department, category, serial_number, status, location,
+        manufacturer, model, manuf_year, install_date, next_revision_date
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      id, name, department, category,
+      serial_number || null,
+      status || 'Disponible',
+      location || null,
+      manufacturer || null, model || null, manufYearInt,
+      install_date || null, next_revision_date || null,
+    );
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
@@ -126,24 +165,45 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 // PUT /api/equipment/:id - modifier un équipement
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
   const db = getDb();
-  const { name, department, category, serial_number, status, supplier, location, next_revision_date } = req.body;
+  const {
+    name, department, category, serial_number, status, location,
+    manufacturer, model, manuf_year, install_date, next_revision_date,
+  } = req.body;
 
   const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
+  if (status && !VALID_STATUSES_EQ.includes(status)) {
+    return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES_EQ.join(', ')}` });
+  }
+  let manufYearInt = null;
+  if (manuf_year !== undefined && manuf_year !== null && manuf_year !== '') {
+    manufYearInt = parseInt(manuf_year, 10);
+    if (!Number.isFinite(manufYearInt) || manufYearInt < 1900 || manufYearInt > 2100) {
+      return res.status(400).json({ error: 'Année de fabrication invalide (1900 - 2100)' });
+    }
+  }
+
   db.prepare(`
     UPDATE equipment
-    SET name = COALESCE(?, name),
-        department = COALESCE(?, department),
-        category = COALESCE(?, category),
-        serial_number = COALESCE(?, serial_number),
-        status = COALESCE(?, status),
-        supplier = COALESCE(?, supplier),
-        location = COALESCE(?, location),
+    SET name               = COALESCE(?, name),
+        department         = COALESCE(?, department),
+        category           = COALESCE(?, category),
+        serial_number      = COALESCE(?, serial_number),
+        status             = COALESCE(?, status),
+        location           = COALESCE(?, location),
+        manufacturer       = COALESCE(?, manufacturer),
+        model              = COALESCE(?, model),
+        manuf_year         = COALESCE(?, manuf_year),
+        install_date       = COALESCE(?, install_date),
         next_revision_date = COALESCE(?, next_revision_date),
-        updated_at = datetime('now','localtime')
+        updated_at         = datetime('now','localtime')
     WHERE id = ?
-  `).run(name, department, category, serial_number, status, supplier, location, next_revision_date, req.params.id);
+  `).run(
+    name, department, category, serial_number, status, location,
+    manufacturer, model, manufYearInt, install_date, next_revision_date,
+    req.params.id,
+  );
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,

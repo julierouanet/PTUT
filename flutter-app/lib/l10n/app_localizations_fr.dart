@@ -1327,6 +1327,36 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentInstallDateHint => 'Sélectionner une date (optionnel)';
 
   @override
+  String get equipmentTags => 'Étiquettes (tags)';
+
+  @override
+  String get equipmentNoTags => 'Aucune étiquette';
+
+  @override
+  String get equipmentInternalId => 'Identifiant interne';
+
+  @override
+  String get equipmentCreatedAt => 'Créé le';
+
+  @override
+  String get equipmentUpdatedAt => 'Modifié le';
+
+  @override
+  String get equipmentNextRevision => 'Prochaine révision';
+
+  @override
+  String get equipmentFutureMaintenance => 'Maintenance planifiée';
+
+  @override
+  String get equipmentSystemInfoSection => 'Informations système';
+
+  @override
+  String get equipmentInventorySection => 'Inventaire';
+
+  @override
+  String get equipmentGeneralSection => 'Informations générales';
+
+  @override
   String get issueStatusOpen => 'Ouvert';
 
   @override
@@ -1739,9 +1769,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get accountCancelLabel => 'Annuler';
-
-  @override
-  String get equipmentNextRevision => 'Prochaine révision';
 
   @override
   String get equipmentSelectDate => 'Sélectionner une date (optionnel)';

@@ -536,7 +536,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
     final nameController = TextEditingController(text: existingEquipment?.name ?? '');
     final serialController = TextEditingController(text: existingEquipment?.serialNumber ?? '');
-    final supplierController = TextEditingController(text: existingEquipment?.supplier ?? '');
     final locationController = TextEditingController(text: existingEquipment?.location ?? '');
     final manufacturerController = TextEditingController(text: existingEquipment?.manufacturer ?? '');
     final modelController = TextEditingController(text: existingEquipment?.model ?? '');
@@ -637,17 +636,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                             decoration: InputDecoration(labelText: l10n.equipmentCategoryLabel, prefixIcon: const Icon(Icons.category)),
                             items: _configService.categoryNames.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                             onChanged: (v) => setDialogState(() => selectedCategory = v!),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Supplier
-                          TextField(
-                            controller: supplierController,
-                            decoration: InputDecoration(
-                              labelText: l10n.equipmentSupplier,
-                              hintText: l10n.equipmentSupplierHint,
-                              prefixIcon: const Icon(Icons.local_shipping),
-                            ),
                           ),
                           const SizedBox(height: 16),
 
@@ -852,7 +840,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                               'serial_number':      serialController.text,
                               'department':         selectedDepartment,
                               'category':           selectedCategory,
-                              'supplier':           supplierController.text.isNotEmpty ? supplierController.text : null,
                               'location':           locationController.text.isNotEmpty ? locationController.text : null,
                               'status':             selectedStatus.displayName,
                               'next_revision_date': selectedRevisionDate,
