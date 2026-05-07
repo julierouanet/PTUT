@@ -1,0 +1,102 @@
+# ── Secrets ───────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Documents binaires lourds (non utiles pour l'analyse de code)
+*.pdf
+*.pptx
+*.docx
+*.doc
+*.xls
+*.xlsx
+~$*
+
+# ── Bases de données ──────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ── Node.js ───────────────────────────────────────────────────
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ── Flutter / Dart ────────────────────────────────────────────
+flutter-app/.dart_tool/
+flutter-app/build/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+flutter-app/.packages
+flutter-app/pubspec.lock
+flutter-app/.pub-cache/
+
+# Plateformes natives Flutter (rarement modifiées, beaucoup de bruit)
+flutter-app/android/.gradle/
+flutter-app/android/app/build/
+flutter-app/android/build/
+flutter-app/ios/Pods/
+flutter-app/ios/.symlinks/
+flutter-app/ios/Flutter/Flutter.framework/
+flutter-app/ios/Flutter/Flutter.podspec
+flutter-app/macos/Pods/
+flutter-app/linux/flutter/ephemeral/
+flutter-app/windows/flutter/ephemeral/
+flutter-app/web/
+
+# ── Build / cache génériques ──────────────────────────────────
+build/
+dist/
+out/
+.cache/
+coverage/
+.next/
+.nuxt/
+
+# ── Docker / volumes ──────────────────────────────────────────
+docker-data/
+
+# ── Documentation interne lourde (PDF, DOCX déjà filtrés)
+document important/
+Rapport_final_PTUT_ISIS_Kabutare.pdf
+soutenance_ptut.pptx.pdf
+poster.pptx
+
+# ── Code de référence Figma (non lié au code de prod) ─────────
+figma code/**/node_modules/
+figma code/**/dist/
+figma code/**/build/
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE ───────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# ── Git interne ───────────────────────────────────────────────
+.git/
+
+# ── Worktrees / sessions Claude ───────────────────────────────
+.claude/worktrees/
+
+# ── Logs ──────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Fichiers générés ──────────────────────────────────────────
+*.min.js
+*.min.css
+*.map
