@@ -125,7 +125,7 @@ abstract class AppLocalizations {
   /// No description provided for @loadingData.
   ///
   /// In fr, this message translates to:
-  /// **'Chargement des donnees...'**
+  /// **'Chargement des données...'**
   String get loadingData;
 
   /// No description provided for @navDashboard.
@@ -263,7 +263,7 @@ abstract class AppLocalizations {
   /// No description provided for @tooltipMobilePreview.
   ///
   /// In fr, this message translates to:
-  /// **'Apercu mobile'**
+  /// **'Aperçu mobile'**
   String get tooltipMobilePreview;
 
   /// No description provided for @tooltipAccountSettings.
@@ -383,7 +383,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonDetails.
   ///
   /// In fr, this message translates to:
-  /// **'Details'**
+  /// **'Détails'**
   String get commonDetails;
 
   /// No description provided for @commonReport.
@@ -2386,57 +2386,1065 @@ abstract class AppLocalizations {
 
   /// No description provided for @greetingMorning.
   ///
-  /// In en, this message translates to:
-  /// **'Good morning'**
+  /// In fr, this message translates to:
+  /// **'Bonjour'**
   String get greetingMorning;
 
   /// No description provided for @greetingAfternoon.
   ///
-  /// In en, this message translates to:
-  /// **'Good afternoon'**
+  /// In fr, this message translates to:
+  /// **'Bon après-midi'**
   String get greetingAfternoon;
 
   /// No description provided for @greetingEvening.
   ///
-  /// In en, this message translates to:
-  /// **'Good evening'**
+  /// In fr, this message translates to:
+  /// **'Bonsoir'**
   String get greetingEvening;
 
   /// No description provided for @hubEquipmentTitle.
   ///
-  /// In en, this message translates to:
-  /// **'Equipment'**
+  /// In fr, this message translates to:
+  /// **'Équipement'**
   String get hubEquipmentTitle;
 
   /// No description provided for @hubEquipmentDesc.
   ///
-  /// In en, this message translates to:
-  /// **'Manage medical equipment, track incidents and plan interventions.'**
+  /// In fr, this message translates to:
+  /// **'Gérez les équipements médicaux, suivez les incidents et planifiez les interventions.'**
   String get hubEquipmentDesc;
 
   /// No description provided for @hubSettingsTitle.
   ///
-  /// In en, this message translates to:
-  /// **'Settings'**
+  /// In fr, this message translates to:
+  /// **'Paramètres'**
   String get hubSettingsTitle;
 
   /// No description provided for @hubSettingsDesc.
   ///
-  /// In en, this message translates to:
-  /// **'Manage users, configure the system and view activity logs.'**
+  /// In fr, this message translates to:
+  /// **'Administrez les utilisateurs, configurez le système et consultez les journaux.'**
   String get hubSettingsDesc;
 
   /// No description provided for @hubInventoryTitle.
   ///
-  /// In en, this message translates to:
-  /// **'Inventory'**
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
   String get hubInventoryTitle;
 
   /// No description provided for @hubInventoryDesc.
   ///
-  /// In en, this message translates to:
-  /// **'View and manage medical supplies and consumables stock.'**
+  /// In fr, this message translates to:
+  /// **'Consultez et gérez les stocks de fournitures médicales et consommables.'**
   String get hubInventoryDesc;
+
+  /// No description provided for @equipStatusAvailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Disponible'**
+  String get equipStatusAvailable;
+
+  /// No description provided for @equipStatusInUse.
+  ///
+  /// In fr, this message translates to:
+  /// **'En usage'**
+  String get equipStatusInUse;
+
+  /// No description provided for @equipStatusInMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'En maintenance'**
+  String get equipStatusInMaintenance;
+
+  /// No description provided for @equipStatusOutOfService.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors service'**
+  String get equipStatusOutOfService;
+
+  /// No description provided for @equipStatusIdle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inactif'**
+  String get equipStatusIdle;
+
+  /// No description provided for @equipStatusToDispose.
+  ///
+  /// In fr, this message translates to:
+  /// **'À éliminer'**
+  String get equipStatusToDispose;
+
+  /// No description provided for @equipStatusTransferred.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transféré'**
+  String get equipStatusTransferred;
+
+  /// No description provided for @equipmentManufacturer.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricant'**
+  String get equipmentManufacturer;
+
+  /// No description provided for @equipmentManufacturerHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Philips Healthcare'**
+  String get equipmentManufacturerHint;
+
+  /// No description provided for @equipmentModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèle'**
+  String get equipmentModel;
+
+  /// No description provided for @equipmentModelHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : IntelliVue MX450'**
+  String get equipmentModelHint;
+
+  /// No description provided for @equipmentManufYear.
+  ///
+  /// In fr, this message translates to:
+  /// **'Année de fabrication'**
+  String get equipmentManufYear;
+
+  /// No description provided for @equipmentManufYearHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : 2023'**
+  String get equipmentManufYearHint;
+
+  /// No description provided for @equipmentInstallDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date d\'installation'**
+  String get equipmentInstallDate;
+
+  /// No description provided for @equipmentInstallDateHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionner une date (optionnel)'**
+  String get equipmentInstallDateHint;
+
+  /// No description provided for @issueStatusOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvert'**
+  String get issueStatusOpen;
+
+  /// No description provided for @issueStatusApproved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Approuvé'**
+  String get issueStatusApproved;
+
+  /// No description provided for @issueStatusInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours'**
+  String get issueStatusInProgress;
+
+  /// No description provided for @issueStatusResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu'**
+  String get issueStatusResolved;
+
+  /// No description provided for @urgencyLow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Faible'**
+  String get urgencyLow;
+
+  /// No description provided for @urgencyMedium.
+  ///
+  /// In fr, this message translates to:
+  /// **'Moyen'**
+  String get urgencyMedium;
+
+  /// No description provided for @urgencyHigh.
+  ///
+  /// In fr, this message translates to:
+  /// **'Urgent'**
+  String get urgencyHigh;
+
+  /// No description provided for @deptAdministration.
+  ///
+  /// In fr, this message translates to:
+  /// **'Administration'**
+  String get deptAdministration;
+
+  /// No description provided for @deptOpd.
+  ///
+  /// In fr, this message translates to:
+  /// **'OPD (Consultations externes)'**
+  String get deptOpd;
+
+  /// No description provided for @deptInternalMedicine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Médecine interne'**
+  String get deptInternalMedicine;
+
+  /// No description provided for @deptPediatrics.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pédiatrie'**
+  String get deptPediatrics;
+
+  /// No description provided for @deptEmergency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Urgences'**
+  String get deptEmergency;
+
+  /// No description provided for @deptLaboratory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Laboratoire'**
+  String get deptLaboratory;
+
+  /// No description provided for @deptStomatology.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stomatologie'**
+  String get deptStomatology;
+
+  /// No description provided for @deptPhysiotherapy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Kinésithérapie'**
+  String get deptPhysiotherapy;
+
+  /// No description provided for @deptNeonatology.
+  ///
+  /// In fr, this message translates to:
+  /// **'Néonatologie'**
+  String get deptNeonatology;
+
+  /// No description provided for @deptMaternity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maternité'**
+  String get deptMaternity;
+
+  /// No description provided for @deptSurgery.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chirurgie'**
+  String get deptSurgery;
+
+  /// No description provided for @deptOperatingTheater.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bloc opératoire'**
+  String get deptOperatingTheater;
+
+  /// No description provided for @deptOphthalmology.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ophtalmologie'**
+  String get deptOphthalmology;
+
+  /// No description provided for @deptTbMr.
+  ///
+  /// In fr, this message translates to:
+  /// **'TB-MR (Tuberculose)'**
+  String get deptTbMr;
+
+  /// No description provided for @deptGbv.
+  ///
+  /// In fr, this message translates to:
+  /// **'GBV (Violences basées sur le genre)'**
+  String get deptGbv;
+
+  /// No description provided for @deptMentalHealth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Santé mentale'**
+  String get deptMentalHealth;
+
+  /// No description provided for @deptArv.
+  ///
+  /// In fr, this message translates to:
+  /// **'ARV (Traitement VIH/SIDA)'**
+  String get deptArv;
+
+  /// No description provided for @deptPharmacy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pharmacie'**
+  String get deptPharmacy;
+
+  /// No description provided for @catIct.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement ICT'**
+  String get catIct;
+
+  /// No description provided for @catHygiene.
+  ///
+  /// In fr, this message translates to:
+  /// **'Matériel d\'hygiène'**
+  String get catHygiene;
+
+  /// No description provided for @catBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement biomédical'**
+  String get catBiomedical;
+
+  /// No description provided for @catElectrical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement électrique'**
+  String get catElectrical;
+
+  /// No description provided for @catSterilization.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stérilisation et buanderie'**
+  String get catSterilization;
+
+  /// No description provided for @catPharmacy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pharmacie'**
+  String get catPharmacy;
+
+  /// No description provided for @techAvailableTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents disponibles'**
+  String get techAvailableTab;
+
+  /// No description provided for @techMyInterventionsTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes interventions'**
+  String get techMyInterventionsTab;
+
+  /// No description provided for @techScheduleTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Agenda'**
+  String get techScheduleTab;
+
+  /// No description provided for @techAvailableSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents approuvés en attente d\'un technicien — prenez en charge ceux que vous souhaitez traiter.'**
+  String get techAvailableSubtitle;
+
+  /// No description provided for @techNoAvailableIncidents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident approuvé disponible.'**
+  String get techNoAvailableIncidents;
+
+  /// No description provided for @techTakeCharge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prendre en charge'**
+  String get techTakeCharge;
+
+  /// No description provided for @techSheet.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fiche'**
+  String get techSheet;
+
+  /// No description provided for @techTakeChargeTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prendre en charge l\'incident'**
+  String get techTakeChargeTitle;
+
+  /// No description provided for @techTakeChargeContent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous allez prendre en charge l\'incident sur :'**
+  String get techTakeChargeContent;
+
+  /// No description provided for @techTakeChargeMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'incident passera au statut \"En cours\" et vous sera assigné.'**
+  String get techTakeChargeMessage;
+
+  /// No description provided for @techTakeChargeSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous avez pris en charge l\'incident sur \"{equipment}\".'**
+  String techTakeChargeSuccess(String equipment);
+
+  /// No description provided for @techNoInterventions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune intervention enregistrée'**
+  String get techNoInterventions;
+
+  /// No description provided for @techNoInterventionsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les incidents que vous prendrez en charge apparaîtront ici.'**
+  String get techNoInterventionsHint;
+
+  /// No description provided for @techNoCurrentInterventions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune intervention en cours'**
+  String get techNoCurrentInterventions;
+
+  /// No description provided for @techFindIncidentsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour trouver des incidents à traiter, consultez l\'onglet \"Incidents disponibles\".'**
+  String get techFindIncidentsHint;
+
+  /// No description provided for @techSearchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher une intervention…'**
+  String get techSearchHint;
+
+  /// No description provided for @techNoResults.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun résultat'**
+  String get techNoResults;
+
+  /// No description provided for @techScheduleSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre calendrier d\'interventions et de maintenances planifiées.'**
+  String get techScheduleSubtitle;
+
+  /// No description provided for @techLegendInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours'**
+  String get techLegendInProgress;
+
+  /// No description provided for @techLegendResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu'**
+  String get techLegendResolved;
+
+  /// No description provided for @techLegendPastMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance passée'**
+  String get techLegendPastMaintenance;
+
+  /// No description provided for @techLegendPlanned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planifiée'**
+  String get techLegendPlanned;
+
+  /// No description provided for @techFullHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique complet'**
+  String get techFullHistory;
+
+  /// No description provided for @techNoEventsToday.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun événement ce jour.'**
+  String get techNoEventsToday;
+
+  /// No description provided for @techEventsOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Événements du {date}'**
+  String techEventsOn(String date);
+
+  /// No description provided for @techEventCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} événement(s)'**
+  String techEventCount(int count);
+
+  /// No description provided for @logsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Journaux d\'activité'**
+  String get logsTitle;
+
+  /// No description provided for @logsRefresh.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actualiser'**
+  String get logsRefresh;
+
+  /// No description provided for @logsColAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action'**
+  String get logsColAction;
+
+  /// No description provided for @logsColUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateur'**
+  String get logsColUser;
+
+  /// No description provided for @logsColResource.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ressource'**
+  String get logsColResource;
+
+  /// No description provided for @logsColIpDevice.
+  ///
+  /// In fr, this message translates to:
+  /// **'IP / Appareil'**
+  String get logsColIpDevice;
+
+  /// No description provided for @logsColTimestamp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Horodatage'**
+  String get logsColTimestamp;
+
+  /// No description provided for @logsSearchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher (utilisateur, ressource…)'**
+  String get logsSearchHint;
+
+  /// No description provided for @logsFilterAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout'**
+  String get logsFilterAll;
+
+  /// No description provided for @logsFilterAuth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Auth'**
+  String get logsFilterAuth;
+
+  /// No description provided for @logsFilterEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements'**
+  String get logsFilterEquipment;
+
+  /// No description provided for @logsFilterIncidents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents'**
+  String get logsFilterIncidents;
+
+  /// No description provided for @logsFilterInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
+  String get logsFilterInventory;
+
+  /// No description provided for @logsFilterUsers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateurs'**
+  String get logsFilterUsers;
+
+  /// No description provided for @logsNewIp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvelle IP'**
+  String get logsNewIp;
+
+  /// No description provided for @logsNewIpTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Première connexion depuis cette adresse IP'**
+  String get logsNewIpTooltip;
+
+  /// No description provided for @logsNoLogs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun log trouvé'**
+  String get logsNoLogs;
+
+  /// No description provided for @logsNoLogsSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les actions des utilisateurs apparaîtront ici.'**
+  String get logsNoLogsSubtitle;
+
+  /// No description provided for @logsLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur de chargement'**
+  String get logsLoadError;
+
+  /// No description provided for @logsRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get logsRetry;
+
+  /// No description provided for @logsMetadata.
+  ///
+  /// In fr, this message translates to:
+  /// **'Métadonnées'**
+  String get logsMetadata;
+
+  /// No description provided for @logsViewProfile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir profil'**
+  String get logsViewProfile;
+
+  /// No description provided for @logsViewDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir détails'**
+  String get logsViewDetails;
+
+  /// No description provided for @logsRestoring.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restauration…'**
+  String get logsRestoring;
+
+  /// No description provided for @logsAlreadyRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action a déjà été restaurée.'**
+  String get logsAlreadyRestored;
+
+  /// No description provided for @logsUserProfileTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Profil utilisateur'**
+  String get logsUserProfileTitle;
+
+  /// No description provided for @logsEquipmentTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement'**
+  String get logsEquipmentTitle;
+
+  /// No description provided for @logsEquipmentNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement supprimé ou introuvable.'**
+  String get logsEquipmentNotFound;
+
+  /// No description provided for @logsDeviceMobile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mobile'**
+  String get logsDeviceMobile;
+
+  /// No description provided for @logsDevicePc.
+  ///
+  /// In fr, this message translates to:
+  /// **'PC / Navigateur'**
+  String get logsDevicePc;
+
+  /// No description provided for @logsDeviceUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inconnu'**
+  String get logsDeviceUnknown;
+
+  /// No description provided for @logsTargetEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement'**
+  String get logsTargetEquipment;
+
+  /// No description provided for @logsTargetUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateur concerné'**
+  String get logsTargetUser;
+
+  /// No description provided for @logsTargetIncident.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident'**
+  String get logsTargetIncident;
+
+  /// No description provided for @logsTargetInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Article d\'inventaire'**
+  String get logsTargetInventory;
+
+  /// No description provided for @logsTargetAuth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Authentification'**
+  String get logsTargetAuth;
+
+  /// No description provided for @logsTargetResource.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ressource'**
+  String get logsTargetResource;
+
+  /// No description provided for @logsUserLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateur'**
+  String get logsUserLabel;
+
+  /// No description provided for @settingsRolesTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des rôles'**
+  String get settingsRolesTab;
+
+  /// No description provided for @settingsRolesTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôles et permissions'**
+  String get settingsRolesTitle;
+
+  /// No description provided for @settingsRolesSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier les permissions ou créer un rôle personnalisé'**
+  String get settingsRolesSubtitle;
+
+  /// No description provided for @settingsNewRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau rôle'**
+  String get settingsNewRole;
+
+  /// No description provided for @settingsAdminLockedInfo.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'administrateur a toutes les permissions — toujours sans restriction. Les rôles personnalisés peuvent être supprimés.'**
+  String get settingsAdminLockedInfo;
+
+  /// No description provided for @settingsNoRoles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun rôle chargé.'**
+  String get settingsNoRoles;
+
+  /// No description provided for @settingsCustomBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnalisé'**
+  String get settingsCustomBadge;
+
+  /// No description provided for @settingsAdminAlwaysAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'administrateur a toujours toutes les permissions'**
+  String get settingsAdminAlwaysAll;
+
+  /// No description provided for @settingsLocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Verrouillé'**
+  String get settingsLocked;
+
+  /// No description provided for @settingsRoleActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permissions actives :'**
+  String get settingsRoleActive;
+
+  /// No description provided for @settingsNoPermissions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune permission'**
+  String get settingsNoPermissions;
+
+  /// No description provided for @settingsNewRoleTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau rôle personnalisé'**
+  String get settingsNewRoleTitle;
+
+  /// No description provided for @settingsRoleIdLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant (ex: nurse)'**
+  String get settingsRoleIdLabel;
+
+  /// No description provided for @settingsRoleIdHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lettres, chiffres, underscores'**
+  String get settingsRoleIdHint;
+
+  /// No description provided for @settingsRoleDisplayLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom affiché (ex: Infirmier)'**
+  String get settingsRoleDisplayLabel;
+
+  /// No description provided for @settingsRoleDescLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description (optionnel)'**
+  String get settingsRoleDescLabel;
+
+  /// No description provided for @settingsPermissionsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permissions'**
+  String get settingsPermissionsLabel;
+
+  /// No description provided for @settingsSelectAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout sélectionner'**
+  String get settingsSelectAll;
+
+  /// No description provided for @settingsDeselectAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout désélectionner'**
+  String get settingsDeselectAll;
+
+  /// No description provided for @settingsCreateRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer'**
+  String get settingsCreateRole;
+
+  /// No description provided for @settingsEditPermissionsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permissions — {role}'**
+  String settingsEditPermissionsTitle(String role);
+
+  /// No description provided for @settingsBuiltinRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle intégré'**
+  String get settingsBuiltinRole;
+
+  /// No description provided for @settingsAccessByRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès aux pages par rôle'**
+  String get settingsAccessByRole;
+
+  /// No description provided for @settingsAccessDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cochez les pages et fonctions accessibles pour le rôle sélectionné.'**
+  String get settingsAccessDesc;
+
+  /// No description provided for @settingsRoleLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle'**
+  String get settingsRoleLabel;
+
+  /// No description provided for @settingsAdminAllAccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'administrateur a accès à toutes les pages et fonctions sans restriction.'**
+  String get settingsAdminAllAccess;
+
+  /// No description provided for @settingsNoSpecificFunction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune fonction spécifique'**
+  String get settingsNoSpecificFunction;
+
+  /// No description provided for @settingsResetToDefault.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialisé aux valeurs par défaut'**
+  String get settingsResetToDefault;
+
+  /// No description provided for @settingsReset.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser'**
+  String get settingsReset;
+
+  /// No description provided for @settingsDeleteRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le rôle'**
+  String get settingsDeleteRole;
+
+  /// No description provided for @accountFirstName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prénom'**
+  String get accountFirstName;
+
+  /// No description provided for @accountLastName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom'**
+  String get accountLastName;
+
+  /// No description provided for @accountDirectChange.
+  ///
+  /// In fr, this message translates to:
+  /// **'Direct'**
+  String get accountDirectChange;
+
+  /// No description provided for @accountDirectChangeSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre département sera modifié immédiatement.'**
+  String get accountDirectChangeSubtitle;
+
+  /// No description provided for @accountConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer'**
+  String get accountConfirm;
+
+  /// No description provided for @accountCancelLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuler'**
+  String get accountCancelLabel;
+
+  /// No description provided for @equipmentNextRevision.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prochaine révision'**
+  String get equipmentNextRevision;
+
+  /// No description provided for @equipmentSelectDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionner une date (optionnel)'**
+  String get equipmentSelectDate;
+
+  /// No description provided for @equipmentRemoveDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer la date'**
+  String get equipmentRemoveDate;
+
+  /// No description provided for @equipmentDeleteReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison de la suppression (optionnel)'**
+  String get equipmentDeleteReason;
+
+  /// No description provided for @equipmentDeleteReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Hors service, remplacé…'**
+  String get equipmentDeleteReasonHint;
+
+  /// No description provided for @widgetHistoryTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique — {name}'**
+  String widgetHistoryTitle(String name);
+
+  /// No description provided for @widgetMaintenanceEvent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance — {intervention}'**
+  String widgetMaintenanceEvent(String intervention);
+
+  /// No description provided for @widgetPlannedMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance planifiée — {intervention}'**
+  String widgetPlannedMaintenance(String intervention);
+
+  /// No description provided for @widgetNoHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun historique pour cet équipement.'**
+  String get widgetNoHistory;
+
+  /// No description provided for @widgetSerialNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'N° {serial}'**
+  String widgetSerialNumber(String serial);
+
+  /// No description provided for @widgetEventCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} événement(s)'**
+  String widgetEventCount(int count);
+
+  /// No description provided for @usersDeptRequests.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demandes de changement de département'**
+  String get usersDeptRequests;
+
+  /// No description provided for @usersNoPendingRequests.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune demande en attente.'**
+  String get usersNoPendingRequests;
+
+  /// No description provided for @usersApproveTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Approuver'**
+  String get usersApproveTooltip;
+
+  /// No description provided for @usersRejectTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejeter'**
+  String get usersRejectTooltip;
+
+  /// No description provided for @usersApproveTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Approuver la demande'**
+  String get usersApproveTitle;
+
+  /// No description provided for @usersRejectTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejeter la demande'**
+  String get usersRejectTitle;
+
+  /// No description provided for @usersFirstName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prénom'**
+  String get usersFirstName;
+
+  /// No description provided for @usersLastName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom'**
+  String get usersLastName;
+
+  /// No description provided for @usersDeleteReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison de la suppression (optionnel)'**
+  String get usersDeleteReason;
+
+  /// No description provided for @usersDeleteReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Départ de l\'établissement, doublon…'**
+  String get usersDeleteReasonHint;
+
+  /// No description provided for @usersRolesInfo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.'**
+  String get usersRolesInfo;
 }
 
 class _AppLocalizationsDelegate

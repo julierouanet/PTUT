@@ -437,6 +437,18 @@
   "equipStatusInUse": "In Use",
   "equipStatusInMaintenance": "In Maintenance",
   "equipStatusOutOfService": "Out of Service",
+  "equipStatusIdle": "Idle",
+  "equipStatusToDispose": "To Dispose",
+  "equipStatusTransferred": "Transferred",
+
+  "equipmentManufacturer": "Manufacturer",
+  "equipmentManufacturerHint": "Ex: Philips Healthcare",
+  "equipmentModel": "Model",
+  "equipmentModelHint": "Ex: IntelliVue MX450",
+  "equipmentManufYear": "Manufacturing year",
+  "equipmentManufYearHint": "Ex: 2023",
+  "equipmentInstallDate": "Install date",
+  "equipmentInstallDateHint": "Select a date (optional)",
 
   "issueStatusOpen": "Open",
   "issueStatusApproved": "Approved",

@@ -3,7 +3,10 @@ enum EquipmentStatus {
   disponible,
   enUsage,
   enMaintenance,
-  horsService;
+  horsService,
+  inactif,
+  aEliminer,
+  transfere;
 
   /// Canonical English name (used for storage/API)
   String get displayName {
@@ -16,6 +19,12 @@ enum EquipmentStatus {
         return 'In Maintenance';
       case EquipmentStatus.horsService:
         return 'Out of Service';
+      case EquipmentStatus.inactif:
+        return 'Idle';
+      case EquipmentStatus.aEliminer:
+        return 'To Dispose';
+      case EquipmentStatus.transfere:
+        return 'Transferred';
     }
   }
 
@@ -30,6 +39,12 @@ enum EquipmentStatus {
         return l10n.equipStatusInMaintenance as String;
       case EquipmentStatus.horsService:
         return l10n.equipStatusOutOfService as String;
+      case EquipmentStatus.inactif:
+        return l10n.equipStatusIdle as String;
+      case EquipmentStatus.aEliminer:
+        return l10n.equipStatusToDispose as String;
+      case EquipmentStatus.transfere:
+        return l10n.equipStatusTransferred as String;
     }
   }
 
@@ -39,6 +54,7 @@ enum EquipmentStatus {
       case 'Available':
         return EquipmentStatus.disponible;
       case 'En usage':
+      case 'En service':
       case 'In Use':
         return EquipmentStatus.enUsage;
       case 'En maintenance':
@@ -47,6 +63,17 @@ enum EquipmentStatus {
       case 'Hors service':
       case 'Out of Service':
         return EquipmentStatus.horsService;
+      case 'Inactif':
+      case 'Idle':
+        return EquipmentStatus.inactif;
+      case 'À éliminer':
+      case 'A eliminer':
+      case 'To Dispose':
+        return EquipmentStatus.aEliminer;
+      case 'Transféré':
+      case 'Transfere':
+      case 'Transferred':
+        return EquipmentStatus.transfere;
       default:
         return EquipmentStatus.disponible;
     }
@@ -77,6 +104,13 @@ class Equipment {
   final String supplier;
   final String location;
   final String? nextRevisionDate;
+
+  // ── Champs de l'inventaire physique 2025-2026 ──────────────────────────
+  final String? manufacturer;
+  final String? model;
+  final int? manufYear;
+  final String? installDate;
+
   final List<MaintenanceRecord> maintenanceHistory;
   final List<MaintenanceRecord> futureMaintenance;
 
@@ -90,6 +124,10 @@ class Equipment {
     required this.supplier,
     required this.location,
     this.nextRevisionDate,
+    this.manufacturer,
+    this.model,
+    this.manufYear,
+    this.installDate,
     this.maintenanceHistory = const [],
     this.futureMaintenance = const [],
   });
@@ -109,6 +147,13 @@ class Equipment {
               technician: m['technician'] as String? ?? '',
             ))
         .toList();
+
+    // L'API peut renvoyer manuf_year en INTEGER ou en STRING (cf. SQLite typage faible)
+    final rawYear = json['manuf_year'];
+    final manufYear = rawYear is int
+        ? rawYear
+        : (rawYear is String ? int.tryParse(rawYear) : null);
+
     return Equipment(
       id:                 json['id']                   as String? ?? '',
       name:               json['name']                 as String? ?? '',
@@ -119,6 +164,10 @@ class Equipment {
       supplier:           json['supplier']             as String? ?? '',
       location:           json['location']             as String? ?? '',
       nextRevisionDate:   json['next_revision_date']   as String?,
+      manufacturer:       json['manufacturer']         as String?,
+      model:              json['model']                as String?,
+      manufYear:          manufYear,
+      installDate:        json['install_date']         as String?,
       maintenanceHistory: history,
       futureMaintenance:  future,
     );
@@ -134,6 +183,10 @@ class Equipment {
     String? supplier,
     String? location,
     String? nextRevisionDate,
+    String? manufacturer,
+    String? model,
+    int? manufYear,
+    String? installDate,
     List<MaintenanceRecord>? maintenanceHistory,
     List<MaintenanceRecord>? futureMaintenance,
   }) {
@@ -147,6 +200,10 @@ class Equipment {
       supplier: supplier ?? this.supplier,
       location: location ?? this.location,
       nextRevisionDate: nextRevisionDate ?? this.nextRevisionDate,
+      manufacturer: manufacturer ?? this.manufacturer,
+      model: model ?? this.model,
+      manufYear: manufYear ?? this.manufYear,
+      installDate: installDate ?? this.installDate,
       maintenanceHistory: maintenanceHistory ?? this.maintenanceHistory,
       futureMaintenance: futureMaintenance ?? this.futureMaintenance,
     );

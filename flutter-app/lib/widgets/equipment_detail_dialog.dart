@@ -98,6 +98,14 @@ class EquipmentDetailDialog extends StatelessWidget {
               _buildDetailRow(l10n.commonDepartment, eq.department),
               _buildDetailRow(l10n.commonCategory, eq.category),
               _buildDetailRow(l10n.equipmentSerialNumber, eq.serialNumber),
+              if (eq.manufacturer != null && eq.manufacturer!.isNotEmpty)
+                _buildDetailRow(l10n.equipmentManufacturer, eq.manufacturer!),
+              if (eq.model != null && eq.model!.isNotEmpty)
+                _buildDetailRow(l10n.equipmentModel, eq.model!),
+              if (eq.manufYear != null)
+                _buildDetailRow(l10n.equipmentManufYear, eq.manufYear!.toString()),
+              if (eq.installDate != null && eq.installDate!.isNotEmpty)
+                _buildDetailRow(l10n.equipmentInstallDate, _formatDate(eq.installDate!)),
               _buildDetailRow(l10n.equipmentSupplier, eq.supplier),
               _buildDetailRow(l10n.equipmentLocation, eq.location),
               if (eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty)

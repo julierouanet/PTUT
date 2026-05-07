@@ -286,21 +286,57 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 
 ### Table `equipment`
 
-| Colonne            | Type | Contraintes                          |
-|--------------------|------|--------------------------------------|
-| id                 | TEXT | PRIMARY KEY                          |
-| name               | TEXT | NOT NULL                             |
-| department         | TEXT | NOT NULL                             |
-| category           | TEXT | NOT NULL                             |
-| serial_number      | TEXT | Nullable                             |
-| status             | TEXT | NOT NULL DEFAULT 'Disponible'        |
-| supplier           | TEXT | Nullable                             |
-| location           | TEXT | Nullable                             |
-| created_at         | TEXT | DEFAULT CURRENT_TIMESTAMP            |
-| updated_at         | TEXT | DEFAULT CURRENT_TIMESTAMP            |
-| next_revision_date | TEXT | Nullable, ajoute via migration       |
+| Colonne            | Type    | Contraintes                                                  |
+|--------------------|---------|--------------------------------------------------------------|
+| id                 | TEXT    | PRIMARY KEY (regex `^[a-zA-Z0-9_-]+$`, max 100)              |
+| name               | TEXT    | NOT NULL                                                     |
+| department         | TEXT    | NOT NULL (denormalisation, sync avec departments.name)       |
+| category           | TEXT    | NOT NULL (denormalisation, sync avec equipment_categories.name) |
+| serial_number      | TEXT    | Nullable                                                     |
+| status             | TEXT    | NOT NULL DEFAULT 'Disponible'                                |
+| supplier           | TEXT    | Nullable                                                     |
+| location           | TEXT    | Nullable                                                     |
+| created_at         | TEXT    | DEFAULT CURRENT_TIMESTAMP                                    |
+| updated_at         | TEXT    | DEFAULT CURRENT_TIMESTAMP                                    |
+| next_revision_date | TEXT    | Nullable, ajoute via migration                               |
+| manufacturer       | TEXT    | Nullable, ajoute via migration (inventaire physique 2025-2026) |
+| model              | TEXT    | Nullable, ajoute via migration                               |
+| manuf_year         | INTEGER | Nullable, ajoute via migration (annee fabrication)           |
+| install_date       | TEXT    | Nullable, ajoute via migration (ISO YYYY-MM-DD)              |
+| department_id      | INTEGER | Nullable, FK -> departments(id), ajoute via migration        |
+| category_id        | INTEGER | Nullable, FK -> equipment_categories(id), ajoute via migration |
 
 **Index** : `idx_equipment_dept` (department), `idx_equipment_status` (status)
+
+### Table `departments`
+
+| Colonne | Type    | Contraintes               |
+|---------|---------|---------------------------|
+| id      | INTEGER | PRIMARY KEY AUTOINCREMENT |
+| name    | TEXT    | NOT NULL UNIQUE           |
+
+Peuplee par `scripts/import_inventory.js` depuis la feuille `Standard_Departments` du XLSX (~56 entrees, noms en anglais).
+
+### Table `equipment_categories`
+
+| Colonne | Type    | Contraintes               |
+|---------|---------|---------------------------|
+| id      | INTEGER | PRIMARY KEY AUTOINCREMENT |
+| name    | TEXT    | NOT NULL UNIQUE           |
+
+Peuplee par `scripts/import_inventory.js` depuis la feuille `Standard_Equipment_Names` du XLSX (~611 entrees + ajouts a la volee si une categorie utilisee dans l'inventaire est absente du standard).
+
+### Table `equipment_tags`
+
+| Colonne      | Type    | Contraintes                                          |
+|--------------|---------|------------------------------------------------------|
+| id           | INTEGER | PRIMARY KEY AUTOINCREMENT                            |
+| equipment_id | TEXT    | NOT NULL, FK -> equipment(id) ON DELETE CASCADE      |
+| tag_number   | TEXT    | NOT NULL                                             |
+
+**Contrainte unique** : (equipment_id, tag_number) — un meme tag peut exister sur plusieurs equipements (collisions documentees dans le XLSX).
+**Index** : `idx_equipment_tags_tag` (tag_number)
+**Cle naturelle** : un equipement = un SerialNumber (cle primaire `equipment.id`), avec potentiellement plusieurs `tag_number` rattaches.
 
 ### Table `maintenance_records`
 
@@ -382,7 +418,7 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 
 | Contexte         | Valeurs                                                                       |
 |------------------|-------------------------------------------------------------------------------|
-| Equipment Status | `Disponible`, `En service`, `En maintenance`, `Hors service`                  |
+| Equipment Status | `Disponible`, `En service`, `En maintenance`, `Hors service`, `Inactif`, `À éliminer`, `Transféré` |
 | Equipment Dept   | `IT`, `Radiologie`, `Reanimation`, `Sterilisation`, `Laboratoire`, `Urgences`, `Maintenance`, `Infrastructure` |
 | Equipment Cat    | `Imagerie`, `Laboratoire`, `Chirurgie`, `Monitoring`, `Therapeutique`, `Informatique`, `Mobilier`, `Autre` |
 | Issue Status     | `Ouvert`, `En cours`, `Resolu`, `Annule`                                      |
@@ -391,10 +427,31 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 | Inventory Cat    | `Consommable medical`, `Hygiene`, `Bureautique`                               |
 | Inventory Status | `Normal`, `Faible`, `Rupture` (calcule : stock=0 -> Rupture, <min -> Faible)  |
 
-## 2.3 Donnees seed
+## 2.3 Donnees seed et import inventaire physique
 
-### Equipements (45 items)
-Exemples representatifs :
+### Source primaire — Inventaire physique 2025-2026 (XLSX hopital)
+
+Script `db-service/scripts/import_inventory.js` — peuple la base depuis le fichier XLSX reel fourni par le service biomedical de l'hopital (`PHYISICAL INVENTORY OF MEDICAL EQUIPMENTS 2025-2026 -.xlsx`).
+
+| Volume        | Resultat apres import |
+|---------------|------------------------|
+| equipment     | ~340 (342 lignes parsees - 2 collisions de SerialNumber) |
+| equipment_tags| ~338 |
+| departments   | ~56 (issus de Standard_Departments, en anglais) |
+| equipment_categories | ~626 (~611 standard + ~15 ajoutes a la volee depuis l'inventaire) |
+
+Statuts mappes depuis l'anglais vers le francais : `operational`->`En service`, `UNDER M`/`UNDERM`->`En maintenance`, `IDDLE`->`Inactif`, `DISPOSED`->`Hors service`, `to be disposal`->`À éliminer`, `KIBIRIZI DH`->`Transféré`. Logique dans `scripts/lib/inventory_normalizer.js` (testee via Jest, 31 tests).
+
+CLI :
+```bash
+node scripts/import_inventory.js --xlsx <chemin.xlsx> [--dry-run] [--insert-only]
+```
+
+Audit : chaque insertion / mise a jour est tracee dans `logs` avec `user_role='system'`, `user_name='import_inventory'`, action `create_equipment_import` ou `update_equipment_import`.
+
+### Donnees seed legacy (`db-service/seed.js`) - 45 equipements de demo
+
+Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements importes du XLSX (id derive du SerialNumber). Exemples :
 
 | ID     | Nom                            | Departement    | Categorie           | Statut          |
 |--------|--------------------------------|----------------|---------------------|-----------------|
@@ -489,14 +546,26 @@ Exemples representatifs :
 
 ## 2.7 Dependances (package.json)
 
-| Package        | Version  | Role                    |
-|----------------|----------|-------------------------|
-| express        | ^4.21.0  | Framework web           |
-| better-sqlite3 | ^11.7.0 | Driver SQLite           |
-| jsonwebtoken   | ^9.0.2   | Verification JWT        |
-| helmet         | ^8.0.0   | Headers securite        |
-| cors           | ^2.8.5   | CORS middleware         |
-| axios          | ^1.7.0   | Client HTTP             |
+| Package        | Version  | Role                                      |
+|----------------|----------|-------------------------------------------|
+| express        | ^4.21.0  | Framework web                             |
+| better-sqlite3 | ^11.7.0  | Driver SQLite                             |
+| jsonwebtoken   | ^9.0.2   | Verification JWT                          |
+| helmet         | ^8.0.0   | Headers securite                          |
+| cors           | ^2.8.5   | CORS middleware                           |
+| axios          | ^1.7.0   | Client HTTP                               |
+| xlsx           | ^0.18.5  | Lecture du XLSX d'inventaire (SheetJS)    |
+| jest           | ^29.7.0  | Tests (dev) — `__tests__/inventory_normalizer.test.js` |
+| supertest      | ^7.0.0   | Tests HTTP (dev)                          |
+
+### Scripts npm exposes
+
+| Script                  | Commande                                | Role                                            |
+|-------------------------|-----------------------------------------|-------------------------------------------------|
+| start                   | `node src/index.js`                     | Lance le service                                |
+| seed                    | `node seed.js`                          | Peuple la base avec les donnees de demo legacy  |
+| import:inventory        | `node scripts/import_inventory.js`      | Importe l'inventaire physique 2025-2026 (XLSX)  |
+| test                    | `jest --forceExit --detectOpenHandles`  | Tests unitaires (DB en `:memory:`)              |
 
 ---
 
@@ -713,19 +782,24 @@ status: StockStatus (normal, low, outOfStock)
 
 ## 4.1 Docker
 
-### Dockerfiles (identiques pour les 2 services)
+### Dockerfiles (similaires pour les 2 services)
 
 ```dockerfile
 FROM node:20-alpine
 # Deps systeme : python3, make, g++ (pour better-sqlite3)
 WORKDIR /app
-COPY package*.json src/ seed.js
+COPY package*.json ./
 RUN npm install --omit=dev
+COPY src/ ./src/
+COPY scripts/ ./scripts/    # uniquement db-service (script d'import inventaire)
+COPY seed.js ./
 RUN mkdir -p /data
 ENV DB_PATH=/data/{auth|hospital}.db NODE_ENV=production
 EXPOSE {3001|3002}
 CMD ["node", "src/index.js"]
 ```
+
+> **Attention** : tout nouveau dossier doit etre explicitement `COPY` dans le Dockerfile. Le `.dockerignore` ne le copie pas automatiquement.
 
 ### Docker Compose Production (docker-compose.yml)
 

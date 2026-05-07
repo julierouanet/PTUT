@@ -21,7 +21,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get hospitalSubtitleLong => 'Gestion des Equipements';
 
   @override
-  String get loadingData => 'Chargement des donnees...';
+  String get loadingData => 'Chargement des données...';
 
   @override
   String get navDashboard => 'Tableau de bord';
@@ -90,7 +90,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tooltipMenu => 'Menu';
 
   @override
-  String get tooltipMobilePreview => 'Apercu mobile';
+  String get tooltipMobilePreview => 'Aperçu mobile';
 
   @override
   String get tooltipAccountSettings => 'Parametres du compte';
@@ -154,7 +154,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonError => 'Erreur';
 
   @override
-  String get commonDetails => 'Details';
+  String get commonDetails => 'Détails';
 
   @override
   String get commonReport => 'Signaler';
@@ -1280,4 +1280,541 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get hubInventoryDesc =>
       'Consultez et gérez les stocks de fournitures médicales et consommables.';
+
+  @override
+  String get equipStatusAvailable => 'Disponible';
+
+  @override
+  String get equipStatusInUse => 'En usage';
+
+  @override
+  String get equipStatusInMaintenance => 'En maintenance';
+
+  @override
+  String get equipStatusOutOfService => 'Hors service';
+
+  @override
+  String get equipStatusIdle => 'Inactif';
+
+  @override
+  String get equipStatusToDispose => 'À éliminer';
+
+  @override
+  String get equipStatusTransferred => 'Transféré';
+
+  @override
+  String get equipmentManufacturer => 'Fabricant';
+
+  @override
+  String get equipmentManufacturerHint => 'Ex : Philips Healthcare';
+
+  @override
+  String get equipmentModel => 'Modèle';
+
+  @override
+  String get equipmentModelHint => 'Ex : IntelliVue MX450';
+
+  @override
+  String get equipmentManufYear => 'Année de fabrication';
+
+  @override
+  String get equipmentManufYearHint => 'Ex : 2023';
+
+  @override
+  String get equipmentInstallDate => 'Date d\'installation';
+
+  @override
+  String get equipmentInstallDateHint => 'Sélectionner une date (optionnel)';
+
+  @override
+  String get issueStatusOpen => 'Ouvert';
+
+  @override
+  String get issueStatusApproved => 'Approuvé';
+
+  @override
+  String get issueStatusInProgress => 'En cours';
+
+  @override
+  String get issueStatusResolved => 'Résolu';
+
+  @override
+  String get urgencyLow => 'Faible';
+
+  @override
+  String get urgencyMedium => 'Moyen';
+
+  @override
+  String get urgencyHigh => 'Urgent';
+
+  @override
+  String get deptAdministration => 'Administration';
+
+  @override
+  String get deptOpd => 'OPD (Consultations externes)';
+
+  @override
+  String get deptInternalMedicine => 'Médecine interne';
+
+  @override
+  String get deptPediatrics => 'Pédiatrie';
+
+  @override
+  String get deptEmergency => 'Urgences';
+
+  @override
+  String get deptLaboratory => 'Laboratoire';
+
+  @override
+  String get deptStomatology => 'Stomatologie';
+
+  @override
+  String get deptPhysiotherapy => 'Kinésithérapie';
+
+  @override
+  String get deptNeonatology => 'Néonatologie';
+
+  @override
+  String get deptMaternity => 'Maternité';
+
+  @override
+  String get deptSurgery => 'Chirurgie';
+
+  @override
+  String get deptOperatingTheater => 'Bloc opératoire';
+
+  @override
+  String get deptOphthalmology => 'Ophtalmologie';
+
+  @override
+  String get deptTbMr => 'TB-MR (Tuberculose)';
+
+  @override
+  String get deptGbv => 'GBV (Violences basées sur le genre)';
+
+  @override
+  String get deptMentalHealth => 'Santé mentale';
+
+  @override
+  String get deptArv => 'ARV (Traitement VIH/SIDA)';
+
+  @override
+  String get deptPharmacy => 'Pharmacie';
+
+  @override
+  String get catIct => 'Équipement ICT';
+
+  @override
+  String get catHygiene => 'Matériel d\'hygiène';
+
+  @override
+  String get catBiomedical => 'Équipement biomédical';
+
+  @override
+  String get catElectrical => 'Équipement électrique';
+
+  @override
+  String get catSterilization => 'Stérilisation et buanderie';
+
+  @override
+  String get catPharmacy => 'Pharmacie';
+
+  @override
+  String get techAvailableTab => 'Incidents disponibles';
+
+  @override
+  String get techMyInterventionsTab => 'Mes interventions';
+
+  @override
+  String get techScheduleTab => 'Agenda';
+
+  @override
+  String get techAvailableSubtitle =>
+      'Incidents approuvés en attente d\'un technicien — prenez en charge ceux que vous souhaitez traiter.';
+
+  @override
+  String get techNoAvailableIncidents => 'Aucun incident approuvé disponible.';
+
+  @override
+  String get techTakeCharge => 'Prendre en charge';
+
+  @override
+  String get techSheet => 'Fiche';
+
+  @override
+  String get techTakeChargeTitle => 'Prendre en charge l\'incident';
+
+  @override
+  String get techTakeChargeContent =>
+      'Vous allez prendre en charge l\'incident sur :';
+
+  @override
+  String get techTakeChargeMessage =>
+      'L\'incident passera au statut \"En cours\" et vous sera assigné.';
+
+  @override
+  String techTakeChargeSuccess(String equipment) {
+    return 'Vous avez pris en charge l\'incident sur \"$equipment\".';
+  }
+
+  @override
+  String get techNoInterventions => 'Aucune intervention enregistrée';
+
+  @override
+  String get techNoInterventionsHint =>
+      'Les incidents que vous prendrez en charge apparaîtront ici.';
+
+  @override
+  String get techNoCurrentInterventions => 'Aucune intervention en cours';
+
+  @override
+  String get techFindIncidentsHint =>
+      'Pour trouver des incidents à traiter, consultez l\'onglet \"Incidents disponibles\".';
+
+  @override
+  String get techSearchHint => 'Rechercher une intervention…';
+
+  @override
+  String get techNoResults => 'Aucun résultat';
+
+  @override
+  String get techScheduleSubtitle =>
+      'Votre calendrier d\'interventions et de maintenances planifiées.';
+
+  @override
+  String get techLegendInProgress => 'En cours';
+
+  @override
+  String get techLegendResolved => 'Résolu';
+
+  @override
+  String get techLegendPastMaintenance => 'Maintenance passée';
+
+  @override
+  String get techLegendPlanned => 'Planifiée';
+
+  @override
+  String get techFullHistory => 'Historique complet';
+
+  @override
+  String get techNoEventsToday => 'Aucun événement ce jour.';
+
+  @override
+  String techEventsOn(String date) {
+    return 'Événements du $date';
+  }
+
+  @override
+  String techEventCount(int count) {
+    return '$count événement(s)';
+  }
+
+  @override
+  String get logsTitle => 'Journaux d\'activité';
+
+  @override
+  String get logsRefresh => 'Actualiser';
+
+  @override
+  String get logsColAction => 'Action';
+
+  @override
+  String get logsColUser => 'Utilisateur';
+
+  @override
+  String get logsColResource => 'Ressource';
+
+  @override
+  String get logsColIpDevice => 'IP / Appareil';
+
+  @override
+  String get logsColTimestamp => 'Horodatage';
+
+  @override
+  String get logsSearchHint => 'Rechercher (utilisateur, ressource…)';
+
+  @override
+  String get logsFilterAll => 'Tout';
+
+  @override
+  String get logsFilterAuth => 'Auth';
+
+  @override
+  String get logsFilterEquipment => 'Équipements';
+
+  @override
+  String get logsFilterIncidents => 'Incidents';
+
+  @override
+  String get logsFilterInventory => 'Inventaire';
+
+  @override
+  String get logsFilterUsers => 'Utilisateurs';
+
+  @override
+  String get logsNewIp => 'Nouvelle IP';
+
+  @override
+  String get logsNewIpTooltip => 'Première connexion depuis cette adresse IP';
+
+  @override
+  String get logsNoLogs => 'Aucun log trouvé';
+
+  @override
+  String get logsNoLogsSubtitle =>
+      'Les actions des utilisateurs apparaîtront ici.';
+
+  @override
+  String get logsLoadError => 'Erreur de chargement';
+
+  @override
+  String get logsRetry => 'Réessayer';
+
+  @override
+  String get logsMetadata => 'Métadonnées';
+
+  @override
+  String get logsViewProfile => 'Voir profil';
+
+  @override
+  String get logsViewDetails => 'Voir détails';
+
+  @override
+  String get logsRestoring => 'Restauration…';
+
+  @override
+  String get logsAlreadyRestored => 'Cette action a déjà été restaurée.';
+
+  @override
+  String get logsUserProfileTitle => 'Profil utilisateur';
+
+  @override
+  String get logsEquipmentTitle => 'Équipement';
+
+  @override
+  String get logsEquipmentNotFound => 'Équipement supprimé ou introuvable.';
+
+  @override
+  String get logsDeviceMobile => 'Mobile';
+
+  @override
+  String get logsDevicePc => 'PC / Navigateur';
+
+  @override
+  String get logsDeviceUnknown => 'Inconnu';
+
+  @override
+  String get logsTargetEquipment => 'Équipement';
+
+  @override
+  String get logsTargetUser => 'Utilisateur concerné';
+
+  @override
+  String get logsTargetIncident => 'Incident';
+
+  @override
+  String get logsTargetInventory => 'Article d\'inventaire';
+
+  @override
+  String get logsTargetAuth => 'Authentification';
+
+  @override
+  String get logsTargetResource => 'Ressource';
+
+  @override
+  String get logsUserLabel => 'Utilisateur';
+
+  @override
+  String get settingsRolesTab => 'Gestion des rôles';
+
+  @override
+  String get settingsRolesTitle => 'Rôles et permissions';
+
+  @override
+  String get settingsRolesSubtitle =>
+      'Modifier les permissions ou créer un rôle personnalisé';
+
+  @override
+  String get settingsNewRole => 'Nouveau rôle';
+
+  @override
+  String get settingsAdminLockedInfo =>
+      'L\'administrateur a toutes les permissions — toujours sans restriction. Les rôles personnalisés peuvent être supprimés.';
+
+  @override
+  String get settingsNoRoles => 'Aucun rôle chargé.';
+
+  @override
+  String get settingsCustomBadge => 'Personnalisé';
+
+  @override
+  String get settingsAdminAlwaysAll =>
+      'L\'administrateur a toujours toutes les permissions';
+
+  @override
+  String get settingsLocked => 'Verrouillé';
+
+  @override
+  String get settingsRoleActive => 'Permissions actives :';
+
+  @override
+  String get settingsNoPermissions => 'Aucune permission';
+
+  @override
+  String get settingsNewRoleTitle => 'Nouveau rôle personnalisé';
+
+  @override
+  String get settingsRoleIdLabel => 'Identifiant (ex: nurse)';
+
+  @override
+  String get settingsRoleIdHint => 'Lettres, chiffres, underscores';
+
+  @override
+  String get settingsRoleDisplayLabel => 'Nom affiché (ex: Infirmier)';
+
+  @override
+  String get settingsRoleDescLabel => 'Description (optionnel)';
+
+  @override
+  String get settingsPermissionsLabel => 'Permissions';
+
+  @override
+  String get settingsSelectAll => 'Tout sélectionner';
+
+  @override
+  String get settingsDeselectAll => 'Tout désélectionner';
+
+  @override
+  String get settingsCreateRole => 'Créer';
+
+  @override
+  String settingsEditPermissionsTitle(String role) {
+    return 'Permissions — $role';
+  }
+
+  @override
+  String get settingsBuiltinRole => 'Rôle intégré';
+
+  @override
+  String get settingsAccessByRole => 'Accès aux pages par rôle';
+
+  @override
+  String get settingsAccessDesc =>
+      'Cochez les pages et fonctions accessibles pour le rôle sélectionné.';
+
+  @override
+  String get settingsRoleLabel => 'Rôle';
+
+  @override
+  String get settingsAdminAllAccess =>
+      'L\'administrateur a accès à toutes les pages et fonctions sans restriction.';
+
+  @override
+  String get settingsNoSpecificFunction => 'Aucune fonction spécifique';
+
+  @override
+  String get settingsResetToDefault => 'Réinitialisé aux valeurs par défaut';
+
+  @override
+  String get settingsReset => 'Réinitialiser';
+
+  @override
+  String get settingsDeleteRole => 'Supprimer le rôle';
+
+  @override
+  String get accountFirstName => 'Prénom';
+
+  @override
+  String get accountLastName => 'Nom';
+
+  @override
+  String get accountDirectChange => 'Direct';
+
+  @override
+  String get accountDirectChangeSubtitle =>
+      'Votre département sera modifié immédiatement.';
+
+  @override
+  String get accountConfirm => 'Confirmer';
+
+  @override
+  String get accountCancelLabel => 'Annuler';
+
+  @override
+  String get equipmentNextRevision => 'Prochaine révision';
+
+  @override
+  String get equipmentSelectDate => 'Sélectionner une date (optionnel)';
+
+  @override
+  String get equipmentRemoveDate => 'Supprimer la date';
+
+  @override
+  String get equipmentDeleteReason => 'Raison de la suppression (optionnel)';
+
+  @override
+  String get equipmentDeleteReasonHint => 'Ex : Hors service, remplacé…';
+
+  @override
+  String widgetHistoryTitle(String name) {
+    return 'Historique — $name';
+  }
+
+  @override
+  String widgetMaintenanceEvent(String intervention) {
+    return 'Maintenance — $intervention';
+  }
+
+  @override
+  String widgetPlannedMaintenance(String intervention) {
+    return 'Maintenance planifiée — $intervention';
+  }
+
+  @override
+  String get widgetNoHistory => 'Aucun historique pour cet équipement.';
+
+  @override
+  String widgetSerialNumber(String serial) {
+    return 'N° $serial';
+  }
+
+  @override
+  String widgetEventCount(int count) {
+    return '$count événement(s)';
+  }
+
+  @override
+  String get usersDeptRequests => 'Demandes de changement de département';
+
+  @override
+  String get usersNoPendingRequests => 'Aucune demande en attente.';
+
+  @override
+  String get usersApproveTooltip => 'Approuver';
+
+  @override
+  String get usersRejectTooltip => 'Rejeter';
+
+  @override
+  String get usersApproveTitle => 'Approuver la demande';
+
+  @override
+  String get usersRejectTitle => 'Rejeter la demande';
+
+  @override
+  String get usersFirstName => 'Prénom';
+
+  @override
+  String get usersLastName => 'Nom';
+
+  @override
+  String get usersDeleteReason => 'Raison de la suppression (optionnel)';
+
+  @override
+  String get usersDeleteReasonHint =>
+      'Ex : Départ de l\'établissement, doublon…';
+
+  @override
+  String get usersRolesInfo =>
+      'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.';
 }

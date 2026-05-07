@@ -93,17 +93,33 @@ class AppTheme {
   }
 }
 
-/// Status color helper
+/// Status color helper — accepte FR (legacy/API) et EN (canonical displayName)
 Color getStatusColor(String status) {
   switch (status) {
     case 'Disponible':
+    case 'Available':
       return AppColors.success;
     case 'En usage':
+    case 'En service':
+    case 'In Use':
       return AppColors.primary;
     case 'En maintenance':
+    case 'In Maintenance':
       return AppColors.warning;
     case 'Hors service':
+    case 'Out of Service':
       return AppColors.error;
+    case 'Inactif':
+    case 'Idle':
+      return AppColors.textSecondary;
+    case 'À éliminer':
+    case 'A eliminer':
+    case 'To Dispose':
+      return AppColors.error;
+    case 'Transféré':
+    case 'Transfere':
+    case 'Transferred':
+      return AppColors.primary;
     default:
       return AppColors.textSecondary;
   }
@@ -113,13 +129,29 @@ Color getStatusColor(String status) {
 Color getStatusBackgroundColor(String status) {
   switch (status) {
     case 'Disponible':
+    case 'Available':
       return AppColors.successLight;
     case 'En usage':
+    case 'En service':
+    case 'In Use':
       return AppColors.primaryLight;
     case 'En maintenance':
+    case 'In Maintenance':
       return AppColors.warningLight;
     case 'Hors service':
+    case 'Out of Service':
       return AppColors.errorLight;
+    case 'Inactif':
+    case 'Idle':
+      return AppColors.background;
+    case 'À éliminer':
+    case 'A eliminer':
+    case 'To Dispose':
+      return AppColors.errorLight;
+    case 'Transféré':
+    case 'Transfere':
+    case 'Transferred':
+      return AppColors.primaryLight;
     default:
       return AppColors.background;
   }

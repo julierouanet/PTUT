@@ -33,7 +33,7 @@
 | Dossier            | Rôle                                                                     |
 | ------------------ | ------------------------------------------------------------------------ |
 | `auth-service/`    | JWT login/refresh/logout, users, roles, permissions, rate-limiting.       |
-| `db-service/`      | CRUD `equipment`, `inventory`, `issues`, `logs`, `sidebar` (config UI).   |
+| `db-service/`      | CRUD `equipment`, `equipment_tags`, `departments`, `equipment_categories`, `inventory`, `issues`, `logs`, `sidebar`. Script d'import XLSX dans `scripts/`. |
 | `flutter-app/lib/` | Application cliente (web + mobile). Voir sous-dossiers ci-dessous.        |
 | `nginx/conf.d/`    | Vhosts HTTPS + headers CORS.                                              |
 | `docker-compose*.yml` | Orchestration prod / dev (volumes nommés `auth_data*`, `db_data*`).    |
@@ -112,8 +112,28 @@ cd auth-service        # ou: cd db-service
 npm install            # installe les dépendances (bcrypt nécessite python3 + make + g++)
 npm start              # node src/index.js  (port 3001 / 3002)
 npm test               # jest --forceExit --detectOpenHandles  (DB en :memory:)
-npm run seed           # node seed.js — peuple la base SQLite
+npm run seed           # node seed.js — peuple la base SQLite avec les données de démo
 ```
+
+### Import de l'inventaire physique 2025-2026 (db-service)
+
+Script dédié `scripts/import_inventory.js` qui peuple `equipment`, `equipment_tags`, `departments` et `equipment_categories` à partir du XLSX réel de l'hôpital (feuilles `Equipment Migration Template`, `Standard_Departments`, `Standard_Equipment_Names`).
+
+```bash
+cd db-service
+npm run import:inventory -- --dry-run                       # parse + valide sans écrire
+npm run import:inventory -- --xlsx <chemin.xlsx>            # UPSERT par défaut (préserve created_at)
+npm run import:inventory -- --xlsx <chemin.xlsx> --insert-only  # n'écrase pas les existants
+```
+
+Sur le VPS (en prod / dev) le XLSX doit être copié dans le conteneur :
+
+```bash
+docker cp <fichier.xlsx> db-service-<env>:/tmp/inventory.xlsx
+docker exec db-service-<env> node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
+```
+
+Idempotent : un re-run sur le même XLSX exécute uniquement des UPDATE (`updated_at` rafraîchi, `created_at` préservé, aucun doublon dans `equipment_tags`).
 
 > **Pas de linter/formatter Node configuré.** Suivre le style existant (voir section Conventions).
 
@@ -214,6 +234,8 @@ Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
 
 - **`docker-compose down -v`** détruirait `auth_data` / `db_data` (utilisateurs + équipements). Toujours préférer `down` sans `-v`.
 - **Migrations DB** : ne supprimer aucune colonne dans `database.js` sans script de migration explicite — c'est lu à chaque démarrage.
+- **Dockerfile db-service** : tout nouveau dossier (ex. `scripts/`) doit être ajouté via `COPY` dans le Dockerfile, sinon il n'est pas embarqué dans l'image (le `.dockerignore` ne suffit pas).
+- **`equipment.id`** : la clé primaire est désormais dérivée du `SerialNumber` slugifié pour les équipements importés (`a-z0-9_-`, max 100). Préserver la convention si on insère manuellement.
 - **CORS** : la liste blanche d'origines est codée dans `auth-service/src/index.js`. Ajouter explicitement tout nouveau front autorisé.
 - **Rotation refresh token** : un refresh consomme l'ancien et en émet un nouveau ; ne jamais réutiliser le précédent côté client (déjà géré par `ApiClient._tryRefresh`).
 - **Permissions** : ajouter une nouvelle entrée dans la sidebar Flutter sans déclarer la `requiredPermission` correspondante l'expose à tous les rôles.

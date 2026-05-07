@@ -1270,4 +1270,538 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get hubInventoryDesc =>
       'View and manage medical supplies and consumables stock.';
+
+  @override
+  String get equipStatusAvailable => 'Available';
+
+  @override
+  String get equipStatusInUse => 'In Use';
+
+  @override
+  String get equipStatusInMaintenance => 'In Maintenance';
+
+  @override
+  String get equipStatusOutOfService => 'Out of Service';
+
+  @override
+  String get equipStatusIdle => 'Idle';
+
+  @override
+  String get equipStatusToDispose => 'To Dispose';
+
+  @override
+  String get equipStatusTransferred => 'Transferred';
+
+  @override
+  String get equipmentManufacturer => 'Manufacturer';
+
+  @override
+  String get equipmentManufacturerHint => 'Ex: Philips Healthcare';
+
+  @override
+  String get equipmentModel => 'Model';
+
+  @override
+  String get equipmentModelHint => 'Ex: IntelliVue MX450';
+
+  @override
+  String get equipmentManufYear => 'Manufacturing year';
+
+  @override
+  String get equipmentManufYearHint => 'Ex: 2023';
+
+  @override
+  String get equipmentInstallDate => 'Install date';
+
+  @override
+  String get equipmentInstallDateHint => 'Select a date (optional)';
+
+  @override
+  String get issueStatusOpen => 'Open';
+
+  @override
+  String get issueStatusApproved => 'Approved';
+
+  @override
+  String get issueStatusInProgress => 'In Progress';
+
+  @override
+  String get issueStatusResolved => 'Resolved';
+
+  @override
+  String get urgencyLow => 'Low';
+
+  @override
+  String get urgencyMedium => 'Medium';
+
+  @override
+  String get urgencyHigh => 'High';
+
+  @override
+  String get deptAdministration => 'Administration';
+
+  @override
+  String get deptOpd => 'OPD (Outpatient)';
+
+  @override
+  String get deptInternalMedicine => 'Internal Medicine';
+
+  @override
+  String get deptPediatrics => 'Pediatrics';
+
+  @override
+  String get deptEmergency => 'Emergency';
+
+  @override
+  String get deptLaboratory => 'Laboratory';
+
+  @override
+  String get deptStomatology => 'Stomatology';
+
+  @override
+  String get deptPhysiotherapy => 'Physiotherapy';
+
+  @override
+  String get deptNeonatology => 'Neonatology';
+
+  @override
+  String get deptMaternity => 'Maternity';
+
+  @override
+  String get deptSurgery => 'Surgery';
+
+  @override
+  String get deptOperatingTheater => 'Operating Theater';
+
+  @override
+  String get deptOphthalmology => 'Ophthalmology';
+
+  @override
+  String get deptTbMr => 'TB-MR (Tuberculosis)';
+
+  @override
+  String get deptGbv => 'GBV (Gender-Based Violence)';
+
+  @override
+  String get deptMentalHealth => 'Mental Health';
+
+  @override
+  String get deptArv => 'ARV (HIV/AIDS Treatment)';
+
+  @override
+  String get deptPharmacy => 'Pharmacy';
+
+  @override
+  String get catIct => 'ICT Equipment';
+
+  @override
+  String get catHygiene => 'Hygiene Supplies';
+
+  @override
+  String get catBiomedical => 'Biomedical Equipment';
+
+  @override
+  String get catElectrical => 'Electrical Equipment';
+
+  @override
+  String get catSterilization => 'Sterilization & Laundry';
+
+  @override
+  String get catPharmacy => 'Pharmacy';
+
+  @override
+  String get techAvailableTab => 'Available incidents';
+
+  @override
+  String get techMyInterventionsTab => 'My interventions';
+
+  @override
+  String get techScheduleTab => 'Schedule';
+
+  @override
+  String get techAvailableSubtitle =>
+      'Approved incidents awaiting a technician — take charge of those you wish to handle.';
+
+  @override
+  String get techNoAvailableIncidents => 'No approved incidents available.';
+
+  @override
+  String get techTakeCharge => 'Take charge';
+
+  @override
+  String get techSheet => 'Sheet';
+
+  @override
+  String get techTakeChargeTitle => 'Take charge of the incident';
+
+  @override
+  String get techTakeChargeContent =>
+      'You are about to take charge of the incident on:';
+
+  @override
+  String get techTakeChargeMessage =>
+      'The incident will change to \"In Progress\" status and be assigned to you.';
+
+  @override
+  String techTakeChargeSuccess(String equipment) {
+    return 'You have taken charge of the incident on \"$equipment\".';
+  }
+
+  @override
+  String get techNoInterventions => 'No interventions recorded';
+
+  @override
+  String get techNoInterventionsHint =>
+      'Incidents you take charge of will appear here.';
+
+  @override
+  String get techNoCurrentInterventions => 'No current interventions';
+
+  @override
+  String get techFindIncidentsHint =>
+      'To find incidents to process, check the \"Available incidents\" tab.';
+
+  @override
+  String get techSearchHint => 'Search for an intervention…';
+
+  @override
+  String get techNoResults => 'No results';
+
+  @override
+  String get techScheduleSubtitle =>
+      'Your schedule of interventions and planned maintenances.';
+
+  @override
+  String get techLegendInProgress => 'In progress';
+
+  @override
+  String get techLegendResolved => 'Resolved';
+
+  @override
+  String get techLegendPastMaintenance => 'Past maintenance';
+
+  @override
+  String get techLegendPlanned => 'Planned';
+
+  @override
+  String get techFullHistory => 'Complete history';
+
+  @override
+  String get techNoEventsToday => 'No events this day.';
+
+  @override
+  String techEventsOn(String date) {
+    return 'Events on $date';
+  }
+
+  @override
+  String techEventCount(int count) {
+    return '$count event(s)';
+  }
+
+  @override
+  String get logsTitle => 'Activity Logs';
+
+  @override
+  String get logsRefresh => 'Refresh';
+
+  @override
+  String get logsColAction => 'Action';
+
+  @override
+  String get logsColUser => 'User';
+
+  @override
+  String get logsColResource => 'Resource';
+
+  @override
+  String get logsColIpDevice => 'IP / Device';
+
+  @override
+  String get logsColTimestamp => 'Timestamp';
+
+  @override
+  String get logsSearchHint => 'Search (user, resource…)';
+
+  @override
+  String get logsFilterAll => 'All';
+
+  @override
+  String get logsFilterAuth => 'Auth';
+
+  @override
+  String get logsFilterEquipment => 'Equipment';
+
+  @override
+  String get logsFilterIncidents => 'Incidents';
+
+  @override
+  String get logsFilterInventory => 'Inventory';
+
+  @override
+  String get logsFilterUsers => 'Users';
+
+  @override
+  String get logsNewIp => 'New IP';
+
+  @override
+  String get logsNewIpTooltip => 'First login from this IP address';
+
+  @override
+  String get logsNoLogs => 'No logs found';
+
+  @override
+  String get logsNoLogsSubtitle => 'User actions will appear here.';
+
+  @override
+  String get logsLoadError => 'Loading error';
+
+  @override
+  String get logsRetry => 'Retry';
+
+  @override
+  String get logsMetadata => 'Metadata';
+
+  @override
+  String get logsViewProfile => 'View profile';
+
+  @override
+  String get logsViewDetails => 'View details';
+
+  @override
+  String get logsRestoring => 'Restoring…';
+
+  @override
+  String get logsAlreadyRestored => 'This action has already been restored.';
+
+  @override
+  String get logsUserProfileTitle => 'User profile';
+
+  @override
+  String get logsEquipmentTitle => 'Equipment';
+
+  @override
+  String get logsEquipmentNotFound => 'Equipment deleted or not found.';
+
+  @override
+  String get logsDeviceMobile => 'Mobile';
+
+  @override
+  String get logsDevicePc => 'PC / Browser';
+
+  @override
+  String get logsDeviceUnknown => 'Unknown';
+
+  @override
+  String get logsTargetEquipment => 'Equipment';
+
+  @override
+  String get logsTargetUser => 'Affected user';
+
+  @override
+  String get logsTargetIncident => 'Incident';
+
+  @override
+  String get logsTargetInventory => 'Inventory item';
+
+  @override
+  String get logsTargetAuth => 'Authentication';
+
+  @override
+  String get logsTargetResource => 'Resource';
+
+  @override
+  String get logsUserLabel => 'User';
+
+  @override
+  String get settingsRolesTab => 'Roles & permissions';
+
+  @override
+  String get settingsRolesTitle => 'Roles and permissions';
+
+  @override
+  String get settingsRolesSubtitle =>
+      'Edit permissions or create a custom role';
+
+  @override
+  String get settingsNewRole => 'New role';
+
+  @override
+  String get settingsAdminLockedInfo =>
+      'Administrator has all permissions — always unrestricted. Custom roles can be deleted.';
+
+  @override
+  String get settingsNoRoles => 'No roles loaded.';
+
+  @override
+  String get settingsCustomBadge => 'Custom';
+
+  @override
+  String get settingsAdminAlwaysAll =>
+      'Administrator always has all permissions';
+
+  @override
+  String get settingsLocked => 'Locked';
+
+  @override
+  String get settingsRoleActive => 'Active permissions:';
+
+  @override
+  String get settingsNoPermissions => 'No permissions';
+
+  @override
+  String get settingsNewRoleTitle => 'New custom role';
+
+  @override
+  String get settingsRoleIdLabel => 'Identifier (e.g.: nurse)';
+
+  @override
+  String get settingsRoleIdHint => 'Letters, digits, underscores';
+
+  @override
+  String get settingsRoleDisplayLabel => 'Display name (e.g.: Nurse)';
+
+  @override
+  String get settingsRoleDescLabel => 'Description (optional)';
+
+  @override
+  String get settingsPermissionsLabel => 'Permissions';
+
+  @override
+  String get settingsSelectAll => 'Select all';
+
+  @override
+  String get settingsDeselectAll => 'Deselect all';
+
+  @override
+  String get settingsCreateRole => 'Create';
+
+  @override
+  String settingsEditPermissionsTitle(String role) {
+    return 'Permissions — $role';
+  }
+
+  @override
+  String get settingsBuiltinRole => 'Built-in role';
+
+  @override
+  String get settingsAccessByRole => 'Page access by role';
+
+  @override
+  String get settingsAccessDesc =>
+      'Check the pages and functions accessible for the selected role.';
+
+  @override
+  String get settingsRoleLabel => 'Role';
+
+  @override
+  String get settingsAdminAllAccess =>
+      'Administrator has access to all pages and functions without restriction.';
+
+  @override
+  String get settingsNoSpecificFunction => 'No specific function';
+
+  @override
+  String get settingsResetToDefault => 'Reset to defaults';
+
+  @override
+  String get settingsReset => 'Reset';
+
+  @override
+  String get settingsDeleteRole => 'Delete role';
+
+  @override
+  String get accountFirstName => 'First name';
+
+  @override
+  String get accountLastName => 'Last name';
+
+  @override
+  String get accountDirectChange => 'Direct';
+
+  @override
+  String get accountDirectChangeSubtitle =>
+      'Your department will be changed immediately.';
+
+  @override
+  String get accountConfirm => 'Confirm';
+
+  @override
+  String get accountCancelLabel => 'Cancel';
+
+  @override
+  String get equipmentNextRevision => 'Next revision';
+
+  @override
+  String get equipmentSelectDate => 'Select a date (optional)';
+
+  @override
+  String get equipmentRemoveDate => 'Remove date';
+
+  @override
+  String get equipmentDeleteReason => 'Deletion reason (optional)';
+
+  @override
+  String get equipmentDeleteReasonHint => 'E.g.: Out of service, replaced…';
+
+  @override
+  String widgetHistoryTitle(String name) {
+    return 'History — $name';
+  }
+
+  @override
+  String widgetMaintenanceEvent(String intervention) {
+    return 'Maintenance — $intervention';
+  }
+
+  @override
+  String widgetPlannedMaintenance(String intervention) {
+    return 'Planned maintenance — $intervention';
+  }
+
+  @override
+  String get widgetNoHistory => 'No history for this equipment.';
+
+  @override
+  String widgetSerialNumber(String serial) {
+    return 'No. $serial';
+  }
+
+  @override
+  String widgetEventCount(int count) {
+    return '$count event(s)';
+  }
+
+  @override
+  String get usersDeptRequests => 'Department change requests';
+
+  @override
+  String get usersNoPendingRequests => 'No pending requests.';
+
+  @override
+  String get usersApproveTooltip => 'Approve';
+
+  @override
+  String get usersRejectTooltip => 'Reject';
+
+  @override
+  String get usersApproveTitle => 'Approve request';
+
+  @override
+  String get usersRejectTitle => 'Reject request';
+
+  @override
+  String get usersFirstName => 'First name';
+
+  @override
+  String get usersLastName => 'Last name';
+
+  @override
+  String get usersDeleteReason => 'Deletion reason (optional)';
+
+  @override
+  String get usersDeleteReasonHint => 'E.g.: Left the facility, duplicate…';
+
+  @override
+  String get usersRolesInfo => 'To modify permissions, go to the Roles tab.';
 }

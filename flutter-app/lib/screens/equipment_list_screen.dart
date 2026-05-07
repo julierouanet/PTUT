@@ -29,14 +29,21 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   final AuthService _authService = AuthService();
 
   List<String> _departments(String allLabel) => [allLabel, ...DataService().equipment.map((e) => e.department).toSet()];
-  List<String> _statuses(String allLabel) => [allLabel, 'Disponible', 'En usage', 'En maintenance', 'Hors service'];
+  List<String> _statuses(String allLabel) => [
+        allLabel,
+        ...EquipmentStatus.values.map((s) => s.displayName),
+      ];
   List<String> _categories(String allLabel) => [allLabel, ...DataService().equipment.map((e) => e.category).toSet()];
 
   List<Equipment> get _filteredEquipment {
     final l10n = AppLocalizations.of(context)!;
+    final term = _searchTerm.toLowerCase();
     return DataService().equipment.where((eq) {
-      final matchesSearch = eq.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
-          eq.serialNumber.toLowerCase().contains(_searchTerm.toLowerCase());
+      final matchesSearch = term.isEmpty ||
+          eq.name.toLowerCase().contains(term) ||
+          eq.serialNumber.toLowerCase().contains(term) ||
+          (eq.manufacturer?.toLowerCase().contains(term) ?? false) ||
+          (eq.model?.toLowerCase().contains(term) ?? false);
       final matchesDepartment = _departmentFilter == l10n.commonAll || eq.department == _departmentFilter;
       final matchesStatus = _statusFilter == l10n.commonAll || eq.status.displayName == _statusFilter;
       final matchesCategory = _categoryFilter == l10n.commonAll || eq.category == _categoryFilter;
@@ -222,6 +229,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 columns: [
                   DataColumn(label: Text(l10n.equipmentName)),
                   DataColumn(label: Text(l10n.equipmentSerialNumber)),
+                  DataColumn(label: Text(l10n.equipmentManufacturer)),
+                  DataColumn(label: Text(l10n.equipmentModel)),
+                  DataColumn(label: Text(l10n.equipmentManufYear), numeric: true),
                   DataColumn(label: Text(l10n.commonDepartment)),
                   DataColumn(label: Text(l10n.commonCategory)),
                   DataColumn(label: Text(l10n.commonStatus)),
@@ -246,6 +256,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         color: AppColors.textSecondary,
                       ),
                     )),
+                    DataCell(_buildOptionalText(eq.manufacturer)),
+                    DataCell(_buildOptionalText(eq.model)),
+                    DataCell(_buildOptionalText(eq.manufYear?.toString())),
                     DataCell(Text(eq.department)),
                     DataCell(Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -387,6 +400,26 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               ),
             ]),
 
+            // Fabricant / Modèle / Année — affichés uniquement si présents
+            if (eq.manufacturer != null && eq.manufacturer!.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(children: [
+                const Icon(Icons.precision_manufacturing, size: 13, color: AppColors.textSecondary),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    [
+                      eq.manufacturer,
+                      if (eq.model != null && eq.model!.isNotEmpty) eq.model,
+                      if (eq.manufYear != null) eq.manufYear.toString(),
+                    ].whereType<String>().join(' • '),
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ]),
+            ],
+
             if (!compact && eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty) ...[
               const SizedBox(height: 4),
               _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
@@ -505,11 +538,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     final serialController = TextEditingController(text: existingEquipment?.serialNumber ?? '');
     final supplierController = TextEditingController(text: existingEquipment?.supplier ?? '');
     final locationController = TextEditingController(text: existingEquipment?.location ?? '');
+    final manufacturerController = TextEditingController(text: existingEquipment?.manufacturer ?? '');
+    final modelController = TextEditingController(text: existingEquipment?.model ?? '');
+    final manufYearController = TextEditingController(
+      text: existingEquipment?.manufYear?.toString() ?? '',
+    );
 
     String selectedDepartment = existingEquipment?.department ?? _configService.departmentNames.first;
     String selectedCategory = existingEquipment?.category ?? _configService.categoryNames.first;
     EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
     String? selectedRevisionDate = existingEquipment?.nextRevisionDate;
+    String? selectedInstallDate = existingEquipment?.installDate;
     final formKey = GlobalKey<FormState>();
 
     showDialog(
@@ -623,6 +662,96 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           ),
                           const SizedBox(height: 16),
 
+                          // Manufacturer
+                          TextField(
+                            controller: manufacturerController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentManufacturer,
+                              hintText: l10n.equipmentManufacturerHint,
+                              prefixIcon: const Icon(Icons.precision_manufacturing),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Model
+                          TextField(
+                            controller: modelController,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentModel,
+                              hintText: l10n.equipmentModelHint,
+                              prefixIcon: const Icon(Icons.developer_board),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Manuf year
+                          TextFormField(
+                            controller: manufYearController,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: l10n.equipmentManufYear,
+                              hintText: l10n.equipmentManufYearHint,
+                              prefixIcon: const Icon(Icons.date_range),
+                            ),
+                            validator: (v) {
+                              if (v == null || v.isEmpty) return null;
+                              final n = int.tryParse(v);
+                              if (n == null || n < 1900 || n > 2100) {
+                                return '1900 - 2100';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Install date
+                          InkWell(
+                            onTap: () async {
+                              final now = DateTime.now();
+                              final initial = selectedInstallDate != null
+                                  ? DateTime.tryParse(selectedInstallDate!) ?? now
+                                  : now;
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: initial,
+                                firstDate: DateTime(1980),
+                                lastDate: now,
+                                locale: const Locale('fr'),
+                              );
+                              if (picked != null) {
+                                setDialogState(() => selectedInstallDate = picked.toIso8601String().substring(0, 10));
+                              }
+                            },
+                            child: InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: l10n.equipmentInstallDate,
+                                prefixIcon: const Icon(Icons.event_available),
+                                suffixIcon: const Icon(Icons.calendar_today, size: 18),
+                              ),
+                              child: Text(
+                                selectedInstallDate != null && selectedInstallDate!.isNotEmpty
+                                    ? _formatDateDisplay(selectedInstallDate!)
+                                    : l10n.equipmentInstallDateHint,
+                                style: TextStyle(
+                                  color: selectedInstallDate != null && selectedInstallDate!.isNotEmpty
+                                      ? null
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (selectedInstallDate != null && selectedInstallDate!.isNotEmpty)
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: () => setDialogState(() => selectedInstallDate = null),
+                                icon: const Icon(Icons.clear, size: 14),
+                                label: const Text('Supprimer la date'),
+                                style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                              ),
+                            ),
+                          const SizedBox(height: 16),
+
                           // Status
                           DropdownButtonFormField<EquipmentStatus>(
                             value: selectedStatus,
@@ -727,6 +856,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                               'location':           locationController.text.isNotEmpty ? locationController.text : null,
                               'status':             selectedStatus.displayName,
                               'next_revision_date': selectedRevisionDate,
+                              'manufacturer':       manufacturerController.text.isNotEmpty ? manufacturerController.text : null,
+                              'model':              modelController.text.isNotEmpty ? modelController.text : null,
+                              'manuf_year':         int.tryParse(manufYearController.text),
+                              'install_date':       selectedInstallDate,
                             };
 
                             try {
@@ -853,8 +986,31 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         icon = Icons.cancel;
         color = AppColors.error;
         break;
+      case EquipmentStatus.inactif:
+        icon = Icons.pause_circle_outline;
+        color = AppColors.textSecondary;
+        break;
+      case EquipmentStatus.aEliminer:
+        icon = Icons.delete_outline;
+        color = AppColors.error;
+        break;
+      case EquipmentStatus.transfere:
+        icon = Icons.swap_horiz;
+        color = AppColors.primary;
+        break;
     }
     return Icon(icon, color: color, size: 18);
+  }
+
+  /// Retourne un Text pour la cellule, avec un placeholder discret si null/vide
+  Widget _buildOptionalText(String? value) {
+    if (value == null || value.isEmpty) {
+      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
+    }
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 160),
+      child: Text(value, overflow: TextOverflow.ellipsis),
+    );
   }
 
   /// Cellule date de révision — colorée selon la proximité
