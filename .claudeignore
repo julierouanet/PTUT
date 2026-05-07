@@ -1,9 +1,129 @@
-# ── Secrets ───────────────────────────────────────────────────
+# ============================================================================
+# .claudeignore — PTUT Kabutare (auth + db services Node.js, app Flutter, nginx)
+# Objectif : ne pas charger ce qui n'apporte rien a la comprehension metier.
+# ============================================================================
+
+# -- Secrets & variables d'environnement -------------------------------------
 .env
+.env.*
 *.env
 !.env.example
+*.pem
+*.key
+*.crt
+secrets/
+**/credentials.json
 
-# ── Documents binaires lourds (non utiles pour l'analyse de code)
+# -- Dependances externes ----------------------------------------------------
+node_modules/
+**/node_modules/
+vendor/
+.pub-cache/
+**/.pub-cache/
+
+# -- Lockfiles (volumineux, peu utiles a la lecture) -------------------------
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+pubspec.lock
+
+# -- Build / dist / cache generiques -----------------------------------------
+build/
+**/build/
+dist/
+out/
+.cache/
+coverage/
+.next/
+.nuxt/
+.turbo/
+.parcel-cache/
+.vite/
+
+# -- Flutter / Dart : genere, plateformes natives, caches --------------------
+flutter-app/.dart_tool/
+flutter-app/.flutter-plugins
+flutter-app/.flutter-plugins-dependencies
+flutter-app/.metadata
+flutter-app/.packages
+flutter-app/build/
+
+# Plateformes natives — boilerplate genere par `flutter create`,
+# rarement modifiees. On garde uniquement android/app/src pour le code Kotlin/Java
+# si necessaire (sinon retirer les lignes ci-dessous pour tout ignorer).
+flutter-app/android/.gradle/
+flutter-app/android/build/
+flutter-app/android/app/build/
+flutter-app/android/.kotlin/
+flutter-app/android/local.properties
+flutter-app/ios/
+flutter-app/macos/
+flutter-app/linux/
+flutter-app/windows/
+flutter-app/web/
+
+# Fichiers Dart generes (build_runner, freezed, json_serializable, l10n)
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+**/*.config.dart
+**/*.mocks.dart
+**/generated_plugin_registrant.*
+flutter-app/lib/l10n/*.g.dart
+
+# -- Logs --------------------------------------------------------------------
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -- Bases de donnees locales ------------------------------------------------
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+auth-service/auth.db
+db-service/db.sqlite
+
+# -- Fichiers binaires / assets lourds ---------------------------------------
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.ico
+*.svg
+# Polices
+*.ttf
+*.otf
+*.woff
+*.woff2
+*.eot
+# Audio / video
+*.mp3
+*.mp4
+*.wav
+*.avi
+*.mov
+*.webm
+# 3D / archives
+*.fbx
+*.glb
+*.gltf
+*.obj
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# -- Documents bureautiques (rapport, soutenance, poster) --------------------
 *.pdf
 *.pptx
 *.docx
@@ -11,92 +131,40 @@
 *.xls
 *.xlsx
 ~$*
-
-# ── Bases de données ──────────────────────────────────────────
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
-# ── Node.js ───────────────────────────────────────────────────
-node_modules/
-**/node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-yarn.lock
-pnpm-lock.yaml
-
-# ── Flutter / Dart ────────────────────────────────────────────
-flutter-app/.dart_tool/
-flutter-app/build/
-flutter-app/.flutter-plugins
-flutter-app/.flutter-plugins-dependencies
-flutter-app/.packages
-flutter-app/pubspec.lock
-flutter-app/.pub-cache/
-
-# Plateformes natives Flutter (rarement modifiées, beaucoup de bruit)
-flutter-app/android/.gradle/
-flutter-app/android/app/build/
-flutter-app/android/build/
-flutter-app/ios/Pods/
-flutter-app/ios/.symlinks/
-flutter-app/ios/Flutter/Flutter.framework/
-flutter-app/ios/Flutter/Flutter.podspec
-flutter-app/macos/Pods/
-flutter-app/linux/flutter/ephemeral/
-flutter-app/windows/flutter/ephemeral/
-flutter-app/web/
-
-# ── Build / cache génériques ──────────────────────────────────
-build/
-dist/
-out/
-.cache/
-coverage/
-.next/
-.nuxt/
-
-# ── Docker / volumes ──────────────────────────────────────────
-docker-data/
-
-# ── Documentation interne lourde (PDF, DOCX déjà filtrés)
-document important/
 Rapport_final_PTUT_ISIS_Kabutare.pdf
-soutenance_ptut.pptx.pdf
 poster.pptx
+soutenance_ptut.pptx.pdf
+document important/
 
-# ── Code de référence Figma (non lié au code de prod) ─────────
+# -- Code de reference Figma (prototype, hors prod) --------------------------
 figma code/**/node_modules/
 figma code/**/dist/
 figma code/**/build/
+figma code/**/.vite/
 
-# ── OS ────────────────────────────────────────────────────────
+# -- Docker / volumes / runtime ----------------------------------------------
+docker-data/
+**/data/
+*.pid
+
+# -- Fichiers generes / minifies ---------------------------------------------
+*.min.js
+*.min.css
+*.map
+*.lock
+
+# -- OS ----------------------------------------------------------------------
 .DS_Store
 Thumbs.db
 desktop.ini
 
-# ── IDE ───────────────────────────────────────────────────────
+# -- IDE ---------------------------------------------------------------------
 .idea/
 .vscode/
 *.swp
 *.swo
 *.iml
 
-# ── Git interne ───────────────────────────────────────────────
+# -- Git & sessions Claude ---------------------------------------------------
 .git/
-
-# ── Worktrees / sessions Claude ───────────────────────────────
 .claude/worktrees/
-
-# ── Logs ──────────────────────────────────────────────────────
-*.log
-logs/
-
-# ── Fichiers générés ──────────────────────────────────────────
-*.min.js
-*.min.css
-*.map
