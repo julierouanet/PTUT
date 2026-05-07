@@ -103,12 +103,18 @@ class HomeHubScreen extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: AppColors.primaryLight,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
             ),
-            child: const Icon(Icons.local_hospital, color: AppColors.primary, size: 26),
+            child: Image.asset(
+              'assets/images/logo_hopital.png',
+              height: 42,
+              width: 42,
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

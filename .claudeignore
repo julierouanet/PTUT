@@ -165,6 +165,12 @@ desktop.ini
 *.swo
 *.iml
 
+# -- Assets bruts (sources hors arbre Flutter) -------------------------------
+# Le dossier `image/` contient les sources des logos / illustrations qui sont
+# ensuite copiees dans `flutter-app/assets/images/` pour etre embarquees.
+# On l'ignore pour ne pas dupliquer le contenu binaire dans le contexte.
+image/
+
 # -- Git & sessions Claude ---------------------------------------------------
 .git/
 .claude/worktrees/
