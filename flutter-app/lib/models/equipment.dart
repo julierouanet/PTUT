@@ -1,81 +1,57 @@
 /// Equipment status enumeration
 enum EquipmentStatus {
-  disponible,
-  enUsage,
-  enMaintenance,
-  horsService,
-  inactif,
-  aEliminer,
-  transfere;
+  operational,
+  maintenance,
+  outOfService,
+  toBeDisposal,
+  disposed;
 
-  /// Canonical English name (used for storage/API)
+  /// Canonical English name (matches the value stored in the DB)
   String get displayName {
     switch (this) {
-      case EquipmentStatus.disponible:
-        return 'Available';
-      case EquipmentStatus.enUsage:
-        return 'In Use';
-      case EquipmentStatus.enMaintenance:
-        return 'In Maintenance';
-      case EquipmentStatus.horsService:
-        return 'Out of Service';
-      case EquipmentStatus.inactif:
-        return 'Idle';
-      case EquipmentStatus.aEliminer:
-        return 'To Dispose';
-      case EquipmentStatus.transfere:
-        return 'Transferred';
+      case EquipmentStatus.operational:
+        return 'Operational';
+      case EquipmentStatus.maintenance:
+        return 'Maintenance';
+      case EquipmentStatus.outOfService:
+        return 'Out of service';
+      case EquipmentStatus.toBeDisposal:
+        return 'To be disposal';
+      case EquipmentStatus.disposed:
+        return 'Disposed';
     }
   }
 
   /// Localized display name — use this in the UI
   String localizedName(dynamic l10n) {
     switch (this) {
-      case EquipmentStatus.disponible:
-        return l10n.equipStatusAvailable as String;
-      case EquipmentStatus.enUsage:
-        return l10n.equipStatusInUse as String;
-      case EquipmentStatus.enMaintenance:
+      case EquipmentStatus.operational:
+        return l10n.equipStatusOperational as String;
+      case EquipmentStatus.maintenance:
         return l10n.equipStatusInMaintenance as String;
-      case EquipmentStatus.horsService:
+      case EquipmentStatus.outOfService:
         return l10n.equipStatusOutOfService as String;
-      case EquipmentStatus.inactif:
-        return l10n.equipStatusIdle as String;
-      case EquipmentStatus.aEliminer:
-        return l10n.equipStatusToDispose as String;
-      case EquipmentStatus.transfere:
-        return l10n.equipStatusTransferred as String;
+      case EquipmentStatus.toBeDisposal:
+        return l10n.equipStatusToBeDisposal as String;
+      case EquipmentStatus.disposed:
+        return l10n.equipStatusDisposed as String;
     }
   }
 
   static EquipmentStatus fromString(String value) {
     switch (value) {
-      case 'Disponible':
-      case 'Available':
-        return EquipmentStatus.disponible;
-      case 'En usage':
-      case 'En service':
-      case 'In Use':
-        return EquipmentStatus.enUsage;
-      case 'En maintenance':
-      case 'In Maintenance':
-        return EquipmentStatus.enMaintenance;
-      case 'Hors service':
-      case 'Out of Service':
-        return EquipmentStatus.horsService;
-      case 'Inactif':
-      case 'Idle':
-        return EquipmentStatus.inactif;
-      case 'À éliminer':
-      case 'A eliminer':
-      case 'To Dispose':
-        return EquipmentStatus.aEliminer;
-      case 'Transféré':
-      case 'Transfere':
-      case 'Transferred':
-        return EquipmentStatus.transfere;
+      case 'Operational':
+        return EquipmentStatus.operational;
+      case 'Maintenance':
+        return EquipmentStatus.maintenance;
+      case 'Out of service':
+        return EquipmentStatus.outOfService;
+      case 'To be disposal':
+        return EquipmentStatus.toBeDisposal;
+      case 'Disposed':
+        return EquipmentStatus.disposed;
       default:
-        return EquipmentStatus.disponible;
+        return EquipmentStatus.operational;
     }
   }
 }

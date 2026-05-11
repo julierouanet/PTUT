@@ -22,16 +22,17 @@ router.get('/', (req, res) => {
   };
 
   const statusColors = {
-    'Disponible':    '#27ae60',
-    'En usage':      '#3498db',
-    'En maintenance':'#f39c12',
-    'Hors service':  '#e74c3c',
-    'Ouvert':        '#e74c3c',
-    'En cours':      '#f39c12',
-    'Résolu':        '#27ae60',
-    'Normal':        '#27ae60',
-    'Faible':        '#f39c12',
-    'Rupture':       '#e74c3c',
+    'Operational':    '#27ae60',
+    'Maintenance':    '#f39c12',
+    'Out of service': '#e74c3c',
+    'To be disposal': '#e67e22',
+    'Disposed':       '#95a5a6',
+    'Ouvert':         '#e74c3c',
+    'En cours':       '#f39c12',
+    'Résolu':         '#27ae60',
+    'Normal':         '#27ae60',
+    'Faible':         '#f39c12',
+    'Rupture':        '#e74c3c',
   };
 
   const badge = (val) => `<span style="background:${statusColors[val]||'#95a5a6'};color:white;padding:2px 8px;border-radius:12px;font-size:11px;white-space:nowrap">${val}</span>`;

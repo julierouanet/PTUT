@@ -240,7 +240,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardTotal => 'Total';
 
   @override
-  String get dashboardAvailable => 'Disponibles';
+  String get dashboardOperational => 'Operationnels';
 
   @override
   String get dashboardMaintenance => 'Maintenance';
@@ -252,10 +252,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dashboardEquipmentStatus => 'Statut des equipements';
 
   @override
-  String get dashboardAvailableStatus => 'Disponible';
-
-  @override
-  String get dashboardInUse => 'En usage';
+  String get dashboardOperationalStatus => 'Operationnel';
 
   @override
   String get dashboardInMaintenance => 'En maintenance';
@@ -752,10 +749,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportsStatusBreakdown => 'Repartition par statut';
 
   @override
-  String get reportsAvailable => 'Disponible';
-
-  @override
-  String get reportsInUse => 'En usage';
+  String get reportsOperational => 'Operationnel';
 
   @override
   String get reportsInMaintenance => 'En maintenance';
@@ -1282,10 +1276,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Consultez et gérez les stocks de fournitures médicales et consommables.';
 
   @override
-  String get equipStatusAvailable => 'Disponible';
-
-  @override
-  String get equipStatusInUse => 'En usage';
+  String get equipStatusOperational => 'Opérationnel';
 
   @override
   String get equipStatusInMaintenance => 'En maintenance';
@@ -1294,13 +1285,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipStatusOutOfService => 'Hors service';
 
   @override
-  String get equipStatusIdle => 'Inactif';
+  String get equipStatusToBeDisposal => 'À éliminer';
 
   @override
-  String get equipStatusToDispose => 'À éliminer';
-
-  @override
-  String get equipStatusTransferred => 'Transféré';
+  String get equipStatusDisposed => 'Éliminé';
 
   @override
   String get equipmentManufacturer => 'Fabricant';

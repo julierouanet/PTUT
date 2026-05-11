@@ -548,11 +548,11 @@ abstract class AppLocalizations {
   /// **'Total'**
   String get dashboardTotal;
 
-  /// No description provided for @dashboardAvailable.
+  /// No description provided for @dashboardOperational.
   ///
   /// In fr, this message translates to:
-  /// **'Disponibles'**
-  String get dashboardAvailable;
+  /// **'Operationnels'**
+  String get dashboardOperational;
 
   /// No description provided for @dashboardMaintenance.
   ///
@@ -572,17 +572,11 @@ abstract class AppLocalizations {
   /// **'Statut des equipements'**
   String get dashboardEquipmentStatus;
 
-  /// No description provided for @dashboardAvailableStatus.
+  /// No description provided for @dashboardOperationalStatus.
   ///
   /// In fr, this message translates to:
-  /// **'Disponible'**
-  String get dashboardAvailableStatus;
-
-  /// No description provided for @dashboardInUse.
-  ///
-  /// In fr, this message translates to:
-  /// **'En usage'**
-  String get dashboardInUse;
+  /// **'Operationnel'**
+  String get dashboardOperationalStatus;
 
   /// No description provided for @dashboardInMaintenance.
   ///
@@ -1496,17 +1490,11 @@ abstract class AppLocalizations {
   /// **'Repartition par statut'**
   String get reportsStatusBreakdown;
 
-  /// No description provided for @reportsAvailable.
+  /// No description provided for @reportsOperational.
   ///
   /// In fr, this message translates to:
-  /// **'Disponible'**
-  String get reportsAvailable;
-
-  /// No description provided for @reportsInUse.
-  ///
-  /// In fr, this message translates to:
-  /// **'En usage'**
-  String get reportsInUse;
+  /// **'Operationnel'**
+  String get reportsOperational;
 
   /// No description provided for @reportsInMaintenance.
   ///
@@ -2438,17 +2426,11 @@ abstract class AppLocalizations {
   /// **'Consultez et gérez les stocks de fournitures médicales et consommables.'**
   String get hubInventoryDesc;
 
-  /// No description provided for @equipStatusAvailable.
+  /// No description provided for @equipStatusOperational.
   ///
   /// In fr, this message translates to:
-  /// **'Disponible'**
-  String get equipStatusAvailable;
-
-  /// No description provided for @equipStatusInUse.
-  ///
-  /// In fr, this message translates to:
-  /// **'En usage'**
-  String get equipStatusInUse;
+  /// **'Opérationnel'**
+  String get equipStatusOperational;
 
   /// No description provided for @equipStatusInMaintenance.
   ///
@@ -2462,23 +2444,17 @@ abstract class AppLocalizations {
   /// **'Hors service'**
   String get equipStatusOutOfService;
 
-  /// No description provided for @equipStatusIdle.
-  ///
-  /// In fr, this message translates to:
-  /// **'Inactif'**
-  String get equipStatusIdle;
-
-  /// No description provided for @equipStatusToDispose.
+  /// No description provided for @equipStatusToBeDisposal.
   ///
   /// In fr, this message translates to:
   /// **'À éliminer'**
-  String get equipStatusToDispose;
+  String get equipStatusToBeDisposal;
 
-  /// No description provided for @equipStatusTransferred.
+  /// No description provided for @equipStatusDisposed.
   ///
   /// In fr, this message translates to:
-  /// **'Transféré'**
-  String get equipStatusTransferred;
+  /// **'Éliminé'**
+  String get equipStatusDisposed;
 
   /// No description provided for @equipmentManufacturer.
   ///

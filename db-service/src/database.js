@@ -21,7 +21,7 @@ function initTables() {
       department TEXT NOT NULL,
       category TEXT NOT NULL,
       serial_number TEXT,
-      status TEXT NOT NULL DEFAULT 'Disponible',
+      status TEXT NOT NULL DEFAULT 'Operational',
       supplier TEXT,
       location TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime')),
@@ -147,6 +147,26 @@ function initTables() {
   // Migration : maintenance préventive (dates planifiées sur l'équipement)
   try { db.exec("ALTER TABLE equipment ADD COLUMN last_preventive_maintenance TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE equipment ADD COLUMN next_preventive_maintenance TEXT"); } catch (_) {}
+
+  // Migration : refonte des statuts d'équipement (français → anglais, 7 → 5 valeurs).
+  // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
+  try {
+    db.exec(`
+      UPDATE equipment SET status = CASE status
+        WHEN 'Disponible'     THEN 'Operational'
+        WHEN 'En service'     THEN 'Operational'
+        WHEN 'En usage'       THEN 'Operational'
+        WHEN 'En maintenance' THEN 'Maintenance'
+        WHEN 'Hors service'   THEN 'Out of service'
+        WHEN 'Inactif'        THEN 'Out of service'
+        WHEN 'À éliminer'     THEN 'To be disposal'
+        WHEN 'Transféré'      THEN 'Out of service'
+        ELSE status
+      END
+      WHERE status IN ('Disponible','En service','En usage','En maintenance',
+                       'Hors service','Inactif','À éliminer','Transféré')
+    `);
+  } catch (_) {}
 
   // Plans de maintenance préventive (1 équipement → N plans, ex : trimestriel,
   // annuel, calibration, etc.). Le `next_preventive_maintenance` de equipment

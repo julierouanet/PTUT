@@ -21,22 +21,22 @@ function cleanCell(v) {
 
 /**
  * Normalise les variantes de statut observées dans le XLSX vers la whitelist
- * française (cf. `routes/equipment.js > VALID_STATUSES_EQ`).
- * Retourne 'Disponible' par défaut si l'entrée est vide ou inconnue.
+ * anglaise (cf. `routes/equipment.js > VALID_STATUSES_EQ`).
+ * Retourne 'Operational' par défaut si l'entrée est vide ou inconnue.
  */
 function normalizeStatus(raw) {
-  if (raw === null || raw === undefined) return 'Disponible';
+  if (raw === null || raw === undefined) return 'Operational';
   const s = String(raw).trim().toLowerCase();
-  if (!s) return 'Disponible';
+  if (!s) return 'Operational';
 
-  if (/^op[eéa]?r?ational$/.test(s) || s === 'opeational') return 'En service';
-  if (/^under\s*m/.test(s) || s === 'underm')              return 'En maintenance';
-  if (/^idd?le/.test(s))                                   return 'Inactif';
-  if (s === 'disposed')                                    return 'Hors service';
-  if (/to\s+be\s+disposal/.test(s))                        return 'À éliminer';
-  if (/kibirizi/.test(s))                                  return 'Transféré';
+  if (/^op[eéa]?r?ational$/.test(s) || s === 'opeational') return 'Operational';
+  if (/^under\s*m/.test(s) || s === 'underm')              return 'Maintenance';
+  if (/^idd?le/.test(s))                                   return 'Out of service';
+  if (s === 'disposed')                                    return 'Disposed';
+  if (/to\s+be\s+disposal/.test(s))                        return 'To be disposal';
+  if (/kibirizi/.test(s))                                  return 'Out of service';
 
-  return 'Disponible';
+  return 'Operational';
 }
 
 /**

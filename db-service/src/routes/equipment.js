@@ -6,10 +6,11 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 const router = express.Router();
 
 const VALID_STATUSES_EQ   = [
-  'Disponible', 'En service', 'En maintenance', 'Hors service',
-  'Inactif',     // équipement non utilisé mais fonctionnel (ex-IDDLE)
-  'À éliminer',  // équipement à mettre au rebut (ex-"to be disposal")
-  'Transféré',   // équipement déplacé vers un autre établissement (ex-KIBIRIZI DH)
+  'Operational',     // équipement utilisable (en service ou disponible)
+  'Maintenance',     // en maintenance corrective ou préventive
+  'Out of service',  // en panne / inutilisable
+  'To be disposal',  // planifié pour mise au rebut, existe encore physiquement
+  'Disposed',        // effectivement éliminé
 ];
 const VALID_DEPARTMENTS   = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
 const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
@@ -69,7 +70,7 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
     `).run(
       id, name, department, category,
       serial_number || null,
-      status || 'Disponible',
+      status || 'Operational',
       location || null,
       manufacturer || null, model || null,
       manuf_year != null ? parseInt(manuf_year, 10) || null : null,
@@ -149,7 +150,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     `).run(
       id, name, department, category,
       serial_number || null,
-      status || 'Disponible',
+      status || 'Operational',
       location || null,
       manufacturer || null, model || null, manufYearInt,
       install_date || null, next_revision_date || null,

@@ -551,7 +551,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
     String selectedDepartment = existingEquipment?.department ?? _configService.departmentNames.first;
     String selectedCategory = existingEquipment?.category ?? _configService.categoryNames.first;
-    EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.disponible;
+    EquipmentStatus selectedStatus = existingEquipment?.status ?? EquipmentStatus.operational;
     String? selectedRevisionDate = existingEquipment?.nextRevisionDate;
     String? selectedInstallDate = existingEquipment?.installDate;
     String? selectedLastPreventiveDate = existingEquipment?.lastPreventiveMaintenance;
@@ -991,33 +991,25 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     IconData icon;
     Color color;
     switch (status) {
-      case EquipmentStatus.disponible:
+      case EquipmentStatus.operational:
         icon = Icons.check_circle;
         color = AppColors.success;
         break;
-      case EquipmentStatus.enUsage:
-        icon = Icons.play_circle;
-        color = AppColors.primary;
-        break;
-      case EquipmentStatus.enMaintenance:
+      case EquipmentStatus.maintenance:
         icon = Icons.build_circle;
         color = AppColors.warning;
         break;
-      case EquipmentStatus.horsService:
+      case EquipmentStatus.outOfService:
         icon = Icons.cancel;
         color = AppColors.error;
         break;
-      case EquipmentStatus.inactif:
-        icon = Icons.pause_circle_outline;
-        color = AppColors.textSecondary;
-        break;
-      case EquipmentStatus.aEliminer:
+      case EquipmentStatus.toBeDisposal:
         icon = Icons.delete_outline;
-        color = AppColors.error;
+        color = AppColors.warning;
         break;
-      case EquipmentStatus.transfere:
-        icon = Icons.swap_horiz;
-        color = AppColors.primary;
+      case EquipmentStatus.disposed:
+        icon = Icons.delete_forever;
+        color = AppColors.textSecondary;
         break;
     }
     return Icon(icon, color: color, size: 18);

@@ -15,12 +15,11 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final total = DataService().equipment.length;
-    final disponible = DataService().equipment.where((e) => e.status == EquipmentStatus.disponible).length;
-    final enUsage = DataService().equipment.where((e) => e.status == EquipmentStatus.enUsage).length;
-    final enMaintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.enMaintenance).length;
-    final horsService = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).length;
+    final operational = DataService().equipment.where((e) => e.status == EquipmentStatus.operational).length;
+    final maintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.maintenance).length;
+    final outOfService = DataService().equipment.where((e) => e.status == EquipmentStatus.outOfService).length;
     final recentIssues = DataService().issues.where((i) => i.status.displayName != 'Résolu').take(4).toList();
-    final criticalEquipment = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).toList();
+    final criticalEquipment = DataService().equipment.where((e) => e.status == EquipmentStatus.outOfService).toList();
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return SingleChildScrollView(
@@ -42,35 +41,33 @@ class DashboardScreen extends StatelessWidget {
             Row(children: [
               Expanded(child: _buildCompactStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
               const SizedBox(width: 12),
-              Expanded(child: _buildCompactStatCard(l10n.dashboardAvailable, '$disponible', Icons.check_circle_outline, AppColors.success)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOperational, '$operational', Icons.check_circle_outline, AppColors.success)),
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$enMaintenance', Icons.build_outlined, AppColors.warning)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$maintenance', Icons.build_outlined, AppColors.warning)),
               const SizedBox(width: 12),
-              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$horsService', Icons.cancel_outlined, AppColors.error)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$outOfService', Icons.cancel_outlined, AppColors.error)),
             ]),
           ] else
             Row(children: [
               Expanded(child: _buildCompactStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
               const SizedBox(width: 12),
-              Expanded(child: _buildCompactStatCard(l10n.dashboardAvailable, '$disponible', Icons.check_circle_outline, AppColors.success)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOperational, '$operational', Icons.check_circle_outline, AppColors.success)),
               const SizedBox(width: 12),
-              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$enMaintenance', Icons.build_outlined, AppColors.warning)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardMaintenance, '$maintenance', Icons.build_outlined, AppColors.warning)),
               const SizedBox(width: 12),
-              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$horsService', Icons.cancel_outlined, AppColors.error)),
+              Expanded(child: _buildCompactStatCard(l10n.dashboardOutOfService, '$outOfService', Icons.cancel_outlined, AppColors.error)),
             ]),
           const SizedBox(height: 24),
           Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(l10n.dashboardEquipmentStatus, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 16),
-            LabeledProgressBar(label: l10n.dashboardAvailableStatus, current: disponible, total: total, color: AppColors.success),
+            LabeledProgressBar(label: l10n.dashboardOperationalStatus, current: operational, total: total, color: AppColors.success),
             const SizedBox(height: 12),
-            LabeledProgressBar(label: l10n.dashboardInUse, current: enUsage, total: total, color: AppColors.primary),
+            LabeledProgressBar(label: l10n.dashboardInMaintenance, current: maintenance, total: total, color: AppColors.warning),
             const SizedBox(height: 12),
-            LabeledProgressBar(label: l10n.dashboardInMaintenance, current: enMaintenance, total: total, color: AppColors.warning),
-            const SizedBox(height: 12),
-            LabeledProgressBar(label: l10n.dashboardOutOfServiceStatus, current: horsService, total: total, color: AppColors.error),
+            LabeledProgressBar(label: l10n.dashboardOutOfServiceStatus, current: outOfService, total: total, color: AppColors.error),
           ]))),
           const SizedBox(height: 24),
           LayoutBuilder(builder: (context, constraints) {

@@ -14,10 +14,9 @@ class ReportsScreen extends StatelessWidget {
 
     // Calculate statistics
     final total = DataService().equipment.length;
-    final disponible = DataService().equipment.where((e) => e.status == EquipmentStatus.disponible).length;
-    final enUsage = DataService().equipment.where((e) => e.status == EquipmentStatus.enUsage).length;
-    final enMaintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.enMaintenance).length;
-    final horsService = DataService().equipment.where((e) => e.status == EquipmentStatus.horsService).length;
+    final operational = DataService().equipment.where((e) => e.status == EquipmentStatus.operational).length;
+    final maintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.maintenance).length;
+    final outOfService = DataService().equipment.where((e) => e.status == EquipmentStatus.outOfService).length;
 
     // Equipment by department
     final byDepartment = <String, int>{};
@@ -91,7 +90,7 @@ class ReportsScreen extends StatelessWidget {
                 childAspectRatio: 1.5,
                 children: [
                   _buildSummaryCard(l10n.reportsTotalEquipment, '$total', Icons.inventory_2, AppColors.primary),
-                  _buildSummaryCard(l10n.reportsAvailabilityRate, '${((disponible + enUsage) / total * 100).round()}%', Icons.check_circle, AppColors.success),
+                  _buildSummaryCard(l10n.reportsAvailabilityRate, '${total == 0 ? 0 : (operational / total * 100).round()}%', Icons.check_circle, AppColors.success),
                   _buildSummaryCard(l10n.reportsTotalIssues, '$totalIssues', Icons.warning_amber, AppColors.warning),
                   _buildSummaryCard(l10n.reportsResolvedIssues, '$resolvedIssues', Icons.task_alt, AppColors.success),
                 ],
@@ -107,7 +106,7 @@ class ReportsScreen extends StatelessWidget {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(child: _buildStatusReport(l10n, total, disponible, enUsage, enMaintenance, horsService)),
+                    Expanded(child: _buildStatusReport(l10n, total, operational, maintenance, outOfService)),
                     const SizedBox(width: 24),
                     Expanded(child: _buildDepartmentReport(l10n, byDepartment)),
                   ],
@@ -115,7 +114,7 @@ class ReportsScreen extends StatelessWidget {
               }
               return Column(
                 children: [
-                  _buildStatusReport(l10n, total, disponible, enUsage, enMaintenance, horsService),
+                  _buildStatusReport(l10n, total, operational, maintenance, outOfService),
                   const SizedBox(height: 24),
                   _buildDepartmentReport(l10n, byDepartment),
                 ],
@@ -182,7 +181,7 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusReport(AppLocalizations l10n, int total, int disponible, int enUsage, int enMaintenance, int horsService) {
+  Widget _buildStatusReport(AppLocalizations l10n, int total, int operational, int maintenance, int outOfService) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -194,10 +193,9 @@ class ReportsScreen extends StatelessWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 20),
-            _buildStatRow(l10n.reportsAvailable, disponible, total, AppColors.success),
-            _buildStatRow(l10n.reportsInUse, enUsage, total, AppColors.primary),
-            _buildStatRow(l10n.reportsInMaintenance, enMaintenance, total, AppColors.warning),
-            _buildStatRow(l10n.reportsOutOfService, horsService, total, AppColors.error),
+            _buildStatRow(l10n.reportsOperational, operational, total, AppColors.success),
+            _buildStatRow(l10n.reportsInMaintenance, maintenance, total, AppColors.warning),
+            _buildStatRow(l10n.reportsOutOfService, outOfService, total, AppColors.error),
           ],
         ),
       ),

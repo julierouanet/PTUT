@@ -24,46 +24,46 @@ describe('cleanCell', () => {
 });
 
 describe('normalizeStatus', () => {
-  test('variantes operational → "En service"', () => {
+  test('variantes operational → "Operational"', () => {
     for (const v of ['operational', 'Operational', 'OPERATIONAL', 'opeational']) {
-      expect(N.normalizeStatus(v)).toBe('En service');
+      expect(N.normalizeStatus(v)).toBe('Operational');
     }
   });
 
-  test('variantes UNDER M → "En maintenance"', () => {
+  test('variantes UNDER M → "Maintenance"', () => {
     for (const v of ['UNDER M', 'UNDERM', 'under m', 'Under M']) {
-      expect(N.normalizeStatus(v)).toBe('En maintenance');
+      expect(N.normalizeStatus(v)).toBe('Maintenance');
     }
   });
 
-  test('variantes IDDLE → "Inactif"', () => {
+  test('variantes IDDLE → "Out of service"', () => {
     for (const v of ['IDDLE', 'iddle', 'IDDLE GO TO RBC', 'Iddle']) {
-      expect(N.normalizeStatus(v)).toBe('Inactif');
+      expect(N.normalizeStatus(v)).toBe('Out of service');
     }
   });
 
-  test('DISPOSED → "Hors service"', () => {
-    expect(N.normalizeStatus('DISPOSED')).toBe('Hors service');
-    expect(N.normalizeStatus('disposed')).toBe('Hors service');
+  test('DISPOSED → "Disposed"', () => {
+    expect(N.normalizeStatus('DISPOSED')).toBe('Disposed');
+    expect(N.normalizeStatus('disposed')).toBe('Disposed');
   });
 
-  test('to be disposal → "À éliminer"', () => {
-    expect(N.normalizeStatus('to be disposal')).toBe('À éliminer');
-    expect(N.normalizeStatus('To be disposal')).toBe('À éliminer');
+  test('to be disposal → "To be disposal"', () => {
+    expect(N.normalizeStatus('to be disposal')).toBe('To be disposal');
+    expect(N.normalizeStatus('To be disposal')).toBe('To be disposal');
   });
 
-  test('KIBIRIZI DH → "Transféré"', () => {
-    expect(N.normalizeStatus('KIBIRIZI DH')).toBe('Transféré');
+  test('KIBIRIZI DH → "Out of service"', () => {
+    expect(N.normalizeStatus('KIBIRIZI DH')).toBe('Out of service');
   });
 
-  test('null/vide → "Disponible" (défaut sûr)', () => {
-    expect(N.normalizeStatus(null)).toBe('Disponible');
-    expect(N.normalizeStatus('')).toBe('Disponible');
-    expect(N.normalizeStatus('   ')).toBe('Disponible');
+  test('null/vide → "Operational" (défaut sûr)', () => {
+    expect(N.normalizeStatus(null)).toBe('Operational');
+    expect(N.normalizeStatus('')).toBe('Operational');
+    expect(N.normalizeStatus('   ')).toBe('Operational');
   });
 
-  test('valeur inconnue → "Disponible"', () => {
-    expect(N.normalizeStatus('foobar')).toBe('Disponible');
+  test('valeur inconnue → "Operational"', () => {
+    expect(N.normalizeStatus('foobar')).toBe('Operational');
   });
 });
 
