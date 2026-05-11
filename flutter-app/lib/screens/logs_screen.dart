@@ -6,33 +6,63 @@ import '../theme/app_theme.dart';
 
 // ── Métadonnées des actions ───────────────────────────────────────────────────
 
-const _kActionMeta = <String, (String, IconData, Color)>{
-  'login':                ('Connexion',            Icons.login,                    AppColors.success),
-  'login_failed':         ('Échec connexion',       Icons.no_accounts_outlined,     AppColors.error),
-  'logout':               ('Déconnexion',           Icons.logout,                   AppColors.textSecondary),
-  'create_equipment':     ('Créer équipement',      Icons.add_box_outlined,         AppColors.primary),
-  'update_equipment':     ('Modif. équipement',     Icons.edit_outlined,            AppColors.warning),
-  'delete_equipment':     ('Suppr. équipement',     Icons.delete_outline,           AppColors.error),
-  'restore_equipment':    ('Restaur. équipement',   Icons.restore,                  AppColors.success),
-  'add_maintenance':      ('Maintenance',            Icons.build_outlined,           AppColors.primary),
-  'schedule_maintenance': ('Planif. maint.',         Icons.schedule,                 AppColors.primary),
-  'create_issue':         ('Signaler incident',      Icons.report_problem_outlined,  AppColors.warning),
-  'update_issue':         ('Modif. incident',        Icons.edit_outlined,            AppColors.warning),
-  'delete_issue':         ('Suppr. incident',        Icons.delete_outline,           AppColors.error),
-  'create_inventory':     ('Créer article',          Icons.add_box_outlined,         AppColors.primary),
-  'update_inventory':     ('Modif. stock',           Icons.edit_outlined,            AppColors.warning),
-  'restock_inventory':    ('Réappro. stock',         Icons.inventory_outlined,       AppColors.success),
-  'delete_inventory':     ('Suppr. article',         Icons.delete_outline,           AppColors.error),
-  'create_user':          ('Créer compte',           Icons.person_add_outlined,      AppColors.primary),
-  'update_user':          ('Modif. compte',          Icons.manage_accounts_outlined, AppColors.warning),
-  'delete_user':          ('Suppr. compte',          Icons.person_remove_outlined,   AppColors.error),
-  'restore_user':         ('Restaur. compte',        Icons.person_add_alt_1,         AppColors.success),
-  'change_password':      ('Modif. mot de passe',    Icons.lock_outline,             AppColors.warning),
-  'change_name':          ('Modif. nom',             Icons.badge_outlined,           AppColors.warning),
-  'change_email':         ('Modif. email',           Icons.email_outlined,           AppColors.warning),
-  'change_phone':         ('Modif. téléphone',       Icons.phone_outlined,           AppColors.warning),
-  'activate_user':        ('Compte activé',          Icons.check_circle_outline,     AppColors.success),
-  'suspend_user':         ('Compte suspendu',        Icons.block_outlined,           AppColors.error),
+const _kActionVisual = <String, (IconData, Color)>{
+  'login':                (Icons.login,                    AppColors.success),
+  'login_failed':         (Icons.no_accounts_outlined,     AppColors.error),
+  'logout':               (Icons.logout,                   AppColors.textSecondary),
+  'create_equipment':     (Icons.add_box_outlined,         AppColors.primary),
+  'update_equipment':     (Icons.edit_outlined,            AppColors.warning),
+  'delete_equipment':     (Icons.delete_outline,           AppColors.error),
+  'restore_equipment':    (Icons.restore,                  AppColors.success),
+  'add_maintenance':      (Icons.build_outlined,           AppColors.primary),
+  'schedule_maintenance': (Icons.schedule,                 AppColors.primary),
+  'create_issue':         (Icons.report_problem_outlined,  AppColors.warning),
+  'update_issue':         (Icons.edit_outlined,            AppColors.warning),
+  'delete_issue':         (Icons.delete_outline,           AppColors.error),
+  'create_inventory':     (Icons.add_box_outlined,         AppColors.primary),
+  'update_inventory':     (Icons.edit_outlined,            AppColors.warning),
+  'restock_inventory':    (Icons.inventory_outlined,       AppColors.success),
+  'delete_inventory':     (Icons.delete_outline,           AppColors.error),
+  'create_user':          (Icons.person_add_outlined,      AppColors.primary),
+  'update_user':          (Icons.manage_accounts_outlined, AppColors.warning),
+  'delete_user':          (Icons.person_remove_outlined,   AppColors.error),
+  'restore_user':         (Icons.person_add_alt_1,         AppColors.success),
+  'change_password':      (Icons.lock_outline,             AppColors.warning),
+  'change_name':          (Icons.badge_outlined,           AppColors.warning),
+  'change_email':         (Icons.email_outlined,           AppColors.warning),
+  'change_phone':         (Icons.phone_outlined,           AppColors.warning),
+  'activate_user':        (Icons.check_circle_outline,     AppColors.success),
+  'suspend_user':         (Icons.block_outlined,           AppColors.error),
+};
+
+String _actionLabel(String action, AppLocalizations l10n) => switch (action) {
+  'login'                => l10n.logsActionLogin,
+  'login_failed'         => l10n.logsActionLoginFailed,
+  'logout'               => l10n.logsActionLogout,
+  'create_equipment'     => l10n.logsActionCreateEquipment,
+  'update_equipment'     => l10n.logsActionUpdateEquipment,
+  'delete_equipment'     => l10n.logsActionDeleteEquipment,
+  'restore_equipment'    => l10n.logsActionRestoreEquipment,
+  'add_maintenance'      => l10n.logsActionAddMaintenance,
+  'schedule_maintenance' => l10n.logsActionScheduleMaintenance,
+  'create_issue'         => l10n.logsActionCreateIssue,
+  'update_issue'         => l10n.logsActionUpdateIssue,
+  'delete_issue'         => l10n.logsActionDeleteIssue,
+  'create_inventory'     => l10n.logsActionCreateInventory,
+  'update_inventory'     => l10n.logsActionUpdateInventory,
+  'restock_inventory'    => l10n.logsActionRestockInventory,
+  'delete_inventory'     => l10n.logsActionDeleteInventory,
+  'create_user'          => l10n.logsActionCreateUser,
+  'update_user'          => l10n.logsActionUpdateUser,
+  'delete_user'          => l10n.logsActionDeleteUser,
+  'restore_user'         => l10n.logsActionRestoreUser,
+  'change_password'      => l10n.logsActionChangePassword,
+  'change_name'          => l10n.logsActionChangeName,
+  'change_email'         => l10n.logsActionChangeEmail,
+  'change_phone'         => l10n.logsActionChangePhone,
+  'activate_user'        => l10n.logsActionActivateUser,
+  'suspend_user'         => l10n.logsActionSuspendUser,
+  _                      => action,
 };
 
 const _kRestorableActions = {
@@ -42,21 +72,21 @@ const _kRestorableActions = {
 };
 
 /// Label du bouton "Restaurer" selon l'action
-String _restoreLabelFor(String action) => switch (action) {
-  'delete_equipment' => 'Restaurer l\'équipement',
-  'update_equipment' => 'Restaurer l\'état précédent',
-  'delete_user'      => 'Restaurer le compte',
-  'suspend_user'     => 'Réactiver le compte',
-  'change_name'      => 'Restaurer l\'ancien nom',
-  'change_email'     => 'Restaurer l\'ancien email',
-  'change_phone'     => 'Restaurer l\'ancien numéro',
-  'update_user'      => 'Restaurer les valeurs précédentes',
-  _                  => 'Restaurer',
+String _restoreLabelFor(String action, AppLocalizations l10n) => switch (action) {
+  'delete_equipment' => l10n.logsRestoreEquipmentLabel,
+  'update_equipment' => l10n.logsRestorePreviousState,
+  'delete_user'      => l10n.logsRestoreUserAccount,
+  'suspend_user'     => l10n.logsReactivateUserAccount,
+  'change_name'      => l10n.logsRestoreOldName,
+  'change_email'     => l10n.logsRestoreOldEmail,
+  'change_phone'     => l10n.logsRestoreOldPhone,
+  'update_user'      => l10n.logsRestorePreviousValues,
+  _                  => l10n.logsRestoreGeneric,
 };
 
 /// Logique de restauration partagée entre la tuile et la fiche détail.
 /// Retourne un message de succès, lève une exception en cas d'erreur.
-Future<String> _executeRestore(Map<String, dynamic> log) async {
+Future<String> _executeRestore(Map<String, dynamic> log, AppLocalizations l10n) async {
   final action   = log['action']    as String? ?? '';
   final targetId = log['target_id'] as String?;
 
@@ -69,60 +99,60 @@ Future<String> _executeRestore(Map<String, dynamic> log) async {
   switch (action) {
     case 'delete_equipment':
       final snap = details?['snapshot'];
-      if (snap == null) throw 'Données de snapshot manquantes';
+      if (snap == null) throw l10n.logsErrSnapshotMissing;
       await DbApiService.instance.restoreEquipment(Map<String, dynamic>.from(snap as Map));
-      return 'Équipement restauré avec succès.';
+      return l10n.logsEquipmentRestored;
 
     case 'update_equipment':
       final snap = details?['snapshot_before'];
-      if (snap == null || targetId == null) throw 'Données insuffisantes';
+      if (snap == null || targetId == null) throw l10n.logsErrInsufficientData;
       await DbApiService.instance.restoreEquipmentState(targetId, Map<String, dynamic>.from(snap as Map));
-      return 'Équipement restauré à son état précédent.';
+      return l10n.logsEquipmentRestoredState;
 
     case 'delete_user':
       final snap = details?['snapshot'];
-      if (snap == null) throw 'Données de snapshot manquantes';
+      if (snap == null) throw l10n.logsErrSnapshotMissing;
       final res = await DbApiService.instance.restoreDeletedUser(Map<String, dynamic>.from(snap as Map));
       final pwd = res['tempPassword'] as String? ?? '—';
-      return 'Compte restauré.\nMot de passe temporaire : $pwd';
+      return l10n.logsUserAccountRestored(pwd);
 
     case 'suspend_user':
-      if (targetId == null) throw 'ID utilisateur manquant';
+      if (targetId == null) throw l10n.logsErrUserIdMissing;
       await DbApiService.instance.toggleUser(targetId);
-      return 'Compte réactivé.';
+      return l10n.logsUserAccountReactivated;
 
     case 'change_name':
-      if (targetId == null) throw 'ID utilisateur manquant';
+      if (targetId == null) throw l10n.logsErrUserIdMissing;
       final old = details?['old'] as String?;
-      if (old == null) throw 'Ancienne valeur introuvable';
+      if (old == null) throw l10n.logsErrOldValueMissing;
       await DbApiService.instance.updateUser(targetId, {'name': old});
-      return 'Nom restauré : $old';
+      return l10n.logsNameRestored(old);
 
     case 'change_email':
-      if (targetId == null) throw 'ID utilisateur manquant';
+      if (targetId == null) throw l10n.logsErrUserIdMissing;
       final old = details?['old'] as String?;
-      if (old == null) throw 'Ancienne valeur introuvable';
+      if (old == null) throw l10n.logsErrOldValueMissing;
       await DbApiService.instance.updateUser(targetId, {'email': old});
-      return 'Email restauré : $old';
+      return l10n.logsEmailRestored(old);
 
     case 'change_phone':
-      if (targetId == null) throw 'ID utilisateur manquant';
+      if (targetId == null) throw l10n.logsErrUserIdMissing;
       final old = details?['old'] as String?;
-      if (old == null) throw 'Ancienne valeur introuvable';
+      if (old == null) throw l10n.logsErrOldValueMissing;
       await DbApiService.instance.updateUser(targetId, {'phone': old});
-      return 'Téléphone restauré : $old';
+      return l10n.logsPhoneRestored(old);
 
     case 'update_user':
-      if (targetId == null) throw 'ID utilisateur manquant';
+      if (targetId == null) throw l10n.logsErrUserIdMissing;
       final restoreData = <String, dynamic>{};
       if (details?['role']       is Map) restoreData['role']       = (details!['role'] as Map)['old'];
       if (details?['department'] is Map) restoreData['department'] = (details!['department'] as Map)['old'];
-      if (restoreData.isEmpty) throw 'Aucune valeur à restaurer';
+      if (restoreData.isEmpty) throw l10n.logsErrNothingToRestore;
       await DbApiService.instance.updateUser(targetId, restoreData);
-      return 'Valeurs précédentes restaurées.';
+      return l10n.logsPreviousValuesRestored;
 
     default:
-      throw 'Action non restaurable';
+      throw l10n.logsErrNotRestorable;
   }
 }
 
@@ -205,24 +235,25 @@ class _LogsScreenState extends State<LogsScreen> {
 
   /// Restauration rapide depuis la tuile (dialog de confirmation + snackbar résultat).
   Future<void> _quickRestore(BuildContext context, Map<String, dynamic> log) async {
+    final l10n   = AppLocalizations.of(context)!;
     final action = log['action'] as String? ?? '';
-    final label  = _restoreLabelFor(action);
+    final label  = _restoreLabelFor(action, l10n);
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirmer la restauration'),
-        content: Text('$label ?'),
+        title: Text(l10n.logsConfirmRestoreTitle),
+        content: Text(l10n.logsConfirmRestoreShort(label)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restaurer')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.logsRestoreButton)),
         ],
       ),
     );
     if (confirm != true || !context.mounted) return;
 
     try {
-      final msg = await _executeRestore(log);
+      final msg = await _executeRestore(log, l10n);
       _load();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -272,6 +303,7 @@ class _LogsScreenState extends State<LogsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n     = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < 600;
     final hPad     = isMobile ? 16.0 : 24.0;
     final filtered = _filtered;
@@ -289,9 +321,9 @@ class _LogsScreenState extends State<LogsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Journaux d\'activité',
+                    Text(l10n.logsTitle,
                         style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    Text('${filtered.length} entrée${filtered.length > 1 ? 's' : ''}',
+                    Text(l10n.logsEntriesCount(filtered.length),
                         style: const TextStyle(color: AppColors.textSecondary)),
                   ],
                 ),
@@ -299,7 +331,7 @@ class _LogsScreenState extends State<LogsScreen> {
               IconButton.filled(
                 onPressed: _load,
                 icon: const Icon(Icons.refresh),
-                tooltip: 'Actualiser',
+                tooltip: l10n.logsRefresh,
                 style: IconButton.styleFrom(backgroundColor: AppColors.primaryLight, foregroundColor: AppColors.primary),
               ),
             ],
@@ -326,19 +358,19 @@ class _LogsScreenState extends State<LogsScreen> {
         if (!isMobile)
           Padding(
             padding: EdgeInsets.symmetric(horizontal: hPad),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: Row(
                 children: [
-                  SizedBox(width: 200, child: Text('Action',       style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                  SizedBox(width: 16),
-                  Expanded(flex: 2,   child: Text('Utilisateur',   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                  SizedBox(width: 16),
-                  Expanded(flex: 2,   child: Text('Ressource',     style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                  SizedBox(width: 16),
-                  SizedBox(width: 160, child: Text('IP / Appareil', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
-                  SizedBox(width: 16),
-                  SizedBox(width: 130, child: Text('Horodatage',   style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.right)),
+                  SizedBox(width: 200, child: Text(l10n.logsColAction,       style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2,   child: Text(l10n.logsColUser,          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2,   child: Text(l10n.logsColResource,      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  const SizedBox(width: 16),
+                  SizedBox(width: 160, child: Text(l10n.logsColIpDevice,     style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary))),
+                  const SizedBox(width: 16),
+                  SizedBox(width: 130, child: Text(l10n.logsColTimestamp,    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textSecondary), textAlign: TextAlign.right)),
                 ],
               ),
             ),
@@ -369,11 +401,12 @@ class _LogsScreenState extends State<LogsScreen> {
   // ── Widgets filtres ──────────────────────────────────────────────────────────
 
   Widget _buildSearchBar() {
+    final l10n = AppLocalizations.of(context)!;
     return TextField(
       controller: _searchController,
-      decoration: const InputDecoration(
-        hintText: 'Rechercher (utilisateur, ressource…)',
-        prefixIcon: Icon(Icons.search, color: AppColors.textSecondary),
+      decoration: InputDecoration(
+        hintText: l10n.logsSearchHint,
+        prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
         isDense: true,
       ),
       onChanged: (_) => setState(() {}),
@@ -381,19 +414,20 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   Widget _buildFilterChips() {
+    final l10n = AppLocalizations.of(context)!;
     return Row(
       children: [
-        _chip('Tout',         _filterAction == null && _filterTargetType == null, () { setState(() { _filterAction = null; _filterTargetType = null; }); _load(); }),
+        _chip(l10n.logsFilterAll,        _filterAction == null && _filterTargetType == null, () { setState(() { _filterAction = null; _filterTargetType = null; }); _load(); }),
         const SizedBox(width: 6),
-        _chip('Auth',         _filterTargetType == 'auth',      () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'auth'      ? null : 'auth'; });      _load(); }),
+        _chip(l10n.logsFilterAuth,       _filterTargetType == 'auth',      () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'auth'      ? null : 'auth'; });      _load(); }),
         const SizedBox(width: 6),
-        _chip('Équipements',  _filterTargetType == 'equipment', () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'equipment' ? null : 'equipment'; }); _load(); }),
+        _chip(l10n.logsFilterEquipment,  _filterTargetType == 'equipment', () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'equipment' ? null : 'equipment'; }); _load(); }),
         const SizedBox(width: 6),
-        _chip('Incidents',    _filterTargetType == 'issue',     () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'issue'     ? null : 'issue'; });     _load(); }),
+        _chip(l10n.logsFilterIncidents,  _filterTargetType == 'issue',     () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'issue'     ? null : 'issue'; });     _load(); }),
         const SizedBox(width: 6),
-        _chip('Inventaire',   _filterTargetType == 'inventory', () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'inventory' ? null : 'inventory'; }); _load(); }),
+        _chip(l10n.logsFilterInventory,  _filterTargetType == 'inventory', () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'inventory' ? null : 'inventory'; }); _load(); }),
         const SizedBox(width: 6),
-        _chip('Utilisateurs', _filterTargetType == 'user',      () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'user'      ? null : 'user'; });      _load(); }),
+        _chip(l10n.logsFilterUsers,      _filterTargetType == 'user',      () { setState(() { _filterAction = null; _filterTargetType = _filterTargetType == 'user'      ? null : 'user'; });      _load(); }),
       ],
     );
   }
@@ -415,11 +449,12 @@ class _LogsScreenState extends State<LogsScreen> {
   // ── Tuile de log ──────────────────────────────────────────────────────────────
 
   Widget _buildLogTile(Map<String, dynamic> log, bool isMobile, bool isNewIp, bool alreadyRestored) {
+    final l10n       = AppLocalizations.of(context)!;
     final action     = log['action']      as String? ?? '';
-    final meta       = _kActionMeta[action];
-    final label      = meta?.$1 ?? action;
-    final icon       = meta?.$2 ?? Icons.info_outline;
-    final color      = meta?.$3 ?? AppColors.textSecondary;
+    final visual     = _kActionVisual[action];
+    final label      = _actionLabel(action, l10n);
+    final icon       = visual?.$1 ?? Icons.info_outline;
+    final color      = visual?.$2 ?? AppColors.textSecondary;
     final userName   = log['user_name']   as String? ?? '?';
     final userRole   = log['user_role']   as String? ?? '';
     final userId     = log['user_id']     as String?;
@@ -430,7 +465,7 @@ class _LogsScreenState extends State<LogsScreen> {
     final ipAddress  = log['ip_address']  as String?;
     final userAgent  = log['user_agent']  as String?;
 
-    final formattedDate = _formatDate(timestamp);
+    final formattedDate = _formatDate(timestamp, l10n);
     final deviceType    = _parseDeviceType(userAgent);
 
     final actionIcon = Container(
@@ -445,7 +480,7 @@ class _LogsScreenState extends State<LogsScreen> {
     // Badge "nouvelle IP"
     final newIpBadge = isNewIp
         ? Tooltip(
-            message: 'Première connexion depuis cette adresse IP',
+            message: l10n.logsNewIpTooltip,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
@@ -453,12 +488,12 @@ class _LogsScreenState extends State<LogsScreen> {
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.warning_amber_rounded, size: 10, color: AppColors.warning),
-                  SizedBox(width: 3),
-                  Text('Nouvelle IP', style: TextStyle(fontSize: 10, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                  const Icon(Icons.warning_amber_rounded, size: 10, color: AppColors.warning),
+                  const SizedBox(width: 3),
+                  Text(l10n.logsNewIp, style: const TextStyle(fontSize: 10, color: AppColors.warning, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -475,7 +510,7 @@ class _LogsScreenState extends State<LogsScreen> {
     Widget? restoreBtn;
     if (_kRestorableActions.contains(action)) {
       restoreBtn = Tooltip(
-        message: alreadyRestored ? 'Déjà restauré' : _restoreLabelFor(action),
+        message: alreadyRestored ? l10n.logsAlreadyRestored : _restoreLabelFor(action, l10n),
         child: IconButton(
           icon: Icon(
             alreadyRestored ? Icons.check_circle_outline : Icons.restore,
@@ -551,13 +586,13 @@ class _LogsScreenState extends State<LogsScreen> {
                           const SizedBox(width: 8),
                           Icon(deviceType == 'mobile' ? Icons.smartphone : Icons.computer, size: 11, color: AppColors.textMuted),
                           const SizedBox(width: 3),
-                          Text(deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—',
+                          Text(deviceType == 'mobile' ? l10n.logsDeviceMobile : deviceType == 'desktop' ? l10n.logsDevicePc : '—',
                               style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                         ],
                       ),
                       if (details != null && details.isNotEmpty) ...[
                         const SizedBox(height: 2),
-                        Text(_formatDetailsSummary(details), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                        Text(_formatDetailsSummary(details, l10n), style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                       ],
                     ],
                   ),
@@ -595,7 +630,7 @@ class _LogsScreenState extends State<LogsScreen> {
                               style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 13),
                               overflow: TextOverflow.ellipsis),
                           if (details != null && details.isNotEmpty)
-                            Text(_formatDetailsSummary(details),
+                            Text(_formatDetailsSummary(details, l10n),
                                 style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
                                 overflow: TextOverflow.ellipsis),
                         ],
@@ -657,7 +692,7 @@ class _LogsScreenState extends State<LogsScreen> {
                     Row(children: [
                       Icon(deviceType == 'mobile' ? Icons.smartphone : Icons.computer, size: 11, color: AppColors.textMuted),
                       const SizedBox(width: 3),
-                      Text(deviceType == 'mobile' ? 'Mobile' : deviceType == 'desktop' ? 'PC' : '—',
+                      Text(deviceType == 'mobile' ? l10n.logsDeviceMobile : deviceType == 'desktop' ? l10n.logsDevicePc : '—',
                           style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
                     ]),
                   ],
@@ -705,15 +740,15 @@ class _LogsScreenState extends State<LogsScreen> {
     return 'desktop';
   }
 
-  String _formatDate(String iso) {
+  String _formatDate(String iso, AppLocalizations l10n) {
     try {
       final dt   = DateTime.parse(iso.replaceFirst(' ', 'T')).toLocal();
       final now  = DateTime.now();
       final diff = now.difference(dt);
       final time = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
-      if (diff.inSeconds < 10)  return 'À l\'instant';
-      if (diff.inMinutes < 60)  return '$time (il y a ${diff.inMinutes} min)';
-      if (diff.inHours   < 24)  return '$time (il y a ${diff.inHours} h)';
+      if (diff.inSeconds < 10)  return l10n.logsTimeJustNow;
+      if (diff.inMinutes < 60)  return l10n.logsTimeWithMinutes(time, diff.inMinutes);
+      if (diff.inHours   < 24)  return l10n.logsTimeWithHours(time, diff.inHours);
       return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} $time';
     } catch (_) {
       return iso;
@@ -721,14 +756,14 @@ class _LogsScreenState extends State<LogsScreen> {
   }
 
   /// Résumé court des détails pour la liste (1 ligne)
-  String _formatDetailsSummary(String json) {
+  String _formatDetailsSummary(String json, AppLocalizations l10n) {
     try {
       final map = jsonDecode(json) as Map<String, dynamic>;
       if (map.containsKey('old') && map.containsKey('new')) {
         return '${map['old']} → ${map['new']}';
       }
-      if (map.containsKey('snapshot')) return 'Snapshot disponible';
-      if (map.containsKey('snapshot_before')) return 'État précédent disponible';
+      if (map.containsKey('snapshot')) return l10n.logsDetailsSnapshotAvailable;
+      if (map.containsKey('snapshot_before')) return l10n.logsDetailsPreviousAvailable;
       final parts = map.entries
           .where((e) => e.value is! Map)
           .map((e) => '${e.key}: ${e.value}')
@@ -740,33 +775,39 @@ class _LogsScreenState extends State<LogsScreen> {
     }
   }
 
-  Widget _buildError() => Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.error_outline, size: 48, color: AppColors.error),
-        const SizedBox(height: 12),
-        const Text('Erreur de chargement', style: TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(_error ?? '', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        const SizedBox(height: 16),
-        ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Réessayer')),
-      ],
-    ),
-  );
+  Widget _buildError() {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+          const SizedBox(height: 12),
+          Text(l10n.logsLoadError, style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text(_error ?? '', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: Text(l10n.logsRetry)),
+        ],
+      ),
+    );
+  }
 
-  Widget _buildEmpty() => const Center(
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.list_alt_outlined, size: 64, color: AppColors.textMuted),
-        SizedBox(height: 16),
-        Text('Aucun log trouvé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        SizedBox(height: 8),
-        Text('Les actions des utilisateurs apparaîtront ici.', style: TextStyle(color: AppColors.textSecondary)),
-      ],
-    ),
-  );
+  Widget _buildEmpty() {
+    final l10n = AppLocalizations.of(context)!;
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.list_alt_outlined, size: 64, color: AppColors.textMuted),
+          const SizedBox(height: 16),
+          Text(l10n.logsNoLogs, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          Text(l10n.logsNoLogsSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Bottom sheet : détail d'un log ───────────────────────────────────────────
@@ -794,17 +835,20 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     try { return Map<String, dynamic>.from(jsonDecode(raw) as Map); } catch (_) { return null; }
   }
 
-  String get _restoreLabel => _restoreLabelFor(widget.log['action'] as String? ?? '');
+  String _restoreLabelOf(AppLocalizations l10n) =>
+      _restoreLabelFor(widget.log['action'] as String? ?? '', l10n);
 
   Future<void> _doRestore() async {
+    final l10n = AppLocalizations.of(context)!;
+    final label = _restoreLabelOf(l10n);
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Confirmer la restauration'),
-        content: Text('Voulez-vous vraiment $_restoreLabel ?'),
+        title: Text(l10n.logsConfirmRestoreTitle),
+        content: Text(l10n.logsConfirmRestoreLong(label)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Restaurer')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.logsRestoreButton)),
         ],
       ),
     );
@@ -813,11 +857,11 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     setState(() { _restoring = true; _restoreMessage = null; });
 
     try {
-      final msg = await _executeRestore(widget.log);
+      final msg = await _executeRestore(widget.log, l10n);
       setState(() { _restoreSuccess = true; _restoreMessage = msg; });
       widget.onRestored();
     } catch (e) {
-      setState(() { _restoreSuccess = false; _restoreMessage = 'Erreur : $e'; });
+      setState(() { _restoreSuccess = false; _restoreMessage = l10n.logsRestoreErrorPrefix(e.toString()); });
     } finally {
       setState(() { _restoring = false; });
     }
@@ -826,6 +870,7 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
   // ── Affichage des détails ────────────────────────────────────────────────────
 
   Widget _buildDetailsSection() {
+    final l10n = AppLocalizations.of(context)!;
     final details = _details;
     if (details == null) return const SizedBox.shrink();
     final action = widget.log['action'] as String? ?? '';
@@ -839,22 +884,22 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
       snap.remove('updated_at'); snap.remove('created_at'); snap.remove('password_hash');
       for (final e in snap.entries) {
         if (e.value == null || e.value.toString().isEmpty) continue;
-        rows.add(_detailRow(_fieldLabel(e.key), e.value.toString()));
+        rows.add(_detailRow(_fieldLabel(e.key, l10n), e.value.toString()));
       }
     }
     // Changement old → new simple
     else if (details.containsKey('old') && details.containsKey('new')) {
-      rows.add(_detailRow('Avant', details['old'].toString()));
-      rows.add(_detailRow('Après', details['new'].toString()));
+      rows.add(_detailRow(l10n.logsDetailsBefore, details['old'].toString()));
+      rows.add(_detailRow(l10n.logsDetailsAfter,  details['new'].toString()));
     }
     // Changements multiples (update_user : {role: {old,new}, department: {old,new}})
     else {
       for (final e in details.entries) {
         if (e.value is Map && (e.value as Map).containsKey('old')) {
           final m = e.value as Map;
-          rows.add(_detailRow(_fieldLabel(e.key), '${m['old']} → ${m['new']}'));
+          rows.add(_detailRow(_fieldLabel(e.key, l10n), '${m['old']} → ${m['new']}'));
         } else if (e.value != null) {
-          rows.add(_detailRow(_fieldLabel(e.key), e.value.toString()));
+          rows.add(_detailRow(_fieldLabel(e.key, l10n), e.value.toString()));
         }
       }
     }
@@ -863,34 +908,34 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
 
     return _section(
       icon: Icons.info_outline,
-      title: _detailsSectionTitle(action),
+      title: _detailsSectionTitle(action, l10n),
       children: rows,
     );
   }
 
-  String _detailsSectionTitle(String action) => switch (action) {
-    'delete_equipment' || 'delete_user' => 'Données au moment de la suppression',
-    'update_equipment'                  => 'État avant modification',
-    'suspend_user'                      => 'Statut',
-    _                                   => 'Détails',
+  String _detailsSectionTitle(String action, AppLocalizations l10n) => switch (action) {
+    'delete_equipment' || 'delete_user' => l10n.logsSectionDeleteSnapshot,
+    'update_equipment'                  => l10n.logsSectionStateBeforeChange,
+    'suspend_user'                      => l10n.logsSectionUserStatus,
+    _                                   => l10n.logsSectionDetails,
   };
 
-  String _fieldLabel(String key) => switch (key) {
-    'id'          => 'ID',
-    'name'        => 'Nom',
-    'email'       => 'Email',
-    'role'        => 'Rôle',
-    'department'  => 'Département',
-    'phone'       => 'Téléphone',
-    'category'    => 'Catégorie',
-    'status'      => 'Statut',
-    'serial_number' => 'N° série',
-    'supplier'    => 'Fournisseur',
-    'location'    => 'Emplacement',
-    'is_active'   => 'Actif',
-    'new_status'  => 'Nouveau statut',
-    'reason'      => 'Raison',
-    _             => key,
+  String _fieldLabel(String key, AppLocalizations l10n) => switch (key) {
+    'id'            => l10n.logsFieldId,
+    'name'          => l10n.commonName,
+    'email'         => l10n.commonEmail,
+    'role'          => l10n.commonRole,
+    'department'    => l10n.commonDepartment,
+    'phone'         => l10n.logsFieldPhone,
+    'category'      => l10n.commonCategory,
+    'status'        => l10n.logsFieldStatus,
+    'serial_number' => l10n.logsFieldSerial,
+    'supplier'      => l10n.logsFieldSupplier,
+    'location'      => l10n.logsFieldLocation,
+    'is_active'     => l10n.logsFieldActive,
+    'new_status'    => l10n.logsFieldNewStatus,
+    'reason'        => l10n.logsFieldReason,
+    _               => key,
   };
 
   Widget _detailRow(String label, String value) {
@@ -941,11 +986,12 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n       = AppLocalizations.of(context)!;
     final action     = widget.log['action']      as String? ?? '';
-    final meta       = _kActionMeta[action];
-    final label      = meta?.$1 ?? action;
-    final icon       = meta?.$2 ?? Icons.info_outline;
-    final color      = meta?.$3 ?? AppColors.textSecondary;
+    final visual     = _kActionVisual[action];
+    final label      = _actionLabel(action, l10n);
+    final icon       = visual?.$1 ?? Icons.info_outline;
+    final color      = visual?.$2 ?? AppColors.textSecondary;
     final userName   = widget.log['user_name']   as String? ?? '?';
     final userRole   = widget.log['user_role']   as String? ?? '';
     final targetName = widget.log['target_name'] as String?;
@@ -960,7 +1006,7 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     final canViewResource = targetId != null && (targetType == 'equipment' || targetType == 'user');
 
     final fullDate    = _fullDate(timestamp);
-    final deviceLabel = _deviceLabel(userAgent);
+    final deviceLabel = _deviceLabel(userAgent, l10n);
 
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
@@ -1016,14 +1062,14 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
-                    SizedBox(width: 8),
+                    const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Première connexion depuis cette adresse IP pour ce compte.',
-                        style: TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w500),
+                        l10n.logsAlertNewIpFull,
+                        style: const TextStyle(fontSize: 12, color: AppColors.warning, fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
@@ -1044,34 +1090,34 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                   // Section utilisateur
                   _section(
                     icon: Icons.person_outline,
-                    title: 'Utilisateur',
+                    title: l10n.logsUserLabel,
                     action: canViewUser ? TextButton.icon(
                       onPressed: _showUserDetail,
                       icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text('Voir profil', style: TextStyle(fontSize: 12)),
+                      label: Text(l10n.logsViewProfile, style: const TextStyle(fontSize: 12)),
                       style: TextButton.styleFrom(foregroundColor: AppColors.primary, padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                     ) : null,
                     children: [
-                      _detailRow('Nom',   userName),
-                      _detailRow('Rôle',  userRole),
-                      if (userId != null) _detailRow('ID', userId),
+                      _detailRow(l10n.commonName, userName),
+                      _detailRow(l10n.commonRole, userRole),
+                      if (userId != null) _detailRow(l10n.logsFieldId, userId),
                     ],
                   ),
                   // Section ressource
                   if (targetName != null || targetId != null)
                     _section(
                       icon: _targetIcon(targetType),
-                      title: _targetTitle(targetType),
+                      title: _targetTitle(targetType, l10n),
                       action: canViewResource ? TextButton.icon(
                         onPressed: _showResourceDetail,
                         icon: const Icon(Icons.open_in_new, size: 14),
-                        label: const Text('Voir détails', style: TextStyle(fontSize: 12)),
+                        label: Text(l10n.logsViewDetails, style: const TextStyle(fontSize: 12)),
                         style: TextButton.styleFrom(foregroundColor: AppColors.primary, padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
                       ) : null,
                       children: [
-                        if (targetName != null) _detailRow('Nom', targetName),
-                        if (targetId   != null) _detailRow('ID',  targetId),
-                        if (targetType != null) _detailRow('Type', targetType),
+                        if (targetName != null) _detailRow(l10n.commonName,   targetName),
+                        if (targetId   != null) _detailRow(l10n.logsFieldId,  targetId),
+                        if (targetType != null) _detailRow(l10n.logsFieldType, targetType),
                       ],
                     ),
                   // Section détails spécifiques
@@ -1079,12 +1125,12 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                   // Section métadonnées
                   _section(
                     icon: Icons.dns_outlined,
-                    title: 'Métadonnées',
+                    title: l10n.logsMetadata,
                     children: [
-                      _detailRow('Horodatage', fullDate),
-                      _detailRow('IP',         ipAddress ?? 'Inconnue'),
-                      _detailRow('Appareil',   deviceLabel),
-                      if (userAgent != null) _detailRow('User-Agent', userAgent),
+                      _detailRow(l10n.logsFieldTimestamp,   fullDate),
+                      _detailRow(l10n.logsFieldIp,          ipAddress ?? l10n.logsFieldIpUnknown),
+                      _detailRow(l10n.logsFieldDeviceLabel, deviceLabel),
+                      if (userAgent != null) _detailRow(l10n.logsFieldUserAgent, userAgent),
                     ],
                   ),
                   // Message de résultat de restauration
@@ -1124,11 +1170,11 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
-                            SizedBox(width: 8),
-                            Text('Cette action a déjà été restaurée.', style: TextStyle(color: AppColors.success, fontSize: 13, fontWeight: FontWeight.w500)),
+                            const Icon(Icons.check_circle_outline, color: AppColors.success, size: 18),
+                            const SizedBox(width: 8),
+                            Text(l10n.logsAlreadyRestored, style: const TextStyle(color: AppColors.success, fontSize: 13, fontWeight: FontWeight.w500)),
                           ],
                         ),
                       )
@@ -1140,7 +1186,7 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
                           icon: _restoring
                               ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                               : const Icon(Icons.restore),
-                          label: Text(_restoring ? 'Restauration…' : _restoreLabel),
+                          label: Text(_restoring ? l10n.logsRestoring : _restoreLabelOf(l10n)),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1202,11 +1248,11 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     } catch (_) { return iso; }
   }
 
-  String _deviceLabel(String? ua) {
-    if (ua == null) return 'Inconnu';
+  String _deviceLabel(String? ua, AppLocalizations l10n) {
+    if (ua == null) return l10n.logsDeviceUnknown;
     final u = ua.toLowerCase();
-    if (u.contains('mobile') || u.contains('android') || u.contains('iphone')) return 'Mobile';
-    return 'PC / Navigateur';
+    if (u.contains('mobile') || u.contains('android') || u.contains('iphone')) return l10n.logsDeviceMobile;
+    return l10n.logsDevicePc;
   }
 
 
@@ -1219,13 +1265,13 @@ class _LogDetailSheetState extends State<_LogDetailSheet> {
     _           => Icons.link,
   };
 
-  String _targetTitle(String? type) => switch (type) {
-    'equipment' => 'Équipement',
-    'user'      => 'Utilisateur concerné',
-    'issue'     => 'Incident',
-    'inventory' => 'Article d\'inventaire',
-    'auth'      => 'Authentification',
-    _           => 'Ressource',
+  String _targetTitle(String? type, AppLocalizations l10n) => switch (type) {
+    'equipment' => l10n.logsTargetEquipment,
+    'user'      => l10n.logsTargetUser,
+    'issue'     => l10n.logsTargetIncident,
+    'inventory' => l10n.logsTargetInventory,
+    'auth'      => l10n.logsTargetAuth,
+    _           => l10n.logsTargetResource,
   };
 }
 
@@ -1260,26 +1306,27 @@ class _UserDetailDialogState extends State<_UserDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.person_outline, color: AppColors.primary),
-          SizedBox(width: 8),
-          Text('Profil utilisateur'),
+          const Icon(Icons.person_outline, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(l10n.logsUserProfileTitle),
         ],
       ),
       content: _error != null
-          ? Text('Erreur : $_error', style: const TextStyle(color: AppColors.error))
+          ? Text(l10n.logsErrorLoading(_error!), style: const TextStyle(color: AppColors.error))
           : _user == null
               ? const SizedBox(width: 200, height: 80, child: Center(child: CircularProgressIndicator()))
-              : _buildUserCard(),
+              : _buildUserCard(l10n),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.commonClose)),
       ],
     );
   }
 
-  Widget _buildUserCard() {
+  Widget _buildUserCard(AppLocalizations l10n) {
     final u = _user!;
     return SizedBox(
       width: 320,
@@ -1287,12 +1334,12 @@ class _UserDetailDialogState extends State<_UserDetailDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row('Nom',         u['name']       as String? ?? '—'),
-          _row('Email',       u['email']      as String? ?? '—'),
-          _row('Rôle',        u['role']       as String? ?? '—'),
-          _row('Département', u['department'] as String? ?? '—'),
-          _row('Téléphone',   u['phone']      as String? ?? '—'),
-          _row('Statut',      (u['is_active'] == 1 || u['is_active'] == true) ? 'Actif' : 'Suspendu'),
+          _row(l10n.commonName,         u['name']       as String? ?? '—'),
+          _row(l10n.commonEmail,        u['email']      as String? ?? '—'),
+          _row(l10n.commonRole,         u['role']       as String? ?? '—'),
+          _row(l10n.commonDepartment,   u['department'] as String? ?? '—'),
+          _row(l10n.logsFieldPhone,     u['phone']      as String? ?? '—'),
+          _row(l10n.logsFieldStatus,    (u['is_active'] == 1 || u['is_active'] == true) ? l10n.logsUserStatusActive : l10n.logsUserStatusSuspended),
         ],
       ),
     );
@@ -1340,29 +1387,30 @@ class _EquipmentDetailDialogState extends State<_EquipmentDetailDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: const Row(
+      title: Row(
         children: [
-          Icon(Icons.medical_services_outlined, color: AppColors.primary),
-          SizedBox(width: 8),
-          Text('Équipement'),
+          const Icon(Icons.medical_services_outlined, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(l10n.logsEquipmentTitle),
         ],
       ),
       content: _error != null
           ? Text(
-              _error!.contains('404') ? 'Équipement supprimé ou introuvable.' : 'Erreur : $_error',
+              _error!.contains('404') ? l10n.logsEquipmentNotFound : l10n.logsErrorLoading(_error!),
               style: const TextStyle(color: AppColors.error),
             )
           : _equipment == null
               ? const SizedBox(width: 200, height: 80, child: Center(child: CircularProgressIndicator()))
-              : _buildEquipmentCard(),
+              : _buildEquipmentCard(l10n),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Fermer')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.commonClose)),
       ],
     );
   }
 
-  Widget _buildEquipmentCard() {
+  Widget _buildEquipmentCard(AppLocalizations l10n) {
     final e = _equipment!;
     return SizedBox(
       width: 320,
@@ -1370,13 +1418,13 @@ class _EquipmentDetailDialogState extends State<_EquipmentDetailDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _row('Nom',          e['name']          as String? ?? '—'),
-          _row('Catégorie',    e['category']      as String? ?? '—'),
-          _row('Département',  e['department']    as String? ?? '—'),
-          _row('Statut',       e['status']        as String? ?? '—'),
-          _row('N° série',     e['serial_number'] as String? ?? '—'),
-          _row('Fournisseur',  e['supplier']      as String? ?? '—'),
-          _row('Emplacement',  e['location']      as String? ?? '—'),
+          _row(l10n.commonName,          e['name']          as String? ?? '—'),
+          _row(l10n.commonCategory,      e['category']      as String? ?? '—'),
+          _row(l10n.commonDepartment,    e['department']    as String? ?? '—'),
+          _row(l10n.logsFieldStatus,     e['status']        as String? ?? '—'),
+          _row(l10n.logsFieldSerial,     e['serial_number'] as String? ?? '—'),
+          _row(l10n.logsFieldSupplier,   e['supplier']      as String? ?? '—'),
+          _row(l10n.logsFieldLocation,   e['location']      as String? ?? '—'),
         ],
       ),
     );

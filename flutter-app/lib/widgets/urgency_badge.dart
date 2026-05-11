@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/issue.dart';
 import '../theme/app_theme.dart';
 
@@ -70,7 +71,7 @@ class UrgencyBadge extends StatelessWidget {
           Icon(_icon, size: iconSize, color: _color),
           SizedBox(width: isCompact ? 3 : 4),
           Text(
-            urgency.displayName,
+            urgency.localizedName(AppLocalizations.of(context)!),
             style: TextStyle(
               color: _color,
               fontSize: fontSize,

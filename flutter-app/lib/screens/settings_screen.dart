@@ -22,42 +22,38 @@ class _RoleConfig {
   );
 }
 
-const List<MapEntry<String, String>> _kAllPermissions = [
-  MapEntry('viewEquipment',     'Consulter les équipements'),
-  MapEntry('reportIssue',       'Signaler un problème'),
-  MapEntry('trackIssues',       'Suivre les demandes'),
-  MapEntry('approveRequests',   'Approuver les demandes'),
-  MapEntry('assignTasks',       'Assigner les tâches'),
-  MapEntry('updateRepairs',     'Mettre à jour les réparations'),
-  MapEntry('registerParts',     'Enregistrer les pièces'),
-  MapEntry('manageEquipment',   'Gérer les équipements'),
-  MapEntry('manageUsers',       'Gérer les utilisateurs'),
-  MapEntry('manageDepartments', 'Gérer les départements'),
-  MapEntry('manageCategories',  'Gérer les catégories'),
-  MapEntry('generateReports',   'Générer des rapports'),
-  MapEntry('viewInventory',     'Consulter l\'inventaire'),
-  MapEntry('changeDepartment',  'Changer son département directement'),
-];
-
-// Définition d'une page : label, icône, permissions associées
+// Définition d'une page : icône + permissions associées (le label est résolu à l'affichage via _pageLabel).
 class _PageDef {
-  final String label;
   final IconData icon;
   final List<Permission> permissions;
-  const _PageDef(this.label, this.icon, this.permissions);
+  const _PageDef(this.icon, this.permissions);
 }
 
 const Map<String, _PageDef> _pageDefs = {
-  'dashboard':     _PageDef('Tableau de bord',  Icons.dashboard_outlined,        [Permission.viewEquipment]),
-  'equipment':     _PageDef('Équipements',        Icons.inventory_2_outlined,     [Permission.viewEquipment, Permission.manageEquipment]),
-  'issueTracking': _PageDef('Suivi incidents',    Icons.troubleshoot_outlined,    [Permission.trackIssues, Permission.approveRequests, Permission.assignTasks]),
-  'issueForm':     _PageDef('Signaler incident',  Icons.report_problem_outlined,  [Permission.reportIssue]),
-  'technician':    _PageDef('Technicien',          Icons.build_outlined,           [Permission.updateRepairs, Permission.registerParts]),
-  'inventory':     _PageDef('Inventaire',          Icons.inventory_outlined,       [Permission.viewInventory]),
-  'reports':       _PageDef('Rapports',            Icons.analytics_outlined,       [Permission.generateReports]),
-  'users':         _PageDef('Utilisateurs',        Icons.people_outlined,          [Permission.manageUsers]),
-  'settings':      _PageDef('Paramètres',          Icons.settings_outlined,        [Permission.manageDepartments, Permission.manageCategories]),
-  'logs':          _PageDef('Journaux',            Icons.history_outlined,         [Permission.manageUsers]),
+  'dashboard':     _PageDef(Icons.dashboard_outlined,        [Permission.viewEquipment]),
+  'equipment':     _PageDef(Icons.inventory_2_outlined,     [Permission.viewEquipment, Permission.manageEquipment]),
+  'issueTracking': _PageDef(Icons.troubleshoot_outlined,    [Permission.trackIssues, Permission.approveRequests, Permission.assignTasks]),
+  'issueForm':     _PageDef(Icons.report_problem_outlined,  [Permission.reportIssue]),
+  'technician':    _PageDef(Icons.build_outlined,           [Permission.updateRepairs, Permission.registerParts]),
+  'inventory':     _PageDef(Icons.inventory_outlined,       [Permission.viewInventory]),
+  'reports':       _PageDef(Icons.analytics_outlined,       [Permission.generateReports]),
+  'users':         _PageDef(Icons.people_outlined,          [Permission.manageUsers]),
+  'settings':      _PageDef(Icons.settings_outlined,        [Permission.manageDepartments, Permission.manageCategories]),
+  'logs':          _PageDef(Icons.history_outlined,         [Permission.manageUsers]),
+};
+
+String _pageLabel(String screenKey, AppLocalizations l10n) => switch (screenKey) {
+  'dashboard'     => l10n.navDashboard,
+  'equipment'     => l10n.navEquipment,
+  'issueTracking' => l10n.navIssueTracking,
+  'issueForm'     => l10n.navReportIssue,
+  'technician'    => l10n.navTechnician,
+  'inventory'     => l10n.navInventory,
+  'reports'       => l10n.navReports,
+  'users'         => l10n.navUsers,
+  'settings'      => l10n.navSettings,
+  'logs'          => l10n.navLogs,
+  _               => screenKey,
 };
 
 class SettingsScreen extends StatefulWidget {
@@ -85,20 +81,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   // État de l'onglet "Gestion des rôles" — cards de rôles
   List<_RoleConfig> _roles = [];
   bool _rolesLoading = false;
-
-  /// Noms lisibles des types d'écrans
-  static const Map<String, String> _screenLabels = {
-    'dashboard':     'Tableau de bord',
-    'equipment':     'Équipements',
-    'issueTracking': 'Suivi incidents',
-    'issueForm':     'Signaler incident',
-    'technician':    'Technicien',
-    'inventory':     'Inventaire',
-    'reports':       'Rapports',
-    'users':         'Utilisateurs',
-    'settings':      'Paramètres',
-    'logs':          'Journaux',
-  };
 
   @override
   void initState() {
@@ -196,10 +178,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 const SizedBox(width: 8),
                 Text(AppLocalizations.of(context)!.settingsMenuOrder),
               ])),
-              const Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Icon(Icons.admin_panel_settings, size: 18),
-                SizedBox(width: 8),
-                Text('Gestion des rôles'),
+              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                const Icon(Icons.admin_panel_settings, size: 18),
+                const SizedBox(width: 8),
+                Text(l10n.settingsRolesTab),
               ])),
             ],
           ),
@@ -413,7 +395,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   decoration: const InputDecoration(isDense: true),
                   items: UserRole.values.map((r) => DropdownMenuItem(
                     value: r,
-                    child: Text(r.displayName),
+                    child: Text(r.localizedName(l10n)),
                   )).toList(),
                   onChanged: (r) { if (r != null) setState(() => _selectedRole = r); },
                 ),
@@ -441,7 +423,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 },
                 itemBuilder: (context, index) {
                   final screenType = currentOrder[index];
-                  final label = _screenLabels[screenType] ?? screenType;
+                  final label = _pageLabel(screenType, l10n);
                   return ListTile(
                     key: ValueKey(screenType),
                     leading: Container(
@@ -545,21 +527,22 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   // ── Section 1 : cartes de rôles ───────────────────────────────────────────
 
   Widget _buildRolesSection() {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Rôles et permissions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-              SizedBox(height: 2),
-              Text('Modifier les permissions ou créer un rôle personnalisé', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.settingsRolesTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              const SizedBox(height: 2),
+              Text(l10n.settingsRolesSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
             ]),
             ElevatedButton.icon(
               onPressed: _showCreateRoleDialog,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('Nouveau rôle'),
+              label: Text(l10n.settingsNewRole),
             ),
           ],
         ),
@@ -572,12 +555,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
           ),
-          child: const Row(children: [
-            Icon(Icons.info_outline, color: AppColors.primary, size: 16),
-            SizedBox(width: 8),
+          child: Row(children: [
+            const Icon(Icons.info_outline, color: AppColors.primary, size: 16),
+            const SizedBox(width: 8),
             Expanded(child: Text(
-              'Les permissions de l\'Administrateur sont verrouillées — il a toujours accès à tout. Les rôles personnalisés peuvent être supprimés.',
-              style: TextStyle(fontSize: 12, color: AppColors.primary),
+              l10n.settingsAdminLockedInfo,
+              style: const TextStyle(fontSize: 12, color: AppColors.primary),
             )),
           ]),
         ),
@@ -585,9 +568,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
         if (_rolesLoading)
           const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
         else if (_roles.isEmpty)
-          const Center(child: Padding(
-            padding: EdgeInsets.all(32),
-            child: Text('Aucun rôle chargé.', style: TextStyle(color: AppColors.textSecondary)),
+          Center(child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Text(l10n.settingsNoRoles, style: const TextStyle(color: AppColors.textSecondary)),
           ))
         else
           ..._roles.map((role) => Padding(
@@ -599,6 +582,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Widget _buildRoleCard(_RoleConfig role) {
+    final l10n = AppLocalizations.of(context)!;
     final color = _roleColor(role.name);
     return Card(
       child: Padding(
@@ -625,17 +609,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: AppColors.warningLight, borderRadius: BorderRadius.circular(10)),
-                  child: const Text('Personnalisé', style: TextStyle(fontSize: 11, color: AppColors.warning)),
+                  child: Text(l10n.settingsCustomBadge, style: const TextStyle(fontSize: 11, color: AppColors.warning)),
                 ),
               ],
               const Spacer(),
               if (role.name == 'admin')
                 Tooltip(
-                  message: 'L\'administrateur a toujours toutes les permissions',
+                  message: l10n.settingsAdminAlwaysAll,
                   child: TextButton.icon(
                     onPressed: null,
                     icon: const Icon(Icons.lock, size: 16),
-                    label: const Text('Verrouillé'),
+                    label: Text(l10n.settingsLocked),
                     style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
                   ),
                 )
@@ -643,14 +627,14 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 TextButton.icon(
                   onPressed: () => _showEditPermissionsDialog(role),
                   icon: const Icon(Icons.edit, size: 16),
-                  label: const Text('Modifier'),
+                  label: Text(l10n.commonEdit),
                   style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                 ),
               if (!role.isBuiltin)
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 20),
                   color: AppColors.error,
-                  tooltip: 'Supprimer',
+                  tooltip: l10n.commonDelete,
                   onPressed: () => _confirmDeleteRole(role),
                 ),
             ]),
@@ -659,14 +643,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               Text(role.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             ],
             const SizedBox(height: 10),
-            const Text('Permissions actives :', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+            Text(l10n.settingsRoleActive, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
             const SizedBox(height: 6),
             role.permissions.isEmpty
-                ? const Text('Aucune permission', style: TextStyle(color: AppColors.textSecondary, fontSize: 12))
+                ? Text(l10n.settingsNoPermissions, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))
                 : Wrap(
                     spacing: 6, runSpacing: 6,
                     children: role.permissions.map((p) {
-                      final label = _kAllPermissions.where((e) => e.key == p).firstOrNull?.value ?? p;
+                      final perm = Permission.values.where((e) => e.name == p).firstOrNull;
+                      final label = perm?.localizedName(l10n) ?? p;
                       return Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: AppColors.successLight, borderRadius: BorderRadius.circular(10)),
@@ -681,6 +666,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   void _showCreateRoleDialog() {
+    final l10n = AppLocalizations.of(context)!;
     final nameCtrl    = TextEditingController();
     final displayCtrl = TextEditingController();
     final descCtrl    = TextEditingController();
@@ -702,7 +688,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   child: Row(children: [
                     const Icon(Icons.badge_outlined, color: AppColors.primary),
                     const SizedBox(width: 12),
-                    const Expanded(child: Text('Nouveau rôle personnalisé', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+                    Expanded(child: Text(l10n.settingsNewRoleTitle, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
                     IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                   ]),
                 ),
@@ -710,21 +696,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Identifiant (ex: nurse)', helperText: 'Lettres, chiffres, underscores', prefixIcon: Icon(Icons.code))),
+                      TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.settingsRoleIdLabel, helperText: l10n.settingsRoleIdHint, prefixIcon: const Icon(Icons.code))),
                       const SizedBox(height: 12),
-                      TextField(controller: displayCtrl, decoration: const InputDecoration(labelText: 'Nom affiché (ex: Infirmier)', prefixIcon: Icon(Icons.label_outline))),
+                      TextField(controller: displayCtrl, decoration: InputDecoration(labelText: l10n.settingsRoleDisplayLabel, prefixIcon: const Icon(Icons.label_outline))),
                       const SizedBox(height: 12),
-                      TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description (optionnel)', prefixIcon: Icon(Icons.notes))),
+                      TextField(controller: descCtrl, decoration: InputDecoration(labelText: l10n.settingsRoleDescLabel, prefixIcon: const Icon(Icons.notes))),
                       const SizedBox(height: 16),
-                      const Text('Permissions', style: TextStyle(fontWeight: FontWeight.w600)),
+                      Text(l10n.settingsPermissionsLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
-                      ..._kAllPermissions.map((perm) => CheckboxListTile(
+                      ...Permission.values.map((perm) => CheckboxListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        value: selectedPerms.contains(perm.key),
-                        title: Text(perm.value, style: const TextStyle(fontSize: 13)),
+                        value: selectedPerms.contains(perm.name),
+                        title: Text(perm.localizedName(l10n), style: const TextStyle(fontSize: 13)),
                         controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (v) => setDialog(() { if (v == true) selectedPerms.add(perm.key); else selectedPerms.remove(perm.key); }),
+                        onChanged: (v) => setDialog(() { if (v == true) selectedPerms.add(perm.name); else selectedPerms.remove(perm.name); }),
                       )),
                       const SizedBox(height: 8),
                     ]),
@@ -733,7 +719,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(children: [
-                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler'))),
+                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel))),
                     const SizedBox(width: 12),
                     Expanded(child: ElevatedButton(
                       onPressed: () async {
@@ -743,13 +729,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           if (ctx.mounted) Navigator.pop(ctx);
                           await _loadRoles();
                           await DataService().reloadRolesConfig();
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rôle créé'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleCreated), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
                         } catch (_) {
                           if (ctx.mounted) Navigator.pop(ctx);
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur lors de la création'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleCreateError), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
                         }
                       },
-                      child: const Text('Créer'),
+                      child: Text(l10n.settingsCreateRole),
                     )),
                   ]),
                 ),
@@ -764,6 +750,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   void _showEditPermissionsDialog(_RoleConfig role) {
     // L'admin est verrouillé — on n'ouvre pas le dialog
     if (role.name == 'admin') return;
+    final l10n = AppLocalizations.of(context)!;
 
     final currentPerms = Set<String>.from(role.permissions);
 
@@ -784,8 +771,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     const Icon(Icons.tune, color: AppColors.primary),
                     const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Permissions — ${role.displayName}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                      if (role.isBuiltin) const Text('Rôle intégré', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text(l10n.settingsEditPermissionsTitle(role.displayName), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      if (role.isBuiltin) Text(l10n.settingsBuiltinRole, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ])),
                     IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                   ]),
@@ -793,20 +780,20 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 4, 24, 0),
                   child: Row(children: [
-                    TextButton.icon(onPressed: () => setDialog(() => currentPerms.addAll(_kAllPermissions.map((e) => e.key))), icon: const Icon(Icons.select_all, size: 16), label: const Text('Tout sélectionner', style: TextStyle(fontSize: 12))),
-                    TextButton.icon(onPressed: () => setDialog(() => currentPerms.clear()), icon: const Icon(Icons.deselect, size: 16), label: const Text('Tout désélectionner', style: TextStyle(fontSize: 12))),
+                    TextButton.icon(onPressed: () => setDialog(() => currentPerms.addAll(Permission.values.map((p) => p.name))), icon: const Icon(Icons.select_all, size: 16), label: Text(l10n.settingsSelectAll, style: const TextStyle(fontSize: 12))),
+                    TextButton.icon(onPressed: () => setDialog(() => currentPerms.clear()), icon: const Icon(Icons.deselect, size: 16), label: Text(l10n.settingsDeselectAll, style: const TextStyle(fontSize: 12))),
                   ]),
                 ),
                 Flexible(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Column(
-                      children: _kAllPermissions.map((perm) => CheckboxListTile(
+                      children: Permission.values.map((perm) => CheckboxListTile(
                         dense: true,
-                        value: currentPerms.contains(perm.key),
-                        title: Text(perm.value, style: const TextStyle(fontSize: 13)),
+                        value: currentPerms.contains(perm.name),
+                        title: Text(perm.localizedName(l10n), style: const TextStyle(fontSize: 13)),
                         controlAffinity: ListTileControlAffinity.leading,
-                        onChanged: (v) => setDialog(() { if (v == true) currentPerms.add(perm.key); else currentPerms.remove(perm.key); }),
+                        onChanged: (v) => setDialog(() { if (v == true) currentPerms.add(perm.name); else currentPerms.remove(perm.name); }),
                       )).toList(),
                     ),
                   ),
@@ -814,7 +801,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(children: [
-                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler'))),
+                    Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel))),
                     const SizedBox(width: 12),
                     Expanded(child: ElevatedButton(
                       onPressed: () async {
@@ -822,13 +809,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                           await DataService().saveRolePermissions(role.name, currentPerms.toList());
                           if (ctx.mounted) Navigator.pop(ctx);
                           await _loadRoles();
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Permissions de ${role.displayName} mises à jour'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRolePermissionsUpdated(role.displayName)), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
                         } catch (_) {
                           if (ctx.mounted) Navigator.pop(ctx);
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur lors de la sauvegarde'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleSaveError), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
                         }
                       },
-                      child: const Text('Enregistrer'),
+                      child: Text(l10n.commonSave),
                     )),
                   ]),
                 ),
@@ -841,14 +828,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   }
 
   Future<void> _confirmDeleteRole(_RoleConfig role) async {
+    final l10n = AppLocalizations.of(context)!;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Supprimer le rôle'),
-        content: Text('Supprimer "${role.displayName}" ? Cette action est irréversible.'),
+        title: Text(l10n.settingsDeleteRole),
+        content: Text(l10n.settingsRoleDeleteConfirm(role.displayName)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
-          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white), onPressed: () => Navigator.pop(ctx, true), child: const Text('Supprimer')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white), onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.commonDelete)),
         ],
       ),
     );
@@ -857,9 +845,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       await AuthApiService.instance.deleteRole(role.name);
       await _loadRoles();
       await DataService().reloadRolesConfig();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Rôle "${role.displayName}" supprimé'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleDeletedToast(role.displayName)), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur lors de la suppression'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleDeleteError), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
     }
   }
 
@@ -876,6 +864,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   // ── Section 2 : accès aux pages par rôle ─────────────────────────────────
 
   Widget _buildPageAccessSection() {
+    final l10n = AppLocalizations.of(context)!;
     final pages = _pagesEnabled[_roleTabRole.name]!;
     final perms  = _permissionsEnabled[_roleTabRole.name]!;
     final isAdmin = _roleTabRole == UserRole.admin;
@@ -883,21 +872,21 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Accès aux pages par rôle', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        Text(l10n.settingsAccessByRole, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
         const SizedBox(height: 2),
-        const Text('Cochez les pages et fonctions accessibles pour le rôle sélectionné.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+        Text(l10n.settingsAccessDesc, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         const SizedBox(height: 12),
 
         // Sélecteur de rôle
         Row(children: [
           const Icon(Icons.badge_outlined, color: AppColors.primary),
           const SizedBox(width: 12),
-          const Text('Rôle', style: TextStyle(fontWeight: FontWeight.w500)),
+          Text(l10n.settingsRoleLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(width: 12),
           Expanded(child: DropdownButtonFormField<UserRole>(
             value: _roleTabRole,
             decoration: const InputDecoration(isDense: true),
-            items: UserRole.values.map((r) => DropdownMenuItem(value: r, child: Text(r.displayName))).toList(),
+            items: UserRole.values.map((r) => DropdownMenuItem(value: r, child: Text(r.localizedName(l10n)))).toList(),
             onChanged: (r) { if (r != null) setState(() => _roleTabRole = r); },
           )),
         ]),
@@ -907,10 +896,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: AppColors.warningLight, borderRadius: BorderRadius.circular(8), border: Border.all(color: AppColors.error.withValues(alpha: 0.3))),
-            child: const Row(children: [
-              Icon(Icons.lock, size: 16, color: AppColors.error),
-              SizedBox(width: 8),
-              Expanded(child: Text('L\'administrateur a accès à toutes les pages et fonctions sans restriction.', style: TextStyle(fontSize: 12, color: AppColors.error))),
+            child: Row(children: [
+              const Icon(Icons.lock, size: 16, color: AppColors.error),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.settingsAdminAllAccess, style: const TextStyle(fontSize: 12, color: AppColors.error))),
             ]),
           ),
         ],
@@ -939,10 +928,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     title: Row(children: [
                       Icon(def.icon, size: 18, color: pageEnabled ? AppColors.primary : AppColors.textSecondary),
                       const SizedBox(width: 10),
-                      Text(def.label, style: TextStyle(fontWeight: FontWeight.w600, color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary)),
+                      Text(_pageLabel(screenKey, l10n), style: TextStyle(fontWeight: FontWeight.w600, color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary)),
                     ]),
                     children: pagePerms.isEmpty
-                        ? [const Padding(padding: EdgeInsets.fromLTRB(56, 0, 16, 12), child: Text('Aucune fonction spécifique', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)))]
+                        ? [Padding(padding: const EdgeInsets.fromLTRB(56, 0, 16, 12), child: Text(l10n.settingsNoSpecificFunction, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)))]
                         : pagePerms.map((perm) {
                             final permEnabled = isAdmin ? true : (perms[perm.name] ?? false);
                             return Padding(
@@ -955,7 +944,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   onChanged: (isAdmin || !pageEnabled) ? null : (v) => setState(() { _permissionsEnabled[_roleTabRole.name]![perm.name] = v ?? false; }),
                                 ),
                                 const SizedBox(width: 6),
-                                Expanded(child: Text(perm.displayName, style: TextStyle(fontSize: 13, color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary))),
+                                Expanded(child: Text(perm.localizedName(l10n), style: TextStyle(fontSize: 13, color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary))),
                               ]),
                             );
                           }).toList(),
@@ -976,10 +965,10 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                 _pagesEnabled[_roleTabRole.name] = {for (final s in allScreens) s: true};
                 _permissionsEnabled[_roleTabRole.name] = {for (final p in Permission.values) p.name: rolePerms.contains(p.name)};
               });
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Réinitialisé aux valeurs par défaut'), behavior: SnackBarBehavior.floating));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsResetDone), behavior: SnackBarBehavior.floating));
             },
             icon: const Icon(Icons.restore),
-            label: const Text('Réinitialiser'),
+            label: Text(l10n.settingsReset),
           )),
           const SizedBox(width: 12),
           Expanded(child: ElevatedButton.icon(
@@ -988,15 +977,15 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               try {
                 final enabledPages = _pageDefs.keys.where((k) => pages[k] == true).toList();
                 await DataService().saveSidebarConfig(_roleTabRole.name, enabledPages);
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Configuration sauvegardée'), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleConfigSaved), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
               } catch (_) {
-                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur lors de la sauvegarde'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleConfigSaveError), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
               } finally {
                 if (mounted) setState(() => _roleSaving = false);
               }
             },
             icon: _roleSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.save),
-            label: const Text('Sauvegarder'),
+            label: Text(l10n.commonSave),
           )),
         ]),
       ],

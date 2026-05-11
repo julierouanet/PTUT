@@ -167,7 +167,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   label: Text('${_availableIssues.length}'),
                   child: const Icon(Icons.inbox_outlined, size: 18),
                 ),
-                text: 'Incidents disponibles',
+                text: l10n.techAvailableTab,
               ),
               Tab(
                 icon: Badge(
@@ -175,11 +175,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   label: Text('${_myIssues.length}'),
                   child: const Icon(Icons.build_outlined, size: 18),
                 ),
-                text: 'Mes interventions',
+                text: l10n.techMyInterventionsTab,
               ),
-              const Tab(
-                icon: Icon(Icons.calendar_today_outlined, size: 18),
-                text: 'Agenda',
+              Tab(
+                icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                text: l10n.techScheduleTab,
               ),
             ],
           ),
@@ -213,13 +213,13 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Incidents disponibles',
+              l10n.techAvailableTitle,
               style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Incidents approuvés en attente d\'un technicien — prenez en charge ceux que vous souhaitez traiter.',
-              style: TextStyle(color: AppColors.textSecondary),
+            Text(
+              l10n.techAvailableSubtitle,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -227,12 +227,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               width: double.infinity,
               child: Card(
                 child: issues.isEmpty
-                    ? const Padding(
-                        padding: EdgeInsets.all(32),
+                    ? Padding(
+                        padding: const EdgeInsets.all(32),
                         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                          Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
-                          SizedBox(width: 12),
-                          Text('Aucun incident approuvé disponible.', style: TextStyle(color: AppColors.textSecondary)),
+                          const Icon(Icons.check_circle_outline, color: AppColors.success, size: 24),
+                          const SizedBox(width: 12),
+                          Text(l10n.techNoAvailableIncidents, style: const TextStyle(color: AppColors.textSecondary)),
                         ]),
                       )
                     : Column(
@@ -247,6 +247,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   Widget _buildAvailableIssueItem(Issue issue, bool isMobile) {
+    final l10n = AppLocalizations.of(context)!;
     final eq = _equipmentFor(issue);
     return Container(
       padding: const EdgeInsets.all(16),
@@ -284,7 +285,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 ]),
               ],
               const SizedBox(height: 4),
-              Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              Text(l10n.issuesReportedByDate(issue.reporter, issue.createdAt), style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
               const SizedBox(height: 12),
               Row(children: [
                 if (eq != null) ...[
@@ -292,7 +293,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                     child: OutlinedButton.icon(
                       onPressed: () => EquipmentDetailDialog.show(context, eq),
                       icon: const Icon(Icons.info_outline, size: 14),
-                      label: const Text('Fiche'),
+                      label: Text(l10n.techSheet),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -302,7 +303,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   child: ElevatedButton.icon(
                     onPressed: () => _showTakeOverDialog(issue),
                     icon: const Icon(Icons.handyman_outlined, size: 16),
-                    label: const Text('Prendre en charge'),
+                    label: Text(l10n.techTakeCharge),
                     style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
                   ),
                 ),
@@ -335,7 +336,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Row(children: [
-                    Text('Signalé par ${issue.reporter} • ${issue.createdAt}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Text(l10n.issuesReportedByDate(issue.reporter, issue.createdAt), style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                     if (eq != null && eq.location.isNotEmpty) ...[
                       const SizedBox(width: 10),
                       const Icon(Icons.location_on, size: 12, color: AppColors.textMuted),
@@ -358,13 +359,13 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 OutlinedButton.icon(
                   onPressed: () => EquipmentDetailDialog.show(context, eq),
                   icon: const Icon(Icons.info_outline, size: 14),
-                  label: const Text('Fiche'),
+                  label: Text(l10n.techSheet),
                 ),
               const SizedBox(width: 8),
               ElevatedButton.icon(
                 onPressed: () => _showTakeOverDialog(issue),
                 icon: const Icon(Icons.handyman_outlined, size: 16),
-                label: const Text('Prendre en charge'),
+                label: Text(l10n.techTakeCharge),
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
               ),
             ]),
@@ -441,13 +442,26 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     ).toList();
   }
 
-  String _monthName(int month) {
-    const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
-    return months[month - 1];
+  String _monthName(int month, AppLocalizations l10n) {
+    switch (month) {
+      case 1:  return l10n.monthJanuary;
+      case 2:  return l10n.monthFebruary;
+      case 3:  return l10n.monthMarch;
+      case 4:  return l10n.monthApril;
+      case 5:  return l10n.monthMay;
+      case 6:  return l10n.monthJune;
+      case 7:  return l10n.monthJuly;
+      case 8:  return l10n.monthAugust;
+      case 9:  return l10n.monthSeptember;
+      case 10: return l10n.monthOctober;
+      case 11: return l10n.monthNovember;
+      case 12: return l10n.monthDecember;
+      default: return '';
+    }
   }
 
   Widget _buildAgendaTab(bool isMobile) {
+    final l10n = AppLocalizations.of(context)!;
     final selectedEvents = _eventsForDay(_selectedDay);
     final allEvents = _allAgendaEvents;
 
@@ -466,22 +480,22 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         children: [
           // ── Header ────────────────────────────────────────────────────────
           Text(
-            'Agenda',
+            l10n.techScheduleTitle,
             style: TextStyle(fontSize: isMobile ? 20 : 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Votre calendrier d\'interventions et de maintenances planifiées.',
-            style: TextStyle(color: AppColors.textSecondary),
+          Text(
+            l10n.techScheduleSubtitle,
+            style: const TextStyle(color: AppColors.textSecondary),
           ),
           const SizedBox(height: 16),
 
           // ── Légende ───────────────────────────────────────────────────────
           Wrap(spacing: 12, runSpacing: 4, children: [
-            _legendItem(AppColors.warning,  Icons.build_circle_outlined, 'En cours'),
-            _legendItem(AppColors.success,  Icons.check_circle_outlined, 'Résolu'),
-            _legendItem(AppColors.textSecondary, Icons.build_outlined, 'Maintenance passée'),
-            _legendItem(AppColors.primary,  Icons.event_repeat, 'Planifiée'),
+            _legendItem(AppColors.warning,  Icons.build_circle_outlined, l10n.techLegendInProgress),
+            _legendItem(AppColors.success,  Icons.check_circle_outlined, l10n.techLegendResolved),
+            _legendItem(AppColors.textSecondary, Icons.build_outlined, l10n.techLegendPastMaintenance),
+            _legendItem(AppColors.primary,  Icons.event_repeat, l10n.techLegendPlanned),
           ]),
           const SizedBox(height: 12),
 
@@ -524,7 +538,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
           // ── Événements du jour sélectionné ───────────────────────────────
           Text(
-            'Événements du ${_selectedDay.day.toString().padLeft(2, '0')}/${_selectedDay.month.toString().padLeft(2, '0')}/${_selectedDay.year}',
+            l10n.techEventsOn('${_selectedDay.day.toString().padLeft(2, '0')}/${_selectedDay.month.toString().padLeft(2, '0')}/${_selectedDay.year}'),
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 8),
@@ -532,10 +546,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               ? Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Row(children: const [
-                      Icon(Icons.event_available, color: AppColors.textSecondary),
-                      SizedBox(width: 12),
-                      Text('Aucun événement ce jour.', style: TextStyle(color: AppColors.textSecondary)),
+                    child: Row(children: [
+                      const Icon(Icons.event_available, color: AppColors.textSecondary),
+                      const SizedBox(width: 12),
+                      Text(l10n.techNoEventsToday, style: const TextStyle(color: AppColors.textSecondary)),
                     ]),
                   ),
                 )
@@ -544,7 +558,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                     children: selectedEvents.asMap().entries.map((entry) {
                       final isLast = entry.key == selectedEvents.length - 1;
                       return Column(children: [
-                        _buildEventTile(entry.value),
+                        _buildEventTile(entry.value, l10n),
                         if (!isLast) const Divider(height: 1, indent: 56),
                       ]);
                     }).toList(),
@@ -554,13 +568,13 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
           // ── Historique complet ────────────────────────────────────────────
           if (allEvents.isNotEmpty) ...[
-            const Text('Historique complet', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
+            Text(l10n.techFullHistory, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15, color: AppColors.textPrimary)),
             const SizedBox(height: 8),
             ...monthKeys.map((key) {
               final events = List<_AgendaEvent>.from(byMonth[key]!)
                 ..sort((a, b) => b.date.compareTo(a.date));
               final parts = key.split('-');
-              final monthLabel = '${_monthName(int.parse(parts[1]))} ${parts[0]}';
+              final monthLabel = '${_monthName(int.parse(parts[1]), l10n)} ${parts[0]}';
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -573,7 +587,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                         child: Text(monthLabel, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
                       ),
                       const SizedBox(width: 8),
-                      Text('${events.length} événement${events.length > 1 ? 's' : ''}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text(l10n.techEventCount(events.length), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                     ]),
                   ),
                   Card(
@@ -581,7 +595,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                       children: events.asMap().entries.map((entry) {
                         final isLast = entry.key == events.length - 1;
                         return Column(children: [
-                          _buildEventTile(entry.value),
+                          _buildEventTile(entry.value, l10n),
                           if (!isLast) const Divider(height: 1, indent: 56),
                         ]);
                       }).toList(),
@@ -598,9 +612,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 child: Column(children: [
                   const Icon(Icons.calendar_today_outlined, size: 40, color: AppColors.textSecondary),
                   const SizedBox(height: 12),
-                  const Text('Aucune intervention enregistrée', style: TextStyle(fontWeight: FontWeight.w500)),
+                  Text(l10n.techNoInterventions, style: const TextStyle(fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
-                  const Text('Les incidents que vous prendrez en charge apparaîtront ici.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13), textAlign: TextAlign.center),
+                  Text(l10n.techNoInterventionsHint, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), textAlign: TextAlign.center),
                 ]),
               ),
             ),
@@ -610,7 +624,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
-  Widget _buildEventTile(_AgendaEvent event) {
+  Widget _buildEventTile(_AgendaEvent event, AppLocalizations l10n) {
     final IconData icon;
     final Color color;
     final String statusLabel;
@@ -619,19 +633,19 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       case 'in_progress':
         icon = Icons.build_circle_outlined;
         color = AppColors.warning;
-        statusLabel = 'En cours';
+        statusLabel = l10n.techLegendInProgress;
       case 'resolved':
         icon = Icons.check_circle_outline;
         color = AppColors.success;
-        statusLabel = 'Résolu';
+        statusLabel = l10n.techLegendResolved;
       case 'future_maintenance':
         icon = Icons.event_repeat;
         color = AppColors.primary;
-        statusLabel = 'Planifiée';
+        statusLabel = l10n.techLegendPlanned;
       default: // 'maintenance'
         icon = Icons.build_outlined;
         color = AppColors.textSecondary;
-        statusLabel = 'Effectuée';
+        statusLabel = l10n.techEventStatusCompleted;
     }
 
     return ListTile(
@@ -699,31 +713,32 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   );
 
   void _showTakeOverDialog(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Prendre en charge l\'incident'),
+        title: Text(l10n.techTakeChargeTitle),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Vous allez prendre en charge l\'incident sur :'),
+          Text(l10n.techTakeChargeContent),
           const SizedBox(height: 8),
           Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const SizedBox(height: 12),
-          const Text(
-            'L\'incident passera au statut "En cours" et vous sera assigné. Vous pourrez le retrouver dans "Mes interventions".',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          Text(
+            l10n.techTakeChargeMessage,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
           ),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(ctx);
               await _takeOverIssue(issue);
             },
             icon: const Icon(Icons.handyman_outlined, size: 16),
-            label: const Text('Confirmer'),
+            label: Text(l10n.commonConfirm),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
           ),
         ],
@@ -747,7 +762,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _tabController.animateTo(1);
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Incident "${issue.equipmentName}" pris en charge. Bonne réparation !'),
+        content: Text(AppLocalizations.of(context)!.techTakeChargeSuccess(issue.equipmentName)),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
@@ -795,9 +810,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             // Barre de recherche
             TextField(
               onChanged: (v) => setState(() => _interventionSearch = v),
-              decoration: const InputDecoration(
-                hintText: 'Rechercher une intervention…',
-                prefixIcon: Icon(Icons.search),
+              decoration: InputDecoration(
+                hintText: l10n.techSearchHint,
+                prefixIcon: const Icon(Icons.search),
                 isDense: true,
               ),
             ),
@@ -808,14 +823,14 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Column(
-                    children: const [
-                      Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
-                      SizedBox(height: 12),
-                      Text('Aucune intervention en cours', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
-                      SizedBox(height: 4),
+                    children: [
+                      const Icon(Icons.inbox_outlined, size: 48, color: AppColors.textSecondary),
+                      const SizedBox(height: 12),
+                      Text(l10n.techNoCurrentInterventions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 4),
                       Text(
-                        'Rendez-vous dans "Incidents disponibles" pour prendre en charge un incident.',
-                        style: TextStyle(color: AppColors.textSecondary),
+                        l10n.techFindIncidentsHint,
+                        style: const TextStyle(color: AppColors.textSecondary),
                         textAlign: TextAlign.center,
                       ),
                     ],
@@ -823,9 +838,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 ),
               )
             else if (filtered.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: Text('Aucun résultat', style: TextStyle(color: AppColors.textSecondary))),
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(child: Text(l10n.techNoResults, style: const TextStyle(color: AppColors.textSecondary))),
               )
             else ...[
               // Grille de cartes

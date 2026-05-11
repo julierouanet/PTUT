@@ -18,6 +18,20 @@ enum UserRole {
     }
   }
 
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case UserRole.hospitalStaff:
+        return l10n.roleHospitalStaff as String;
+      case UserRole.supervisor:
+        return l10n.roleSupervisor as String;
+      case UserRole.technician:
+        return l10n.roleTechnician as String;
+      case UserRole.admin:
+        return l10n.roleAdmin as String;
+    }
+  }
+
   String get description {
     switch (this) {
       case UserRole.hospitalStaff:
@@ -86,6 +100,26 @@ enum Permission {
         return 'Consulter l\'inventaire';
       case Permission.changeDepartment:
         return 'Changer son département directement';
+    }
+  }
+
+  /// Localized display name — use this in the UI
+  String localizedName(dynamic l10n) {
+    switch (this) {
+      case Permission.viewEquipment:     return l10n.permViewEquipment as String;
+      case Permission.reportIssue:       return l10n.permReportIssue as String;
+      case Permission.trackIssues:       return l10n.permTrackIssues as String;
+      case Permission.approveRequests:   return l10n.permApproveRequests as String;
+      case Permission.assignTasks:       return l10n.permAssignTasks as String;
+      case Permission.updateRepairs:     return l10n.permUpdateRepairs as String;
+      case Permission.registerParts:     return l10n.permRegisterParts as String;
+      case Permission.manageEquipment:   return l10n.permManageEquipment as String;
+      case Permission.manageUsers:       return l10n.permManageUsers as String;
+      case Permission.manageDepartments: return l10n.permManageDepartments as String;
+      case Permission.manageCategories:  return l10n.permManageCategories as String;
+      case Permission.generateReports:   return l10n.permGenerateReports as String;
+      case Permission.viewInventory:     return l10n.permViewInventory as String;
+      case Permission.changeDepartment:  return l10n.permChangeDepartment as String;
     }
   }
 }

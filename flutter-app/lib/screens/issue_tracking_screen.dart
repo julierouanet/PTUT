@@ -21,7 +21,7 @@ class IssueTrackingScreen extends StatefulWidget {
 
 class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     with SingleTickerProviderStateMixin {
-  String _statusFilter = 'Tous';
+  IssueStatus? _statusFilter; // null = tous
   final AuthService _authService = AuthService();
   TabController? _tabController;
   bool _isValidating = false;
@@ -65,9 +65,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   }
 
   List<Issue> get _filteredIssues {
-    final l10n = AppLocalizations.of(context)!;
-    if (_statusFilter == l10n.commonAll) return DataService().issues;
-    return DataService().issues.where((i) => i.status.displayName == _statusFilter).toList();
+    if (_statusFilter == null) return DataService().issues;
+    return DataService().issues.where((i) => i.status == _statusFilter).toList();
   }
 
   List<Issue> get _openIssuesForValidation {
@@ -79,13 +78,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       return allOpen.where((i) => i.department == dept).toList();
     }
     return [];
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final l10n = AppLocalizations.of(context)!;
-    if (_statusFilter == 'Tous') _statusFilter = l10n.commonAll;
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────
@@ -129,8 +121,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   Widget _buildMainContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final statuses = [l10n.commonAll, 'Ouvert', 'Approuvé', 'En cours', 'Résolu'];
-    // Note: ces valeurs doivent correspondre aux displayName du modèle IssueStatus
+    final statuses = <IssueStatus?>[null, ...IssueStatus.values];
+    String labelFor(IssueStatus? s) => s == null ? l10n.commonAll : s.localizedName(l10n);
 
     final openCount       = DataService().issues.where((i) => i.status == IssueStatus.open).length;
     final approvedCount   = DataService().issues.where((i) => i.status == IssueStatus.approved).length;
@@ -220,7 +212,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                             padding: const EdgeInsets.only(right: 8),
                             child: FilterChip(
                               selected: _statusFilter == status,
-                              label: Text(status),
+                              label: Text(labelFor(status)),
                               onSelected: (_) => setState(() => _statusFilter = status),
                               selectedColor: AppColors.primaryLight,
                               checkmarkColor: AppColors.primary,
@@ -237,7 +229,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                           padding: const EdgeInsets.only(right: 8),
                           child: FilterChip(
                             selected: _statusFilter == status,
-                            label: Text(status),
+                            label: Text(labelFor(status)),
                             onSelected: (_) => setState(() => _statusFilter = status),
                             selectedColor: AppColors.primaryLight,
                             checkmarkColor: AppColors.primary,
