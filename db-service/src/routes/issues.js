@@ -5,9 +5,10 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
-const VALID_STATUSES  = ['Ouvert', 'Approuvé', 'En cours', 'Résolu', 'Annulé'];
-const VALID_URGENCIES = ['Faible', 'Moyen', 'Urgent'];
+const VALID_STATUSES    = ['Ouvert', 'Approuvé', 'En cours', 'Résolu', 'Annulé'];
+const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent'];
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
+const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
 
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {
@@ -36,12 +37,15 @@ router.get('/:id', verifyToken, (req, res) => {
   res.json(issue);
 });
 
-// POST /api/issues - signaler un incident
+// POST /api/issues - signaler un incident (équipement ou lieu/infrastructure)
 router.post('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { id, equipment_id, equipment_name, department, type, description, reporter, reporter_id, reporter_email, urgency } = req.body;
+  const { id, equipment_id, equipment_name, location_id, department, type, description, reporter, reporter_id, reporter_email, urgency } = req.body;
 
-  if (!id || !equipment_id || !equipment_name || !department || !type || !description || !reporter) {
+  const hasEquipment = equipment_id && equipment_name;
+  const hasLocation  = !!location_id;
+
+  if (!id || (!hasEquipment && !hasLocation) || !department || !type || !description || !reporter) {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 
@@ -56,17 +60,32 @@ router.post('/', verifyToken, (req, res) => {
     return res.status(400).json({ error: `Urgence invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
   }
 
-  const urgencyValue = urgency || 'Moyen';
+  const urgencyValue    = urgency || 'Moyen';
+  const derivedCategory = hasEquipment ? 'Biomédical' : 'Infrastructure';
+  const derivedGroup    = hasEquipment ? 'Biomédical' : 'Infrastructure';
 
   try {
     db.prepare(`
-      INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Ouvert')
-    `).run(id, equipment_id, equipment_name, department, type, description, reporter, reporter_id || null, reporter_email || null, urgencyValue);
+      INSERT INTO issues (id, equipment_id, equipment_name, location_id, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Ouvert')
+    `).run(
+      id,
+      equipment_id  || null,
+      equipment_name || null,
+      location_id   || null,
+      derivedCategory,
+      derivedGroup,
+      department, type, description, reporter,
+      reporter_id    || null,
+      reporter_email || null,
+      urgencyValue
+    );
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
       action: 'create_issue', target_type: 'issue', target_id: id,
-      target_name: equipment_name, details: { type, department }, ...extractReqMeta(req) });
+      target_name: equipment_name || location_id || department,
+      details: { type, department, category: derivedCategory, group: derivedGroup },
+      ...extractReqMeta(req) });
 
     res.status(201).json({ message: 'Incident signalé', id });
   } catch (err) {
@@ -107,11 +126,53 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
     action: actionLabel, target_type: 'issue', target_id: req.params.id,
-    target_name: existing.equipment_name,
+    target_name: existing.equipment_name || existing.location_id || existing.department,
     details: status ? { old_status: existing.status, new_status: status } : undefined,
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident mis à jour' });
+});
+
+// ── PATCH /api/issues/:id/reassign ────────────────────────────────────────
+router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+  const db = getDb();
+  const { new_group, reason } = req.body;
+
+  if (!new_group || !reason) {
+    return res.status(400).json({ error: 'new_group et reason sont requis' });
+  }
+  if (!VALID_GROUPS.includes(new_group)) {
+    return res.status(400).json({ error: `Groupe invalide. Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
+  }
+  if (reason.trim().length < 10) {
+    return res.status(400).json({ error: 'La raison doit contenir au moins 10 caractères' });
+  }
+
+  const existing = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const appendedActions = existing.actions
+    ? `${existing.actions}\n[${ts}] Transféré vers ${new_group} — ${reason.trim()}`
+    : `[${ts}] Transféré vers ${new_group} — ${reason.trim()}`;
+
+  db.prepare(`
+    UPDATE issues
+    SET assigned_group      = ?,
+        assigned_technician = NULL,
+        status              = 'Ouvert',
+        actions             = ?,
+        updated_at          = datetime('now','localtime')
+    WHERE id = ?
+  `).run(new_group, appendedActions, req.params.id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    action: 'reassign_issue', target_type: 'issue', target_id: req.params.id,
+    target_name: existing.equipment_name || existing.location_id || existing.department,
+    details: { old_group: existing.assigned_group, new_group, old_technician: existing.assigned_technician, reason: reason.trim() },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Incident réassigné', id: req.params.id });
 });
 
 // DELETE /api/issues/:id (admin seulement)

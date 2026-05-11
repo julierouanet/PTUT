@@ -45,6 +45,7 @@ class ApiConfig {
   static String get usersUrl      => '$authBaseUrl/api/users';
 
   // DB endpoints
+  static String get locationsUrl  => '$dbBaseUrl/api/locations';
   static String get equipmentUrl  => '$dbBaseUrl/api/equipment';
   static String get issuesUrl     => '$dbBaseUrl/api/issues';
   static String get inventoryUrl  => '$dbBaseUrl/api/inventory';

@@ -72,7 +72,7 @@ class NotificationService extends ChangeNotifier {
           generated.add(AppNotification(
             id:            'notif-new-${issue.id}',
             type:          NotificationType.newIssue,
-            equipmentName: issue.equipmentName,
+            equipmentName: issue.displayName,
             department:    issue.department,
             createdAt:     issueDate,
             linkedIssueId: issue.id,
@@ -90,7 +90,7 @@ class NotificationService extends ChangeNotifier {
           generated.add(AppNotification(
             id:            'notif-progress-${issue.id}',
             type:          NotificationType.issueInProgress,
-            equipmentName: issue.equipmentName,
+            equipmentName: issue.displayName,
             department:    issue.department,
             createdAt:     issueDate,
             linkedIssueId: issue.id,
@@ -99,7 +99,7 @@ class NotificationService extends ChangeNotifier {
           generated.add(AppNotification(
             id:            'notif-resolved-${issue.id}',
             type:          NotificationType.issueResolved,
-            equipmentName: issue.equipmentName,
+            equipmentName: issue.displayName,
             department:    issue.department,
             createdAt:     issueDate,
             linkedIssueId: issue.id,

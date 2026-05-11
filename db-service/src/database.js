@@ -37,6 +37,15 @@ function initTables() {
       is_future INTEGER DEFAULT 0
     );
 
+    -- ── Lieux (infrastructure) ────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS locations (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      building   TEXT NOT NULL,
+      department TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_locations_dept ON locations(department);
+
     CREATE TABLE IF NOT EXISTS issues (
       id TEXT PRIMARY KEY,
       equipment_id TEXT NOT NULL,
@@ -167,6 +176,55 @@ function initTables() {
                        'Hors service','Inactif','À éliminer','Transféré')
     `);
   } catch (_) {}
+
+  // Migration : rebuild issues — rend equipment_id/equipment_name nullable,
+  // ajoute location_id, issue_category, assigned_group.
+  // Idempotent : ne s'exécute que si la colonne location_id est absente.
+  const issuesCols = db.pragma('table_info(issues)');
+  if (!issuesCols.some(c => c.name === 'location_id')) {
+    db.exec(`
+      BEGIN TRANSACTION;
+      ALTER TABLE issues RENAME TO issues_old;
+      CREATE TABLE issues (
+        id                  TEXT PRIMARY KEY,
+        equipment_id        TEXT,
+        equipment_name      TEXT,
+        location_id         TEXT REFERENCES locations(id),
+        issue_category      TEXT NOT NULL DEFAULT 'Biomédical',
+        assigned_group      TEXT,
+        department          TEXT NOT NULL,
+        type                TEXT NOT NULL,
+        description         TEXT NOT NULL,
+        reporter            TEXT NOT NULL,
+        created_at          TEXT NOT NULL,
+        status              TEXT NOT NULL DEFAULT 'Ouvert',
+        assigned_technician TEXT,
+        diagnosis           TEXT,
+        actions             TEXT,
+        parts_replaced      TEXT,
+        updated_at          TEXT DEFAULT (datetime('now','localtime')),
+        reporter_id         TEXT,
+        reporter_email      TEXT,
+        urgency             TEXT DEFAULT 'Moyen'
+      );
+      INSERT INTO issues (
+        id, equipment_id, equipment_name, department, type, description, reporter,
+        created_at, status, assigned_technician, diagnosis, actions, parts_replaced,
+        updated_at, reporter_id, reporter_email, urgency
+      )
+      SELECT
+        id, equipment_id, equipment_name, department, type, description, reporter,
+        created_at, status, assigned_technician, diagnosis, actions, parts_replaced,
+        updated_at, reporter_id, reporter_email, urgency
+      FROM issues_old;
+      DROP TABLE issues_old;
+      CREATE INDEX IF NOT EXISTS idx_issues_status    ON issues(status);
+      CREATE INDEX IF NOT EXISTS idx_issues_equipment ON issues(equipment_id);
+      CREATE INDEX IF NOT EXISTS idx_issues_location  ON issues(location_id);
+      CREATE INDEX IF NOT EXISTS idx_issues_group     ON issues(assigned_group);
+      COMMIT;
+    `);
+  }
 
   // Plans de maintenance préventive (1 équipement → N plans, ex : trimestriel,
   // annuel, calibration, etc.). Le `next_preventive_maintenance` de equipment

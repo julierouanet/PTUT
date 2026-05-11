@@ -24,7 +24,10 @@ class IssueFormScreen extends StatefulWidget {
 
 class IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  // Source : 'equipment' ou 'location'
+  String _issueSource = 'equipment';
   String? _selectedEquipmentId;
+  String? _selectedLocationId;
   String _problemType = 'Panne';
   IssueUrgency _urgency = IssueUrgency.moyen;
   final _descriptionController = TextEditingController();
@@ -38,6 +41,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   /// Retourne true si l'utilisateur a commencé à remplir le formulaire.
   bool get hasUnsavedData =>
       _selectedEquipmentId != null ||
+      _selectedLocationId != null ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
 
@@ -141,118 +145,171 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Equipment selection
+                    // Toggle source : équipement ou lieu/infrastructure
                     Text(
-                      l10n.issueFormEquipment,
+                      l10n.issueFormSourceLabel,
                       style: const TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 8),
-                    Autocomplete<Equipment>(
-                      key: ValueKey(_autocompleteResetKey),
-                      displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
-                      optionsBuilder: (TextEditingValue textEditingValue) {
-                        final query = textEditingValue.text.toLowerCase().trim();
-                        if (query.isEmpty) return const Iterable<Equipment>.empty();
-                        return DataService().equipment.where((eq) =>
-                          eq.name.toLowerCase().contains(query) ||
-                          eq.serialNumber.toLowerCase().contains(query),
-                        );
-                      },
-                      onSelected: (Equipment eq) {
+                    SegmentedButton<String>(
+                      segments: [
+                        ButtonSegment(
+                          value: 'equipment',
+                          label: Text(l10n.issueFormSourceEquipment),
+                          icon: const Icon(Icons.medical_services_outlined),
+                        ),
+                        ButtonSegment(
+                          value: 'location',
+                          label: Text(l10n.issueFormSourceLocation),
+                          icon: const Icon(Icons.location_on_outlined),
+                        ),
+                      ],
+                      selected: {_issueSource},
+                      onSelectionChanged: (Set<String> v) {
                         setState(() {
-                          _selectedEquipmentId = eq.id;
-                          _equipmentError = false;
+                          _issueSource = v.first;
+                          if (_issueSource == 'equipment') {
+                            _selectedLocationId = null;
+                          } else {
+                            _selectedEquipmentId = null;
+                            _equipmentError = false;
+                            _autocompleteResetKey++;
+                          }
                         });
                       },
-                      fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-                        return TextField(
-                          controller: textController,
-                          focusNode: focusNode,
-                          onSubmitted: (_) => onFieldSubmitted(),
-                          decoration: InputDecoration(
-                            hintText: l10n.issueFormSelectEquipment,
-                            prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-                            suffixIcon: _selectedEquipmentId != null
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18),
-                                  onPressed: () {
-                                    textController.clear();
-                                    setState(() {
-                                      _selectedEquipmentId = null;
-                                      _equipmentError = false;
-                                    });
-                                  },
-                                )
-                              : null,
-                            errorText: _equipmentError ? l10n.issueFormSelectEquipment : null,
-                          ),
-                        );
-                      },
-                      optionsViewBuilder: (context, onSelected, options) {
-                        return Align(
-                          alignment: Alignment.topLeft,
-                          child: Material(
-                            elevation: 4,
-                            borderRadius: BorderRadius.circular(8),
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 250),
-                              child: ListView.builder(
-                                padding: EdgeInsets.zero,
-                                shrinkWrap: true,
-                                itemCount: options.length,
-                                itemBuilder: (context, index) {
-                                  final eq = options.elementAt(index);
-                                  return ListTile(
-                                    dense: true,
-                                    leading: const Icon(Icons.medical_services_outlined, size: 20),
-                                    title: Text(eq.name, style: const TextStyle(fontSize: 14)),
-                                    subtitle: Text(
-                                      'SN: ${eq.serialNumber} • ${eq.department}',
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    ),
-                                    onTap: () => onSelected(eq),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        );
-                      },
                     ),
+                    const SizedBox(height: 20),
 
-                    // Show selected equipment info
-                    if (_selectedEquipment != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.primaryLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.info_outline, color: AppColors.primary),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _selectedEquipment!.name,
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
-                                  ),
-                                  Text(
-                                    '${_selectedEquipment!.department} • ${_selectedEquipment!.location}',
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
+                    // Sélection équipement ou lieu selon le toggle
+                    if (_issueSource == 'equipment') ...[
+                      Text(
+                        l10n.issueFormEquipment,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      Autocomplete<Equipment>(
+                        key: ValueKey(_autocompleteResetKey),
+                        displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          final query = textEditingValue.text.toLowerCase().trim();
+                          if (query.isEmpty) return const Iterable<Equipment>.empty();
+                          return DataService().equipment.where((eq) =>
+                            eq.name.toLowerCase().contains(query) ||
+                            eq.serialNumber.toLowerCase().contains(query),
+                          );
+                        },
+                        onSelected: (Equipment eq) {
+                          setState(() {
+                            _selectedEquipmentId = eq.id;
+                            _equipmentError = false;
+                          });
+                        },
+                        fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
+                          return TextField(
+                            controller: textController,
+                            focusNode: focusNode,
+                            onSubmitted: (_) => onFieldSubmitted(),
+                            decoration: InputDecoration(
+                              hintText: l10n.issueFormSelectEquipment,
+                              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                              suffixIcon: _selectedEquipmentId != null
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear, size: 18),
+                                    onPressed: () {
+                                      textController.clear();
+                                      setState(() {
+                                        _selectedEquipmentId = null;
+                                        _equipmentError = false;
+                                      });
+                                    },
+                                  )
+                                : null,
+                              errorText: _equipmentError ? l10n.issueFormSelectEquipment : null,
+                            ),
+                          );
+                        },
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              elevation: 4,
+                              borderRadius: BorderRadius.circular(8),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxHeight: 250),
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final eq = options.elementAt(index);
+                                    return ListTile(
+                                      dense: true,
+                                      leading: const Icon(Icons.medical_services_outlined, size: 20),
+                                      title: Text(eq.name, style: const TextStyle(fontSize: 14)),
+                                      subtitle: Text(
+                                        'SN: ${eq.serialNumber} • ${eq.department}',
+                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                      ),
+                                      onTap: () => onSelected(eq),
+                                    );
+                                  },
+                                ),
                               ),
                             ),
-                          ],
+                          );
+                        },
+                      ),
+                      if (_selectedEquipment != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.info_outline, color: AppColors.primary),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _selectedEquipment!.name,
+                                      style: const TextStyle(fontWeight: FontWeight.w500),
+                                    ),
+                                    Text(
+                                      '${_selectedEquipment!.department} • ${_selectedEquipment!.location}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                      ],
+                    ] else ...[
+                      Text(
+                        l10n.issueFormSourceLocation,
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: _selectedLocationId,
+                        hint: Text(l10n.issueFormSelectLocation),
+                        items: DataService().locations.map((loc) => DropdownMenuItem(
+                          value: loc.id,
+                          child: Text(loc.label, overflow: TextOverflow.ellipsis),
+                        )).toList(),
+                        onChanged: (v) => setState(() => _selectedLocationId = v),
+                        validator: (_) => _selectedLocationId == null
+                            ? l10n.issueFormLocationRequired
+                            : null,
                       ),
                     ],
                     const SizedBox(height: 24),
@@ -525,25 +582,50 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   Future<void> _submitForm() async {
-    final bool equipmentSelected = _selectedEquipmentId != null;
-    if (!equipmentSelected) setState(() => _equipmentError = true);
-    if (!_formKey.currentState!.validate() || !equipmentSelected) return;
-
     final l10n = AppLocalizations.of(context)!;
-    final equipment = _selectedEquipment!;
+
+    // Validation source
+    if (_issueSource == 'equipment' && _selectedEquipmentId == null) {
+      setState(() => _equipmentError = true);
+    }
+    if (!_formKey.currentState!.validate()) return;
+    if (_issueSource == 'equipment' && _selectedEquipmentId == null) return;
+
     final currentUser = AuthService().currentUser;
-    final issueData = {
-      'id':              'issue-${DateTime.now().millisecondsSinceEpoch}',
-      'equipment_id':    equipment.id,
-      'equipment_name':  equipment.name,
-      'department':      equipment.department,
-      'type':            _problemType,
-      'description':     _descriptionController.text.trim(),
-      'reporter':        currentUser?.fullName ?? 'Inconnu',
-      'reporter_id':     currentUser?.id ?? '',
-      'reporter_email':  currentUser?.email ?? '',
-      'urgency':         _urgency.displayName,
-    };
+    final Map<String, dynamic> issueData;
+
+    if (_issueSource == 'equipment') {
+      final equipment = _selectedEquipment!;
+      issueData = {
+        'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+        'equipment_id':   equipment.id,
+        'equipment_name': equipment.name,
+        'department':     equipment.department,
+        'type':           _problemType,
+        'description':    _descriptionController.text.trim(),
+        'reporter':       currentUser?.fullName ?? 'Inconnu',
+        'reporter_id':    currentUser?.id ?? '',
+        'reporter_email': currentUser?.email ?? '',
+        'urgency':        _urgency.displayName,
+        'issue_category': 'Biomédical',
+        'assigned_group': 'Biomédical',
+      };
+    } else {
+      final location = DataService().locations.firstWhere((l) => l.id == _selectedLocationId!);
+      issueData = {
+        'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+        'location_id':    location.id,
+        'department':     location.department,
+        'type':           _problemType,
+        'description':    _descriptionController.text.trim(),
+        'reporter':       currentUser?.fullName ?? 'Inconnu',
+        'reporter_id':    currentUser?.id ?? '',
+        'reporter_email': currentUser?.email ?? '',
+        'urgency':        _urgency.displayName,
+        'issue_category': 'Infrastructure',
+        'assigned_group': 'Infrastructure',
+      };
+    }
 
     try {
       await DbApiService.instance.createIssue(issueData);
@@ -560,7 +642,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         behavior: SnackBarBehavior.floating,
       ));
       setState(() {
+        _issueSource = 'equipment';
         _selectedEquipmentId = null;
+        _selectedLocationId = null;
         _equipmentError = false;
         _autocompleteResetKey++;
         _problemType = l10n.issueFormBreakdown;

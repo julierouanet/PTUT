@@ -105,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
         dense: true, contentPadding: EdgeInsets.zero,
         leading: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: issue.status.displayName == 'Ouvert' ? AppColors.errorLight : AppColors.warningLight, borderRadius: BorderRadius.circular(6)),
           child: Icon(Icons.warning_amber_rounded, color: issue.status.displayName == 'Ouvert' ? AppColors.error : AppColors.warning, size: 16)),
-        title: Text(issue.equipmentName, style: const TextStyle(fontSize: 14)),
+        title: Text(issue.displayName, style: const TextStyle(fontSize: 14)),
         subtitle: Text(issue.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
         trailing: IssueStatusBadge(status: issue.status.displayName),
       )),
@@ -121,7 +121,7 @@ class DashboardScreen extends StatelessWidget {
       if (criticalEquipment.isEmpty) Text(l10n.dashboardNoAlerts, style: const TextStyle(color: AppColors.textSecondary))
       else ...criticalEquipment.map((eq) => AlertCard(title: l10n.dashboardCriticalFailure, message: '${eq.name} - ${eq.department}', severity: AlertSeverity.critical)),
       ...DataService().issues.where((i) => i.status.displayName == 'Ouvert').take(2).map((issue) =>
-        AlertCard(title: l10n.dashboardOpenIssue, message: '${issue.equipmentName} - ${issue.description}', severity: AlertSeverity.warning)),
+        AlertCard(title: l10n.dashboardOpenIssue, message: '${issue.displayName} - ${issue.description}', severity: AlertSeverity.warning)),
     ])));
   }
 }

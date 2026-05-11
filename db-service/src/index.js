@@ -6,6 +6,7 @@ const equipmentRoutes = require('./routes/equipment');
 const issuesRoutes    = require('./routes/issues');
 const inventoryRoutes = require('./routes/inventory');
 const logsRoutes      = require('./routes/logs');
+const locationsRoutes = require('./routes/locations');
 const sidebarRoutes   = require('./routes/sidebar');
 const debugRoutes     = require('./routes/debug');
 const { getDb } = require('./database');
@@ -35,6 +36,7 @@ app.use(cors({
 
 app.use(express.json());
 
+app.use('/api/locations',     locationsRoutes);
 app.use('/api/equipment',     equipmentRoutes);
 app.use('/api/issues',        issuesRoutes);
 app.use('/api/inventory',     inventoryRoutes);

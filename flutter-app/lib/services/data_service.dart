@@ -8,6 +8,7 @@ import 'db_api_service.dart';
 import 'auth_api_service.dart';
 import 'auth_service.dart';
 import '../models/user_role.dart';
+import '../models/location.dart';
 
 /// Fournit les données métier (équipements, incidents, inventaire, utilisateurs).
 ///
@@ -29,6 +30,7 @@ class DataService extends ChangeNotifier {
   List<Issue>                 issues        = [];
   List<InventoryItem>         inventory     = [];
   List<User>                  users         = [];
+  List<Location>              locations     = [];
   List<Map<String, dynamic>>  deptRequests  = [];
 
   /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
@@ -52,6 +54,7 @@ class DataService extends ChangeNotifier {
     await _loadIssues();
     await _loadInventory();
     await _loadUsers();
+    await _loadLocations();
     await _loadSidebarConfig();
     await _loadRolesConfig();
     await _loadDeptRequests();
@@ -137,6 +140,22 @@ class DataService extends ChangeNotifier {
   /// Recharge uniquement les utilisateurs depuis l'API.
   Future<void> reloadUsers() async {
     await _loadUsers();
+    notifyListeners();
+  }
+
+  Future<void> _loadLocations() async {
+    try {
+      final raw = await DbApiService.instance.getLocations();
+      locations = raw.map(Location.fromApiJson).toList();
+    } catch (e) {
+      debugPrint('DataService: lieux — fallback vide ($e)');
+      locations = [];
+    }
+  }
+
+  /// Recharge uniquement les lieux depuis l'API.
+  Future<void> reloadLocations() async {
+    await _loadLocations();
     notifyListeners();
   }
 

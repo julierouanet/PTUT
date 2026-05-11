@@ -78,6 +78,14 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  // ── LIEUX ─────────────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getLocations() async {
+    final response = await ApiClient.get(ApiConfig.locationsUrl);
+    _checkStatus(response, ApiConfig.locationsUrl);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
   // ── INCIDENTS ──────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getIssues({
@@ -118,6 +126,12 @@ class DbApiService {
   Future<void> deleteIssue(String id) async {
     final url = '${ApiConfig.issuesUrl}/$id';
     final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  Future<void> reassignIssue(String id, String newGroup, String reason) async {
+    final url = '${ApiConfig.issuesUrl}/$id/reassign';
+    final response = await ApiClient.patch(url, {'new_group': newGroup, 'reason': reason});
     _checkStatus(response, url);
   }
 

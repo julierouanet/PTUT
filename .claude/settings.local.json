@@ -51,7 +51,9 @@
       "Bash(pandoc \"C:/Users/Perso/Desktop/PTUT-1/document important/Need Software Kabutare.docx\" -o \"C:/Users/Perso/Desktop/PTUT-1/document important/need_software_temp.md\")",
       "Bash(python scripts/office/unpack.py \"C:/Users/Perso/Desktop/PTUT-1/document important/Need Software Kabutare.docx\" \"C:/Users/Perso/Desktop/PTUT-1/document important/unpacked/\")",
       "Bash(python -c \":*)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "PowerShell(\\(Get-Content \"E:\\\\stage rwanda fichier\\\\code\\\\PTUT\\\\flutter-app\\\\lib\\\\l10n\\\\app_fr.arb\" | Measure-Object -Line\\).Lines; \\(Get-Content \"E:\\\\stage rwanda fichier\\\\code\\\\PTUT\\\\flutter-app\\\\lib\\\\l10n\\\\app_en.arb\" | Measure-Object -Line\\).Lines)",
+      "PowerShell(where.exe flutter 2>$null; if \\($LASTEXITCODE -ne 0\\) { Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue })"
     ]
   }
 }

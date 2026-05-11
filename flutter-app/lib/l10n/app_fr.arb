@@ -810,5 +810,22 @@
   "usersLastName": "Nom",
   "usersDeleteReason": "Raison de la suppression (optionnel)",
   "usersDeleteReasonHint": "Ex : Départ de l'établissement, doublon…",
-  "usersRolesInfo": "Pour modifier les permissions, rendez-vous dans l'onglet Rôles."
+  "usersRolesInfo": "Pour modifier les permissions, rendez-vous dans l'onglet Rôles.",
+
+  "issueFormSourceLabel": "Type de signalement",
+  "issueFormSourceEquipment": "Équipement médical",
+  "issueFormSourceLocation": "Infrastructure / Lieu",
+  "issueFormSelectLocation": "Sélectionnez un lieu",
+  "issueFormLocationRequired": "Veuillez sélectionner un lieu",
+
+  "techReassignButton": "Transférer vers un autre groupe",
+  "techReassignTitle": "Transférer l'incident",
+  "techReassignSubtitle": "Choisissez le groupe qui doit traiter cet incident.",
+  "techReassignGroupHint": "Sélectionnez un groupe",
+  "techReassignGroupRequired": "Le groupe est obligatoire",
+  "techReassignReasonLabel": "Motif du transfert",
+  "techReassignReasonHint": "Expliquez pourquoi vous transférez cet incident…",
+  "techReassignReasonMinLength": "Le motif doit contenir au moins 10 caractères",
+  "techReassignSuccess": "Incident transféré au groupe {group}",
+  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } }
 }

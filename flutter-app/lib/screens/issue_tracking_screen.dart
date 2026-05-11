@@ -353,7 +353,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
                     Text(issue.department, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   ]),
                 ),
@@ -396,7 +396,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -444,7 +444,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(l10n.issueValidationConfirmContent),
             const SizedBox(height: 8),
-            Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
             Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             const SizedBox(height: 16),
@@ -517,7 +517,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
         setState(() {});
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l10n.issueValidationSuccess(issue.equipmentName)),
+            content: Text(l10n.issueValidationSuccess(issue.displayName)),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -682,7 +682,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+              Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
               Text(
                 issue.description,
                 style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
@@ -742,7 +742,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
           const SizedBox(width: 16),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
               Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 4),
@@ -801,7 +801,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 UrgencyBadge(urgency: issue.urgency),
               ]),
               const SizedBox(height: 20),
-              _buildDetailRow(l10n.issuesEquipment,   issue.equipmentName),
+              _buildDetailRow(l10n.issuesEquipment,   issue.displayName),
               _buildDetailRow(l10n.issuesType,         issue.type),
               _buildDetailRow(l10n.issuesDescription,  issue.description),
               _buildDetailRow(l10n.issuesReportedBy,   issue.reporter),

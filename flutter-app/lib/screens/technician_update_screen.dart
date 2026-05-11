@@ -51,7 +51,8 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   final _diagnosisController = TextEditingController();
   final _actionsController   = TextEditingController();
   final _partsController     = TextEditingController();
-  bool _isSaving = false;
+  bool _isSaving     = false;
+  bool _isReassigning = false;
 
   final List<String> _repairStatuses = [
     'Diagnostic en cours',
@@ -83,9 +84,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     }
   }
 
-  /// Retourne l'équipement lié à un incident (null si introuvable)
-  Equipment? _equipmentFor(Issue issue) =>
-      DataService().equipment.where((e) => e.id == issue.equipmentId).firstOrNull;
+  /// Retourne l'équipement lié à un incident (null si introuvable ou incident de lieu)
+  Equipment? _equipmentFor(Issue issue) {
+    final eid = issue.equipmentId;
+    if (eid == null || eid.isEmpty) return null;
+    return DataService().equipment.where((e) => e.id == eid).firstOrNull;
+  }
 
   /// Incidents en cours assignés à ce technicien
   List<Issue> get _myIssues => DataService().issues
@@ -266,7 +270,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
                     Text(issue.department, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   ]),
                 ),
@@ -322,7 +326,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(width: 8),
                     _infoChip(issue.department, AppColors.primaryLight, AppColors.primary),
                     const SizedBox(width: 6),
@@ -396,7 +400,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       final date = _parseDate(issue.createdAt);
       if (date == null) continue;
       events.add(_AgendaEvent(
-        title: issue.equipmentName,
+        title: issue.displayName,
         subtitle: issue.type,
         type: issue.status == IssueStatus.inProgress ? 'in_progress' : 'resolved',
         date: date,
@@ -721,7 +725,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(l10n.techTakeChargeContent),
           const SizedBox(height: 8),
-          Text(issue.equipmentName, style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           const SizedBox(height: 12),
@@ -762,7 +766,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _tabController.animateTo(1);
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context)!.techTakeChargeSuccess(issue.equipmentName)),
+        content: Text(AppLocalizations.of(context)!.techTakeChargeSuccess(issue.displayName)),
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
@@ -784,7 +788,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     final filtered = query.isEmpty
         ? myIssues
         : myIssues.where((i) =>
-            i.equipmentName.toLowerCase().contains(query) ||
+            i.displayName.toLowerCase().contains(query) ||
             i.description.toLowerCase().contains(query) ||
             i.department.toLowerCase().contains(query) ||
             i.type.toLowerCase().contains(query),
@@ -880,7 +884,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                           ),
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                             Row(children: [
-                              Expanded(child: Text(_selectedIssue!.equipmentName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                              Expanded(child: Text(_selectedIssue!.displayName, style: const TextStyle(fontWeight: FontWeight.w600))),
                               UrgencyBadge(urgency: _selectedIssue!.urgency, isCompact: true),
                             ]),
                             const SizedBox(height: 4),
@@ -936,24 +940,45 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                         ),
                         const SizedBox(height: 32),
 
-                        // Boutons
+                        // Boutons Enregistrer / Résoudre
                         Row(children: [
                           Expanded(
                             child: OutlinedButton(
-                              onPressed: _isSaving ? null : _saveProgress,
+                              onPressed: (_isSaving || _isReassigning) ? null : _saveProgress,
                               child: Text(l10n.techSave),
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: ElevatedButton.icon(
-                              onPressed: (_repairStatus == 'Réparé' && !_isSaving) ? _markResolved : null,
+                              onPressed: (_repairStatus == 'Réparé' && !_isSaving && !_isReassigning) ? _markResolved : null,
                               icon: const Icon(Icons.check),
                               label: Text(l10n.techMarkResolved),
                               style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
                             ),
                           ),
                         ]),
+                        const SizedBox(height: 12),
+                        // Bouton Transférer
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: (_isSaving || _isReassigning)
+                                ? null
+                                : () => _showReassignDialog(_selectedIssue!),
+                            icon: _isReassigning
+                                ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning))
+                                : const Icon(Icons.swap_horiz, size: 16, color: AppColors.warning),
+                            label: Text(
+                              l10n.techReassignButton,
+                              style: const TextStyle(color: AppColors.warning),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.warning),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -1014,7 +1039,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        issue.equipmentName,
+                        issue.displayName,
                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1061,6 +1086,113 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   // ── Actions ──────────────────────────────────────────────────────────────────
+
+  void _showReassignDialog(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
+    final formKey = GlobalKey<FormState>();
+    String? selectedGroup;
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.techReassignTitle),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.techReassignSubtitle,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  hint: Text(l10n.techReassignGroupHint),
+                  value: selectedGroup,
+                  items: const ['IT', 'Infrastructure', 'Biomédical'].map((g) =>
+                    DropdownMenuItem(value: g, child: Text(g)),
+                  ).toList(),
+                  onChanged: (v) => setDialogState(() => selectedGroup = v),
+                  validator: (v) => v == null ? l10n.techReassignGroupRequired : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: reasonController,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: l10n.techReassignReasonLabel,
+                    hintText: l10n.techReassignReasonHint,
+                  ),
+                  validator: (v) {
+                    if (v == null || v.trim().length < 10) {
+                      return l10n.techReassignReasonMinLength;
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                Navigator.pop(ctx);
+                await _doReassign(issue, selectedGroup!, reasonController.text.trim());
+              },
+              icon: const Icon(Icons.swap_horiz, size: 16),
+              label: Text(l10n.commonConfirm),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doReassign(Issue issue, String newGroup, String reason) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _isReassigning = true);
+    try {
+      await DbApiService.instance.reassignIssue(issue.id, newGroup, reason);
+      await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.swap_horiz, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techReassignSuccess(newGroup)),
+        ]),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      setState(() {
+        _selectedIssueId = null;
+        _diagnosisController.clear();
+        _actionsController.clear();
+        _partsController.clear();
+        _repairStatus = 'Diagnostic en cours';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.commonApiError),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isReassigning = false);
+    }
+  }
 
   Future<void> _saveProgress() async {
     if (_selectedIssueId == null) return;

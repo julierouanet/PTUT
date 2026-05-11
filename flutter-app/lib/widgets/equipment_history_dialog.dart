@@ -74,7 +74,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
         events.add(_HistoryEvent(
           date: date,
           isIssue: true,
-          title: '${issue.type} — ${issue.equipmentName}',
+          title: '${issue.type} — ${issue.displayName}',
           subtitle: issue.reporter,
           detail: issue.description,
           issueStatus: issue.status,

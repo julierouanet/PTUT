@@ -788,5 +788,22 @@
   "usersLastName": "Last name",
   "usersDeleteReason": "Deletion reason (optional)",
   "usersDeleteReasonHint": "E.g.: Left the facility, duplicate…",
-  "usersRolesInfo": "To modify permissions, go to the Roles tab."
+  "usersRolesInfo": "To modify permissions, go to the Roles tab.",
+
+  "issueFormSourceLabel": "Report type",
+  "issueFormSourceEquipment": "Medical equipment",
+  "issueFormSourceLocation": "Infrastructure / Location",
+  "issueFormSelectLocation": "Select a location",
+  "issueFormLocationRequired": "Please select a location",
+
+  "techReassignButton": "Transfer to another group",
+  "techReassignTitle": "Transfer issue",
+  "techReassignSubtitle": "Choose the group that should handle this issue.",
+  "techReassignGroupHint": "Select a group",
+  "techReassignGroupRequired": "Group is required",
+  "techReassignReasonLabel": "Transfer reason",
+  "techReassignReasonHint": "Explain why you are transferring this issue…",
+  "techReassignReasonMinLength": "Reason must be at least 10 characters",
+  "techReassignSuccess": "Issue transferred to group {group}",
+  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } }
 }

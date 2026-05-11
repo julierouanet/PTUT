@@ -64,6 +64,18 @@ const maintenanceRecords = [
 ];
 
 // ──────────────────────────────────────────────
+// LOCATIONS
+// ──────────────────────────────────────────────
+const locations = [
+  { id: 'loc-001', name: 'Salle serveur principale',        building: 'Bâtiment A',       department: 'Administration' },
+  { id: 'loc-002', name: 'Salle réseau (baie 2)',           building: 'Bâtiment A',       department: 'Administration' },
+  { id: 'loc-003', name: 'Couloir bloc opératoire',         building: 'Bâtiment B',       department: 'Bloc opératoire' },
+  { id: 'loc-004', name: 'Générateur de secours',           building: 'Annexe technique', department: 'Infrastructure' },
+  { id: 'loc-005', name: 'Local électrique RDC',            building: 'Bâtiment C',       department: 'Infrastructure' },
+  { id: 'loc-006', name: 'Réseau eau chaude sanitaire',     building: 'Bâtiment B',       department: 'Infrastructure' },
+];
+
+// ──────────────────────────────────────────────
 // ISSUES
 // ──────────────────────────────────────────────
 const issues = [
@@ -116,13 +128,23 @@ function seed() {
   }
   console.log(`  ${maintenanceRecords.length} enregistrements maintenance insérés`);
 
+  console.log('Seeding locations...');
+  const insertLoc = db.prepare(`
+    INSERT OR IGNORE INTO locations (id, name, building, department)
+    VALUES (?, ?, ?, ?)
+  `);
+  for (const l of locations) {
+    insertLoc.run(l.id, l.name, l.building, l.department);
+  }
+  console.log(`  ${locations.length} lieux insérés`);
+
   console.log('Seeding issues...');
   const insertIssue = db.prepare(`
-    INSERT OR IGNORE INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, created_at, status, assigned_technician, diagnosis, actions, parts_replaced)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR IGNORE INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, created_at, status, assigned_technician, diagnosis, actions, parts_replaced, issue_category, assigned_group)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const i of issues) {
-    insertIssue.run(i.id, i.equipment_id, i.equipment_name, i.department, i.type, i.description, i.reporter, i.created_at, i.status, i.assigned_technician, i.diagnosis, i.actions, i.parts_replaced);
+    insertIssue.run(i.id, i.equipment_id, i.equipment_name, i.department, i.type, i.description, i.reporter, i.created_at, i.status, i.assigned_technician, i.diagnosis, i.actions, i.parts_replaced, i.issue_category || 'Biomédical', i.assigned_group || 'Biomédical');
   }
   console.log(`  ${issues.length} incidents insérés`);
 

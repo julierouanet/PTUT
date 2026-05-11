@@ -100,8 +100,11 @@ enum IssueStatus {
 /// Issue model for equipment problem reporting
 class Issue {
   final String id;
-  final String equipmentId;
-  final String equipmentName;
+  final String? equipmentId;
+  final String? equipmentName;
+  final String? locationId;
+  final String? issueCategory;
+  final String? assignedGroup;
   final String department;
   final String type;
   final String description;
@@ -118,8 +121,11 @@ class Issue {
 
   const Issue({
     required this.id,
-    required this.equipmentId,
-    required this.equipmentName,
+    this.equipmentId,
+    this.equipmentName,
+    this.locationId,
+    this.issueCategory,
+    this.assignedGroup,
     required this.department,
     required this.type,
     required this.description,
@@ -135,11 +141,17 @@ class Issue {
     this.partsReplaced,
   });
 
+  /// Meilleur libellé disponible pour cet incident (équipement, lieu, ou département).
+  String get displayName => equipmentName ?? locationId ?? department;
+
   factory Issue.fromApiJson(Map<String, dynamic> json) {
     return Issue(
       id:                 json['id']                   as String? ?? '',
-      equipmentId:        json['equipment_id']         as String? ?? '',
-      equipmentName:      json['equipment_name']       as String? ?? '',
+      equipmentId:        json['equipment_id']         as String?,
+      equipmentName:      json['equipment_name']       as String?,
+      locationId:         json['location_id']          as String?,
+      issueCategory:      json['issue_category']       as String?,
+      assignedGroup:      json['assigned_group']       as String?,
       department:         json['department']           as String? ?? '',
       type:               json['type']                 as String? ?? '',
       description:        json['description']          as String? ?? '',
@@ -160,6 +172,9 @@ class Issue {
     String? id,
     String? equipmentId,
     String? equipmentName,
+    String? locationId,
+    String? issueCategory,
+    String? assignedGroup,
     String? department,
     String? type,
     String? description,
@@ -175,22 +190,25 @@ class Issue {
     String? partsReplaced,
   }) {
     return Issue(
-      id: id ?? this.id,
-      equipmentId: equipmentId ?? this.equipmentId,
-      equipmentName: equipmentName ?? this.equipmentName,
-      department: department ?? this.department,
-      type: type ?? this.type,
-      description: description ?? this.description,
-      reporter:      reporter      ?? this.reporter,
-      reporterId:    reporterId    ?? this.reporterId,
-      reporterEmail: reporterEmail ?? this.reporterEmail,
-      createdAt:     createdAt     ?? this.createdAt,
-      status: status ?? this.status,
-      urgency: urgency ?? this.urgency,
+      id:                 id                ?? this.id,
+      equipmentId:        equipmentId       ?? this.equipmentId,
+      equipmentName:      equipmentName     ?? this.equipmentName,
+      locationId:         locationId        ?? this.locationId,
+      issueCategory:      issueCategory     ?? this.issueCategory,
+      assignedGroup:      assignedGroup     ?? this.assignedGroup,
+      department:         department        ?? this.department,
+      type:               type              ?? this.type,
+      description:        description       ?? this.description,
+      reporter:           reporter          ?? this.reporter,
+      reporterId:         reporterId        ?? this.reporterId,
+      reporterEmail:      reporterEmail     ?? this.reporterEmail,
+      createdAt:          createdAt         ?? this.createdAt,
+      status:             status            ?? this.status,
+      urgency:            urgency           ?? this.urgency,
       assignedTechnician: assignedTechnician ?? this.assignedTechnician,
-      diagnosis: diagnosis ?? this.diagnosis,
-      actions: actions ?? this.actions,
-      partsReplaced: partsReplaced ?? this.partsReplaced,
+      diagnosis:          diagnosis         ?? this.diagnosis,
+      actions:            actions           ?? this.actions,
+      partsReplaced:      partsReplaced     ?? this.partsReplaced,
     );
   }
 }
