@@ -4,15 +4,15 @@ enum IssueUrgency {
   moyen,
   urgent;
 
-  /// Canonical English name (used for storage/API)
+  /// Valeur canonique (FR) — utilisée pour stockage/API (cf. VALID_URGENCIES côté db-service).
   String get displayName {
     switch (this) {
       case IssueUrgency.faible:
-        return 'Low';
+        return 'Faible';
       case IssueUrgency.moyen:
-        return 'Medium';
+        return 'Moyen';
       case IssueUrgency.urgent:
-        return 'High';
+        return 'Urgent';
     }
   }
 
