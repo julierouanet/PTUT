@@ -67,7 +67,7 @@ class NotificationService extends ChangeNotifier {
       }
 
       // ── Admins / Superviseurs : tous les incidents OUVERTS des 7 derniers jours ──
-      if (isManager && issue.status == IssueStatus.open) {
+      if (isManager && issue.status == IssueStatus.reported) {
         if (issueDate.isAfter(weekAgo)) {
           generated.add(AppNotification(
             id:            'notif-new-${issue.id}',
@@ -95,7 +95,7 @@ class NotificationService extends ChangeNotifier {
             createdAt:     issueDate,
             linkedIssueId: issue.id,
           ));
-        } else if (issue.status == IssueStatus.resolved) {
+        } else if (issue.status == IssueStatus.completed) {
           generated.add(AppNotification(
             id:            'notif-resolved-${issue.id}',
             type:          NotificationType.issueResolved,

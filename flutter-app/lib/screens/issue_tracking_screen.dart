@@ -71,7 +71,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   List<Issue> get _openIssuesForValidation {
     final role = _authService.currentRole;
-    final allOpen = DataService().issues.where((i) => i.status == IssueStatus.open).toList();
+    final allOpen = DataService().issues.where((i) => i.status == IssueStatus.reported).toList();
     if (role == UserRole.admin) return allOpen;
     if (role == UserRole.supervisor) {
       final dept = _authService.currentUser?.department ?? '';
@@ -124,10 +124,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     final statuses = <IssueStatus?>[null, ...IssueStatus.values];
     String labelFor(IssueStatus? s) => s == null ? l10n.commonAll : s.localizedName(l10n);
 
-    final openCount       = DataService().issues.where((i) => i.status == IssueStatus.open).length;
-    final approvedCount   = DataService().issues.where((i) => i.status == IssueStatus.approved).length;
-    final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
-    final resolvedCount   = DataService().issues.where((i) => i.status == IssueStatus.resolved).length;
+    final openCount       = DataService().issues.where((i) => i.status == IssueStatus.reported).length;
+    final approvedCount   = DataService().issues.where((i) => i.status == IssueStatus.inProgress).length;
+    final inProgressCount = DataService().issues.where((i) => i.status == IssueStatus.waitingMaterials).length;
+    final resolvedCount   = DataService().issues.where((i) => i.status == IssueStatus.completed).length;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -508,7 +508,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     setState(() => _isValidating = true);
     try {
       await DbApiService.instance.updateIssue(issue.id, {
-        'status': 'Approuvé',
+        'status': 'Acknowledged',
         if (urgency != null) 'urgency': urgency.displayName,
       });
       await DataService().reloadIssues();
@@ -767,10 +767,15 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   Color _getStatusColor(IssueStatus status) {
     switch (status) {
-      case IssueStatus.open:       return AppColors.error;
-      case IssueStatus.approved:   return AppColors.primary;
-      case IssueStatus.inProgress: return AppColors.warning;
-      case IssueStatus.resolved:   return AppColors.success;
+      case IssueStatus.reported:         return AppColors.error;
+      case IssueStatus.acknowledged:     return AppColors.primary;
+      case IssueStatus.assigned:         return AppColors.primary;
+      case IssueStatus.inProgress:       return AppColors.warning;
+      case IssueStatus.waitingMaterials: return AppColors.warning;
+      case IssueStatus.completed:        return AppColors.success;
+      case IssueStatus.verified:         return AppColors.success;
+      case IssueStatus.closed:           return AppColors.textSecondary;
+      case IssueStatus.redirected:       return AppColors.primary;
     }
   }
 

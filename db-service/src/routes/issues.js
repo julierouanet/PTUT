@@ -5,7 +5,7 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
-const VALID_STATUSES    = ['Ouvert', 'Approuvé', 'En cours', 'Résolu', 'Annulé'];
+const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected'];
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent'];
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
@@ -67,7 +67,7 @@ router.post('/', verifyToken, (req, res) => {
   try {
     db.prepare(`
       INSERT INTO issues (id, equipment_id, equipment_name, location_id, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Ouvert')
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Reported')
     `).run(
       id,
       equipment_id  || null,
@@ -160,7 +160,7 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', 't
     UPDATE issues
     SET assigned_group      = ?,
         assigned_technician = NULL,
-        status              = 'Ouvert',
+        status              = 'Reported',
         actions             = ?,
         updated_at          = datetime('now','localtime')
     WHERE id = ?

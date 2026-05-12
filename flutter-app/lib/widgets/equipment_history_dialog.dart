@@ -292,11 +292,16 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
 
   Color _issueStatusColor(IssueStatus? s) {
     switch (s) {
-      case IssueStatus.open:       return AppColors.error;
-      case IssueStatus.approved:   return AppColors.primary;
-      case IssueStatus.inProgress: return AppColors.warning;
-      case IssueStatus.resolved:   return AppColors.success;
-      default:                     return AppColors.textSecondary;
+      case IssueStatus.reported:         return AppColors.error;
+      case IssueStatus.acknowledged:     return AppColors.primary;
+      case IssueStatus.assigned:         return AppColors.primary;
+      case IssueStatus.inProgress:       return AppColors.warning;
+      case IssueStatus.waitingMaterials: return AppColors.warning;
+      case IssueStatus.completed:        return AppColors.success;
+      case IssueStatus.verified:         return AppColors.success;
+      case IssueStatus.closed:           return AppColors.textSecondary;
+      case IssueStatus.redirected:       return AppColors.primary;
+      default:                           return AppColors.textSecondary;
     }
   }
 

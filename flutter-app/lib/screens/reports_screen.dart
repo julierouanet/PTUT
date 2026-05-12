@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../models/equipment.dart';
+import '../models/issue.dart';
 
 /// Reports screen - view reports and analytics
 class ReportsScreen extends StatelessWidget {
@@ -32,8 +33,8 @@ class ReportsScreen extends StatelessWidget {
 
     // Issues statistics
     final totalIssues = DataService().issues.length;
-    final openIssues = DataService().issues.where((i) => i.status.displayName == 'Ouvert').length;
-    final resolvedIssues = DataService().issues.where((i) => i.status.displayName == 'Résolu').length;
+    final openIssues = DataService().issues.where((i) => i.status == IssueStatus.reported).length;
+    final resolvedIssues = DataService().issues.where((i) => i.status == IssueStatus.completed || i.status == IssueStatus.verified || i.status == IssueStatus.closed).length;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 

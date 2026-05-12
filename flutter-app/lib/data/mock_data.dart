@@ -635,7 +635,7 @@ final List<Issue> mockIssues = [
     description: 'Pompe à vide ne démarre pas, cycles incomplets',
     reporter: 'Inf. Keita',
     createdAt: '2024-11-28 14:15',
-    status: IssueStatus.inProgress,
+    status: IssueStatus.waitingMaterials,
     assignedTechnician: 'Tech. Cissé',
   ),
   Issue(
@@ -647,7 +647,7 @@ final List<Issue> mockIssues = [
     description: 'Surchauffe détectée, ventilateurs bruyants',
     reporter: 'IT Admin. Konaté',
     createdAt: '2024-12-08 11:00',
-    status: IssueStatus.open,
+    status: IssueStatus.reported,
   ),
   Issue(
     id: 'ISS-004',
@@ -658,7 +658,7 @@ final List<Issue> mockIssues = [
     description: 'Bruit anormal pendant acquisition',
     reporter: 'Radiologue Camara',
     createdAt: '2024-11-20 09:45',
-    status: IssueStatus.resolved,
+    status: IssueStatus.completed,
     assignedTechnician: 'Dr. Kamara',
     diagnosis: 'Gradient X désaligné',
     actions: 'Recalibration gradient',
@@ -673,7 +673,7 @@ final List<Issue> mockIssues = [
     description: 'Erreur de calibration, résultats incohérents',
     reporter: 'Lab. Diallo',
     createdAt: '2024-12-10 09:00',
-    status: IssueStatus.open,
+    status: IssueStatus.reported,
   ),
   Issue(
     id: 'ISS-006',
@@ -684,7 +684,7 @@ final List<Issue> mockIssues = [
     description: 'Perte de signal fréquente',
     reporter: 'Sage-femme Mukamana',
     createdAt: '2024-12-09 16:30',
-    status: IssueStatus.open,
+    status: IssueStatus.acknowledged,
   ),
 ];
 

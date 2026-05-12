@@ -55,7 +55,7 @@ function initTables() {
       description TEXT NOT NULL,
       reporter TEXT NOT NULL,
       created_at TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'Ouvert',
+      status TEXT NOT NULL DEFAULT 'Reported',
       assigned_technician TEXT,
       diagnosis TEXT,
       actions TEXT,
@@ -197,7 +197,7 @@ function initTables() {
         description         TEXT NOT NULL,
         reporter            TEXT NOT NULL,
         created_at          TEXT NOT NULL,
-        status              TEXT NOT NULL DEFAULT 'Ouvert',
+        status              TEXT NOT NULL DEFAULT 'Reported',
         assigned_technician TEXT,
         diagnosis           TEXT,
         actions             TEXT,
@@ -225,6 +225,22 @@ function initTables() {
       COMMIT;
     `);
   }
+
+  // Migration : refonte des statuts d'issues (français → anglais, 5 → 9 valeurs).
+  // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
+  try {
+    db.exec(`
+      UPDATE issues SET status = CASE status
+        WHEN 'Ouvert'   THEN 'Reported'
+        WHEN 'Approuvé' THEN 'Acknowledged'
+        WHEN 'En cours' THEN 'In Progress'
+        WHEN 'Résolu'   THEN 'Completed'
+        WHEN 'Annulé'   THEN 'Closed'
+        ELSE status
+      END
+      WHERE status IN ('Ouvert','Approuvé','En cours','Résolu','Annulé')
+    `);
+  } catch (_) {}
 
   // Plans de maintenance préventive (1 équipement → N plans, ex : trimestriel,
   // annuel, calibration, etc.). Le `next_preventive_maintenance` de equipment

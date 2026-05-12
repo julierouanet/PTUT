@@ -3,6 +3,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../models/equipment.dart';
+import '../models/issue.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
@@ -18,7 +19,7 @@ class DashboardScreen extends StatelessWidget {
     final operational = DataService().equipment.where((e) => e.status == EquipmentStatus.operational).length;
     final maintenance = DataService().equipment.where((e) => e.status == EquipmentStatus.maintenance).length;
     final outOfService = DataService().equipment.where((e) => e.status == EquipmentStatus.outOfService).length;
-    final recentIssues = DataService().issues.where((i) => i.status.displayName != 'Résolu').take(4).toList();
+    final recentIssues = DataService().issues.where((i) => i.status != IssueStatus.completed && i.status != IssueStatus.closed && i.status != IssueStatus.verified).take(4).toList();
     final criticalEquipment = DataService().equipment.where((e) => e.status == EquipmentStatus.outOfService).toList();
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -103,8 +104,8 @@ class DashboardScreen extends StatelessWidget {
       if (recentIssues.isEmpty) Text(l10n.dashboardNoIssues, style: const TextStyle(color: AppColors.textSecondary))
       else ...recentIssues.map((issue) => ListTile(
         dense: true, contentPadding: EdgeInsets.zero,
-        leading: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: issue.status.displayName == 'Ouvert' ? AppColors.errorLight : AppColors.warningLight, borderRadius: BorderRadius.circular(6)),
-          child: Icon(Icons.warning_amber_rounded, color: issue.status.displayName == 'Ouvert' ? AppColors.error : AppColors.warning, size: 16)),
+        leading: Container(padding: const EdgeInsets.all(6), decoration: BoxDecoration(color: issue.status == IssueStatus.reported ? AppColors.errorLight : AppColors.warningLight, borderRadius: BorderRadius.circular(6)),
+          child: Icon(Icons.warning_amber_rounded, color: issue.status == IssueStatus.reported ? AppColors.error : AppColors.warning, size: 16)),
         title: Text(issue.displayName, style: const TextStyle(fontSize: 14)),
         subtitle: Text(issue.description, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12)),
         trailing: IssueStatusBadge(status: issue.status.displayName),
@@ -120,7 +121,7 @@ class DashboardScreen extends StatelessWidget {
       const SizedBox(height: 12),
       if (criticalEquipment.isEmpty) Text(l10n.dashboardNoAlerts, style: const TextStyle(color: AppColors.textSecondary))
       else ...criticalEquipment.map((eq) => AlertCard(title: l10n.dashboardCriticalFailure, message: '${eq.name} - ${eq.department}', severity: AlertSeverity.critical)),
-      ...DataService().issues.where((i) => i.status.displayName == 'Ouvert').take(2).map((issue) =>
+      ...DataService().issues.where((i) => i.status == IssueStatus.reported).take(2).map((issue) =>
         AlertCard(title: l10n.dashboardOpenIssue, message: '${issue.displayName} - ${issue.description}', severity: AlertSeverity.warning)),
     ])));
   }

@@ -1363,16 +1363,31 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentGeneralSection => 'Informations générales';
 
   @override
-  String get issueStatusOpen => 'Ouvert';
+  String get issueStatusReported => 'Signalé';
 
   @override
-  String get issueStatusApproved => 'Approuvé';
+  String get issueStatusAcknowledged => 'Pris en compte';
+
+  @override
+  String get issueStatusAssigned => 'Assigné';
 
   @override
   String get issueStatusInProgress => 'En cours';
 
   @override
-  String get issueStatusResolved => 'Résolu';
+  String get issueStatusWaitingMaterials => 'En attente de matériel';
+
+  @override
+  String get issueStatusCompleted => 'Terminé';
+
+  @override
+  String get issueStatusVerified => 'Vérifié';
+
+  @override
+  String get issueStatusClosed => 'Clôturé';
+
+  @override
+  String get issueStatusRedirected => 'Redirigé';
 
   @override
   String get urgencyLow => 'Faible';
@@ -1521,7 +1536,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techLegendInProgress => 'En cours';
 
   @override
-  String get techLegendResolved => 'Résolu';
+  String get techLegendResolved => 'Terminé';
 
   @override
   String get techLegendPastMaintenance => 'Maintenance passée';

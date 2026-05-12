@@ -2600,17 +2600,23 @@ abstract class AppLocalizations {
   /// **'Informations générales'**
   String get equipmentGeneralSection;
 
-  /// No description provided for @issueStatusOpen.
+  /// No description provided for @issueStatusReported.
   ///
   /// In fr, this message translates to:
-  /// **'Ouvert'**
-  String get issueStatusOpen;
+  /// **'Signalé'**
+  String get issueStatusReported;
 
-  /// No description provided for @issueStatusApproved.
+  /// No description provided for @issueStatusAcknowledged.
   ///
   /// In fr, this message translates to:
-  /// **'Approuvé'**
-  String get issueStatusApproved;
+  /// **'Pris en compte'**
+  String get issueStatusAcknowledged;
+
+  /// No description provided for @issueStatusAssigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Assigné'**
+  String get issueStatusAssigned;
 
   /// No description provided for @issueStatusInProgress.
   ///
@@ -2618,11 +2624,35 @@ abstract class AppLocalizations {
   /// **'En cours'**
   String get issueStatusInProgress;
 
-  /// No description provided for @issueStatusResolved.
+  /// No description provided for @issueStatusWaitingMaterials.
   ///
   /// In fr, this message translates to:
-  /// **'Résolu'**
-  String get issueStatusResolved;
+  /// **'En attente de matériel'**
+  String get issueStatusWaitingMaterials;
+
+  /// No description provided for @issueStatusCompleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Terminé'**
+  String get issueStatusCompleted;
+
+  /// No description provided for @issueStatusVerified.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérifié'**
+  String get issueStatusVerified;
+
+  /// No description provided for @issueStatusClosed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clôturé'**
+  String get issueStatusClosed;
+
+  /// No description provided for @issueStatusRedirected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Redirigé'**
+  String get issueStatusRedirected;
 
   /// No description provided for @urgencyLow.
   ///

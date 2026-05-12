@@ -70,7 +70,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   /// Triés par urgence décroissante : Urgent → Moyen → Faible.
   List<Issue> get _availableIssues {
     final list = DataService().issues
-        .where((i) => i.status == IssueStatus.approved)
+        .where((i) => i.status == IssueStatus.acknowledged || i.status == IssueStatus.assigned)
         .toList();
     list.sort((a, b) => _urgencyOrder(b.urgency) - _urgencyOrder(a.urgency));
     return list;
@@ -396,7 +396,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     // Incidents en cours ou résolus assignés à ce technicien
     for (final issue in DataService().issues) {
       if (issue.assignedTechnician != techName) continue;
-      if (issue.status != IssueStatus.inProgress && issue.status != IssueStatus.resolved) continue;
+      if (issue.status != IssueStatus.inProgress && issue.status != IssueStatus.completed) continue;
       final date = _parseDate(issue.createdAt);
       if (date == null) continue;
       events.add(_AgendaEvent(
@@ -753,7 +753,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   Future<void> _takeOverIssue(Issue issue) async {
     try {
       await DbApiService.instance.updateIssue(issue.id, {
-        'status':              'En cours',
+        'status':              'In Progress',
         'assigned_technician': _currentTechnicianName,
       });
       await DataService().reloadIssues();
@@ -1200,7 +1200,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     setState(() => _isSaving = true);
     try {
       await DbApiService.instance.updateIssue(_selectedIssueId!, {
-        'status':              'En cours',
+        'status':              'In Progress',
         'assigned_technician': _currentTechnicianName,
         'diagnosis':           _diagnosisController.text.trim().isNotEmpty ? _diagnosisController.text.trim() : null,
         'actions':             _actionsController.text.trim().isNotEmpty   ? _actionsController.text.trim()   : null,
@@ -1236,7 +1236,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     setState(() => _isSaving = true);
     try {
       await DbApiService.instance.updateIssue(_selectedIssueId!, {
-        'status':              'Résolu',
+        'status':              'Completed',
         'assigned_technician': _currentTechnicianName,
         'diagnosis':           _diagnosisController.text.trim().isNotEmpty ? _diagnosisController.text.trim() : null,
         'actions':             _actionsController.text.trim().isNotEmpty   ? _actionsController.text.trim()   : null,

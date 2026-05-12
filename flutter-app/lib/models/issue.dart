@@ -44,55 +44,91 @@ enum IssueUrgency {
 
 /// Issue status enumeration
 enum IssueStatus {
-  open,
-  approved,
+  reported,
+  acknowledged,
+  assigned,
   inProgress,
-  resolved;
+  waitingMaterials,
+  completed,
+  verified,
+  closed,
+  redirected;
 
   /// Canonical English name (used for storage/API)
   String get displayName {
     switch (this) {
-      case IssueStatus.open:
-        return 'Open';
-      case IssueStatus.approved:
-        return 'Approved';
+      case IssueStatus.reported:
+        return 'Reported';
+      case IssueStatus.acknowledged:
+        return 'Acknowledged';
+      case IssueStatus.assigned:
+        return 'Assigned';
       case IssueStatus.inProgress:
         return 'In Progress';
-      case IssueStatus.resolved:
-        return 'Resolved';
+      case IssueStatus.waitingMaterials:
+        return 'Waiting Materials';
+      case IssueStatus.completed:
+        return 'Completed';
+      case IssueStatus.verified:
+        return 'Verified';
+      case IssueStatus.closed:
+        return 'Closed';
+      case IssueStatus.redirected:
+        return 'Redirected';
     }
   }
 
   /// Localized display name — use this in the UI
   String localizedName(dynamic l10n) {
     switch (this) {
-      case IssueStatus.open:
-        return l10n.issueStatusOpen as String;
-      case IssueStatus.approved:
-        return l10n.issueStatusApproved as String;
+      case IssueStatus.reported:
+        return l10n.issueStatusReported as String;
+      case IssueStatus.acknowledged:
+        return l10n.issueStatusAcknowledged as String;
+      case IssueStatus.assigned:
+        return l10n.issueStatusAssigned as String;
       case IssueStatus.inProgress:
         return l10n.issueStatusInProgress as String;
-      case IssueStatus.resolved:
-        return l10n.issueStatusResolved as String;
+      case IssueStatus.waitingMaterials:
+        return l10n.issueStatusWaitingMaterials as String;
+      case IssueStatus.completed:
+        return l10n.issueStatusCompleted as String;
+      case IssueStatus.verified:
+        return l10n.issueStatusVerified as String;
+      case IssueStatus.closed:
+        return l10n.issueStatusClosed as String;
+      case IssueStatus.redirected:
+        return l10n.issueStatusRedirected as String;
     }
   }
 
   static IssueStatus fromString(String value) {
     switch (value) {
-      case 'Open':
+      case 'Reported':
       case 'Ouvert':
-        return IssueStatus.open;
-      case 'Approved':
+        return IssueStatus.reported;
+      case 'Acknowledged':
       case 'Approuvé':
-        return IssueStatus.approved;
+        return IssueStatus.acknowledged;
+      case 'Assigned':
+        return IssueStatus.assigned;
       case 'In Progress':
       case 'En cours':
         return IssueStatus.inProgress;
-      case 'Resolved':
+      case 'Waiting Materials':
+        return IssueStatus.waitingMaterials;
+      case 'Completed':
       case 'Résolu':
-        return IssueStatus.resolved;
+        return IssueStatus.completed;
+      case 'Verified':
+        return IssueStatus.verified;
+      case 'Closed':
+      case 'Annulé':
+        return IssueStatus.closed;
+      case 'Redirected':
+        return IssueStatus.redirected;
       default:
-        return IssueStatus.open;
+        return IssueStatus.reported;
     }
   }
 }
