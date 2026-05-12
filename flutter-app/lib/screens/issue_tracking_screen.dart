@@ -498,9 +498,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   Color _urgencyColorFor(IssueUrgency u) {
     switch (u) {
-      case IssueUrgency.faible:  return AppColors.textSecondary;
-      case IssueUrgency.moyen:   return AppColors.warning;
-      case IssueUrgency.urgent:  return AppColors.error;
+      case IssueUrgency.faible:   return AppColors.textSecondary;
+      case IssueUrgency.moyen:    return AppColors.warning;
+      case IssueUrgency.urgent:   return AppColors.error;
+      case IssueUrgency.critique: return AppColors.critical;
     }
   }
 

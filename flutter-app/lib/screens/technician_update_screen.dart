@@ -78,9 +78,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   int _urgencyOrder(IssueUrgency u) {
     switch (u) {
-      case IssueUrgency.urgent: return 2;
-      case IssueUrgency.moyen:  return 1;
-      case IssueUrgency.faible: return 0;
+      case IssueUrgency.critique: return 3;
+      case IssueUrgency.urgent:   return 2;
+      case IssueUrgency.moyen:    return 1;
+      case IssueUrgency.faible:   return 0;
     }
   }
 
@@ -686,17 +687,19 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   Color _urgencyBgColor(IssueUrgency u) {
     switch (u) {
-      case IssueUrgency.urgent: return AppColors.errorLight;
-      case IssueUrgency.moyen:  return AppColors.warningLight;
-      case IssueUrgency.faible: return AppColors.background;
+      case IssueUrgency.critique: return AppColors.criticalLight;
+      case IssueUrgency.urgent:   return AppColors.errorLight;
+      case IssueUrgency.moyen:    return AppColors.warningLight;
+      case IssueUrgency.faible:   return AppColors.background;
     }
   }
 
   Color _urgencyFgColor(IssueUrgency u) {
     switch (u) {
-      case IssueUrgency.urgent: return AppColors.error;
-      case IssueUrgency.moyen:  return AppColors.warning;
-      case IssueUrgency.faible: return AppColors.textSecondary;
+      case IssueUrgency.critique: return AppColors.critical;
+      case IssueUrgency.urgent:   return AppColors.error;
+      case IssueUrgency.moyen:    return AppColors.warning;
+      case IssueUrgency.faible:   return AppColors.textSecondary;
     }
   }
 
@@ -994,9 +997,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   Widget _buildInterventionCard(Issue issue, bool isSelected, AppLocalizations l10n) {
     Color urgencyColor;
     switch (issue.urgency) {
-      case IssueUrgency.urgent: urgencyColor = AppColors.error;   break;
-      case IssueUrgency.moyen:  urgencyColor = AppColors.warning; break;
-      case IssueUrgency.faible: urgencyColor = AppColors.success; break;
+      case IssueUrgency.critique: urgencyColor = AppColors.critical; break;
+      case IssueUrgency.urgent:   urgencyColor = AppColors.error;    break;
+      case IssueUrgency.moyen:    urgencyColor = AppColors.warning;  break;
+      case IssueUrgency.faible:   urgencyColor = AppColors.success;  break;
     }
 
     return InkWell(

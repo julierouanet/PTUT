@@ -1,8 +1,9 @@
-/// Issue urgency enumeration (3 levels)
+/// Issue urgency enumeration (4 levels)
 enum IssueUrgency {
   faible,
   moyen,
-  urgent;
+  urgent,
+  critique;
 
   /// Valeur canonique (FR) — utilisée pour stockage/API (cf. VALID_URGENCIES côté db-service).
   String get displayName {
@@ -13,6 +14,8 @@ enum IssueUrgency {
         return 'Moyen';
       case IssueUrgency.urgent:
         return 'Urgent';
+      case IssueUrgency.critique:
+        return 'Critique';
     }
   }
 
@@ -25,6 +28,8 @@ enum IssueUrgency {
         return l10n.urgencyMedium as String;
       case IssueUrgency.urgent:
         return l10n.urgencyHigh as String;
+      case IssueUrgency.critique:
+        return l10n.urgencyCritical as String;
     }
   }
 
@@ -36,6 +41,9 @@ enum IssueUrgency {
       case 'Urgent':
       case 'High':
         return IssueUrgency.urgent;
+      case 'Critique':
+      case 'Critical':
+        return IssueUrgency.critique;
       default:
         return IssueUrgency.moyen;
     }

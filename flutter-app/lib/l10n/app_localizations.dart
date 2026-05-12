@@ -2672,6 +2672,12 @@ abstract class AppLocalizations {
   /// **'Urgent'**
   String get urgencyHigh;
 
+  /// No description provided for @urgencyCritical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Critique'**
+  String get urgencyCritical;
+
   /// No description provided for @deptAdministration.
   ///
   /// In fr, this message translates to:

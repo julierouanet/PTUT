@@ -476,6 +476,7 @@
   "urgencyLow": "Low",
   "urgencyMedium": "Medium",
   "urgencyHigh": "High",
+  "urgencyCritical": "Critical",
 
   "deptAdministration": "Administration",
   "deptOpd": "OPD (Outpatient)",

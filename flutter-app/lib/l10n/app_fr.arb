@@ -498,6 +498,7 @@
   "urgencyLow": "Faible",
   "urgencyMedium": "Moyen",
   "urgencyHigh": "Urgent",
+  "urgencyCritical": "Critique",
 
   "deptAdministration": "Administration",
   "deptOpd": "OPD (Consultations externes)",

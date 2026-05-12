@@ -5,9 +5,10 @@ import '../theme/app_theme.dart';
 
 /// Badge coloré affichant le niveau d'urgence d'un incident.
 ///
-/// - Faible  → gris/neutre
-/// - Moyen   → orange/warning
-/// - Urgent  → rouge/error avec icône
+/// - Faible   → gris/neutre
+/// - Moyen    → orange/warning
+/// - Urgent   → rouge/error avec icône
+/// - Critique → bordeaux sombre avec icône double flèche
 class UrgencyBadge extends StatelessWidget {
   final IssueUrgency urgency;
   final bool isCompact;
@@ -26,6 +27,8 @@ class UrgencyBadge extends StatelessWidget {
         return AppColors.warning;
       case IssueUrgency.urgent:
         return AppColors.error;
+      case IssueUrgency.critique:
+        return AppColors.critical;
     }
   }
 
@@ -37,6 +40,8 @@ class UrgencyBadge extends StatelessWidget {
         return AppColors.warningLight;
       case IssueUrgency.urgent:
         return AppColors.errorLight;
+      case IssueUrgency.critique:
+        return AppColors.criticalLight;
     }
   }
 
@@ -48,6 +53,8 @@ class UrgencyBadge extends StatelessWidget {
         return Icons.remove;
       case IssueUrgency.urgent:
         return Icons.arrow_upward;
+      case IssueUrgency.critique:
+        return Icons.priority_high;
     }
   }
 

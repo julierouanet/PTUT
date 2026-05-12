@@ -1399,6 +1399,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get urgencyHigh => 'Urgent';
 
   @override
+  String get urgencyCritical => 'Critique';
+
+  @override
   String get deptAdministration => 'Administration';
 
   @override

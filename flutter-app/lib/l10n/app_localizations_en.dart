@@ -1389,6 +1389,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get urgencyHigh => 'High';
 
   @override
+  String get urgencyCritical => 'Critical';
+
+  @override
   String get deptAdministration => 'Administration';
 
   @override
