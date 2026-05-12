@@ -7,6 +7,7 @@ import '../models/issue.dart';
 import '../widgets/progress_bar.dart';
 import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/issue_category_selector.dart';
 
 class DashboardScreen extends StatelessWidget {
   final Function(int) onNavigate;
@@ -34,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
           const SizedBox(height: 16),
           Wrap(spacing: 8, runSpacing: 8, children: [
             ElevatedButton.icon(onPressed: () => onNavigate(1), icon: const Icon(Icons.inventory_2, size: 18), label: Text(l10n.dashboardViewEquipment)),
-            ElevatedButton.icon(onPressed: () => onNavigate(3), style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning), icon: const Icon(Icons.report_problem_outlined, size: 18), label: Text(l10n.dashboardReportProblem)),
+            ElevatedButton.icon(onPressed: () => showIssueCategorySelector(context), style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning), icon: const Icon(Icons.report_problem_outlined, size: 18), label: Text(l10n.dashboardReportProblem)),
             ElevatedButton.icon(onPressed: () => onNavigate(2), style: ElevatedButton.styleFrom(backgroundColor: AppColors.success), icon: const Icon(Icons.list_alt, size: 18), label: Text(l10n.dashboardViewIssues)),
           ]),
           const SizedBox(height: 24),

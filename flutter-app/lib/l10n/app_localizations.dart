@@ -470,6 +470,12 @@ abstract class AppLocalizations {
   /// **'Creer'**
   String get commonCreate;
 
+  /// No description provided for @commonConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer'**
+  String get commonConfirm;
+
   /// No description provided for @loginTitle.
   ///
   /// In fr, this message translates to:
@@ -797,7 +803,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesApproved.
   ///
   /// In fr, this message translates to:
-  /// **'Approuve'**
+  /// **'En cours'**
   String get issuesApproved;
 
   /// No description provided for @issuesTitle.
@@ -815,19 +821,19 @@ abstract class AppLocalizations {
   /// No description provided for @issuesOpen.
   ///
   /// In fr, this message translates to:
-  /// **'Ouverts'**
+  /// **'Signalés'**
   String get issuesOpen;
 
   /// No description provided for @issuesInProgress.
   ///
   /// In fr, this message translates to:
-  /// **'En cours'**
+  /// **'En attente'**
   String get issuesInProgress;
 
   /// No description provided for @issuesResolved.
   ///
   /// In fr, this message translates to:
-  /// **'Resolus'**
+  /// **'Terminés'**
   String get issuesResolved;
 
   /// No description provided for @issuesReport.
@@ -2840,6 +2846,18 @@ abstract class AppLocalizations {
   /// **'Agenda'**
   String get techScheduleTab;
 
+  /// No description provided for @techAvailableTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents disponibles'**
+  String get techAvailableTitle;
+
+  /// No description provided for @techScheduleTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Agenda'**
+  String get techScheduleTitle;
+
   /// No description provided for @techAvailableSubtitle.
   ///
   /// In fr, this message translates to:
@@ -2939,7 +2957,7 @@ abstract class AppLocalizations {
   /// No description provided for @techLegendResolved.
   ///
   /// In fr, this message translates to:
-  /// **'Résolu'**
+  /// **'Terminé'**
   String get techLegendResolved;
 
   /// No description provided for @techLegendPastMaintenance.
@@ -2977,6 +2995,84 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'{count} événement(s)'**
   String techEventCount(int count);
+
+  /// No description provided for @techEventStatusCompleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Effectuée'**
+  String get techEventStatusCompleted;
+
+  /// No description provided for @monthJanuary.
+  ///
+  /// In fr, this message translates to:
+  /// **'Janvier'**
+  String get monthJanuary;
+
+  /// No description provided for @monthFebruary.
+  ///
+  /// In fr, this message translates to:
+  /// **'Février'**
+  String get monthFebruary;
+
+  /// No description provided for @monthMarch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mars'**
+  String get monthMarch;
+
+  /// No description provided for @monthApril.
+  ///
+  /// In fr, this message translates to:
+  /// **'Avril'**
+  String get monthApril;
+
+  /// No description provided for @monthMay.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mai'**
+  String get monthMay;
+
+  /// No description provided for @monthJune.
+  ///
+  /// In fr, this message translates to:
+  /// **'Juin'**
+  String get monthJune;
+
+  /// No description provided for @monthJuly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Juillet'**
+  String get monthJuly;
+
+  /// No description provided for @monthAugust.
+  ///
+  /// In fr, this message translates to:
+  /// **'Août'**
+  String get monthAugust;
+
+  /// No description provided for @monthSeptember.
+  ///
+  /// In fr, this message translates to:
+  /// **'Septembre'**
+  String get monthSeptember;
+
+  /// No description provided for @monthOctober.
+  ///
+  /// In fr, this message translates to:
+  /// **'Octobre'**
+  String get monthOctober;
+
+  /// No description provided for @monthNovember.
+  ///
+  /// In fr, this message translates to:
+  /// **'Novembre'**
+  String get monthNovember;
+
+  /// No description provided for @monthDecember.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décembre'**
+  String get monthDecember;
 
   /// No description provided for @logsTitle.
   ///
@@ -3206,6 +3302,522 @@ abstract class AppLocalizations {
   /// **'Utilisateur'**
   String get logsUserLabel;
 
+  /// No description provided for @logsActionLogin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connexion'**
+  String get logsActionLogin;
+
+  /// No description provided for @logsActionLoginFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec connexion'**
+  String get logsActionLoginFailed;
+
+  /// No description provided for @logsActionLogout.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déconnexion'**
+  String get logsActionLogout;
+
+  /// No description provided for @logsActionCreateEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer équipement'**
+  String get logsActionCreateEquipment;
+
+  /// No description provided for @logsActionUpdateEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. équipement'**
+  String get logsActionUpdateEquipment;
+
+  /// No description provided for @logsActionDeleteEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppr. équipement'**
+  String get logsActionDeleteEquipment;
+
+  /// No description provided for @logsActionRestoreEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaur. équipement'**
+  String get logsActionRestoreEquipment;
+
+  /// No description provided for @logsActionAddMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance'**
+  String get logsActionAddMaintenance;
+
+  /// No description provided for @logsActionScheduleMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planif. maint.'**
+  String get logsActionScheduleMaintenance;
+
+  /// No description provided for @logsActionCreateIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler incident'**
+  String get logsActionCreateIssue;
+
+  /// No description provided for @logsActionUpdateIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. incident'**
+  String get logsActionUpdateIssue;
+
+  /// No description provided for @logsActionDeleteIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppr. incident'**
+  String get logsActionDeleteIssue;
+
+  /// No description provided for @logsActionCreateInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer article'**
+  String get logsActionCreateInventory;
+
+  /// No description provided for @logsActionUpdateInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. stock'**
+  String get logsActionUpdateInventory;
+
+  /// No description provided for @logsActionRestockInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réappro. stock'**
+  String get logsActionRestockInventory;
+
+  /// No description provided for @logsActionDeleteInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppr. article'**
+  String get logsActionDeleteInventory;
+
+  /// No description provided for @logsActionCreateUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer compte'**
+  String get logsActionCreateUser;
+
+  /// No description provided for @logsActionUpdateUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. compte'**
+  String get logsActionUpdateUser;
+
+  /// No description provided for @logsActionDeleteUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppr. compte'**
+  String get logsActionDeleteUser;
+
+  /// No description provided for @logsActionRestoreUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaur. compte'**
+  String get logsActionRestoreUser;
+
+  /// No description provided for @logsActionChangePassword.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. mot de passe'**
+  String get logsActionChangePassword;
+
+  /// No description provided for @logsActionChangeName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. nom'**
+  String get logsActionChangeName;
+
+  /// No description provided for @logsActionChangeEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. email'**
+  String get logsActionChangeEmail;
+
+  /// No description provided for @logsActionChangePhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modif. téléphone'**
+  String get logsActionChangePhone;
+
+  /// No description provided for @logsActionActivateUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte activé'**
+  String get logsActionActivateUser;
+
+  /// No description provided for @logsActionSuspendUser.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte suspendu'**
+  String get logsActionSuspendUser;
+
+  /// No description provided for @logsRestoreGeneric.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer'**
+  String get logsRestoreGeneric;
+
+  /// No description provided for @logsRestoreEquipmentLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer l\'équipement'**
+  String get logsRestoreEquipmentLabel;
+
+  /// No description provided for @logsRestorePreviousState.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer l\'état précédent'**
+  String get logsRestorePreviousState;
+
+  /// No description provided for @logsRestoreUserAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer le compte'**
+  String get logsRestoreUserAccount;
+
+  /// No description provided for @logsReactivateUserAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réactiver le compte'**
+  String get logsReactivateUserAccount;
+
+  /// No description provided for @logsRestoreOldName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer l\'ancien nom'**
+  String get logsRestoreOldName;
+
+  /// No description provided for @logsRestoreOldEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer l\'ancien email'**
+  String get logsRestoreOldEmail;
+
+  /// No description provided for @logsRestoreOldPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer l\'ancien numéro'**
+  String get logsRestoreOldPhone;
+
+  /// No description provided for @logsRestorePreviousValues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer les valeurs précédentes'**
+  String get logsRestorePreviousValues;
+
+  /// No description provided for @logsConfirmRestoreTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la restauration'**
+  String get logsConfirmRestoreTitle;
+
+  /// No description provided for @logsConfirmRestoreShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'{label} ?'**
+  String logsConfirmRestoreShort(String label);
+
+  /// No description provided for @logsConfirmRestoreLong.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous vraiment {label} ?'**
+  String logsConfirmRestoreLong(String label);
+
+  /// No description provided for @logsRestoreButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer'**
+  String get logsRestoreButton;
+
+  /// No description provided for @logsEquipmentRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement restauré avec succès.'**
+  String get logsEquipmentRestored;
+
+  /// No description provided for @logsEquipmentRestoredState.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement restauré à son état précédent.'**
+  String get logsEquipmentRestoredState;
+
+  /// No description provided for @logsUserAccountRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte restauré.\nMot de passe temporaire : {pwd}'**
+  String logsUserAccountRestored(String pwd);
+
+  /// No description provided for @logsUserAccountReactivated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte réactivé.'**
+  String get logsUserAccountReactivated;
+
+  /// No description provided for @logsNameRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom restauré : {old}'**
+  String logsNameRestored(String old);
+
+  /// No description provided for @logsEmailRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email restauré : {old}'**
+  String logsEmailRestored(String old);
+
+  /// No description provided for @logsPhoneRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone restauré : {old}'**
+  String logsPhoneRestored(String old);
+
+  /// No description provided for @logsPreviousValuesRestored.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valeurs précédentes restaurées.'**
+  String get logsPreviousValuesRestored;
+
+  /// No description provided for @logsRestoreErrorPrefix.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur : {message}'**
+  String logsRestoreErrorPrefix(String message);
+
+  /// No description provided for @logsErrSnapshotMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données de snapshot manquantes'**
+  String get logsErrSnapshotMissing;
+
+  /// No description provided for @logsErrInsufficientData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données insuffisantes'**
+  String get logsErrInsufficientData;
+
+  /// No description provided for @logsErrUserIdMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'ID utilisateur manquant'**
+  String get logsErrUserIdMissing;
+
+  /// No description provided for @logsErrOldValueMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ancienne valeur introuvable'**
+  String get logsErrOldValueMissing;
+
+  /// No description provided for @logsErrNothingToRestore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune valeur à restaurer'**
+  String get logsErrNothingToRestore;
+
+  /// No description provided for @logsErrNotRestorable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action non restaurable'**
+  String get logsErrNotRestorable;
+
+  /// No description provided for @logsDetailsBefore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Avant'**
+  String get logsDetailsBefore;
+
+  /// No description provided for @logsDetailsAfter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Après'**
+  String get logsDetailsAfter;
+
+  /// No description provided for @logsDetailsSnapshotAvailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Snapshot disponible'**
+  String get logsDetailsSnapshotAvailable;
+
+  /// No description provided for @logsDetailsPreviousAvailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'État précédent disponible'**
+  String get logsDetailsPreviousAvailable;
+
+  /// No description provided for @logsSectionDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détails'**
+  String get logsSectionDetails;
+
+  /// No description provided for @logsSectionDeleteSnapshot.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données au moment de la suppression'**
+  String get logsSectionDeleteSnapshot;
+
+  /// No description provided for @logsSectionStateBeforeChange.
+  ///
+  /// In fr, this message translates to:
+  /// **'État avant modification'**
+  String get logsSectionStateBeforeChange;
+
+  /// No description provided for @logsSectionUserStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut'**
+  String get logsSectionUserStatus;
+
+  /// No description provided for @logsFieldId.
+  ///
+  /// In fr, this message translates to:
+  /// **'ID'**
+  String get logsFieldId;
+
+  /// No description provided for @logsFieldRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle'**
+  String get logsFieldRole;
+
+  /// No description provided for @logsFieldPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone'**
+  String get logsFieldPhone;
+
+  /// No description provided for @logsFieldStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut'**
+  String get logsFieldStatus;
+
+  /// No description provided for @logsFieldSerial.
+  ///
+  /// In fr, this message translates to:
+  /// **'N° série'**
+  String get logsFieldSerial;
+
+  /// No description provided for @logsFieldSupplier.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fournisseur'**
+  String get logsFieldSupplier;
+
+  /// No description provided for @logsFieldLocation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Emplacement'**
+  String get logsFieldLocation;
+
+  /// No description provided for @logsFieldActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif'**
+  String get logsFieldActive;
+
+  /// No description provided for @logsFieldNewStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouveau statut'**
+  String get logsFieldNewStatus;
+
+  /// No description provided for @logsFieldReason.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison'**
+  String get logsFieldReason;
+
+  /// No description provided for @logsFieldDeviceLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appareil'**
+  String get logsFieldDeviceLabel;
+
+  /// No description provided for @logsFieldIp.
+  ///
+  /// In fr, this message translates to:
+  /// **'IP'**
+  String get logsFieldIp;
+
+  /// No description provided for @logsFieldIpUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inconnue'**
+  String get logsFieldIpUnknown;
+
+  /// No description provided for @logsFieldUserAgent.
+  ///
+  /// In fr, this message translates to:
+  /// **'User-Agent'**
+  String get logsFieldUserAgent;
+
+  /// No description provided for @logsFieldTimestamp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Horodatage'**
+  String get logsFieldTimestamp;
+
+  /// No description provided for @logsFieldType.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type'**
+  String get logsFieldType;
+
+  /// No description provided for @logsAlertNewIpFull.
+  ///
+  /// In fr, this message translates to:
+  /// **'Première connexion depuis cette adresse IP pour ce compte.'**
+  String get logsAlertNewIpFull;
+
+  /// No description provided for @logsUserStatusActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif'**
+  String get logsUserStatusActive;
+
+  /// No description provided for @logsUserStatusSuspended.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suspendu'**
+  String get logsUserStatusSuspended;
+
+  /// No description provided for @logsErrorLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur : {error}'**
+  String logsErrorLoading(String error);
+
+  /// No description provided for @logsTimeJustNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'À l\'instant'**
+  String get logsTimeJustNow;
+
+  /// No description provided for @logsTimeWithMinutes.
+  ///
+  /// In fr, this message translates to:
+  /// **'{time} (il y a {n} min)'**
+  String logsTimeWithMinutes(String time, int n);
+
+  /// No description provided for @logsTimeWithHours.
+  ///
+  /// In fr, this message translates to:
+  /// **'{time} (il y a {n} h)'**
+  String logsTimeWithHours(String time, int n);
+
+  /// No description provided for @logsEntriesCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} entrée(s)'**
+  String logsEntriesCount(int count);
+
   /// No description provided for @settingsRolesTab.
   ///
   /// In fr, this message translates to:
@@ -3233,7 +3845,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAdminLockedInfo.
   ///
   /// In fr, this message translates to:
-  /// **'L\'administrateur a toutes les permissions — toujours sans restriction. Les rôles personnalisés peuvent être supprimés.'**
+  /// **'Les permissions de l\'Administrateur sont verrouillées — il a toujours accès à tout. Les rôles personnalisés peuvent être supprimés.'**
   String get settingsAdminLockedInfo;
 
   /// No description provided for @settingsNoRoles.
@@ -3385,6 +3997,174 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Supprimer le rôle'**
   String get settingsDeleteRole;
+
+  /// No description provided for @settingsRoleCreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle créé'**
+  String get settingsRoleCreated;
+
+  /// No description provided for @settingsRoleCreateError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la création'**
+  String get settingsRoleCreateError;
+
+  /// No description provided for @settingsRoleSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la sauvegarde'**
+  String get settingsRoleSaveError;
+
+  /// No description provided for @settingsRoleDeleteError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la suppression'**
+  String get settingsRoleDeleteError;
+
+  /// No description provided for @settingsRoleDeletedToast.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle \"{role}\" supprimé'**
+  String settingsRoleDeletedToast(String role);
+
+  /// No description provided for @settingsRoleDeleteConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer \"{role}\" ? Cette action est irréversible.'**
+  String settingsRoleDeleteConfirm(String role);
+
+  /// No description provided for @settingsRolePermissionsUpdated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Permissions de {role} mises à jour'**
+  String settingsRolePermissionsUpdated(String role);
+
+  /// No description provided for @settingsRoleConfigSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configuration sauvegardée'**
+  String get settingsRoleConfigSaved;
+
+  /// No description provided for @settingsRoleConfigSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la sauvegarde'**
+  String get settingsRoleConfigSaveError;
+
+  /// No description provided for @settingsResetDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialisé aux valeurs par défaut'**
+  String get settingsResetDone;
+
+  /// No description provided for @roleHospitalStaff.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnel hospitalier'**
+  String get roleHospitalStaff;
+
+  /// No description provided for @roleSupervisor.
+  ///
+  /// In fr, this message translates to:
+  /// **'Superviseur'**
+  String get roleSupervisor;
+
+  /// No description provided for @roleTechnician.
+  ///
+  /// In fr, this message translates to:
+  /// **'Technicien'**
+  String get roleTechnician;
+
+  /// No description provided for @roleAdmin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Administrateur ICT'**
+  String get roleAdmin;
+
+  /// No description provided for @permViewEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consulter les équipements'**
+  String get permViewEquipment;
+
+  /// No description provided for @permReportIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler un problème'**
+  String get permReportIssue;
+
+  /// No description provided for @permTrackIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivre les demandes'**
+  String get permTrackIssues;
+
+  /// No description provided for @permApproveRequests.
+  ///
+  /// In fr, this message translates to:
+  /// **'Approuver les demandes'**
+  String get permApproveRequests;
+
+  /// No description provided for @permAssignTasks.
+  ///
+  /// In fr, this message translates to:
+  /// **'Assigner les tâches'**
+  String get permAssignTasks;
+
+  /// No description provided for @permUpdateRepairs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mettre à jour les réparations'**
+  String get permUpdateRepairs;
+
+  /// No description provided for @permRegisterParts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer les pièces'**
+  String get permRegisterParts;
+
+  /// No description provided for @permManageEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les équipements'**
+  String get permManageEquipment;
+
+  /// No description provided for @permManageUsers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les utilisateurs'**
+  String get permManageUsers;
+
+  /// No description provided for @permManageDepartments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les départements'**
+  String get permManageDepartments;
+
+  /// No description provided for @permManageCategories.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les catégories'**
+  String get permManageCategories;
+
+  /// No description provided for @permGenerateReports.
+  ///
+  /// In fr, this message translates to:
+  /// **'Générer des rapports'**
+  String get permGenerateReports;
+
+  /// No description provided for @permViewInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consulter l\'inventaire'**
+  String get permViewInventory;
+
+  /// No description provided for @permChangeDepartment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer son département directement'**
+  String get permChangeDepartment;
 
   /// No description provided for @accountFirstName.
   ///
@@ -3547,6 +4327,162 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.'**
   String get usersRolesInfo;
+
+  /// No description provided for @issueFormSourceLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type de signalement'**
+  String get issueFormSourceLabel;
+
+  /// No description provided for @issueFormSourceEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement médical'**
+  String get issueFormSourceEquipment;
+
+  /// No description provided for @issueFormSourceLocation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure / Lieu'**
+  String get issueFormSourceLocation;
+
+  /// No description provided for @issueFormSelectLocation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un lieu'**
+  String get issueFormSelectLocation;
+
+  /// No description provided for @issueFormLocationRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner un lieu'**
+  String get issueFormLocationRequired;
+
+  /// No description provided for @techReassignButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transférer vers un autre groupe'**
+  String get techReassignButton;
+
+  /// No description provided for @techReassignTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Transférer l\'incident'**
+  String get techReassignTitle;
+
+  /// No description provided for @techReassignSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez le groupe qui doit traiter cet incident.'**
+  String get techReassignSubtitle;
+
+  /// No description provided for @techReassignGroupHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un groupe'**
+  String get techReassignGroupHint;
+
+  /// No description provided for @techReassignGroupRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le groupe est obligatoire'**
+  String get techReassignGroupRequired;
+
+  /// No description provided for @techReassignReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif du transfert'**
+  String get techReassignReasonLabel;
+
+  /// No description provided for @techReassignReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Expliquez pourquoi vous transférez cet incident…'**
+  String get techReassignReasonHint;
+
+  /// No description provided for @techReassignReasonMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le motif doit contenir au moins 10 caractères'**
+  String get techReassignReasonMinLength;
+
+  /// No description provided for @techReassignSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident transféré au groupe {group}'**
+  String techReassignSuccess(String group);
+
+  /// No description provided for @equipDetailCurrentIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents en cours'**
+  String get equipDetailCurrentIssues;
+
+  /// No description provided for @equipDetailPastIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des incidents'**
+  String get equipDetailPastIssues;
+
+  /// No description provided for @equipDetailNoCurrentIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident en cours pour cet équipement'**
+  String get equipDetailNoCurrentIssues;
+
+  /// No description provided for @equipDetailNoPastIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident résolu pour cet équipement'**
+  String get equipDetailNoPastIssues;
+
+  /// No description provided for @equipDetailIssuesSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents'**
+  String get equipDetailIssuesSection;
+
+  /// No description provided for @equipDetailLoadingError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du chargement des détails'**
+  String get equipDetailLoadingError;
+
+  /// No description provided for @issueCategorySelectorTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Quel type de problème rencontrez-vous ?'**
+  String get issueCategorySelectorTitle;
+
+  /// No description provided for @issueCategoryBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements Biomédicaux'**
+  String get issueCategoryBiomedical;
+
+  /// No description provided for @issueCategoryInfrastructure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure & Électricité'**
+  String get issueCategoryInfrastructure;
+
+  /// No description provided for @issueCategoryIT.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informatique (IT)'**
+  String get issueCategoryIT;
+
+  /// No description provided for @issueCategoryOther.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre / Je ne sais pas'**
+  String get issueCategoryOther;
+
+  /// No description provided for @issueFormNoEquipmentInCategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement de ce type trouvé dans votre département.'**
+  String get issueFormNoEquipmentInCategory;
 }
 
 class _AppLocalizationsDelegate

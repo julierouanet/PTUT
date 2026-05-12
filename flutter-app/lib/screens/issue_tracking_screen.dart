@@ -8,6 +8,7 @@ import '../models/issue.dart';
 import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
+import '../widgets/issue_category_selector.dart';
 
 /// Issue tracking screen - view and manage all issues
 class IssueTrackingScreen extends StatefulWidget {
@@ -156,7 +157,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => widget.onNavigate(3),
+                  onPressed: () => showIssueCategorySelector(context),
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(l10n.issuesReport),
                 ),
@@ -172,7 +173,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
                 const Spacer(),
                 ElevatedButton.icon(
-                  onPressed: () => widget.onNavigate(3),
+                  onPressed: () => showIssueCategorySelector(context),
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(l10n.issuesReport),
                 ),

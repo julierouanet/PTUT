@@ -840,5 +840,12 @@
   "equipDetailNoCurrentIssues": "Aucun incident en cours pour cet équipement",
   "equipDetailNoPastIssues": "Aucun incident résolu pour cet équipement",
   "equipDetailIssuesSection": "Incidents",
-  "equipDetailLoadingError": "Erreur lors du chargement des détails"
+  "equipDetailLoadingError": "Erreur lors du chargement des détails",
+
+  "issueCategorySelectorTitle": "Quel type de problème rencontrez-vous ?",
+  "issueCategoryBiomedical": "Équipements Biomédicaux",
+  "issueCategoryInfrastructure": "Infrastructure & Électricité",
+  "issueCategoryIT": "Informatique (IT)",
+  "issueCategoryOther": "Autre / Je ne sais pas",
+  "issueFormNoEquipmentInCategory": "Aucun équipement de ce type trouvé dans votre département."
 }

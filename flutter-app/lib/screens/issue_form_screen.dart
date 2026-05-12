@@ -15,8 +15,14 @@ import '../widgets/urgency_badge.dart';
 class IssueFormScreen extends StatefulWidget {
   final String? equipmentId;
   final VoidCallback? onCancel;
+  final List<String>? categoryFilter;
 
-  const IssueFormScreen({super.key, this.equipmentId, this.onCancel});
+  const IssueFormScreen({
+    super.key,
+    this.equipmentId,
+    this.onCancel,
+    this.categoryFilter,
+  });
 
   @override
   State<IssueFormScreen> createState() => IssueFormScreenState();
@@ -79,6 +85,15 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   Equipment? get _selectedEquipment {
     if (_selectedEquipmentId == null) return null;
     return DataService().equipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
+  }
+
+  List<Equipment> get _filteredEquipmentList {
+    final all = DataService().equipment;
+    final filter = widget.categoryFilter;
+    if (filter == null || filter.isEmpty) return all;
+    return all
+        .where((eq) => filter.any((f) => f.toLowerCase() == eq.category.toLowerCase()))
+        .toList();
   }
 
   void _pickPhoto() {
@@ -193,7 +208,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                         optionsBuilder: (TextEditingValue textEditingValue) {
                           final query = textEditingValue.text.toLowerCase().trim();
                           if (query.isEmpty) return const Iterable<Equipment>.empty();
-                          return DataService().equipment.where((eq) =>
+                          return _filteredEquipmentList.where((eq) =>
                             eq.name.toLowerCase().contains(query) ||
                             eq.serialNumber.toLowerCase().contains(query),
                           );
@@ -259,6 +274,40 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                           );
                         },
                       ),
+                      if (widget.categoryFilter != null && _filteredEquipmentList.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningLight,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.warning.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: AppColors.warning,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    AppLocalizations.of(context)!
+                                        .issueFormNoEquipmentInCategory,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       if (_selectedEquipment != null) ...[
                         const SizedBox(height: 16),
                         Container(

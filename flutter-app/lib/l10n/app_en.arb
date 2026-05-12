@@ -818,5 +818,12 @@
   "equipDetailNoCurrentIssues": "No current issues for this equipment",
   "equipDetailNoPastIssues": "No resolved issues for this equipment",
   "equipDetailIssuesSection": "Issues",
-  "equipDetailLoadingError": "Error loading equipment details"
+  "equipDetailLoadingError": "Error loading equipment details",
+
+  "issueCategorySelectorTitle": "What type of problem are you experiencing?",
+  "issueCategoryBiomedical": "Biomedical Equipment",
+  "issueCategoryInfrastructure": "Infrastructure & Electrical",
+  "issueCategoryIT": "IT (Information Technology)",
+  "issueCategoryOther": "Other / I don't know",
+  "issueFormNoEquipmentInCategory": "No equipment of this type found in your department."
 }

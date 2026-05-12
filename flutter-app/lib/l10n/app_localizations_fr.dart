@@ -200,6 +200,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonCreate => 'Creer';
 
   @override
+  String get commonConfirm => 'Confirmer';
+
+  @override
   String get loginTitle => 'Connexion';
 
   @override
@@ -367,7 +370,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentReportProblem => 'Signaler un probleme';
 
   @override
-  String get issuesApproved => 'Approuve';
+  String get issuesApproved => 'En cours';
 
   @override
   String get issuesTitle => 'Suivi des incidents';
@@ -376,13 +379,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issuesSubtitle => 'Gerer et suivre les incidents des equipements';
 
   @override
-  String get issuesOpen => 'Ouverts';
+  String get issuesOpen => 'Signalés';
 
   @override
-  String get issuesInProgress => 'En cours';
+  String get issuesInProgress => 'En attente';
 
   @override
-  String get issuesResolved => 'Resolus';
+  String get issuesResolved => 'Terminés';
 
   @override
   String get issuesReport => 'Signaler un incident';
@@ -1483,6 +1486,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techScheduleTab => 'Agenda';
 
   @override
+  String get techAvailableTitle => 'Incidents disponibles';
+
+  @override
+  String get techScheduleTitle => 'Agenda';
+
+  @override
   String get techAvailableSubtitle =>
       'Incidents approuvés en attente d\'un technicien — prenez en charge ceux que vous souhaitez traiter.';
 
@@ -1562,6 +1571,45 @@ class AppLocalizationsFr extends AppLocalizations {
   String techEventCount(int count) {
     return '$count événement(s)';
   }
+
+  @override
+  String get techEventStatusCompleted => 'Effectuée';
+
+  @override
+  String get monthJanuary => 'Janvier';
+
+  @override
+  String get monthFebruary => 'Février';
+
+  @override
+  String get monthMarch => 'Mars';
+
+  @override
+  String get monthApril => 'Avril';
+
+  @override
+  String get monthMay => 'Mai';
+
+  @override
+  String get monthJune => 'Juin';
+
+  @override
+  String get monthJuly => 'Juillet';
+
+  @override
+  String get monthAugust => 'Août';
+
+  @override
+  String get monthSeptember => 'Septembre';
+
+  @override
+  String get monthOctober => 'Octobre';
+
+  @override
+  String get monthNovember => 'Novembre';
+
+  @override
+  String get monthDecember => 'Décembre';
 
   @override
   String get logsTitle => 'Journaux d\'activité';
@@ -1679,6 +1727,288 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logsUserLabel => 'Utilisateur';
 
   @override
+  String get logsActionLogin => 'Connexion';
+
+  @override
+  String get logsActionLoginFailed => 'Échec connexion';
+
+  @override
+  String get logsActionLogout => 'Déconnexion';
+
+  @override
+  String get logsActionCreateEquipment => 'Créer équipement';
+
+  @override
+  String get logsActionUpdateEquipment => 'Modif. équipement';
+
+  @override
+  String get logsActionDeleteEquipment => 'Suppr. équipement';
+
+  @override
+  String get logsActionRestoreEquipment => 'Restaur. équipement';
+
+  @override
+  String get logsActionAddMaintenance => 'Maintenance';
+
+  @override
+  String get logsActionScheduleMaintenance => 'Planif. maint.';
+
+  @override
+  String get logsActionCreateIssue => 'Signaler incident';
+
+  @override
+  String get logsActionUpdateIssue => 'Modif. incident';
+
+  @override
+  String get logsActionDeleteIssue => 'Suppr. incident';
+
+  @override
+  String get logsActionCreateInventory => 'Créer article';
+
+  @override
+  String get logsActionUpdateInventory => 'Modif. stock';
+
+  @override
+  String get logsActionRestockInventory => 'Réappro. stock';
+
+  @override
+  String get logsActionDeleteInventory => 'Suppr. article';
+
+  @override
+  String get logsActionCreateUser => 'Créer compte';
+
+  @override
+  String get logsActionUpdateUser => 'Modif. compte';
+
+  @override
+  String get logsActionDeleteUser => 'Suppr. compte';
+
+  @override
+  String get logsActionRestoreUser => 'Restaur. compte';
+
+  @override
+  String get logsActionChangePassword => 'Modif. mot de passe';
+
+  @override
+  String get logsActionChangeName => 'Modif. nom';
+
+  @override
+  String get logsActionChangeEmail => 'Modif. email';
+
+  @override
+  String get logsActionChangePhone => 'Modif. téléphone';
+
+  @override
+  String get logsActionActivateUser => 'Compte activé';
+
+  @override
+  String get logsActionSuspendUser => 'Compte suspendu';
+
+  @override
+  String get logsRestoreGeneric => 'Restaurer';
+
+  @override
+  String get logsRestoreEquipmentLabel => 'Restaurer l\'équipement';
+
+  @override
+  String get logsRestorePreviousState => 'Restaurer l\'état précédent';
+
+  @override
+  String get logsRestoreUserAccount => 'Restaurer le compte';
+
+  @override
+  String get logsReactivateUserAccount => 'Réactiver le compte';
+
+  @override
+  String get logsRestoreOldName => 'Restaurer l\'ancien nom';
+
+  @override
+  String get logsRestoreOldEmail => 'Restaurer l\'ancien email';
+
+  @override
+  String get logsRestoreOldPhone => 'Restaurer l\'ancien numéro';
+
+  @override
+  String get logsRestorePreviousValues => 'Restaurer les valeurs précédentes';
+
+  @override
+  String get logsConfirmRestoreTitle => 'Confirmer la restauration';
+
+  @override
+  String logsConfirmRestoreShort(String label) {
+    return '$label ?';
+  }
+
+  @override
+  String logsConfirmRestoreLong(String label) {
+    return 'Voulez-vous vraiment $label ?';
+  }
+
+  @override
+  String get logsRestoreButton => 'Restaurer';
+
+  @override
+  String get logsEquipmentRestored => 'Équipement restauré avec succès.';
+
+  @override
+  String get logsEquipmentRestoredState =>
+      'Équipement restauré à son état précédent.';
+
+  @override
+  String logsUserAccountRestored(String pwd) {
+    return 'Compte restauré.\nMot de passe temporaire : $pwd';
+  }
+
+  @override
+  String get logsUserAccountReactivated => 'Compte réactivé.';
+
+  @override
+  String logsNameRestored(String old) {
+    return 'Nom restauré : $old';
+  }
+
+  @override
+  String logsEmailRestored(String old) {
+    return 'Email restauré : $old';
+  }
+
+  @override
+  String logsPhoneRestored(String old) {
+    return 'Téléphone restauré : $old';
+  }
+
+  @override
+  String get logsPreviousValuesRestored => 'Valeurs précédentes restaurées.';
+
+  @override
+  String logsRestoreErrorPrefix(String message) {
+    return 'Erreur : $message';
+  }
+
+  @override
+  String get logsErrSnapshotMissing => 'Données de snapshot manquantes';
+
+  @override
+  String get logsErrInsufficientData => 'Données insuffisantes';
+
+  @override
+  String get logsErrUserIdMissing => 'ID utilisateur manquant';
+
+  @override
+  String get logsErrOldValueMissing => 'Ancienne valeur introuvable';
+
+  @override
+  String get logsErrNothingToRestore => 'Aucune valeur à restaurer';
+
+  @override
+  String get logsErrNotRestorable => 'Action non restaurable';
+
+  @override
+  String get logsDetailsBefore => 'Avant';
+
+  @override
+  String get logsDetailsAfter => 'Après';
+
+  @override
+  String get logsDetailsSnapshotAvailable => 'Snapshot disponible';
+
+  @override
+  String get logsDetailsPreviousAvailable => 'État précédent disponible';
+
+  @override
+  String get logsSectionDetails => 'Détails';
+
+  @override
+  String get logsSectionDeleteSnapshot => 'Données au moment de la suppression';
+
+  @override
+  String get logsSectionStateBeforeChange => 'État avant modification';
+
+  @override
+  String get logsSectionUserStatus => 'Statut';
+
+  @override
+  String get logsFieldId => 'ID';
+
+  @override
+  String get logsFieldRole => 'Rôle';
+
+  @override
+  String get logsFieldPhone => 'Téléphone';
+
+  @override
+  String get logsFieldStatus => 'Statut';
+
+  @override
+  String get logsFieldSerial => 'N° série';
+
+  @override
+  String get logsFieldSupplier => 'Fournisseur';
+
+  @override
+  String get logsFieldLocation => 'Emplacement';
+
+  @override
+  String get logsFieldActive => 'Actif';
+
+  @override
+  String get logsFieldNewStatus => 'Nouveau statut';
+
+  @override
+  String get logsFieldReason => 'Raison';
+
+  @override
+  String get logsFieldDeviceLabel => 'Appareil';
+
+  @override
+  String get logsFieldIp => 'IP';
+
+  @override
+  String get logsFieldIpUnknown => 'Inconnue';
+
+  @override
+  String get logsFieldUserAgent => 'User-Agent';
+
+  @override
+  String get logsFieldTimestamp => 'Horodatage';
+
+  @override
+  String get logsFieldType => 'Type';
+
+  @override
+  String get logsAlertNewIpFull =>
+      'Première connexion depuis cette adresse IP pour ce compte.';
+
+  @override
+  String get logsUserStatusActive => 'Actif';
+
+  @override
+  String get logsUserStatusSuspended => 'Suspendu';
+
+  @override
+  String logsErrorLoading(String error) {
+    return 'Erreur : $error';
+  }
+
+  @override
+  String get logsTimeJustNow => 'À l\'instant';
+
+  @override
+  String logsTimeWithMinutes(String time, int n) {
+    return '$time (il y a $n min)';
+  }
+
+  @override
+  String logsTimeWithHours(String time, int n) {
+    return '$time (il y a $n h)';
+  }
+
+  @override
+  String logsEntriesCount(int count) {
+    return '$count entrée(s)';
+  }
+
+  @override
   String get settingsRolesTab => 'Gestion des rôles';
 
   @override
@@ -1693,7 +2023,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsAdminLockedInfo =>
-      'L\'administrateur a toutes les permissions — toujours sans restriction. Les rôles personnalisés peuvent être supprimés.';
+      'Les permissions de l\'Administrateur sont verrouillées — il a toujours accès à tout. Les rôles personnalisés peuvent être supprimés.';
 
   @override
   String get settingsNoRoles => 'Aucun rôle chargé.';
@@ -1774,6 +2104,96 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsDeleteRole => 'Supprimer le rôle';
+
+  @override
+  String get settingsRoleCreated => 'Rôle créé';
+
+  @override
+  String get settingsRoleCreateError => 'Erreur lors de la création';
+
+  @override
+  String get settingsRoleSaveError => 'Erreur lors de la sauvegarde';
+
+  @override
+  String get settingsRoleDeleteError => 'Erreur lors de la suppression';
+
+  @override
+  String settingsRoleDeletedToast(String role) {
+    return 'Rôle \"$role\" supprimé';
+  }
+
+  @override
+  String settingsRoleDeleteConfirm(String role) {
+    return 'Supprimer \"$role\" ? Cette action est irréversible.';
+  }
+
+  @override
+  String settingsRolePermissionsUpdated(String role) {
+    return 'Permissions de $role mises à jour';
+  }
+
+  @override
+  String get settingsRoleConfigSaved => 'Configuration sauvegardée';
+
+  @override
+  String get settingsRoleConfigSaveError => 'Erreur lors de la sauvegarde';
+
+  @override
+  String get settingsResetDone => 'Réinitialisé aux valeurs par défaut';
+
+  @override
+  String get roleHospitalStaff => 'Personnel hospitalier';
+
+  @override
+  String get roleSupervisor => 'Superviseur';
+
+  @override
+  String get roleTechnician => 'Technicien';
+
+  @override
+  String get roleAdmin => 'Administrateur ICT';
+
+  @override
+  String get permViewEquipment => 'Consulter les équipements';
+
+  @override
+  String get permReportIssue => 'Signaler un problème';
+
+  @override
+  String get permTrackIssues => 'Suivre les demandes';
+
+  @override
+  String get permApproveRequests => 'Approuver les demandes';
+
+  @override
+  String get permAssignTasks => 'Assigner les tâches';
+
+  @override
+  String get permUpdateRepairs => 'Mettre à jour les réparations';
+
+  @override
+  String get permRegisterParts => 'Enregistrer les pièces';
+
+  @override
+  String get permManageEquipment => 'Gérer les équipements';
+
+  @override
+  String get permManageUsers => 'Gérer les utilisateurs';
+
+  @override
+  String get permManageDepartments => 'Gérer les départements';
+
+  @override
+  String get permManageCategories => 'Gérer les catégories';
+
+  @override
+  String get permGenerateReports => 'Générer des rapports';
+
+  @override
+  String get permViewInventory => 'Consulter l\'inventaire';
+
+  @override
+  String get permChangeDepartment => 'Changer son département directement';
 
   @override
   String get accountFirstName => 'Prénom';
@@ -1868,4 +2288,91 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get usersRolesInfo =>
       'Pour modifier les permissions, rendez-vous dans l\'onglet Rôles.';
+
+  @override
+  String get issueFormSourceLabel => 'Type de signalement';
+
+  @override
+  String get issueFormSourceEquipment => 'Équipement médical';
+
+  @override
+  String get issueFormSourceLocation => 'Infrastructure / Lieu';
+
+  @override
+  String get issueFormSelectLocation => 'Sélectionnez un lieu';
+
+  @override
+  String get issueFormLocationRequired => 'Veuillez sélectionner un lieu';
+
+  @override
+  String get techReassignButton => 'Transférer vers un autre groupe';
+
+  @override
+  String get techReassignTitle => 'Transférer l\'incident';
+
+  @override
+  String get techReassignSubtitle =>
+      'Choisissez le groupe qui doit traiter cet incident.';
+
+  @override
+  String get techReassignGroupHint => 'Sélectionnez un groupe';
+
+  @override
+  String get techReassignGroupRequired => 'Le groupe est obligatoire';
+
+  @override
+  String get techReassignReasonLabel => 'Motif du transfert';
+
+  @override
+  String get techReassignReasonHint =>
+      'Expliquez pourquoi vous transférez cet incident…';
+
+  @override
+  String get techReassignReasonMinLength =>
+      'Le motif doit contenir au moins 10 caractères';
+
+  @override
+  String techReassignSuccess(String group) {
+    return 'Incident transféré au groupe $group';
+  }
+
+  @override
+  String get equipDetailCurrentIssues => 'Incidents en cours';
+
+  @override
+  String get equipDetailPastIssues => 'Historique des incidents';
+
+  @override
+  String get equipDetailNoCurrentIssues =>
+      'Aucun incident en cours pour cet équipement';
+
+  @override
+  String get equipDetailNoPastIssues =>
+      'Aucun incident résolu pour cet équipement';
+
+  @override
+  String get equipDetailIssuesSection => 'Incidents';
+
+  @override
+  String get equipDetailLoadingError => 'Erreur lors du chargement des détails';
+
+  @override
+  String get issueCategorySelectorTitle =>
+      'Quel type de problème rencontrez-vous ?';
+
+  @override
+  String get issueCategoryBiomedical => 'Équipements Biomédicaux';
+
+  @override
+  String get issueCategoryInfrastructure => 'Infrastructure & Électricité';
+
+  @override
+  String get issueCategoryIT => 'Informatique (IT)';
+
+  @override
+  String get issueCategoryOther => 'Autre / Je ne sais pas';
+
+  @override
+  String get issueFormNoEquipmentInCategory =>
+      'Aucun équipement de ce type trouvé dans votre département.';
 }
