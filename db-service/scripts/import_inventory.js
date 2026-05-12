@@ -215,10 +215,6 @@ function importEquipment(db, workbook, opts) {
   };
   const errors = [];
 
-  // Compteur séquentiel pour les équipements sans serial (idempotent par
-  // ordre du fichier — documenté dans le plan).
-  let noSerialCounter = 0;
-
   // Une seule transaction = atomicité + perf better-sqlite3
   const runImport = db.transaction(() => {
     for (let i = headerIdx + 1; i < rows.length; i++) {
@@ -245,6 +241,15 @@ function importEquipment(db, workbook, opts) {
         if (!rawName || !rawDept) {
           stats.skipped++;
           errors.push(`Ligne ${i + 1} (No=${noCell}) : nom ou département manquant — ignorée`);
+          continue;
+        }
+
+        // Le TagNumber est désormais la clé primaire (equipment.id) : sans tag
+        // exploitable, on ne peut pas insérer la ligne.
+        const id = N.tagToId(tag);
+        if (!id) {
+          stats.skipped++;
+          errors.push(`Ligne ${i + 1} (No=${noCell}) : tag_number manquant ou invalide — ignorée`);
           continue;
         }
 
@@ -278,11 +283,6 @@ function importEquipment(db, workbook, opts) {
           }
           if (categoryId) catMap.set(rawCat.toLowerCase(), categoryId);
         }
-
-        // Génération de l'id : SerialNumber slugifié, fallback noserial-XXX
-        const id = serial
-          ? N.serialToId(serial, 0)
-          : N.serialToId(null, ++noSerialCounter);
 
         const payload = {
           id,

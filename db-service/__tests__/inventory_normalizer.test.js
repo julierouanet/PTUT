@@ -140,31 +140,43 @@ describe('normalizeYear', () => {
   });
 });
 
-describe('serialToId', () => {
-  test('serial valide → slug minuscule', () => {
-    expect(N.serialToId('CBB0123180183', 1)).toBe('cbb0123180183');
-    expect(N.serialToId('M766ASO991030', 2)).toBe('m766aso991030');
+describe('tagToId', () => {
+  test('tag valide → slug minuscule', () => {
+    expect(N.tagToId('KBT-MRI-001')).toBe('kbt-mri-001');
+    expect(N.tagToId('TAG123')).toBe('tag123');
   });
 
-  test('serial avec caractères spéciaux → tirets', () => {
-    expect(N.serialToId('J201906267/200079781411', 3)).toBe('j201906267-200079781411');
-    expect(N.serialToId('A0150 200406', 4)).toBe('a0150-200406');
+  test('tag avec caractères spéciaux → tirets', () => {
+    expect(N.tagToId('KBT/MRI/001')).toBe('kbt-mri-001');
+    expect(N.tagToId('A0150 200406')).toBe('a0150-200406');
   });
 
-  test('serial vide / null → noserial-NNN', () => {
-    expect(N.serialToId(null, 1)).toBe('noserial-001');
-    expect(N.serialToId('', 12)).toBe('noserial-012');
-    expect(N.serialToId('n/a', 99)).toBe('noserial-099');
+  test('tag vide / null / marqueur absent → null', () => {
+    expect(N.tagToId(null)).toBeNull();
+    expect(N.tagToId(undefined)).toBeNull();
+    expect(N.tagToId('')).toBeNull();
+    expect(N.tagToId('   ')).toBeNull();
+    expect(N.tagToId('n/a')).toBeNull();
+    expect(N.tagToId('UKNOWN')).toBeNull();
+    expect(N.tagToId('-')).toBeNull();
   });
 
-  test('serial uniquement des caractères spéciaux → noserial-NNN', () => {
-    expect(N.serialToId('///', 7)).toBe('noserial-007');
+  test('tag uniquement des caractères non-slugifiables → null', () => {
+    expect(N.tagToId('///')).toBeNull();
+    expect(N.tagToId('!!!')).toBeNull();
   });
 
   test('id généré valide pour la regex de routes/equipment.js', () => {
     const re = /^[a-zA-Z0-9_-]+$/;
-    expect(re.test(N.serialToId('CBB0123180183', 1))).toBe(true);
-    expect(re.test(N.serialToId(null, 1))).toBe(true);
-    expect(re.test(N.serialToId('J201906267/200079781411', 1))).toBe(true);
+    expect(re.test(N.tagToId('KBT-MRI-001'))).toBe(true);
+    expect(re.test(N.tagToId('KBT/MRI/001'))).toBe(true);
+    expect(re.test(N.tagToId('TAG 123'))).toBe(true);
+  });
+
+  test('tag long → tronqué à 100 caractères', () => {
+    const longTag = 'A'.repeat(150);
+    const id = N.tagToId(longTag);
+    expect(id.length).toBe(100);
+    expect(id).toBe('a'.repeat(100));
   });
 });

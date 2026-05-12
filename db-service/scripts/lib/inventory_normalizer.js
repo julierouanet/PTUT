@@ -116,19 +116,20 @@ function normalizeYear(raw) {
 }
 
 /**
- * Convertit un SerialNumber en `equipment.id` slugifié (alphanumérique, `_`,
- * `-`, longueur ≤ 100, validable par /^[a-zA-Z0-9_-]+$/). Si vide, génère un
- * id séquentiel `noserial-XXX` à partir de fallbackIndex (1-indexé).
+ * Convertit un TagNumber en `equipment.id` slugifié (alphanumérique, `_`,
+ * `-`, longueur ≤ 100, validable par /^[a-zA-Z0-9_-]+$/). Retourne `null` si
+ * le tag est vide, un marqueur "absent", ou ne contient aucun caractère
+ * slugifiable — le caller doit alors ignorer la ligne.
  */
-function serialToId(serial, fallbackIndex) {
-  const cleaned = cleanCell(serial);
-  if (!cleaned) return `noserial-${String(fallbackIndex).padStart(3, '0')}`;
+function tagToId(tag) {
+  const cleaned = cleanCell(tag);
+  if (!cleaned) return null;
   const slug = cleaned
     .toLowerCase()
     .replace(/[^a-z0-9_-]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 100);
-  return slug || `noserial-${String(fallbackIndex).padStart(3, '0')}`;
+  return slug || null;
 }
 
 function pad2(n) {
@@ -141,5 +142,5 @@ module.exports = {
   normalizeRefName,
   normalizeDate,
   normalizeYear,
-  serialToId,
+  tagToId,
 };

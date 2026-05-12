@@ -235,7 +235,7 @@ Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
 - **`docker-compose down -v`** détruirait `auth_data` / `db_data` (utilisateurs + équipements). Toujours préférer `down` sans `-v`.
 - **Migrations DB** : ne supprimer aucune colonne dans `database.js` sans script de migration explicite — c'est lu à chaque démarrage.
 - **Dockerfile db-service** : tout nouveau dossier (ex. `scripts/`) doit être ajouté via `COPY` dans le Dockerfile, sinon il n'est pas embarqué dans l'image (le `.dockerignore` ne suffit pas).
-- **`equipment.id`** : la clé primaire est désormais dérivée du `SerialNumber` slugifié pour les équipements importés (`a-z0-9_-`, max 100). Préserver la convention si on insère manuellement.
+- **`equipment.id`** : la clé primaire est désormais dérivée du `TagNumber` slugifié pour les équipements importés (`a-z0-9_-`, max 100). Les lignes du XLSX sans `TagNumber` exploitable sont **ignorées** par `scripts/import_inventory.js`. Préserver la convention si on insère manuellement.
 - **CORS** : la liste blanche d'origines est codée dans `auth-service/src/index.js`. Ajouter explicitement tout nouveau front autorisé.
 - **Rotation refresh token** : un refresh consomme l'ancien et en émet un nouveau ; ne jamais réutiliser le précédent côté client (déjà géré par `ApiClient._tryRefresh`).
 - **Permissions** : ajouter une nouvelle entrée dans la sidebar Flutter sans déclarer la `requiredPermission` correspondante l'expose à tous les rôles.
