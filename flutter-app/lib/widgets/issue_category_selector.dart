@@ -89,11 +89,18 @@ class _SelectorContent extends StatelessWidget {
       MaterialPageRoute<void>(
         builder: (ctx) => Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: IssueFormScreen(
-              categoryFilter: option.categoryFilter,
-              onCancel: () => Navigator.of(ctx).pop(),
+          appBar: AppBar(
+            backgroundColor: AppColors.surface,
+            foregroundColor: AppColors.textPrimary,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(ctx).pop(),
             ),
+          ),
+          body: IssueFormScreen(
+            categoryFilter: option.categoryFilter,
+            onCancel: () => Navigator.of(ctx).pop(),
           ),
         ),
       ),
