@@ -811,5 +811,12 @@
   "techReassignReasonHint": "Explain why you are transferring this issue…",
   "techReassignReasonMinLength": "Reason must be at least 10 characters",
   "techReassignSuccess": "Issue transferred to group {group}",
-  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } }
+  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } },
+
+  "equipDetailCurrentIssues": "Current Issues",
+  "equipDetailPastIssues": "Issue History",
+  "equipDetailNoCurrentIssues": "No current issues for this equipment",
+  "equipDetailNoPastIssues": "No resolved issues for this equipment",
+  "equipDetailIssuesSection": "Issues",
+  "equipDetailLoadingError": "Error loading equipment details"
 }

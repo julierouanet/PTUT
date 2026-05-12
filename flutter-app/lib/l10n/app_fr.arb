@@ -833,5 +833,12 @@
   "techReassignReasonHint": "Expliquez pourquoi vous transférez cet incident…",
   "techReassignReasonMinLength": "Le motif doit contenir au moins 10 caractères",
   "techReassignSuccess": "Incident transféré au groupe {group}",
-  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } }
+  "@techReassignSuccess": { "placeholders": { "group": { "type": "String" } } },
+
+  "equipDetailCurrentIssues": "Incidents en cours",
+  "equipDetailPastIssues": "Historique des incidents",
+  "equipDetailNoCurrentIssues": "Aucun incident en cours pour cet équipement",
+  "equipDetailNoPastIssues": "Aucun incident résolu pour cet équipement",
+  "equipDetailIssuesSection": "Incidents",
+  "equipDetailLoadingError": "Erreur lors du chargement des détails"
 }

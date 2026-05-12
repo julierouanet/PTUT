@@ -5,7 +5,7 @@ import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
-import '../widgets/equipment_detail_dialog.dart';
+import 'equipment_detail_screen.dart';
 import '../widgets/equipment_history_dialog.dart';
 import '../services/config_service.dart';
 import '../services/auth_service.dart';
@@ -1174,11 +1174,18 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   }
 
   void _showEquipmentDetail(Equipment eq) {
-    EquipmentDetailDialog.show(
+    Navigator.push(
       context,
-      eq,
-      onEdit: _authService.canManageEquipment ? () => _showEditEquipmentDialog(eq) : null,
-      onReport: () => widget.onNavigate(3, equipmentId: eq.id),
+      MaterialPageRoute(
+        builder: (_) => EquipmentDetailScreen(
+          equipmentId: eq.id,
+          initialEquipment: eq,
+          onEdit: _authService.canManageEquipment
+              ? () => _showEditEquipmentDialog(eq)
+              : null,
+          onReport: () => widget.onNavigate(3, equipmentId: eq.id),
+        ),
+      ),
     );
   }
 }
