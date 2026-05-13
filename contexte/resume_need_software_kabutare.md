@@ -51,7 +51,8 @@ Administration, OPD, Medecine Interne, Pediatrie, Urgences, Laboratoire, Stomato
 
 #### 4.2 Signalement d'incidents
 - Tout membre du personnel peut soumettre un rapport d'incident rapidement
-- Le rapport inclut : ID/nom de l'equipement, type de probleme (ICT, hygiene, biomedical, electrique), description, upload photo optionnel
+- **Etape de pre-qualification** : avant le formulaire, un selecteur de categorie oriente l'utilisateur (Equipements Biomedicaux / Infrastructure & Electricite / Informatique / Autre) et pre-filtre la liste des equipements selectionables
+- Le rapport inclut : ID/nom de l'equipement (filtre par categorie choisie), type de probleme, description, upload photo optionnel (max 5)
 - Capture automatique du nom du rapporteur, departement et horodatage
 
 #### 4.3 Notifications et escalades
@@ -76,12 +77,14 @@ Administration, OPD, Medecine Interne, Pediatrie, Urgences, Laboratoire, Stomato
 ### Workflow type
 
 1. Une infirmiere en Neonatologie remarque une couveuse en panne
-2. Elle ouvre le systeme -> "Signaler un incident" -> selectionne Equipement Biomedical -> Couveuse #NEO-004 -> Description -> Soumettre
-3. Le superviseur de Neonatologie et le technicien de maintenance sont notifies instantanement
-4. Le technicien met a jour : En reparation
-5. Apres reparation -> Le technicien marque Resolu, ajoute des notes de maintenance
-6. Le superviseur verifie -> marque Cloture
-7. Le systeme enregistre l'evenement et met a jour le statut de l'equipement
+2. Elle ouvre le systeme -> clique "Signaler un incident" (tableau de bord, barre laterale, ou suivi incidents)
+3. Un selecteur de categorie s'affiche : elle choisit "Equipements Biomedicaux" (Scanner, IRM, moniteurs…)
+4. Le formulaire s'ouvre, la liste d'equipements est pre-filtree sur les categories biomedicales -> elle selectionne Couveuse #NEO-004 -> saisit la description -> Soumettre
+5. Le superviseur de Neonatologie et le technicien de maintenance sont notifies instantanement
+6. Le technicien met a jour : En reparation
+7. Apres reparation -> Le technicien marque Resolu, ajoute des notes de maintenance
+8. Le superviseur verifie -> marque Cloture
+9. Le systeme enregistre l'evenement et met a jour le statut de l'equipement
 
 ### Exigences non-fonctionnelles
 

@@ -293,20 +293,35 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 | department         | TEXT    | NOT NULL (denormalisation, sync avec departments.name)       |
 | category           | TEXT    | NOT NULL (denormalisation, sync avec equipment_categories.name) |
 | serial_number      | TEXT    | Nullable                                                     |
-| status             | TEXT    | NOT NULL DEFAULT 'Disponible'                                |
-| supplier           | TEXT    | Nullable                                                     |
+| status             | TEXT    | NOT NULL DEFAULT 'Operational'                               |
 | location           | TEXT    | Nullable                                                     |
-| created_at         | TEXT    | DEFAULT CURRENT_TIMESTAMP                                    |
-| updated_at         | TEXT    | DEFAULT CURRENT_TIMESTAMP                                    |
+| created_at         | TEXT    | DEFAULT `datetime('now','localtime')`                        |
+| updated_at         | TEXT    | DEFAULT `datetime('now','localtime')`                        |
 | next_revision_date | TEXT    | Nullable, ajoute via migration                               |
-| manufacturer       | TEXT    | Nullable, ajoute via migration (inventaire physique 2025-2026) |
+| manufacturer       | TEXT    | Nullable, ajoute via migration (absorbe l'ancien `supplier`) |
 | model              | TEXT    | Nullable, ajoute via migration                               |
 | manuf_year         | INTEGER | Nullable, ajoute via migration (annee fabrication)           |
 | install_date       | TEXT    | Nullable, ajoute via migration (ISO YYYY-MM-DD)              |
 | department_id      | INTEGER | Nullable, FK -> departments(id), ajoute via migration        |
 | category_id        | INTEGER | Nullable, FK -> equipment_categories(id), ajoute via migration |
+| last_preventive_maintenance | TEXT | Nullable, ajoute via migration (ISO YYYY-MM-DD)        |
+| next_preventive_maintenance | TEXT | Nullable, ajoute via migration (denormalise depuis `preventive_maintenance_plans`) |
+
+> **Migration `supplier` -> `manufacturer`** : la colonne `supplier` a ete supprimee (`ALTER TABLE equipment DROP COLUMN supplier`). Les valeurs ont ete copiees dans `manufacturer` quand celui-ci etait NULL. Le XLSX d'inventaire physique ne distingue pas les deux concepts.
 
 **Index** : `idx_equipment_dept` (department), `idx_equipment_status` (status)
+
+### Table `locations` (nouvelle — infrastructure)
+
+| Colonne    | Type | Contraintes  |
+|------------|------|--------------|
+| id         | TEXT | PRIMARY KEY  |
+| name       | TEXT | NOT NULL     |
+| building   | TEXT | NOT NULL     |
+| department | TEXT | NOT NULL     |
+
+**Index** : `idx_locations_dept` (department)
+**Usage** : une issue peut viser un lieu (`issues.location_id`) plutot qu'un equipement — cas typique : panne electrique, probleme infrastructure.
 
 ### Table `departments`
 
@@ -349,29 +364,51 @@ Peuplee par `scripts/import_inventory.js` depuis la feuille `Standard_Equipment_
 | technician   | TEXT    | NOT NULL                                         |
 | is_future    | INTEGER | DEFAULT 0                                        |
 
-### Table `issues`
+### Table `preventive_maintenance_plans` (nouvelle)
 
-| Colonne              | Type | Contraintes                        |
-|----------------------|------|------------------------------------|
-| id                   | TEXT | PRIMARY KEY                        |
-| equipment_id         | TEXT | NOT NULL                           |
-| equipment_name       | TEXT | NOT NULL                           |
-| department           | TEXT | NOT NULL                           |
-| type                 | TEXT | NOT NULL                           |
-| description          | TEXT | NOT NULL                           |
-| reporter             | TEXT | NOT NULL                           |
-| reporter_id          | TEXT | Nullable (migration)               |
-| reporter_email       | TEXT | Nullable (migration)               |
-| urgency              | TEXT | DEFAULT 'Moyen' (migration)        |
-| status               | TEXT | NOT NULL DEFAULT 'Ouvert'          |
-| assigned_technician  | TEXT | Nullable                           |
-| diagnosis            | TEXT | Nullable                           |
-| actions              | TEXT | Nullable                           |
-| parts_replaced       | TEXT | Nullable                           |
-| created_at           | TEXT | NOT NULL                           |
-| updated_at           | TEXT | DEFAULT CURRENT_TIMESTAMP          |
+Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, calibration, etc.). Le champ `equipment.next_preventive_maintenance` peut etre calcule/denormalise depuis le plan le plus proche.
 
-**Index** : `idx_issues_status` (status), `idx_issues_equipment` (equipment_id)
+| Colonne              | Type    | Contraintes                                          |
+|----------------------|---------|------------------------------------------------------|
+| id                   | INTEGER | PRIMARY KEY AUTOINCREMENT                            |
+| equipment_id         | TEXT    | NOT NULL, FK -> equipment(id) ON DELETE CASCADE      |
+| frequency_months     | INTEGER | NOT NULL                                             |
+| last_completed_date  | TEXT    | Nullable                                             |
+| description          | TEXT    | Nullable                                             |
+| created_at           | TEXT    | DEFAULT `datetime('now','localtime')`                |
+| updated_at           | TEXT    | DEFAULT `datetime('now','localtime')`                |
+
+**Index** : `idx_pm_plans_equipment` (equipment_id)
+
+### Table `issues` (refondue — equipement OU lieu)
+
+| Colonne              | Type | Contraintes                                        |
+|----------------------|------|----------------------------------------------------|
+| id                   | TEXT | PRIMARY KEY                                        |
+| equipment_id         | TEXT | **Nullable** (NULL si l'incident vise un lieu)     |
+| equipment_name       | TEXT | **Nullable** (NULL si l'incident vise un lieu)     |
+| location_id          | TEXT | Nullable, FK -> locations(id)                      |
+| issue_category       | TEXT | NOT NULL DEFAULT 'Biomedical' (Biomedical/Infrastructure/IT) |
+| assigned_group       | TEXT | Nullable (Biomedical/Infrastructure/IT)            |
+| department           | TEXT | NOT NULL                                           |
+| type                 | TEXT | NOT NULL                                           |
+| description          | TEXT | NOT NULL                                           |
+| reporter             | TEXT | NOT NULL                                           |
+| reporter_id          | TEXT | Nullable (migration)                               |
+| reporter_email       | TEXT | Nullable (migration)                               |
+| urgency              | TEXT | DEFAULT 'Moyen' (migration)                        |
+| status               | TEXT | NOT NULL DEFAULT 'Reported'                        |
+| assigned_technician  | TEXT | Nullable                                           |
+| diagnosis            | TEXT | Nullable                                           |
+| actions              | TEXT | Nullable                                           |
+| parts_replaced       | TEXT | Nullable                                           |
+| created_at           | TEXT | NOT NULL                                           |
+| updated_at           | TEXT | DEFAULT `datetime('now','localtime')`              |
+
+**Contrainte applicative** (POST `/api/issues`) : `equipment_id` + `equipment_name` **OU** `location_id` doit etre fourni.
+**Derivation auto** : `issue_category` / `assigned_group` = `Biomedical` si equipement, `Infrastructure` si lieu.
+**Index** : `idx_issues_status` (status), `idx_issues_equipment` (equipment_id), `idx_issues_location` (location_id), `idx_issues_group` (assigned_group)
+**Migration** : rebuild complet de la table (RENAME -> CREATE -> INSERT SELECT -> DROP), idempotent (s'execute si `location_id` est absent du PRAGMA).
 
 ### Table `inventory`
 
@@ -418,14 +455,30 @@ Peuplee par `scripts/import_inventory.js` depuis la feuille `Standard_Equipment_
 
 | Contexte         | Valeurs                                                                       |
 |------------------|-------------------------------------------------------------------------------|
-| Equipment Status | `Disponible`, `En service`, `En maintenance`, `Hors service`, `Inactif`, `À éliminer`, `Transféré` |
-| Equipment Dept   | `IT`, `Radiologie`, `Reanimation`, `Sterilisation`, `Laboratoire`, `Urgences`, `Maintenance`, `Infrastructure` |
-| Equipment Cat    | `Imagerie`, `Laboratoire`, `Chirurgie`, `Monitoring`, `Therapeutique`, `Informatique`, `Mobilier`, `Autre` |
-| Issue Status     | `Ouvert`, `En cours`, `Resolu`, `Annule`                                      |
-| Issue Urgency    | `Faible`, `Moyen`, `Urgent`                                                   |
+| Equipment Status | `Operational`, `Maintenance`, `Out of service`, `To be disposal`, `Disposed` (5 valeurs, en anglais) |
+| Equipment Dept   | `IT`, `Radiologie`, `Réanimation`, `Stérilisation`, `Laboratoire`, `Urgences`, `Maintenance`, `Infrastructure` |
+| Equipment Cat    | `Imagerie`, `Laboratoire`, `Chirurgie`, `Monitoring`, `Thérapeutique`, `Informatique`, `Mobilier`, `Autre` |
+| Issue Status     | `Reported`, `Acknowledged`, `Assigned`, `In Progress`, `Waiting Materials`, `Completed`, `Verified`, `Closed`, `Redirected` (9 valeurs, en anglais) |
+| Issue Urgency    | `Faible`, `Moyen`, `Urgent`, `Critique`                                       |
 | Issue Type       | `Panne`, `Maintenance`, `Inspection`, `Autre`                                 |
-| Inventory Cat    | `Consommable medical`, `Hygiene`, `Bureautique`                               |
+| Issue Group      | `Biomédical`, `Infrastructure`, `IT` (nouveau — `assigned_group` & `issue_category`) |
+| Inventory Cat    | `Consommable médical`, `Hygiène`, `Bureautique`                               |
 | Inventory Status | `Normal`, `Faible`, `Rupture` (calcule : stock=0 -> Rupture, <min -> Faible)  |
+
+### Migrations de statuts (FR -> EN) — appliquees automatiquement au demarrage
+
+**equipment.status** (idempotent, UPDATE conditionnel) :
+- `Disponible`, `En service`, `En usage` -> `Operational`
+- `En maintenance` -> `Maintenance`
+- `Hors service`, `Inactif`, `Transféré` -> `Out of service`
+- `À éliminer` -> `To be disposal`
+
+**issues.status** (idempotent) :
+- `Ouvert` -> `Reported`
+- `Approuvé` -> `Acknowledged`
+- `En cours` -> `In Progress`
+- `Résolu` -> `Completed`
+- `Annulé` -> `Closed`
 
 ## 2.3 Donnees seed et import inventaire physique
 
@@ -440,7 +493,7 @@ Script `db-service/scripts/import_inventory.js` — peuple la base depuis le fic
 | departments   | ~56 (issus de Standard_Departments, en anglais) |
 | equipment_categories | ~626 (~611 standard + ~15 ajoutes a la volee depuis l'inventaire) |
 
-Statuts mappes depuis l'anglais vers le francais : `operational`->`En service`, `UNDER M`/`UNDERM`->`En maintenance`, `IDDLE`->`Inactif`, `DISPOSED`->`Hors service`, `to be disposal`->`À éliminer`, `KIBIRIZI DH`->`Transféré`. Logique dans `scripts/lib/inventory_normalizer.js` (testee via Jest, 31 tests).
+Statuts normalises vers la whitelist anglaise (`VALID_STATUSES_EQ`) : `operational`/variantes->`Operational`, `UNDER M`/`UNDERM`->`Maintenance`, `IDDLE`->`Out of service`, `DISPOSED`->`Disposed`, `to be disposal`->`To be disposal`, `KIBIRIZI DH`->`Out of service`. Defaut si vide ou inconnu = `Operational`. Logique dans `scripts/lib/inventory_normalizer.js` (testee via Jest).
 
 CLI :
 ```bash
@@ -455,17 +508,19 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 
 | ID     | Nom                            | Departement    | Categorie           | Statut          |
 |--------|--------------------------------|----------------|---------------------|-----------------|
-| eq-001 | Serveur Dell PowerEdge R750    | Administration | Equipement ICT      | En usage        |
-| eq-003 | Tensiometre electronique Omron | OPD            | Equipement biomedical| Disponible     |
-| eq-024 | Scanner IRM Siemens 1.5T       | Chirurgie      | Equipement biomedical| En usage       |
-| eq-041 | Autoclave Steris 400           | Bloc operatoire| Sterilisation        | En maintenance |
+| eq-001 | Serveur Dell PowerEdge R750    | Administration | Equipement ICT      | Operational     |
+| eq-003 | Tensiometre electronique Omron | OPD            | Equipement biomedical| Operational    |
+| eq-024 | Scanner IRM Siemens 1.5T       | Chirurgie      | Equipement biomedical| Operational    |
+| eq-041 | Autoclave Steris 400           | Bloc operatoire| Sterilisation        | Maintenance    |
+
+> Les statuts FR historiques eventuellement encore presents dans la base sont automatiquement migres vers leur equivalent EN au demarrage du service (cf. 2.2 — Migrations de statuts).
 
 ### Incidents (6 items)
-| ID      | Equipement                | Statut   | Urgence | Reporter           |
-|---------|---------------------------|----------|---------|---------------------|
-| ISS-001 | Respirateur anesthesie    | En cours | -       | Dr. Traore          |
-| ISS-003 | Serveur Dell              | Ouvert   | -       | IT Admin. Konate    |
-| ISS-004 | Scanner IRM               | Resolu   | -       | Radiologue Camara   |
+| ID      | Equipement                | Statut       | Urgence | Reporter           |
+|---------|---------------------------|--------------|---------|---------------------|
+| ISS-001 | Respirateur anesthesie    | In Progress  | -       | Dr. Traore          |
+| ISS-003 | Serveur Dell              | Reported     | -       | IT Admin. Konate    |
+| ISS-004 | Scanner IRM               | Completed    | -       | Radiologue Camara   |
 
 ### Inventaire (7 items)
 | ID      | Nom                        | Stock actuel | Stock min | Statut  |
@@ -490,13 +545,20 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 
 ### Incidents (`/api/issues`)
 
-| Methode | Route             | Auth           | Description                                              |
-|---------|-------------------|----------------|----------------------------------------------------------|
-| GET     | /api/issues       | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at |
-| GET     | /api/issues/:id   | Auth           | Details incident                                         |
-| POST    | /api/issues       | Auth           | Signaler (required: id, equipment_id, equipment_name, department, type, description, reporter) |
-| PUT     | /api/issues/:id   | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency) |
-| DELETE  | /api/issues/:id   | Admin          | Supprimer                                                |
+| Methode | Route                       | Auth           | Description                                              |
+|---------|-----------------------------|----------------|----------------------------------------------------------|
+| GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at |
+| GET     | /api/issues/:id             | Auth           | Details incident                                         |
+| POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
+| PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency) |
+| PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracee appendée dans `actions`. |
+| DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
+
+### Lieux (`/api/locations`)
+
+| Methode | Route            | Auth  | Description                                       |
+|---------|------------------|-------|---------------------------------------------------|
+| GET     | /api/locations   | Auth  | Liste tous les lieux, triee par `building, name`. |
 
 ### Inventaire (`/api/inventory`)
 
@@ -609,10 +671,12 @@ lib/
 │   ├── issue.dart               # Issue, IssueStatus, IssueUrgency enums
 │   ├── inventory_item.dart      # InventoryItem, InventoryCategory, StockStatus enums
 │   ├── notification.dart        # AppNotification model
+│   ├── location.dart            # Location model (lieux infrastructure)
 │   └── departments.dart         # Department, EquipmentCategory enums
 ├── providers/
 │   └── locale_provider.dart     # FR/EN avec SharedPreferences
 ├── widgets/                     # Composants UI reutilisables
+│   ├── issue_category_selector.dart  # Selecteur de categorie avant IssueFormScreen
 ├── theme/                       # AppTheme, couleurs
 ├── l10n/                        # Traductions FR/EN
 ├── utils/                       # Utilitaires (file picker)
@@ -694,19 +758,28 @@ fromApiJson() : parse id, name, first_name, last_name, email, department, role, 
 
 ### Equipment
 ```
-id, name, department, category, serialNumber, supplier, location: String
-status: EquipmentStatus (disponible, enUsage, enMaintenance, horsService)
-nextRevisionDate: String?
+id, name, department, category, serialNumber, location: String
+manufacturer, model, installDate: String?  (manufacturer absorbe l'ancien supplier)
+manufYear: int?
+status: EquipmentStatus (operational, maintenance, outOfService, toBeDisposal, disposed)
+nextRevisionDate, lastPreventiveMaintenance, nextPreventiveMaintenance: String?
 maintenanceHistory, futureMaintenance: List<MaintenanceRecord>
 MaintenanceRecord: { date, intervention, technician: String }
 ```
 
 ### Issue
 ```
-id, equipmentId, equipmentName, department, type, description, reporter, createdAt: String
+id, department, type, description, reporter, createdAt: String
+equipmentId, equipmentName, locationId, assignedGroup: String?  (equipement OU lieu)
+issueCategory: String  (Biomedical/Infrastructure/IT, defaut Biomedical)
 reporterId, reporterEmail, assignedTechnician, diagnosis, actions, partsReplaced: String?
-status: IssueStatus (open, approved, inProgress, resolved)
-urgency: IssueUrgency (faible, moyen, urgent)
+status: IssueStatus (reported, acknowledged, assigned, inProgress, waitingMaterials, completed, verified, closed, redirected)
+urgency: IssueUrgency (faible, moyen, urgent, critique)
+```
+
+### Location (nouveau)
+```
+id, name, building, department: String
 ```
 
 ### InventoryItem
@@ -725,7 +798,7 @@ status: StockStatus (normal, low, outOfStock)
 | 1  | DashboardScreen          | -                       | Stats equipements par statut, 4 incidents recents, alertes critiques |
 | 2  | EquipmentListScreen      | viewEquipment           | Table recherchable, filtres dept/status/categorie, CRUD, details  |
 | 3  | IssueTrackingScreen      | trackIssues             | 2 onglets (tous les incidents / a valider), filtres statut        |
-| 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker, type, urgence, description, photos (max 5) |
+| 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs           | Diagnostic, actions, pieces remplacees                            |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
 | 7  | ReportsScreen            | generateReports         | Statistiques maintenance, equipements                             |
@@ -743,8 +816,37 @@ status: StockStatus (normal, low, outOfStock)
 - **Dirty check** sur IssueFormScreen (avertit avant de quitter)
 - **Session expire** : retour automatique au login si refresh token echoue
 - **Initialisation** : auto-login si tokens stockes -> loadAll() -> HomeHub
+- **Pre-qualification incidents** : tout clic sur "Signaler un incident" (sidebar, bottom nav, drawer, dashboard, issue tracking) ouvre d'abord `showIssueCategorySelector()` avant IssueFormScreen. Exception : depuis EquipmentListScreen (equipement pre-selectionne), la navigation reste index-based sans selecteur.
+
+### Sélecteur de catégorie (`lib/widgets/issue_category_selector.dart`)
+
+| Contexte | Comportement |
+|---|---|
+| Largeur >= 800 px | `showDialog` — Dialog centre, max 500 px |
+| Largeur < 800 px | `showModalBottomSheet` — coins arrondis en haut |
+| Clic sur une tuile | `Navigator.pop` du sheet/dialog + `Navigator.push` vers IssueFormScreen avec `categoryFilter` |
+| Bouton AppBar retour | `Navigator.pop` — retour ecran precedent |
+
+| Tuile | Icone | Filtre DB (`Equipment.category`) |
+|---|---|---|
+| Equipements Biomedicaux | `CupertinoIcons.heart_circle` | Imagerie, Laboratoire, Chirurgie, Monitoring, Therapeutique |
+| Infrastructure & Electricite | `CupertinoIcons.building_2_fill` | Mobilier, Autre |
+| Informatique (IT) | `CupertinoIcons.device_desktop` | Informatique |
+| Autre / Je ne sais pas | `CupertinoIcons.question_circle` | `null` (tous les equipements) |
 
 ## 3.6 Flux principaux
+
+### Signalement d'incident via le sélecteur de catégorie (nouveau)
+1. Utilisateur clique "Signaler un incident" (dashboard / issue tracking / sidebar / bottom nav / drawer)
+2. `showIssueCategorySelector(context)` affiche l'overlay responsive (dialog ou bottom-sheet)
+3. Utilisateur choisit une tuile de categorie
+4. Sheet/dialog se ferme via `Navigator.pop`
+5. `Navigator.push(MaterialPageRoute)` ouvre `IssueFormScreen` avec `categoryFilter` + `onCancel: () => Navigator.pop(ctx)` dans un `Scaffold` avec `AppBar` retour
+6. L'autocomplete equipement est restreint aux categories du filtre (`_filteredEquipmentList`)
+7. Si aucun equipement ne correspond, une banniere ambre s'affiche sous le picker
+8. Soumission ou annulation => `Navigator.pop` => retour ecran appelant
+
+*Chemin alternatif (EquipmentListScreen)* : clic "Signaler" sur une ligne => `onNavigate(3, equipmentId: eq.id)` => index-based nav, IssueFormScreen avec equipement pre-selectionne, sans selecteur ni filtre.
 
 ### Login
 1. User saisit email/password
@@ -765,7 +867,24 @@ status: StockStatus (normal, low, outOfStock)
 - Update: `DbApiService.updateEquipment()` -> PUT /api/equipment/{id}
 - Delete: `DbApiService.deleteEquipment()` -> DELETE /api/equipment/{id}?reason=
 
-## 3.7 Dependances (pubspec.yaml)
+## 3.7 Clés i18n ajoutées (lib/l10n/)
+
+Fichiers ARB template : `app_fr.arb` + `app_en.arb`. Génération : `flutter gen-l10n`.
+
+| Clé | FR | EN |
+|---|---|---|
+| `issueCategorySelectorTitle` | Quel type de problème rencontrez-vous ? | What type of problem are you experiencing? |
+| `issueCategoryBiomedical` | Équipements Biomédicaux | Biomedical Equipment |
+| `issueCategoryBiomedicalDesc` | Scanner, IRM, analyseurs, moniteurs… | Scanner, MRI, analyzers, monitors… |
+| `issueCategoryInfrastructure` | Infrastructure & Électricité | Infrastructure & Electrical |
+| `issueCategoryInfrastructureDesc` | Lits, tables d'examen, éclairage… | Beds, examination tables, lighting… |
+| `issueCategoryIT` | Informatique (IT) | IT (Information Technology) |
+| `issueCategoryITDesc` | Ordinateurs, imprimantes, réseau… | Computers, printers, network… |
+| `issueCategoryOther` | Autre / Je ne sais pas | Other / I don't know |
+| `issueCategoryOtherDesc` | Problème non classé ou incertain… | Unclassified issue or unknown category… |
+| `issueFormNoEquipmentInCategory` | Aucun équipement de ce type trouvé dans votre département. | No equipment of this type found in your department. |
+
+## 3.9 Dependances (pubspec.yaml)
 
 | Package                | Version  | Role                              |
 |------------------------|----------|-----------------------------------|
