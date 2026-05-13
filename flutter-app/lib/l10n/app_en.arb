@@ -822,8 +822,12 @@
 
   "issueCategorySelectorTitle": "What type of problem are you experiencing?",
   "issueCategoryBiomedical": "Biomedical Equipment",
+  "issueCategoryBiomedicalDesc": "Scanner, MRI, ultrasound, analyzers, monitors, infusion pumps, ventilators…",
   "issueCategoryInfrastructure": "Infrastructure & Electrical",
+  "issueCategoryInfrastructureDesc": "Beds, examination tables, wheelchairs, lighting, electrical outlets, plumbing…",
   "issueCategoryIT": "IT (Information Technology)",
+  "issueCategoryITDesc": "Computers, printers, network, servers, software, information systems…",
   "issueCategoryOther": "Other / I don't know",
+  "issueCategoryOtherDesc": "Unclassified issue or unknown category — all equipment remains available.",
   "issueFormNoEquipmentInCategory": "No equipment of this type found in your department."
 }

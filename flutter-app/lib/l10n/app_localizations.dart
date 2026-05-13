@@ -4460,11 +4460,23 @@ abstract class AppLocalizations {
   /// **'Équipements Biomédicaux'**
   String get issueCategoryBiomedical;
 
+  /// No description provided for @issueCategoryBiomedicalDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scanner, IRM, échographe, analyseurs, moniteurs, pompes à perfusion, ventilateurs…'**
+  String get issueCategoryBiomedicalDesc;
+
   /// No description provided for @issueCategoryInfrastructure.
   ///
   /// In fr, this message translates to:
   /// **'Infrastructure & Électricité'**
   String get issueCategoryInfrastructure;
+
+  /// No description provided for @issueCategoryInfrastructureDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lits, tables d\'examen, fauteuils roulants, éclairage, prises électriques, plomberie…'**
+  String get issueCategoryInfrastructureDesc;
 
   /// No description provided for @issueCategoryIT.
   ///
@@ -4472,11 +4484,23 @@ abstract class AppLocalizations {
   /// **'Informatique (IT)'**
   String get issueCategoryIT;
 
+  /// No description provided for @issueCategoryITDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ordinateurs, imprimantes, réseau, serveurs, logiciels, systèmes d\'information…'**
+  String get issueCategoryITDesc;
+
   /// No description provided for @issueCategoryOther.
   ///
   /// In fr, this message translates to:
   /// **'Autre / Je ne sais pas'**
   String get issueCategoryOther;
+
+  /// No description provided for @issueCategoryOtherDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.'**
+  String get issueCategoryOtherDesc;
 
   /// No description provided for @issueFormNoEquipmentInCategory.
   ///

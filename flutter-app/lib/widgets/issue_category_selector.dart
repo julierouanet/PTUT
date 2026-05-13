@@ -9,12 +9,14 @@ class _CategoryOption {
   final IconData icon;
   final Color color;
   final String Function(AppLocalizations) label;
+  final String Function(AppLocalizations) description;
 
   const _CategoryOption({
     required this.categoryFilter,
     required this.icon,
     required this.color,
     required this.label,
+    required this.description,
   });
 }
 
@@ -25,24 +27,28 @@ final _kOptions = <_CategoryOption>[
     icon: CupertinoIcons.heart_circle,
     color: AppColors.primary,
     label: (l) => l.issueCategoryBiomedical,
+    description: (l) => l.issueCategoryBiomedicalDesc,
   ),
   _CategoryOption(
     categoryFilter: ['Mobilier', 'Autre'],
     icon: CupertinoIcons.building_2_fill,
     color: AppColors.warning,
     label: (l) => l.issueCategoryInfrastructure,
+    description: (l) => l.issueCategoryInfrastructureDesc,
   ),
   _CategoryOption(
     categoryFilter: ['Informatique'],
     icon: CupertinoIcons.device_desktop,
     color: AppColors.textSecondary,
     label: (l) => l.issueCategoryIT,
+    description: (l) => l.issueCategoryITDesc,
   ),
   _CategoryOption(
     categoryFilter: null,
     icon: CupertinoIcons.question_circle,
     color: AppColors.textMuted,
     label: (l) => l.issueCategoryOther,
+    description: (l) => l.issueCategoryOtherDesc,
   ),
 ];
 
@@ -171,13 +177,27 @@ class _SelectorContent extends StatelessWidget {
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  option.label(l10n),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.label(l10n),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      option.description(l10n),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const Icon(

@@ -2364,13 +2364,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueCategoryBiomedical => 'Équipements Biomédicaux';
 
   @override
+  String get issueCategoryBiomedicalDesc =>
+      'Scanner, IRM, échographe, analyseurs, moniteurs, pompes à perfusion, ventilateurs…';
+
+  @override
   String get issueCategoryInfrastructure => 'Infrastructure & Électricité';
+
+  @override
+  String get issueCategoryInfrastructureDesc =>
+      'Lits, tables d\'examen, fauteuils roulants, éclairage, prises électriques, plomberie…';
 
   @override
   String get issueCategoryIT => 'Informatique (IT)';
 
   @override
+  String get issueCategoryITDesc =>
+      'Ordinateurs, imprimantes, réseau, serveurs, logiciels, systèmes d\'information…';
+
+  @override
   String get issueCategoryOther => 'Autre / Je ne sais pas';
+
+  @override
+  String get issueCategoryOtherDesc =>
+      'Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.';
 
   @override
   String get issueFormNoEquipmentInCategory =>

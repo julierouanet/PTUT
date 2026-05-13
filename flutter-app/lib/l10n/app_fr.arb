@@ -844,8 +844,12 @@
 
   "issueCategorySelectorTitle": "Quel type de problème rencontrez-vous ?",
   "issueCategoryBiomedical": "Équipements Biomédicaux",
+  "issueCategoryBiomedicalDesc": "Scanner, IRM, échographe, analyseurs, moniteurs, pompes à perfusion, ventilateurs…",
   "issueCategoryInfrastructure": "Infrastructure & Électricité",
+  "issueCategoryInfrastructureDesc": "Lits, tables d'examen, fauteuils roulants, éclairage, prises électriques, plomberie…",
   "issueCategoryIT": "Informatique (IT)",
+  "issueCategoryITDesc": "Ordinateurs, imprimantes, réseau, serveurs, logiciels, systèmes d'information…",
   "issueCategoryOther": "Autre / Je ne sais pas",
+  "issueCategoryOtherDesc": "Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.",
   "issueFormNoEquipmentInCategory": "Aucun équipement de ce type trouvé dans votre département."
 }
