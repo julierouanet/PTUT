@@ -5,6 +5,9 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
+const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
+const rolesCsv = (req) => (Array.isArray(req.user?.roles) ? req.user.roles.join(',') : '');
+
 // GET /api/inventory
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
@@ -66,7 +69,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       VALUES (?, ?, ?, ?, ?, ?, ?, date('now'))
     `).run(id, name, category, current_stock, min_stock, unit, status);
 
-    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'create_inventory', target_type: 'inventory', target_id: id, target_name: name,
       details: { category, current_stock, unit }, ...extractReqMeta(req) });
 
@@ -78,7 +81,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 });
 
 // PUT /api/inventory/:id - mettre à jour le stock
-router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { current_stock, min_stock, name, category, unit } = req.body;
 
@@ -105,7 +108,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
     WHERE id = ?
   `).run(name, category, unit, newStock, newMinStock, status, isRestock ? 1 : 0, existing.last_restocked, req.params.id);
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: isRestock ? 'restock_inventory' : 'update_inventory',
     target_type: 'inventory', target_id: req.params.id, target_name: name || existing.name,
     details: current_stock !== undefined ? { old_stock: existing.current_stock, new_stock: newStock } : undefined,
@@ -122,7 +125,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 
   if (result.changes === 0) return res.status(404).json({ error: 'Article introuvable' });
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'delete_inventory', target_type: 'inventory', target_id: req.params.id,
     target_name: existing?.name, ...extractReqMeta(req) });
 

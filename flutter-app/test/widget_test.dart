@@ -100,7 +100,7 @@ void main() {
       });
       _suppressOverflow(tester);
 
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       AuthService().switchUser(staff);
       await tester.pumpWidget(const EquipmentManagementApp());
 

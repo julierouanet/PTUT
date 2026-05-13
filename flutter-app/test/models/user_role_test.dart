@@ -3,14 +3,17 @@ import 'package:equipment_management/models/user_role.dart';
 
 void main() {
   group('UserRole', () {
-    test('has exactly 4 roles', () {
-      expect(UserRole.values.length, 4);
+    test('has exactly 7 roles (4 historiques + 3 techs spécialisés)', () {
+      expect(UserRole.values.length, 7);
     });
 
     test('displayName returns expected labels', () {
       expect(UserRole.admin.displayName, 'Administrateur ICT');
       expect(UserRole.supervisor.displayName, 'Superviseur');
       expect(UserRole.technician.displayName, 'Technicien');
+      expect(UserRole.technicianBiomedical.displayName, 'Tech. biomédical');
+      expect(UserRole.technicianIt.displayName, 'Tech. IT');
+      expect(UserRole.technicianInfra.displayName, 'Tech. infrastructure');
       expect(UserRole.hospitalStaff.displayName, 'Personnel hospitalier');
     });
 
@@ -18,6 +21,32 @@ void main() {
       for (final role in UserRole.values) {
         expect(role.description.isNotEmpty, isTrue, reason: '${role.name} should have a description');
       }
+    });
+
+    test('apiName matches snake_case backend values', () {
+      expect(UserRole.admin.apiName, 'admin');
+      expect(UserRole.supervisor.apiName, 'supervisor');
+      expect(UserRole.technician.apiName, 'technician');
+      expect(UserRole.technicianBiomedical.apiName, 'technician_biomedical');
+      expect(UserRole.technicianIt.apiName, 'technician_it');
+      expect(UserRole.technicianInfra.apiName, 'technician_infra');
+      expect(UserRole.hospitalStaff.apiName, 'hospitalStaff');
+    });
+
+    test('fromApiName round-trip', () {
+      for (final role in UserRole.values) {
+        expect(UserRole.fromApiName(role.apiName), role);
+      }
+      expect(UserRole.fromApiName('unknown_role'), isNull);
+    });
+  });
+
+  group('kAssignableRoles', () {
+    test('exclut le rôle technician générique (déprécié)', () {
+      expect(kAssignableRoles, isNot(contains(UserRole.technician)));
+      expect(kAssignableRoles, contains(UserRole.technicianBiomedical));
+      expect(kAssignableRoles, contains(UserRole.technicianIt));
+      expect(kAssignableRoles, contains(UserRole.technicianInfra));
     });
   });
 
@@ -65,6 +94,17 @@ void main() {
       expect(techPerms, contains(Permission.viewEquipment));
     });
 
+    test('chaque tech spécialisé partage les permissions de technician', () {
+      final base = getPermissionsForRole(UserRole.technician).toSet();
+      for (final r in [
+        UserRole.technicianBiomedical,
+        UserRole.technicianIt,
+        UserRole.technicianInfra,
+      ]) {
+        expect(getPermissionsForRole(r).toSet(), base, reason: 'Permissions de ${r.name}');
+      }
+    });
+
     test('technician does NOT get supervisor/admin permissions', () {
       final techPerms = getPermissionsForRole(UserRole.technician);
 
@@ -107,6 +147,23 @@ void main() {
               reason: '${role.name} should NOT have manageUsers');
         }
       }
+    });
+  });
+
+  group('getPermissionsForRoles (union)', () {
+    test('union sans doublons', () {
+      final perms = getPermissionsForRoles(const [
+        UserRole.technicianBiomedical,
+        UserRole.technicianIt,
+      ]);
+      // mêmes 5 permissions, dédupliquées
+      expect(perms.length, 5);
+      expect(perms, contains(Permission.updateRepairs));
+    });
+
+    test('admin + supervisor = toutes les permissions admin', () {
+      final perms = getPermissionsForRoles(const [UserRole.admin, UserRole.supervisor]).toSet();
+      expect(perms, Permission.values.toSet());
     });
   });
 }

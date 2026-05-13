@@ -18,19 +18,33 @@ function verifyToken(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  if (req.user?.role !== 'admin') return res.status(403).json({ error: 'Réservé aux administrateurs' });
+  const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+  if (!roles.includes('admin')) return res.status(403).json({ error: 'Réservé aux administrateurs' });
   next();
+}
+
+// Ordre de priorité utilisé pour choisir le rôle "principal" quand le user en cumule plusieurs.
+const ROLE_PRIORITY = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'technician', 'hospitalStaff'];
+function primaryRole(req) {
+  const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+  for (const r of ROLE_PRIORITY) {
+    if (userRoles.includes(r)) return r;
+  }
+  return userRoles[0] || null;
 }
 
 /**
  * GET /api/sidebar/config
- * Retourne la configuration sidebar pour le rôle de l'utilisateur connecté.
+ * Retourne la configuration sidebar pour le rôle "principal" de l'utilisateur
+ * (ou pour le rôle passé en query string).
  * Résultat : { role: string, order: string[] }
- * Si aucune config n'existe pour ce rôle, retourne order = [] (le client utilisera l'ordre par défaut).
  */
 router.get('/', verifyToken, (req, res) => {
   const db   = getDb();
-  const role = req.query.role || req.user.role;
+  const role = req.query.role || primaryRole(req);
+  if (!role) {
+    return res.json({ role: null, order: [] });
+  }
   const rows = db.prepare(
     'SELECT screen_type FROM sidebar_config WHERE role = ? ORDER BY sort_order ASC'
   ).all(role);

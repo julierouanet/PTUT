@@ -743,6 +743,9 @@
   "roleHospitalStaff": "Hospital staff",
   "roleSupervisor": "Supervisor",
   "roleTechnician": "Technician",
+  "roleTechnicianBiomedical": "Biomedical technician",
+  "roleTechnicianIt": "IT technician",
+  "roleTechnicianInfra": "Infrastructure technician",
   "roleAdmin": "ICT Administrator",
 
   "permViewEquipment": "View equipment",

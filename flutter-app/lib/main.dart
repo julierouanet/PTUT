@@ -229,8 +229,9 @@ class _MainScaffoldState extends State<MainScaffold> {
       return _authService.hasPermission(item.requiredPermission!);
     }).toList();
 
-    // Appliquer l'ordre configuré par l'admin pour ce rôle (si disponible)
-    final roleName = _authService.currentUser?.role.name ?? '';
+    // Appliquer l'ordre configuré par l'admin pour le rôle "principal" du user
+    // (la sidebar_config est indexée par un seul nom de rôle côté API).
+    final roleName = _authService.primaryRole?.apiName ?? '';
     final order = DataService().sidebarOrder[roleName];
     if (order != null && order.isNotEmpty) {
       visible.sort((a, b) {
@@ -604,8 +605,8 @@ class _MainScaffoldState extends State<MainScaffold> {
             child: Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: _getRoleColor(currentUser?.role ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
-                  child: Icon(_getRoleIconData(currentUser?.role ?? UserRole.hospitalStaff), color: _getRoleColor(currentUser?.role ?? UserRole.hospitalStaff)),
+                  backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
+                  child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -613,7 +614,10 @@ class _MainScaffoldState extends State<MainScaffold> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        currentUser?.roles.map((r) => r.displayName).join(', ') ?? '',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      ),
                     ],
                   ),
                 ),
@@ -634,7 +638,11 @@ class _MainScaffoldState extends State<MainScaffold> {
     switch (role) {
       case UserRole.admin: return Icons.admin_panel_settings;
       case UserRole.supervisor: return Icons.supervisor_account;
-      case UserRole.technician: return Icons.build;
+      case UserRole.technician:
+      case UserRole.technicianBiomedical:
+      case UserRole.technicianIt:
+      case UserRole.technicianInfra:
+        return Icons.build;
       case UserRole.hospitalStaff: return Icons.medical_services;
     }
   }
@@ -644,6 +652,9 @@ class _MainScaffoldState extends State<MainScaffold> {
       case UserRole.admin: return AppColors.error;
       case UserRole.supervisor: return AppColors.warning;
       case UserRole.technician: return AppColors.success;
+      case UserRole.technicianBiomedical: return AppColors.success;
+      case UserRole.technicianIt: return AppColors.primary;
+      case UserRole.technicianInfra: return AppColors.warning;
       case UserRole.hospitalStaff: return AppColors.primary;
     }
   }

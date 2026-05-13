@@ -14,6 +14,7 @@ const { JWT_SECRET, JWT_REFRESH_SECRET, BCRYPT_ROUNDS } = require('../src/config
 process.env.DB_PATH = ':memory:';
 
 const { getDb, resetDb } = require('../src/database');
+const { setUserRoles } = require('../src/utils/userRoles');
 
 // Require app after setting DB_PATH
 const { app, server } = require('../src/index');
@@ -24,7 +25,7 @@ const TEST_USER = {
   email: 'test@kabutare.rw',
   password: 'Password1!',
   department: 'Administration',
-  role: 'hospitalStaff',
+  roles: ['hospitalStaff'],
   phone: '+250780000000',
 };
 
@@ -34,7 +35,7 @@ const ADMIN_USER = {
   email: 'admin-test@kabutare.rw',
   password: 'Admin1234!',
   department: 'Administration',
-  role: 'admin',
+  roles: ['admin'],
   phone: '+250780000001',
 };
 
@@ -44,7 +45,7 @@ const INACTIVE_USER = {
   email: 'inactive@kabutare.rw',
   password: 'Password1!',
   department: 'Administration',
-  role: 'hospitalStaff',
+  roles: ['hospitalStaff'],
   phone: '+250780000002',
 };
 
@@ -54,20 +55,17 @@ async function seedTestUsers() {
   const adminHash = await bcrypt.hash(ADMIN_USER.password, BCRYPT_ROUNDS);
   const inactiveHash = await bcrypt.hash(INACTIVE_USER.password, BCRYPT_ROUNDS);
 
-  db.prepare(`
-    INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
-  `).run(TEST_USER.id, TEST_USER.name, TEST_USER.email, hash, TEST_USER.department, TEST_USER.role, TEST_USER.phone);
+  const insertUser = (u, h, active) => {
+    db.prepare(`
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, phone, is_active, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    `).run(u.id, u.name, u.email, h, u.department, u.phone, active);
+    setUserRoles(db, u.id, u.roles);
+  };
 
-  db.prepare(`
-    INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now'))
-  `).run(ADMIN_USER.id, ADMIN_USER.name, ADMIN_USER.email, adminHash, ADMIN_USER.department, ADMIN_USER.role, ADMIN_USER.phone);
-
-  db.prepare(`
-    INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, datetime('now'))
-  `).run(INACTIVE_USER.id, INACTIVE_USER.name, INACTIVE_USER.email, inactiveHash, INACTIVE_USER.department, INACTIVE_USER.role, INACTIVE_USER.phone);
+  insertUser(TEST_USER, hash, 1);
+  insertUser(ADMIN_USER, adminHash, 1);
+  insertUser(INACTIVE_USER, inactiveHash, 0);
 }
 
 // ── Setup & Teardown ─────────────────────────────────────────────────────────
@@ -117,7 +115,7 @@ describe('POST /api/auth/login', () => {
     expect(res.body).toHaveProperty('refreshToken');
     expect(res.body).toHaveProperty('user');
     expect(res.body.user.email).toBe(TEST_USER.email);
-    expect(res.body.user.role).toBe(TEST_USER.role);
+    expect(res.body.user.roles).toEqual(TEST_USER.roles);
     expect(res.body.user.name).toBe(TEST_USER.name);
     expect(res.body.user.department).toBe(TEST_USER.department);
     // Le mot de passe ne doit JAMAIS etre retourne
@@ -186,7 +184,7 @@ describe('POST /api/auth/login', () => {
 
     expect(decoded.id).toBe(TEST_USER.id);
     expect(decoded.email).toBe(TEST_USER.email);
-    expect(decoded.role).toBe(TEST_USER.role);
+    expect(decoded.roles).toEqual(TEST_USER.roles);
     expect(decoded.name).toBe(TEST_USER.name);
     expect(decoded.department).toBe(TEST_USER.department);
     // Pas de donnees sensibles dans le token
@@ -391,7 +389,7 @@ describe('GET /api/auth/me', () => {
     expect(res.status).toBe(200);
     expect(res.body.email).toBe(TEST_USER.email);
     expect(res.body.name).toBe(TEST_USER.name);
-    expect(res.body.role).toBe(TEST_USER.role);
+    expect(res.body.roles).toEqual(TEST_USER.roles);
     expect(res.body.department).toBe(TEST_USER.department);
     // Pas de mot de passe dans la reponse
     expect(res.body).not.toHaveProperty('password_hash');
@@ -505,7 +503,7 @@ describe('Securite — XSS', () => {
 describe('Securite — Manipulation de JWT', () => {
   test('un token signe avec une mauvaise cle est rejete', async () => {
     const fakeToken = jwt.sign(
-      { id: TEST_USER.id, email: TEST_USER.email, role: 'admin' },
+      { id: TEST_USER.id, email: TEST_USER.email, roles: ['admin'] },
       'mauvaise-cle-secrete'
     );
 
@@ -522,7 +520,7 @@ describe('Securite — Manipulation de JWT', () => {
     // Modifier le payload du token
     const parts = accessToken.split('.');
     const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-    payload.role = 'admin'; // Tentative d'elevation de privileges
+    payload.roles = ['admin']; // Tentative d'elevation de privileges
     parts[1] = Buffer.from(JSON.stringify(payload)).toString('base64url');
     const tamperedToken = parts.join('.');
 
@@ -538,7 +536,7 @@ describe('Securite — Manipulation de JWT', () => {
     // Creer un token qui a expire il y a 10 secondes
     const now = Math.floor(Date.now() / 1000);
     const expiredToken = jwt.sign(
-      { id: TEST_USER.id, email: TEST_USER.email, role: TEST_USER.role, iat: now - 20, exp: now - 10 },
+      { id: TEST_USER.id, email: TEST_USER.email, roles: TEST_USER.roles, iat: now - 20, exp: now - 10 },
       JWT_SECRET
     );
 
@@ -565,7 +563,7 @@ describe('Securite — Manipulation de JWT', () => {
     // Construire manuellement un token avec alg: "none"
     const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
     const payload = Buffer.from(JSON.stringify({
-      id: TEST_USER.id, email: TEST_USER.email, role: 'admin',
+      id: TEST_USER.id, email: TEST_USER.email, roles: ['admin'],
       iat: Math.floor(Date.now() / 1000), exp: Math.floor(Date.now() / 1000) + 3600,
     })).toString('base64url');
     const noneToken = `${header}.${payload}.`;
@@ -581,7 +579,7 @@ describe('Securite — Manipulation de JWT', () => {
   test('un token hospitalStaff ne peut pas usurper un role admin', async () => {
     // Signer un token avec le bon secret mais un role different
     const escalatedToken = jwt.sign(
-      { id: TEST_USER.id, email: TEST_USER.email, role: 'admin', name: TEST_USER.name },
+      { id: TEST_USER.id, email: TEST_USER.email, roles: ['admin'], name: TEST_USER.name },
       JWT_SECRET,
       { expiresIn: '15m' }
     );
@@ -705,14 +703,14 @@ describe('Securite — Types de donnees inattendus', () => {
       .send({
         email: TEST_USER.email,
         password: TEST_USER.password,
-        role: 'admin',
+        roles: ['admin'],
         is_active: 1,
         id: 'hacked-id',
       });
 
     expect(res.status).toBe(200);
     // Le role retourne doit etre celui de la BDD, pas celui envoye
-    expect(res.body.user.role).toBe(TEST_USER.role);
+    expect(res.body.user.roles).toEqual(TEST_USER.roles);
     expect(res.body.user.id).toBe(TEST_USER.id);
   });
 
@@ -825,7 +823,7 @@ describe('Controle d acces — RBAC', () => {
     const res = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: 'Hacker', email: 'hacker@test.rw', password: 'Hack1234!', department: 'Test', role: 'admin' });
+      .send({ name: 'Hacker', email: 'hacker@test.rw', password: 'Hack1234!', department: 'Test', roles: ['admin'] });
 
     expect(res.status).toBe(403);
   });
@@ -909,7 +907,7 @@ describe('Securite — Politique de mot de passe (NIST/ASVS)', () => {
     const res = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${accessToken}`)
-      .send({ name: 'Short Pass', email: 'short@test.rw', password: 'ab', department: 'Test', role: 'hospitalStaff' });
+      .send({ name: 'Short Pass', email: 'short@test.rw', password: 'ab', department: 'Test', roles: ['hospitalStaff'] });
 
     // VULNERABILITE: le serveur accepte un mdp de 2 caracteres (devrait rejeter < 8)
     // On documente le comportement actuel
@@ -929,9 +927,10 @@ describe('Securite — Politique de mot de passe (NIST/ASVS)', () => {
     const hash = await bcrypt.hash(longPassword, BCRYPT_ROUNDS);
 
     db.prepare(`
-      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-      VALUES ('test-long-pass', 'Long Pass User', 'longpass@test.rw', ?, 'Test', 'hospitalStaff', NULL, 1, datetime('now'))
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, phone, is_active, created_at)
+      VALUES ('test-long-pass', 'Long Pass User', 'longpass@test.rw', ?, 'Test', NULL, 1, datetime('now'))
     `).run(hash);
+    setUserRoles(db, 'test-long-pass', ['hospitalStaff']);
 
     const res = await request(app)
       .post('/api/auth/login')
@@ -954,9 +953,10 @@ describe('Securite — Politique de mot de passe (NIST/ASVS)', () => {
     const hash = await bcrypt.hash(password72, BCRYPT_ROUNDS);
 
     db.prepare(`
-      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-      VALUES ('test-trunc', 'Trunc User', 'trunc@test.rw', ?, 'Test', 'hospitalStaff', NULL, 1, datetime('now'))
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, phone, is_active, created_at)
+      VALUES ('test-trunc', 'Trunc User', 'trunc@test.rw', ?, 'Test', NULL, 1, datetime('now'))
     `).run(hash);
+    setUserRoles(db, 'test-trunc', ['hospitalStaff']);
 
     const res72 = await request(app)
       .post('/api/auth/login')
@@ -991,9 +991,10 @@ describe('Securite — Politique de mot de passe (NIST/ASVS)', () => {
     const hash = await bcrypt.hash(unicodePassword, BCRYPT_ROUNDS);
 
     db.prepare(`
-      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-      VALUES ('test-unicode', 'Unicode User', 'unicode@test.rw', ?, 'Test', 'hospitalStaff', NULL, 1, datetime('now'))
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, phone, is_active, created_at)
+      VALUES ('test-unicode', 'Unicode User', 'unicode@test.rw', ?, 'Test', NULL, 1, datetime('now'))
     `).run(hash);
+    setUserRoles(db, 'test-unicode', ['hospitalStaff']);
 
     const res = await request(app)
       .post('/api/auth/login')
@@ -1012,9 +1013,10 @@ describe('Securite — Politique de mot de passe (NIST/ASVS)', () => {
     const hash = await bcrypt.hash(spacedPassword, BCRYPT_ROUNDS);
 
     db.prepare(`
-      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, role, phone, is_active, created_at)
-      VALUES ('test-spaces', 'Space User', 'space@test.rw', ?, 'Test', 'hospitalStaff', NULL, 1, datetime('now'))
+      INSERT OR REPLACE INTO users (id, name, email, password_hash, department, phone, is_active, created_at)
+      VALUES ('test-spaces', 'Space User', 'space@test.rw', ?, 'Test', NULL, 1, datetime('now'))
     `).run(hash);
+    setUserRoles(db, 'test-spaces', ['hospitalStaff']);
 
     const res = await request(app)
       .post('/api/auth/login')
@@ -1210,7 +1212,7 @@ describe('Flux complet d authentification', () => {
       .post('/api/auth/login')
       .send({ email: TEST_USER.email, password: TEST_USER.password });
     expect(loginRes.status).toBe(200);
-    expect(loginRes.body.user.role).toBe('hospitalStaff');
+    expect(loginRes.body.user.roles).toEqual(['hospitalStaff']);
 
     // Tenter d acceder a la liste des utilisateurs (admin only)
     const usersRes = await request(app)
@@ -1222,7 +1224,7 @@ describe('Flux complet d authentification', () => {
     const createRes = await request(app)
       .post('/api/users')
       .set('Authorization', `Bearer ${loginRes.body.accessToken}`)
-      .send({ name: 'New', email: 'new@test.rw', password: 'Test1234!', department: 'Test', role: 'admin' });
+      .send({ name: 'New', email: 'new@test.rw', password: 'Test1234!', department: 'Test', roles: ['admin'] });
     expect(createRes.status).toBe(403);
   });
 });

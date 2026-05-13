@@ -8,7 +8,7 @@ class User {
   final String lastName;
   final String email;
   final String department;
-  final UserRole role;
+  final List<UserRole> roles;
   final List<Permission> permissions;
   final bool isActive;
   final String? phone;
@@ -21,7 +21,7 @@ class User {
   }
 
   factory User.fromApiJson(Map<String, dynamic> json) {
-    final role = _roleFromString(json['role'] as String? ?? 'hospitalStaff');
+    final roles = _rolesFromJson(json['roles']);
     final name = json['name'] as String? ?? '';
     final firstName = json['first_name'] as String? ?? '';
     final lastName = json['last_name'] as String? ?? '';
@@ -32,21 +32,22 @@ class User {
       lastName:    lastName.isNotEmpty ? lastName : (name.split(' ').skip(1).join(' ')),
       email:       json['email']       as String? ?? '',
       department:  json['department']  as String? ?? '',
-      role:        role,
-      permissions: getPermissionsForRole(role),
+      roles:       roles,
+      permissions: getPermissionsForRoles(roles),
       isActive:    (json['is_active'] as int? ?? 1) == 1,
       phone:       json['phone']       as String?,
       createdAt:   json['created_at']  as String? ?? '',
     );
   }
 
-  static UserRole _roleFromString(String v) {
-    switch (v) {
-      case 'admin':       return UserRole.admin;
-      case 'supervisor':  return UserRole.supervisor;
-      case 'technician':  return UserRole.technician;
-      default:            return UserRole.hospitalStaff;
+  static List<UserRole> _rolesFromJson(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map((r) => UserRole.fromApiName(r as String? ?? ''))
+          .whereType<UserRole>()
+          .toList();
     }
+    return const [];
   }
 
   const User({
@@ -56,7 +57,7 @@ class User {
     this.lastName = '',
     required this.email,
     required this.department,
-    required this.role,
+    required this.roles,
     required this.permissions,
     this.isActive = true,
     this.phone,
@@ -67,6 +68,9 @@ class User {
   bool hasPermission(Permission permission) {
     return permissions.contains(permission);
   }
+
+  /// True si l'utilisateur possède le rôle donné.
+  bool hasRole(UserRole role) => roles.contains(role);
 
   /// Check if user can access a feature
   bool canViewEquipment() => hasPermission(Permission.viewEquipment);
@@ -86,7 +90,7 @@ class User {
     String? lastName,
     String? email,
     String? department,
-    UserRole? role,
+    List<UserRole>? roles,
     List<Permission>? permissions,
     bool? isActive,
     String? phone,
@@ -99,7 +103,7 @@ class User {
       lastName: lastName ?? this.lastName,
       email: email ?? this.email,
       department: department ?? this.department,
-      role: role ?? this.role,
+      roles: roles ?? this.roles,
       permissions: permissions ?? this.permissions,
       isActive: isActive ?? this.isActive,
       phone: phone ?? this.phone,

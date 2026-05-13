@@ -12,7 +12,7 @@ void main() {
       name: 'Test Admin',
       email: 'admin@test.com',
       department: 'IT',
-      role: UserRole.admin,
+      roles: const [UserRole.admin],
       permissions: getPermissionsForRole(UserRole.admin),
       createdAt: '2024-01-01',
     );
@@ -22,7 +22,7 @@ void main() {
       name: 'Test Staff',
       email: 'staff@test.com',
       department: 'Urgences',
-      role: UserRole.hospitalStaff,
+      roles: const [UserRole.hospitalStaff],
       permissions: getPermissionsForRole(UserRole.hospitalStaff),
       createdAt: '2024-01-01',
     );
@@ -40,6 +40,35 @@ void main() {
       expect(staffUser.hasPermission(Permission.viewEquipment), isTrue);
       expect(staffUser.hasPermission(Permission.reportIssue), isTrue);
       expect(staffUser.hasPermission(Permission.manageUsers), isFalse);
+    });
+  });
+
+  group('hasRole', () {
+    test('admin user has admin role', () {
+      expect(adminUser.hasRole(UserRole.admin), isTrue);
+      expect(adminUser.hasRole(UserRole.supervisor), isFalse);
+    });
+
+    test('multi-role user matches all its roles', () {
+      final multi = User(
+        id: 'multi',
+        name: 'Multi',
+        email: 'm@test.com',
+        department: 'IT',
+        roles: const [
+          UserRole.technicianBiomedical,
+          UserRole.technicianIt,
+        ],
+        permissions: getPermissionsForRoles(const [
+          UserRole.technicianBiomedical,
+          UserRole.technicianIt,
+        ]),
+        createdAt: '2024-01-01',
+      );
+      expect(multi.hasRole(UserRole.technicianBiomedical), isTrue);
+      expect(multi.hasRole(UserRole.technicianIt), isTrue);
+      expect(multi.hasRole(UserRole.technicianInfra), isFalse);
+      expect(multi.canUpdateRepairs(), isTrue);
     });
   });
 
@@ -67,7 +96,7 @@ void main() {
       expect(copy.name, adminUser.name);
       expect(copy.email, adminUser.email);
       expect(copy.department, adminUser.department);
-      expect(copy.role, adminUser.role);
+      expect(copy.roles, adminUser.roles);
       expect(copy.isActive, adminUser.isActive);
     });
 
@@ -86,14 +115,14 @@ void main() {
       expect(copy.email, adminUser.email);
     });
 
-    test('can change role and permissions', () {
-      final newPerms = getPermissionsForRole(UserRole.technician);
+    test('can change roles and permissions', () {
+      final newPerms = getPermissionsForRole(UserRole.technicianBiomedical);
       final copy = adminUser.copyWith(
-        role: UserRole.technician,
+        roles: const [UserRole.technicianBiomedical],
         permissions: newPerms,
       );
 
-      expect(copy.role, UserRole.technician);
+      expect(copy.roles, const [UserRole.technicianBiomedical]);
       expect(copy.canUpdateRepairs(), isTrue);
       expect(copy.canManageUsers(), isFalse);
     });
@@ -107,6 +136,36 @@ void main() {
     test('can be set to false', () {
       final inactive = adminUser.copyWith(isActive: false);
       expect(inactive.isActive, isFalse);
+    });
+  });
+
+  group('fromApiJson', () {
+    test('parses roles array correctly', () {
+      final u = User.fromApiJson({
+        'id': 'u-1',
+        'name': 'Tech Multi',
+        'email': 't@test.com',
+        'department': 'IT',
+        'roles': ['technician_biomedical', 'technician_it'],
+        'is_active': 1,
+        'created_at': '2024-01-01',
+      });
+      expect(u.roles, contains(UserRole.technicianBiomedical));
+      expect(u.roles, contains(UserRole.technicianIt));
+      expect(u.roles, isNot(contains(UserRole.technicianInfra)));
+    });
+
+    test('ignores unknown role names', () {
+      final u = User.fromApiJson({
+        'id': 'u-2',
+        'name': 'X',
+        'email': 'x@test.com',
+        'department': 'IT',
+        'roles': ['admin', 'bogus_role'],
+        'is_active': 1,
+        'created_at': '2024-01-01',
+      });
+      expect(u.roles, const [UserRole.admin]);
     });
   });
 }

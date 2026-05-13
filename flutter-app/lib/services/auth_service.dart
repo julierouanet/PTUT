@@ -27,7 +27,27 @@ class AuthService extends ChangeNotifier {
     _sessionExpiredMessage = null;
   }
 
-  UserRole? get currentRole => _currentUser?.role;
+  /// Liste des rôles de l'utilisateur connecté (vide si non connecté).
+  List<UserRole> get currentRoles => _currentUser?.roles ?? const [];
+
+  /// Rôle "principal" selon une priorité fixe — utilisé pour la sidebar
+  /// (qui est indexée par un unique nom de rôle côté API).
+  UserRole? get primaryRole {
+    const priority = [
+      UserRole.admin,
+      UserRole.supervisor,
+      UserRole.technicianBiomedical,
+      UserRole.technicianIt,
+      UserRole.technicianInfra,
+      UserRole.technician,
+      UserRole.hospitalStaff,
+    ];
+    final roles = currentRoles;
+    for (final r in priority) {
+      if (roles.contains(r)) return r;
+    }
+    return roles.isNotEmpty ? roles.first : null;
+  }
 
   // ── Initialisation (tests uniquement) ──────────────────────────────────────
 
@@ -37,7 +57,7 @@ class AuthService extends ChangeNotifier {
   void initDemo() {
     assert(kDebugMode, 'initDemo ne doit pas être appelé en production');
     if (_currentUser == null) {
-      _currentUser = mockUsers.firstWhere((u) => u.role == UserRole.admin);
+      _currentUser = mockUsers.firstWhere((u) => u.hasRole(UserRole.admin));
       notifyListeners();
     }
   }
@@ -208,10 +228,15 @@ class AuthService extends ChangeNotifier {
     final user = _currentUser;
     if (user == null) return false;
     // L'admin a toujours accès à tout, sans exception
-    if (user.role == UserRole.admin) return true;
-    final dynamicPerms = DataService().permissionsForRole(user.role.name);
-    if (dynamicPerms != null && dynamicPerms.isNotEmpty) {
-      return dynamicPerms.contains(permission.name);
+    if (user.hasRole(UserRole.admin)) return true;
+    // Union dynamique : si la config /api/roles est chargée, on cumule les permissions
+    // de tous les rôles de l'utilisateur. Fallback sur les permissions hardcodées sinon.
+    final data = DataService();
+    for (final role in user.roles) {
+      final dynamicPerms = data.permissionsForRole(role.apiName);
+      if (dynamicPerms != null && dynamicPerms.contains(permission.name)) {
+        return true;
+      }
     }
     return user.hasPermission(permission);
   }
@@ -232,17 +257,20 @@ class AuthService extends ChangeNotifier {
   // ── Conversion API → modèle ────────────────────────────────────────────────
 
   User _userFromApiResponse(Map<String, dynamic> data) {
-    final roleStr   = data['role'] as String? ?? 'hospitalStaff';
-    final role      = _parseRole(roleStr);
+    final rawRoles = data['roles'] as List<dynamic>?;
+    final roles = (rawRoles ?? const [])
+        .map((r) => UserRole.fromApiName(r as String? ?? ''))
+        .whereType<UserRole>()
+        .toList();
     final name      = data['name']       as String? ?? '';
     final firstName = data['first_name'] as String? ?? '';
     final lastName  = data['last_name']  as String? ?? '';
 
-    // Use permissions from API if available, otherwise fall back to role defaults
+    // Use permissions from API if available, otherwise fall back to union of role defaults
     final rawPerms = data['permissions'] as List<dynamic>?;
     final permissions = rawPerms != null
         ? rawPerms.map((p) => _parsePermission(p as String)).whereType<Permission>().toList()
-        : getPermissionsForRole(role);
+        : getPermissionsForRoles(roles);
 
     return User(
       id:          data['id']         as String? ?? '',
@@ -251,7 +279,7 @@ class AuthService extends ChangeNotifier {
       lastName:    lastName.isNotEmpty  ? lastName  : (name.split(' ').skip(1).join(' ')),
       email:       data['email']      as String? ?? '',
       department:  data['department'] as String? ?? '',
-      role:        role,
+      roles:       roles,
       permissions: permissions,
       phone:       data['phone']      as String?,
       createdAt:   data['created_at'] as String? ?? '',
@@ -263,15 +291,6 @@ class AuthService extends ChangeNotifier {
       return Permission.values.firstWhere((e) => e.name == p);
     } catch (_) {
       return null;
-    }
-  }
-
-  UserRole _parseRole(String role) {
-    switch (role) {
-      case 'admin':      return UserRole.admin;
-      case 'supervisor': return UserRole.supervisor;
-      case 'technician': return UserRole.technician;
-      default:           return UserRole.hospitalStaff;
     }
   }
 }

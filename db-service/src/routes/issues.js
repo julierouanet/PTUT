@@ -2,6 +2,7 @@ const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { AUTH_SERVICE_URL } = require('../config');
 
 const router = express.Router();
 
@@ -9,6 +10,19 @@ const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress'
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
+
+// Mapping groupe d'incident -> rôle spécialisé requis pour l'assignation.
+const GROUP_TO_ROLE = {
+  'Biomédical':     'technician_biomedical',
+  'IT':             'technician_it',
+  'Infrastructure': 'technician_infra',
+};
+
+// Tous les rôles techniciens spécialisés (utilisés pour requireRole).
+const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
+
+// Sérialise les rôles d'un user (issus du JWT) pour la colonne `user_role` des logs.
+const rolesCsv = (req) => (Array.isArray(req.user?.roles) ? req.user.roles.join(',') : '');
 
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {
@@ -35,6 +49,41 @@ router.get('/:id', verifyToken, (req, res) => {
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   res.json(issue);
+});
+
+// GET /api/issues/:id/assignable-technicians
+// Retourne la liste des techniciens spécialisés actifs compatibles avec le
+// `assigned_group` de l'incident. Appelle auth-service en proxifiant le JWT
+// du caller (la route ?role= y est accessible à tout utilisateur authentifié).
+router.get('/:id/assignable-technicians', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), async (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT id, assigned_group FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const requiredRole = GROUP_TO_ROLE[issue.assigned_group];
+  if (!requiredRole) {
+    return res.status(400).json({ error: `Groupe invalide ou absent sur cet incident (${issue.assigned_group || 'null'})` });
+  }
+
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) {
+    return res.status(401).json({ error: 'Authorization header manquant' });
+  }
+
+  try {
+    const url = `${AUTH_SERVICE_URL}/api/users?role=${encodeURIComponent(requiredRole)}`;
+    const resp = await fetch(url, { headers: { authorization: authHeader } });
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      console.error(`[DB] Échec appel auth-service (${resp.status}): ${txt.substring(0, 200)}`);
+      return res.status(502).json({ error: 'auth-service indisponible' });
+    }
+    const users = await resp.json();
+    res.json(users);
+  } catch (err) {
+    console.error('[DB] Erreur fetch auth-service:', err.message);
+    res.status(502).json({ error: 'Impossible de contacter auth-service' });
+  }
 });
 
 // POST /api/issues - signaler un incident (équipement ou lieu/infrastructure)
@@ -81,7 +130,7 @@ router.post('/', verifyToken, (req, res) => {
       urgencyValue
     );
 
-    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'create_issue', target_type: 'issue', target_id: id,
       target_name: equipment_name || location_id || department,
       details: { type, department, category: derivedCategory, group: derivedGroup },
@@ -95,7 +144,7 @@ router.post('/', verifyToken, (req, res) => {
 });
 
 // PUT /api/issues/:id - mettre à jour un incident
-router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency } = req.body;
 
@@ -124,7 +173,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: actionLabel, target_type: 'issue', target_id: req.params.id,
     target_name: existing.equipment_name || existing.location_id || existing.department,
     details: status ? { old_status: existing.status, new_status: status } : undefined,
@@ -134,7 +183,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
 });
 
 // ── PATCH /api/issues/:id/reassign ────────────────────────────────────────
-router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { new_group, reason } = req.body;
 
@@ -166,7 +215,7 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', 't
     WHERE id = ?
   `).run(new_group, appendedActions, req.params.id);
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'reassign_issue', target_type: 'issue', target_id: req.params.id,
     target_name: existing.equipment_name || existing.location_id || existing.department,
     details: { old_group: existing.assigned_group, new_group, old_technician: existing.assigned_technician, reason: reason.trim() },
@@ -183,7 +232,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 
   if (result.changes === 0) return res.status(404).json({ error: 'Incident introuvable' });
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'delete_issue', target_type: 'issue', target_id: req.params.id,
     target_name: existing?.equipment_name, ...extractReqMeta(req) });
 

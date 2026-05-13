@@ -19,17 +19,17 @@ void main() {
       authService.initDemo();
 
       expect(authService.isLoggedIn, isTrue);
-      expect(authService.currentRole, UserRole.admin);
+      expect(authService.currentRoles, contains(UserRole.admin));
     });
 
     test('does not overwrite existing user', () {
-      final technician = mockUsers.firstWhere((u) => u.role == UserRole.technician);
+      final technician = mockUsers.firstWhere((u) => u.hasRole(UserRole.technicianBiomedical));
       authService.switchUser(technician);
 
       authService.initDemo();
 
       // Should keep the technician, not switch to admin
-      expect(authService.currentUser?.role, UserRole.technician);
+      expect(authService.currentUser?.hasRole(UserRole.technicianBiomedical), isTrue);
     });
   });
 
@@ -66,19 +66,29 @@ void main() {
 
       expect(authService.isLoggedIn, isFalse);
       expect(authService.currentUser, isNull);
-      expect(authService.currentRole, isNull);
+      expect(authService.currentRoles, isEmpty);
     });
   });
 
   group('switchUser', () {
     test('changes to specified user', () {
       authService.initDemo();
-      final technician = mockUsers.firstWhere((u) => u.role == UserRole.technician);
+      final technician = mockUsers.firstWhere((u) => u.hasRole(UserRole.technicianBiomedical));
 
       authService.switchUser(technician);
 
       expect(authService.currentUser?.id, technician.id);
-      expect(authService.currentRole, UserRole.technician);
+      expect(authService.currentRoles, contains(UserRole.technicianBiomedical));
+    });
+  });
+
+  group('primaryRole', () {
+    test('returns admin si l’utilisateur cumule admin et tech', () {
+      // Construire un user multi-rôles via switchUser
+      final admin = mockUsers.firstWhere((u) => u.hasRole(UserRole.admin));
+      final hybrid = admin.copyWith(roles: const [UserRole.technicianIt, UserRole.admin]);
+      authService.switchUser(hybrid);
+      expect(authService.primaryRole, UserRole.admin);
     });
   });
 
@@ -100,7 +110,7 @@ void main() {
     });
 
     test('hospitalStaff has only basic permissions', () {
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       authService.switchUser(staff);
 
       expect(authService.hasPermission(Permission.viewEquipment), isTrue);
@@ -113,8 +123,8 @@ void main() {
       expect(authService.hasPermission(Permission.generateReports), isFalse);
     });
 
-    test('technician can update repairs but not manage users', () {
-      final tech = mockUsers.firstWhere((u) => u.role == UserRole.technician);
+    test('technician spécialisé can update repairs but not manage users', () {
+      final tech = mockUsers.firstWhere((u) => u.hasRole(UserRole.technicianBiomedical));
       authService.switchUser(tech);
 
       expect(authService.hasPermission(Permission.updateRepairs), isTrue);
@@ -124,12 +134,24 @@ void main() {
     });
 
     test('supervisor can approve requests but not update repairs', () {
-      final supervisor = mockUsers.firstWhere((u) => u.role == UserRole.supervisor);
+      final supervisor = mockUsers.firstWhere((u) => u.hasRole(UserRole.supervisor));
       authService.switchUser(supervisor);
 
       expect(authService.hasPermission(Permission.approveRequests), isTrue);
       expect(authService.hasPermission(Permission.assignTasks), isTrue);
       expect(authService.hasPermission(Permission.updateRepairs), isFalse);
+      expect(authService.hasPermission(Permission.manageUsers), isFalse);
+    });
+
+    test('un user cumulant supervisor + tech_bio hérite des deux jeux de permissions', () {
+      final supervisor = mockUsers.firstWhere((u) => u.hasRole(UserRole.supervisor));
+      final hybrid = supervisor.copyWith(
+        roles: const [UserRole.supervisor, UserRole.technicianBiomedical],
+        permissions: getPermissionsForRoles(const [UserRole.supervisor, UserRole.technicianBiomedical]),
+      );
+      authService.switchUser(hybrid);
+      expect(authService.hasPermission(Permission.approveRequests), isTrue); // supervisor
+      expect(authService.hasPermission(Permission.updateRepairs), isTrue);   // tech
       expect(authService.hasPermission(Permission.manageUsers), isFalse);
     });
   });
@@ -145,7 +167,7 @@ void main() {
     });
 
     test('returns false when user lacks one permission', () {
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       authService.switchUser(staff);
 
       expect(
@@ -157,7 +179,7 @@ void main() {
 
   group('hasAnyPermission', () {
     test('returns true when user has at least one listed permission', () {
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       authService.switchUser(staff);
 
       expect(
@@ -167,7 +189,7 @@ void main() {
     });
 
     test('returns false when user has none of the listed permissions', () {
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       authService.switchUser(staff);
 
       expect(
@@ -188,7 +210,7 @@ void main() {
     });
 
     test('match hasPermission results for hospitalStaff', () {
-      final staff = mockUsers.firstWhere((u) => u.role == UserRole.hospitalStaff);
+      final staff = mockUsers.firstWhere((u) => u.hasRole(UserRole.hospitalStaff));
       authService.switchUser(staff);
 
       expect(authService.canViewEquipment, isTrue);

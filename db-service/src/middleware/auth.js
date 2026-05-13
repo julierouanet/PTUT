@@ -18,10 +18,11 @@ function verifyToken(req, res, next) {
   }
 }
 
-function requireRole(...roles) {
+function requireRole(...allowed) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: `Rôle requis: ${roles.join(' ou ')}` });
+    const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!userRoles.some((r) => allowed.includes(r))) {
+      return res.status(403).json({ error: `Rôle requis: ${allowed.join(' ou ')}` });
     }
     next();
   };

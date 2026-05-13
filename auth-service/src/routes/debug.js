@@ -1,5 +1,6 @@
 const express = require('express');
 const { getDb } = require('../database');
+const { getUserRoles } = require('../utils/userRoles');
 
 const router = express.Router();
 
@@ -7,7 +8,8 @@ const router = express.Router();
 router.get('/', (req, res) => {
   const db = getDb();
 
-  const users = db.prepare('SELECT id, name, email, role, department, phone, is_active, created_at FROM users ORDER BY created_at DESC').all();
+  const usersRaw = db.prepare('SELECT id, name, email, department, phone, is_active, created_at FROM users ORDER BY created_at DESC').all();
+  const users = usersRaw.map((u) => ({ ...u, roles: getUserRoles(db, u.id) }));
   const tokens = db.prepare(`
     SELECT rt.id, rt.user_id, u.name as user_name, u.email, rt.expires_at, rt.created_at
     FROM refresh_tokens rt
@@ -24,15 +26,23 @@ router.get('/', (req, res) => {
     admin: '#e74c3c',
     supervisor: '#e67e22',
     technician: '#3498db',
+    technician_biomedical: '#2980b9',
+    technician_it: '#16a085',
+    technician_infra: '#8e44ad',
     hospitalStaff: '#27ae60',
   };
+
+  const renderRoles = (roles) =>
+    (roles || []).map((r) =>
+      `<span style="background:${roleColors[r]||'#95a5a6'};color:white;padding:2px 8px;border-radius:12px;font-size:12px;margin-right:4px">${r}</span>`
+    ).join('');
 
   const usersHtml = users.map(u => `
     <tr>
       <td><code>${u.id}</code></td>
       <td>${u.name}</td>
       <td>${u.email}</td>
-      <td><span style="background:${roleColors[u.role]||'#95a5a6'};color:white;padding:2px 8px;border-radius:12px;font-size:12px">${u.role}</span></td>
+      <td>${renderRoles(u.roles)}</td>
       <td>${u.department}</td>
       <td>${u.phone || '-'}</td>
       <td><span style="color:${u.is_active ? '#27ae60' : '#e74c3c'}">${u.is_active ? '✓ Actif' : '✗ Inactif'}</span></td>

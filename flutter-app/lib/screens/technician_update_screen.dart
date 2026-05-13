@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/issue.dart';
 import '../models/equipment.dart';
+import '../models/user_role.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 
@@ -66,11 +67,34 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   String get _currentTechnicianName => AuthService().currentUser?.fullName ?? '';
 
-  /// Incidents approuvés (non encore assignés) — disponibles à prendre en charge.
+  /// Groupes d'incidents auxquels le tech connecté est habilité à répondre,
+  /// dérivés de ses rôles spécialisés. Un admin/supervisor (sans rôle tech) voit tout.
+  Set<String> get _myAssignableGroups {
+    final roles = AuthService().currentRoles;
+    final groups = <String>{};
+    if (roles.contains(UserRole.technicianBiomedical)) groups.add('Biomédical');
+    if (roles.contains(UserRole.technicianIt))         groups.add('IT');
+    if (roles.contains(UserRole.technicianInfra))      groups.add('Infrastructure');
+    return groups;
+  }
+
+  /// Incidents approuvés (non encore assignés) — disponibles à prendre en charge,
+  /// filtrés par les groupes du technicien connecté (un tech biomédical ne voit
+  /// que les incidents `assigned_group == 'Biomédical'`, etc.).
   /// Triés par urgence décroissante : Urgent → Moyen → Faible.
   List<Issue> get _availableIssues {
+    final myGroups = _myAssignableGroups;
     final list = DataService().issues
-        .where((i) => i.status == IssueStatus.acknowledged || i.status == IssueStatus.assigned)
+        .where((i) {
+          if (i.status != IssueStatus.acknowledged && i.status != IssueStatus.assigned) {
+            return false;
+          }
+          // Si l'utilisateur n'a aucun rôle tech spécialisé (ex: admin pur), on affiche tout.
+          if (myGroups.isEmpty) return true;
+          // Sinon : ne montrer que les incidents du périmètre du tech.
+          final group = i.assignedGroup;
+          return group == null || myGroups.contains(group);
+        })
         .toList();
     list.sort((a, b) => _urgencyOrder(b.urgency) - _urgencyOrder(a.urgency));
     return list;

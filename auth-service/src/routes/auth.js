@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../database');
 const { JWT_SECRET, JWT_REFRESH_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS } = require('../config');
 const { verifyToken } = require('../middleware/auth');
+const { getUserRoles, getUserPermissions } = require('../utils/userRoles');
 
 const { sendLog, reqMeta, extractIp } = require('../utils/logger');
 
@@ -17,6 +18,11 @@ const router = express.Router();
 /** Supprime les refresh tokens expirés pour garder la table propre. */
 function cleanExpiredTokens(db) {
   db.prepare("DELETE FROM refresh_tokens WHERE expires_at < datetime('now')").run();
+}
+
+/** Sérialise un tableau de rôles pour la colonne `user_role` des logs (CSV). */
+function rolesToLog(roles) {
+  return Array.isArray(roles) ? roles.join(',') : '';
 }
 
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
@@ -39,15 +45,19 @@ router.post('/login', async (req, res) => {
 
   const valid = await bcrypt.compare(password, user.password_hash);
   if (!valid) {
+    const failRoles = getUserRoles(db, user.id);
     console.log('[AUTH] Échec login — mot de passe incorrect');
-    sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
+    sendAuthLog({ user_id: user.id, user_name: user.name, user_role: rolesToLog(failRoles), action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
     return res.status(401).json({ error: 'Invalid credentials' });
   }
 
   // Nettoyage des tokens expirés à chaque login
   cleanExpiredTokens(db);
 
-  const payload = { id: user.id, email: user.email, role: user.role, name: user.name, department: user.department };
+  const roles = getUserRoles(db, user.id);
+  const permissions = getUserPermissions(db, user.id);
+
+  const payload = { id: user.id, email: user.email, roles, name: user.name, department: user.department };
 
   const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
   const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
@@ -55,17 +65,16 @@ router.post('/login', async (req, res) => {
   const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS).toISOString();
   db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, refreshToken, expiresAt);
 
-  console.log(`[AUTH] Login réussi (rôle: ${user.role})`);
-  sendAuthLog({ user_id: user.id, user_name: user.name, user_role: user.role, action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
+  console.log(`[AUTH] Login réussi (rôles: ${roles.join(',') || 'aucun'})`);
+  sendAuthLog({ user_id: user.id, user_name: user.name, user_role: rolesToLog(roles), action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
 
-  const userPerms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(user.role);
   res.json({
     accessToken,
     refreshToken,
     user: {
       id: user.id, name: user.name, first_name: user.first_name, last_name: user.last_name,
-      email: user.email, role: user.role, department: user.department, phone: user.phone,
-      permissions: userPerms.map(p => p.permission),
+      email: user.email, roles, department: user.department, phone: user.phone,
+      permissions,
     },
   });
 });
@@ -97,8 +106,10 @@ router.post('/refresh', (req, res) => {
     // Supprimer l'ancien refresh token (rotation)
     db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
 
-    // Émettre un nouveau couple access + refresh
-    const payload = { id: user.id, email: user.email, role: user.role, name: user.name, department: user.department };
+    // Émettre un nouveau couple access + refresh (les rôles sont rechargés depuis la DB
+    // pour que les modifications prennent effet sans nouveau login).
+    const roles = getUserRoles(db, user.id);
+    const payload = { id: user.id, email: user.email, roles, name: user.name, department: user.department };
     const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
     const newRefreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
 
@@ -129,8 +140,11 @@ router.post('/logout', (req, res) => {
     try {
       const stored = db.prepare('SELECT user_id FROM refresh_tokens WHERE token = ?').get(refreshToken);
       if (stored) {
-        const u = db.prepare('SELECT id, name, role FROM users WHERE id = ?').get(stored.user_id);
-        if (u) sendAuthLog({ user_id: u.id, user_name: u.name, user_role: u.role, action: 'logout', ip_address: ip, user_agent: ua });
+        const u = db.prepare('SELECT id, name FROM users WHERE id = ?').get(stored.user_id);
+        if (u) {
+          const roles = getUserRoles(db, u.id);
+          sendAuthLog({ user_id: u.id, user_name: u.name, user_role: rolesToLog(roles), action: 'logout', ip_address: ip, user_agent: ua });
+        }
       }
     } catch (_) {}
     db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
@@ -150,14 +164,15 @@ router.get('/verify', verifyToken, (req, res) => {
 
 router.get('/me', verifyToken, (req, res) => {
   const db = getDb();
-  const user = db.prepare('SELECT id, name, first_name, last_name, email, role, department, phone, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, first_name, last_name, email, department, phone, created_at FROM users WHERE id = ?').get(req.user.id);
 
   if (!user) {
     return res.status(404).json({ error: 'Utilisateur introuvable' });
   }
 
-  const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(user.role);
-  res.json({ ...user, permissions: perms.map(p => p.permission) });
+  const roles = getUserRoles(db, user.id);
+  const permissions = getUserPermissions(db, user.id);
+  res.json({ ...user, roles, permissions });
 });
 
 module.exports = router;

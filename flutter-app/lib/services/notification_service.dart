@@ -53,7 +53,7 @@ class NotificationService extends ChangeNotifier {
     final issues    = DataService().issues;
     final now       = DateTime.now();
     final weekAgo   = now.subtract(const Duration(days: 7));
-    final isManager = user.role == UserRole.admin || user.role == UserRole.supervisor;
+    final isManager = user.hasRole(UserRole.admin) || user.hasRole(UserRole.supervisor);
 
     final List<AppNotification> generated = [];
 

@@ -19,7 +19,8 @@ function verifyToken(req, res, next) {
 }
 
 function requireAdmin(req, res, next) {
-  if (req.user?.role !== 'admin') {
+  const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+  if (!roles.includes('admin')) {
     return res.status(403).json({ error: 'Access restricted to administrators' });
   }
   next();

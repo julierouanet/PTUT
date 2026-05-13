@@ -97,13 +97,13 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     _pagesEnabled = {};
     _permissionsEnabled = {};
     for (final role in UserRole.values) {
-      final order = DataService().sidebarOrder[role.name];
-      _pagesEnabled[role.name] = {
+      final order = DataService().sidebarOrder[role.apiName];
+      _pagesEnabled[role.apiName] = {
         for (final s in allScreens)
           s: order == null ? true : order.contains(s),
       };
       final rolePerms = getPermissionsForRole(role).map((p) => p.name).toSet();
-      _permissionsEnabled[role.name] = {
+      _permissionsEnabled[role.apiName] = {
         for (final p in Permission.values)
           p.name: rolePerms.contains(p.name),
       };
@@ -371,7 +371,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
     final defaultOrder = ['dashboard', 'equipment', 'issueTracking', 'issueForm',
       'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
     final currentOrder = List<String>.from(
-      _sidebarOrder[_selectedRole.name] ?? defaultOrder,
+      _sidebarOrder[_selectedRole.apiName] ?? defaultOrder,
     );
     // Ajouter les items manquants à la fin
     for (final s in defaultOrder) {
@@ -418,7 +418,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     if (newIndex > oldIndex) newIndex--;
                     final item = currentOrder.removeAt(oldIndex);
                     currentOrder.insert(newIndex, item);
-                    _sidebarOrder = Map.from(_sidebarOrder)..[_selectedRole.name] = List.from(currentOrder);
+                    _sidebarOrder = Map.from(_sidebarOrder)..[_selectedRole.apiName] = List.from(currentOrder);
                   });
                 },
                 itemBuilder: (context, index) {
@@ -452,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               child: OutlinedButton.icon(
                 onPressed: () {
                   setState(() {
-                    _sidebarOrder = Map.from(_sidebarOrder)..remove(_selectedRole.name);
+                    _sidebarOrder = Map.from(_sidebarOrder)..remove(_selectedRole.apiName);
                   });
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l10n.settingsMenuOrderResetDone),
@@ -470,9 +470,9 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                   setState(() => _sidebarSaving = true);
                   try {
                     final order = List<String>.from(
-                      _sidebarOrder[_selectedRole.name] ?? ['dashboard', 'equipment', 'issueTracking', 'issueForm', 'technician', 'inventory', 'reports', 'users', 'settings', 'logs'],
+                      _sidebarOrder[_selectedRole.apiName] ?? ['dashboard', 'equipment', 'issueTracking', 'issueForm', 'technician', 'inventory', 'reports', 'users', 'settings', 'logs'],
                     );
-                    await DataService().saveSidebarConfig(_selectedRole.name, order);
+                    await DataService().saveSidebarConfig(_selectedRole.apiName, order);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(l10n.settingsMenuOrderSaved),
@@ -865,8 +865,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
 
   Widget _buildPageAccessSection() {
     final l10n = AppLocalizations.of(context)!;
-    final pages = _pagesEnabled[_roleTabRole.name]!;
-    final perms  = _permissionsEnabled[_roleTabRole.name]!;
+    final pages = _pagesEnabled[_roleTabRole.apiName]!;
+    final perms  = _permissionsEnabled[_roleTabRole.apiName]!;
     final isAdmin = _roleTabRole == UserRole.admin;
 
     return Column(
@@ -923,7 +923,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     leading: Checkbox(
                       value: pageEnabled,
                       activeColor: AppColors.primary,
-                      onChanged: isAdmin ? null : (v) => setState(() { _pagesEnabled[_roleTabRole.name]![screenKey] = v ?? false; }),
+                      onChanged: isAdmin ? null : (v) => setState(() { _pagesEnabled[_roleTabRole.apiName]![screenKey] = v ?? false; }),
                     ),
                     title: Row(children: [
                       Icon(def.icon, size: 18, color: pageEnabled ? AppColors.primary : AppColors.textSecondary),
@@ -941,7 +941,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                                   value: permEnabled,
                                   activeColor: AppColors.primary,
                                   visualDensity: VisualDensity.compact,
-                                  onChanged: (isAdmin || !pageEnabled) ? null : (v) => setState(() { _permissionsEnabled[_roleTabRole.name]![perm.name] = v ?? false; }),
+                                  onChanged: (isAdmin || !pageEnabled) ? null : (v) => setState(() { _permissionsEnabled[_roleTabRole.apiName]![perm.name] = v ?? false; }),
                                 ),
                                 const SizedBox(width: 6),
                                 Expanded(child: Text(perm.localizedName(l10n), style: TextStyle(fontSize: 13, color: pageEnabled ? AppColors.textPrimary : AppColors.textSecondary))),
@@ -962,8 +962,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               const allScreens = ['dashboard', 'equipment', 'issueTracking', 'issueForm', 'technician', 'inventory', 'reports', 'users', 'settings', 'logs'];
               final rolePerms = getPermissionsForRole(_roleTabRole).map((p) => p.name).toSet();
               setState(() {
-                _pagesEnabled[_roleTabRole.name] = {for (final s in allScreens) s: true};
-                _permissionsEnabled[_roleTabRole.name] = {for (final p in Permission.values) p.name: rolePerms.contains(p.name)};
+                _pagesEnabled[_roleTabRole.apiName] = {for (final s in allScreens) s: true};
+                _permissionsEnabled[_roleTabRole.apiName] = {for (final p in Permission.values) p.name: rolePerms.contains(p.name)};
               });
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsResetDone), behavior: SnackBarBehavior.floating));
             },
@@ -976,7 +976,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               setState(() => _roleSaving = true);
               try {
                 final enabledPages = _pageDefs.keys.where((k) => pages[k] == true).toList();
-                await DataService().saveSidebarConfig(_roleTabRole.name, enabledPages);
+                await DataService().saveSidebarConfig(_roleTabRole.apiName, enabledPages);
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleConfigSaved), backgroundColor: AppColors.success, behavior: SnackBarBehavior.floating));
               } catch (_) {
                 if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.settingsRoleConfigSaveError), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));

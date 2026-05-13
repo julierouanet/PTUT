@@ -20,6 +20,9 @@ function getDb() {
  * Create tables if they don't exist
  */
 function initTables() {
+  // Schéma legacy avec colonne `role` : conservé pour compatibilité avec les
+  // bases existantes. La migration plus bas crée user_roles puis supprime la
+  // colonne. Sur fresh DB (tests :memory:), la colonne est créée puis supprimée.
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -99,11 +102,16 @@ function initTables() {
   `);
 
   // Seed des rôles intégrés (INSERT OR IGNORE pour idempotence)
+  // Le rôle `technician` générique est conservé pour rétro-compat (FK et logs existants)
+  // mais n'est plus assigné aux nouveaux utilisateurs : les 3 rôles spécialisés le remplacent.
   const builtinRoles = [
-    { name: 'hospitalStaff', display_name: 'Personnel hospitalier', description: 'Médecins, infirmiers, techniciens de laboratoire', is_builtin: 1 },
-    { name: 'supervisor',    display_name: 'Superviseur',           description: 'Responsables de département',                        is_builtin: 1 },
-    { name: 'technician',   display_name: 'Technicien',            description: 'Équipe technique de maintenance',                     is_builtin: 1 },
-    { name: 'admin',        display_name: 'Administrateur ICT',     description: 'Service informatique',                               is_builtin: 1 },
+    { name: 'hospitalStaff',          display_name: 'Personnel hospitalier',    description: 'Médecins, infirmiers, techniciens de laboratoire', is_builtin: 1 },
+    { name: 'supervisor',             display_name: 'Superviseur',              description: 'Responsables de département',                       is_builtin: 1 },
+    { name: 'technician',             display_name: 'Technicien',               description: 'Rôle générique déprécié (remplacé par les 3 spécialisés)', is_builtin: 1 },
+    { name: 'technician_biomedical',  display_name: 'Technicien biomédical',    description: 'Maintenance des équipements biomédicaux',           is_builtin: 1 },
+    { name: 'technician_it',          display_name: 'Technicien IT',            description: 'Maintenance informatique et réseau',                is_builtin: 1 },
+    { name: 'technician_infra',       display_name: 'Technicien infrastructure', description: 'Maintenance bâtiment et infrastructure',           is_builtin: 1 },
+    { name: 'admin',                  display_name: 'Administrateur ICT',       description: 'Service informatique',                              is_builtin: 1 },
   ];
   const insertRole = db.prepare('INSERT OR IGNORE INTO roles (name, display_name, description, is_builtin) VALUES (?, ?, ?, ?)');
   for (const r of builtinRoles) {
@@ -111,20 +119,83 @@ function initTables() {
   }
 
   // Seed des permissions par défaut (INSERT OR IGNORE)
+  // Les 3 rôles techniciens spécialisés héritent des mêmes permissions que `technician`.
+  const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
   const defaultPerms = {
-    hospitalStaff: ['viewEquipment', 'reportIssue', 'trackIssues'],
-    supervisor:    ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks'],
-    technician:    ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'],
-    admin:         ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
-                    'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
-                    'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
-                    'changeDepartment'],
+    hospitalStaff:         ['viewEquipment', 'reportIssue', 'trackIssues'],
+    supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks'],
+    technician:            techPerms,
+    technician_biomedical: techPerms,
+    technician_it:         techPerms,
+    technician_infra:      techPerms,
+    admin:                 ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
+                            'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
+                            'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
+                            'changeDepartment'],
   };
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
   for (const [roleName, perms] of Object.entries(defaultPerms)) {
     for (const perm of perms) {
       insertPerm.run(roleName, perm);
     }
+  }
+
+  // ── Migration : passage à un système multi-rôles ──────────────────────────
+  // 1) Crée la table de jonction user_roles
+  // 2) Backfill depuis la colonne users.role (les techniciens reçoivent les 3 rôles spécialisés)
+  // 3) Recrée la table users sans la colonne role
+  // Idempotent : la présence de users.role déclenche la migration ; sinon no-op.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role_name TEXT NOT NULL REFERENCES roles(name) ON DELETE CASCADE,
+      PRIMARY KEY (user_id, role_name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_user_roles_user ON user_roles(user_id);
+    CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role_name);
+  `);
+
+  const usersCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+  if (usersCols.includes('role')) {
+    const migrate = db.transaction(() => {
+      // Backfill : récupère le rôle legacy de chaque user et l'insère dans user_roles
+      const legacyUsers = db.prepare('SELECT id, role FROM users WHERE role IS NOT NULL').all();
+      const insertUserRole = db.prepare('INSERT OR IGNORE INTO user_roles (user_id, role_name) VALUES (?, ?)');
+      for (const u of legacyUsers) {
+        if (u.role === 'technician') {
+          // Tous les techniciens existants reçoivent les 3 rôles spécialisés (à affiner manuellement ensuite)
+          insertUserRole.run(u.id, 'technician_biomedical');
+          insertUserRole.run(u.id, 'technician_it');
+          insertUserRole.run(u.id, 'technician_infra');
+        } else {
+          insertUserRole.run(u.id, u.role);
+        }
+      }
+
+      // Recrée la table users sans la colonne role (SQLite < 3.35 ne supporte pas DROP COLUMN)
+      db.exec(`
+        CREATE TABLE users_new (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          email TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          department TEXT NOT NULL,
+          phone TEXT,
+          is_active INTEGER DEFAULT 1,
+          created_at TEXT NOT NULL,
+          first_name TEXT,
+          last_name TEXT
+        );
+        INSERT INTO users_new (id, name, email, password_hash, department, phone, is_active, created_at, first_name, last_name)
+          SELECT id, name, email, password_hash, department, phone, is_active, created_at, first_name, last_name FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+      `);
+
+      console.log(`[DB] Migration multi-rôles: ${legacyUsers.length} utilisateurs migrés vers user_roles, colonne users.role supprimée`);
+    });
+    migrate();
   }
 }
 

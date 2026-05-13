@@ -62,7 +62,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         children: [
                           Text(currentUser?.fullName ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
                           const SizedBox(height: 2),
-                          Text(currentUser?.role.displayName ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          Text(currentUser?.roles.map((r) => r.displayName).join(', ') ?? '', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                           if (currentUser?.department != null && currentUser!.department.isNotEmpty) ...[
                             const SizedBox(height: 2),
                             Text(currentUser.department, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),

@@ -1,50 +1,92 @@
-/// User role enumeration
+/// User role enumeration.
+///
+/// Le rôle `technician` générique est conservé pour la rétro-compat de lecture
+/// (anciens JWT et logs) mais n'est plus assignable : les trois rôles spécialisés
+/// `technicianBiomedical` / `technicianIt` / `technicianInfra` le remplacent.
 enum UserRole {
   hospitalStaff,
   supervisor,
   technician,
+  technicianBiomedical,
+  technicianIt,
+  technicianInfra,
   admin;
+
+  /// Nom utilisé côté API (snake_case, identique à `roles.name` en base).
+  String get apiName {
+    switch (this) {
+      case UserRole.hospitalStaff:        return 'hospitalStaff';
+      case UserRole.supervisor:           return 'supervisor';
+      case UserRole.technician:           return 'technician';
+      case UserRole.technicianBiomedical: return 'technician_biomedical';
+      case UserRole.technicianIt:         return 'technician_it';
+      case UserRole.technicianInfra:      return 'technician_infra';
+      case UserRole.admin:                return 'admin';
+    }
+  }
+
+  /// Construit un UserRole à partir du nom renvoyé par l'API.
+  /// Retourne null si la valeur n'est pas reconnue.
+  static UserRole? fromApiName(String name) {
+    switch (name) {
+      case 'hospitalStaff':         return UserRole.hospitalStaff;
+      case 'supervisor':            return UserRole.supervisor;
+      case 'technician':            return UserRole.technician;
+      case 'technician_biomedical': return UserRole.technicianBiomedical;
+      case 'technician_it':         return UserRole.technicianIt;
+      case 'technician_infra':      return UserRole.technicianInfra;
+      case 'admin':                 return UserRole.admin;
+      default:                      return null;
+    }
+  }
 
   String get displayName {
     switch (this) {
-      case UserRole.hospitalStaff:
-        return 'Personnel hospitalier';
-      case UserRole.supervisor:
-        return 'Superviseur';
-      case UserRole.technician:
-        return 'Technicien';
-      case UserRole.admin:
-        return 'Administrateur ICT';
+      case UserRole.hospitalStaff:        return 'Personnel hospitalier';
+      case UserRole.supervisor:           return 'Superviseur';
+      case UserRole.technician:           return 'Technicien';
+      case UserRole.technicianBiomedical: return 'Tech. biomédical';
+      case UserRole.technicianIt:         return 'Tech. IT';
+      case UserRole.technicianInfra:      return 'Tech. infrastructure';
+      case UserRole.admin:                return 'Administrateur ICT';
     }
   }
 
   /// Localized display name — use this in the UI
   String localizedName(dynamic l10n) {
     switch (this) {
-      case UserRole.hospitalStaff:
-        return l10n.roleHospitalStaff as String;
-      case UserRole.supervisor:
-        return l10n.roleSupervisor as String;
-      case UserRole.technician:
-        return l10n.roleTechnician as String;
-      case UserRole.admin:
-        return l10n.roleAdmin as String;
+      case UserRole.hospitalStaff:        return l10n.roleHospitalStaff as String;
+      case UserRole.supervisor:           return l10n.roleSupervisor as String;
+      case UserRole.technician:           return l10n.roleTechnician as String;
+      case UserRole.technicianBiomedical: return l10n.roleTechnicianBiomedical as String;
+      case UserRole.technicianIt:         return l10n.roleTechnicianIt as String;
+      case UserRole.technicianInfra:      return l10n.roleTechnicianInfra as String;
+      case UserRole.admin:                return l10n.roleAdmin as String;
     }
   }
 
   String get description {
     switch (this) {
-      case UserRole.hospitalStaff:
-        return 'Médecins, infirmiers, techniciens de laboratoire';
-      case UserRole.supervisor:
-        return 'Responsables de département';
-      case UserRole.technician:
-        return 'Équipe technique de maintenance';
-      case UserRole.admin:
-        return 'Service informatique';
+      case UserRole.hospitalStaff:        return 'Médecins, infirmiers, techniciens de laboratoire';
+      case UserRole.supervisor:           return 'Responsables de département';
+      case UserRole.technician:           return 'Rôle générique déprécié (utiliser les rôles spécialisés)';
+      case UserRole.technicianBiomedical: return 'Maintenance des équipements biomédicaux';
+      case UserRole.technicianIt:         return 'Maintenance informatique et réseau';
+      case UserRole.technicianInfra:      return 'Maintenance bâtiment et infrastructure';
+      case UserRole.admin:                return 'Service informatique';
     }
   }
 }
+
+/// Rôles directement assignables via l'interface (le `technician` générique est exclu).
+const List<UserRole> kAssignableRoles = [
+  UserRole.hospitalStaff,
+  UserRole.supervisor,
+  UserRole.technicianBiomedical,
+  UserRole.technicianIt,
+  UserRole.technicianInfra,
+  UserRole.admin,
+];
 
 /// Permission enumeration
 enum Permission {
@@ -52,15 +94,15 @@ enum Permission {
   viewEquipment,
   reportIssue,
   trackIssues,
-  
+
   // Supervisor
   approveRequests,
   assignTasks,
-  
+
   // Technician
   updateRepairs,
   registerParts,
-  
+
   // Admin only
   manageEquipment,
   manageUsers,
@@ -124,17 +166,24 @@ enum Permission {
   }
 }
 
-/// Get default permissions for a role
+/// Permissions par défaut pour un rôle donné.
 List<Permission> getPermissionsForRole(UserRole role) {
+  const techPerms = [
+    Permission.viewEquipment,
+    Permission.reportIssue,
+    Permission.trackIssues,
+    Permission.updateRepairs,
+    Permission.registerParts,
+  ];
   switch (role) {
     case UserRole.hospitalStaff:
-      return [
+      return const [
         Permission.viewEquipment,
         Permission.reportIssue,
         Permission.trackIssues,
       ];
     case UserRole.supervisor:
-      return [
+      return const [
         Permission.viewEquipment,
         Permission.reportIssue,
         Permission.trackIssues,
@@ -142,14 +191,20 @@ List<Permission> getPermissionsForRole(UserRole role) {
         Permission.assignTasks,
       ];
     case UserRole.technician:
-      return [
-        Permission.viewEquipment,
-        Permission.reportIssue,
-        Permission.trackIssues,
-        Permission.updateRepairs,
-        Permission.registerParts,
-      ];
+    case UserRole.technicianBiomedical:
+    case UserRole.technicianIt:
+    case UserRole.technicianInfra:
+      return techPerms;
     case UserRole.admin:
       return Permission.values; // All permissions
   }
+}
+
+/// Union des permissions de plusieurs rôles (sans doublons).
+List<Permission> getPermissionsForRoles(Iterable<UserRole> roles) {
+  final set = <Permission>{};
+  for (final r in roles) {
+    set.addAll(getPermissionsForRole(r));
+  }
+  return set.toList();
 }

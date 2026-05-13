@@ -28,8 +28,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   bool _isValidating = false;
 
   bool get _isPrivileged {
-    final role = _authService.currentRole;
-    return role == UserRole.supervisor || role == UserRole.admin;
+    final roles = _authService.currentRoles;
+    return roles.contains(UserRole.supervisor) || roles.contains(UserRole.admin);
   }
 
   @override
@@ -71,10 +71,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   }
 
   List<Issue> get _openIssuesForValidation {
-    final role = _authService.currentRole;
+    final roles = _authService.currentRoles;
     final allOpen = DataService().issues.where((i) => i.status == IssueStatus.reported).toList();
-    if (role == UserRole.admin) return allOpen;
-    if (role == UserRole.supervisor) {
+    if (roles.contains(UserRole.admin)) return allOpen;
+    if (roles.contains(UserRole.supervisor)) {
       final dept = _authService.currentUser?.department ?? '';
       return allOpen.where((i) => i.department == dept).toList();
     }
@@ -269,8 +269,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     final l10n = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < 600;
     final issues = _openIssuesForValidation;
-    final role = _authService.currentRole;
-    final isAdmin = role == UserRole.admin;
+    final isAdmin = _authService.currentRoles.contains(UserRole.admin);
     final dept = _authService.currentUser?.department ?? '';
 
     return Align(

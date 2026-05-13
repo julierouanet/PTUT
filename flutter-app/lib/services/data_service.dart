@@ -93,7 +93,7 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadUsers() async {
     final user = AuthService().currentUser;
-    if (user == null || user.role != UserRole.admin) return;
+    if (user == null || !user.hasRole(UserRole.admin)) return;
     try {
       final raw = await AuthApiService.instance.getUsers();
       users = raw.map(User.fromApiJson).toList();
@@ -104,7 +104,7 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadDeptRequests() async {
     final user = AuthService().currentUser;
-    if (user == null || user.role != UserRole.admin) return;
+    if (user == null || !user.hasRole(UserRole.admin)) return;
     try {
       deptRequests = await AuthApiService.instance.getDepartmentRequests(status: 'pending');
     } catch (e) {
@@ -161,7 +161,7 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadSidebarConfig() async {
     try {
-      final roles = ['admin', 'supervisor', 'technician', 'hospitalStaff'];
+      final roles = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'hospitalStaff'];
       final results = <String, List<String>>{};
       for (final role in roles) {
         final order = await DbApiService.instance.getSidebarConfig(role);
@@ -182,7 +182,7 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadRolesConfig() async {
     final user = AuthService().currentUser;
-    if (user == null || user.role != UserRole.admin) return;
+    if (user == null || !user.hasRole(UserRole.admin)) return;
     try {
       final raw = await AuthApiService.instance.getRoles();
       final map = <String, Set<String>>{};

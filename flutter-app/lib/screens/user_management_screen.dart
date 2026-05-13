@@ -93,7 +93,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     return DataService().users.where((user) {
       final matchesSearch = user.name.toLowerCase().contains(_searchTerm.toLowerCase()) ||
           user.email.toLowerCase().contains(_searchTerm.toLowerCase());
-      final matchesRole = _roleFilter == 'all' || user.role.displayName == _roleFilter;
+      final matchesRole = _roleFilter == 'all' || user.roles.any((r) => r.displayName == _roleFilter);
       return matchesSearch && matchesRole;
     }).toList();
   }
@@ -112,10 +112,19 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Widget _buildUsersTab(BuildContext context, AppLocalizations l10n) {
     final users = DataService().users;
+    // Statistiques par rôle (un utilisateur multi-rôles est compté dans chaque catégorie).
+    // On utilise kAssignableRoles pour exclure le `technician` générique déprécié.
     final roleStats = {
       'all': users.length,
-      for (var role in UserRole.values) role.displayName: users.where((u) => u.role == role).length,
+      for (var role in kAssignableRoles)
+        role.displayName: users.where((u) => u.hasRole(role)).length,
     };
+    // Synthèse "Techniciens" : utilisateurs ayant au moins un des 3 rôles tech spécialisés.
+    final techniciansCount = users.where((u) =>
+      u.hasRole(UserRole.technicianBiomedical) ||
+      u.hasRole(UserRole.technicianIt) ||
+      u.hasRole(UserRole.technicianInfra)
+    ).length;
 
     final isMobile = MediaQuery.of(context).size.width < 600;
 
@@ -169,7 +178,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTotal, users.length, Icons.people, AppColors.primary)),
                   SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersAdmins, roleStats[UserRole.admin.displayName]!, Icons.admin_panel_settings, AppColors.error)),
                   SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersSupervisors, roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning)),
-                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success)),
+                  SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersTechnicians, techniciansCount, Icons.build, AppColors.success)),
                   SizedBox(width: w, child: _buildRoleCardWidget(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary)),
                 ]);
               })
@@ -181,7 +190,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 const SizedBox(width: 12),
                 _buildRoleCard(l10n.usersSupervisors, roleStats[UserRole.supervisor.displayName]!, Icons.supervisor_account, AppColors.warning),
                 const SizedBox(width: 12),
-                _buildRoleCard(l10n.usersTechnicians, roleStats[UserRole.technician.displayName]!, Icons.build, AppColors.success),
+                _buildRoleCard(l10n.usersTechnicians, techniciansCount, Icons.build, AppColors.success),
                 const SizedBox(width: 12),
                 _buildRoleCard(l10n.usersStaff, roleStats[UserRole.hospitalStaff.displayName]!, Icons.medical_services, AppColors.primary),
               ]),
@@ -214,7 +223,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             value: 'all',
                             child: Text('${l10n.commonAll} (${roleStats['all']})'),
                           ),
-                          ...UserRole.values.map((role) => DropdownMenuItem(
+                          ...kAssignableRoles.map((role) => DropdownMenuItem(
                             value: role.displayName,
                             child: Text('${role.displayName} (${roleStats[role.displayName]})'),
                           )),
@@ -257,10 +266,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 16,
-                                backgroundColor: _getRoleColor(user.role).withValues(alpha: 0.2),
+                                backgroundColor: _getRoleColor(_primaryRoleOf(user)).withValues(alpha: 0.2),
                                 child: Text(
                                   user.name.substring(0, 1).toUpperCase(),
-                                  style: TextStyle(color: _getRoleColor(user.role), fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: _getRoleColor(_primaryRoleOf(user)), fontWeight: FontWeight.bold),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -269,7 +278,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           )),
                           DataCell(Text(user.email)),
                           DataCell(Text(user.department)),
-                          DataCell(_buildRoleBadge(user.role)),
+                          DataCell(_buildRolesBadges(user.roles)),
                           DataCell(_buildStatusBadge(user.isActive, l10n)),
                           DataCell(Row(
                             mainAxisSize: MainAxisSize.min,
@@ -528,6 +537,35 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
+  /// Affichage compact d'une liste de rôles (Wrap de badges côte à côte).
+  Widget _buildRolesBadges(List<UserRole> roles) {
+    if (roles.isEmpty) {
+      return Text('—', style: TextStyle(color: AppColors.textMuted));
+    }
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: roles.map(_buildRoleBadge).toList(),
+    );
+  }
+
+  /// Rôle "principal" d'un utilisateur (priorité fixe), utilisé pour l'avatar.
+  UserRole _primaryRoleOf(User u) {
+    const priority = [
+      UserRole.admin,
+      UserRole.supervisor,
+      UserRole.technicianBiomedical,
+      UserRole.technicianIt,
+      UserRole.technicianInfra,
+      UserRole.technician,
+      UserRole.hospitalStaff,
+    ];
+    for (final r in priority) {
+      if (u.hasRole(r)) return r;
+    }
+    return u.roles.isNotEmpty ? u.roles.first : UserRole.hospitalStaff;
+  }
+
   Widget _buildStatusBadge(bool isActive, AppLocalizations l10n) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -544,10 +582,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Color _getRoleColor(UserRole role) {
     switch (role) {
-      case UserRole.admin:         return AppColors.error;
-      case UserRole.supervisor:    return AppColors.warning;
-      case UserRole.technician:    return AppColors.success;
-      case UserRole.hospitalStaff: return AppColors.primary;
+      case UserRole.admin:                return AppColors.error;
+      case UserRole.supervisor:           return AppColors.warning;
+      case UserRole.technician:           return AppColors.success;
+      case UserRole.technicianBiomedical: return AppColors.success;
+      case UserRole.technicianIt:         return AppColors.primary;
+      case UserRole.technicianInfra:      return AppColors.warning;
+      case UserRole.hospitalStaff:        return AppColors.primary;
     }
   }
 
@@ -563,7 +604,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final emailCtrl     = TextEditingController(text: user?.email ?? '');
     final phoneCtrl     = TextEditingController(text: user?.phone ?? '');
     final passCtrl  = TextEditingController();
-    String selectedRole       = user?.role.name ?? UserRole.hospitalStaff.name;
+    // Multi-sélection : on stocke les rôles sous forme d'un Set d'enum.
+    // Pré-cocher les rôles existants (en filtrant le `technician` générique déprécié).
+    final Set<UserRole> selectedRoles = (user?.roles ?? const [UserRole.hospitalStaff])
+        .where(kAssignableRoles.contains)
+        .toSet();
+    if (selectedRoles.isEmpty) selectedRoles.add(UserRole.hospitalStaff);
     String selectedDepartment = user?.department ?? 'IT';
 
     final departments = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
@@ -627,11 +673,39 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   onChanged: (v) => setDialogState(() => selectedDepartment = v!),
                 ),
                 const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
-                  decoration: InputDecoration(labelText: l10n.commonRole, prefixIcon: const Icon(Icons.badge)),
-                  items: UserRole.values.map((r) => DropdownMenuItem(value: r.name, child: Text(r.displayName))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedRole = v!),
+                // Multi-sélection des rôles via FilterChip (Wrap)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 6),
+                    child: Text(l10n.commonRole, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: kAssignableRoles.map((r) {
+                    final selected = selectedRoles.contains(r);
+                    final color = _getRoleColor(r);
+                    return FilterChip(
+                      label: Text(r.displayName),
+                      selected: selected,
+                      selectedColor: color.withValues(alpha: 0.15),
+                      checkmarkColor: color,
+                      side: BorderSide(color: selected ? color : AppColors.border),
+                      labelStyle: TextStyle(
+                        color: selected ? color : AppColors.textPrimary,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                      ),
+                      onSelected: (value) => setDialogState(() {
+                        if (value) {
+                          selectedRoles.add(r);
+                        } else if (selectedRoles.length > 1) {
+                          selectedRoles.remove(r);
+                        }
+                      }),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -643,6 +717,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         onPressed: () async {
                           if (firstNameCtrl.text.isEmpty || emailCtrl.text.isEmpty) return;
                           if (!isEdit && passCtrl.text.isEmpty) return;
+                          if (selectedRoles.isEmpty) return;
                           final fullName = '${firstNameCtrl.text.trim()} ${lastNameCtrl.text.trim()}'.trim();
                           final data = {
                             'first_name':  firstNameCtrl.text.trim(),
@@ -650,7 +725,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             'name':        fullName,
                             'email':       emailCtrl.text,
                             'department':  selectedDepartment,
-                            'role':        selectedRole,
+                            'roles':       selectedRoles.map((r) => r.apiName).toList(),
                             if (phoneCtrl.text.isNotEmpty) 'phone': phoneCtrl.text,
                             if (passCtrl.text.isNotEmpty)  'password': passCtrl.text,
                           };
@@ -716,7 +791,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              _buildRoleBadge(user.role),
+              _buildRolesBadges(user.roles),
               const SizedBox(height: 16),
               Text(l10n.usersActivePermissions, style: const TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),

@@ -5,6 +5,10 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
+// Rôles techniciens spécialisés (autorisés sur les mêmes routes que l'ancien `technician`).
+const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
+const rolesCsv = (req) => (Array.isArray(req.user?.roles) ? req.user.roles.join(',') : '');
+
 const VALID_STATUSES_EQ   = [
   'Operational',     // équipement utilisable (en service ou disponible)
   'Maintenance',     // en maintenance corrective ou préventive
@@ -80,7 +84,7 @@ router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
       next_preventive_maintenance || null,
     );
 
-    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'restore_equipment', target_type: 'equipment', target_id: id, target_name: name,
       ...extractReqMeta(req) });
 
@@ -158,7 +162,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       next_preventive_maintenance || null,
     );
 
-    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+    logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
       ...extractReqMeta(req) });
 
@@ -172,7 +176,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 });
 
 // PUT /api/equipment/:id - modifier un équipement
-router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const {
     name, department, category, serial_number, status, location,
@@ -218,7 +222,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician')
     req.params.id,
   );
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: name || existing.name,
     details: {
@@ -246,7 +250,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
     ? rawReason.replace(/[<>'"]/g, '').substring(0, 200)
     : undefined;
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
     target_name: existing.name,
     details: {
@@ -259,7 +263,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // POST /api/equipment/:id/maintenance - ajouter un enregistrement de maintenance
-router.post('/:id/maintenance', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+router.post('/:id/maintenance', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { date, intervention, technician, is_future } = req.body;
 
@@ -275,7 +279,7 @@ router.post('/:id/maintenance', verifyToken, requireRole('admin', 'supervisor', 
     VALUES (?, ?, ?, ?, ?)
   `).run(req.params.id, date, intervention, technician, is_future ? 1 : 0);
 
-  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: req.user.role,
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: is_future ? 'schedule_maintenance' : 'add_maintenance',
     target_type: 'equipment', target_id: req.params.id, target_name: eq.name,
     details: { date, intervention, technician }, ...extractReqMeta(req) });
