@@ -9,7 +9,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
-import '../models/location.dart';
+
 import '../models/departments.dart';
 import '../utils/file_picker.dart';
 import '../widgets/urgency_badge.dart';
@@ -176,8 +176,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
   String? _infraDepartment;
-  String? _infraBuilding;
-  String? _infraLocationId;
+  final _infraBuildingController  = TextEditingController();
+  final _infraLocationController  = TextEditingController();
+  final _infraTagController       = TextEditingController();
   String? _infraCategory;
   String? _infraSubcategory;
   String? _infraIssue;
@@ -203,7 +204,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   /// Retourne true si l'utilisateur a commencé à remplir un formulaire.
   bool get hasUnsavedData =>
       _bioEquipmentId != null ||
-      _infraLocationId != null ||
+      _infraBuildingController.text.isNotEmpty ||
+      _infraLocationController.text.isNotEmpty ||
       _itEquipment != null ||
       _tagController.text.isNotEmpty ||
       _autreDepartment != null ||
@@ -243,6 +245,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   void dispose() {
     _descriptionController.dispose();
     _tagController.dispose();
+    _infraBuildingController.dispose();
+    _infraLocationController.dispose();
+    _infraTagController.dispose();
     super.dispose();
   }
 
@@ -261,25 +266,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       .toList();
 
   // ── Helpers infrastructure ────────────────────────────────────────────────
-
-  List<String> get _infraBuildings {
-    var locs = DataService().locations;
-    if (_infraDepartment != null) {
-      locs = locs.where((l) => l.department == _infraDepartment).toList();
-    }
-    return locs.map((l) => l.building).toSet().toList()..sort();
-  }
-
-  List<Location> get _infraLocations {
-    var locs = DataService().locations;
-    if (_infraDepartment != null) {
-      locs = locs.where((l) => l.department == _infraDepartment).toList();
-    }
-    if (_infraBuilding != null) {
-      locs = locs.where((l) => l.building == _infraBuilding).toList();
-    }
-    return locs;
-  }
 
   List<String> get _infraSubcategories =>
       _infraCategory != null ? _kInfraCatalog[_infraCategory]!.keys.toList() : [];
@@ -424,11 +410,12 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           ...commons,
         };
       case 1: // Infrastructure
-        final loc = _infraLocations.firstWhere((l) => l.id == _infraLocationId);
+        final infraTag = _infraTagController.text.trim();
         issueData = {
           'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
-          'location_id':    loc.id,
-          'department':     loc.department,
+          'location_text':  '${_infraBuildingController.text.trim()} — ${_infraLocationController.text.trim()}',
+          if (infraTag.isNotEmpty) 'location_tag': infraTag,
+          'department':     _infraDepartment!,
           'type':           '$_infraCategory / $_infraSubcategory / $_infraIssue',
           'issue_category': 'Infrastructure',
           'assigned_group': 'Infrastructure',
@@ -491,8 +478,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _bioEquipmentError = false;
       _bioProblemType = l10n.issueFormBreakdown;
       _infraDepartment = null;
-      _infraBuilding = null;
-      _infraLocationId = null;
+      _infraBuildingController.clear();
+      _infraLocationController.clear();
+      _infraTagController.clear();
       _infraCategory = null;
       _infraSubcategory = null;
       _infraIssue = null;
@@ -838,42 +826,34 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         items: Department.values
             .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
             .toList(),
-        onChanged: (v) => setState(() {
-          _infraDepartment = v;
-          _infraBuilding   = null;
-          _infraLocationId = null;
-        }),
+        onChanged: (v) => setState(() => _infraDepartment = v),
         validator: (_) => _infraDepartment == null ? l10n.issueFormDepartmentRequired : null,
       ),
       const SizedBox(height: 16),
 
-      // Bâtiment
+      // Bâtiment — texte libre
       Text(l10n.issueFormBuilding, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
-      DropdownButtonFormField<String>(
-        value: _infraBuilding,
-        hint: Text(l10n.issueFormSelectBuilding),
-        items: _infraBuildings.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
-        onChanged: (v) => setState(() {
-          _infraBuilding   = v;
-          _infraLocationId = null;
-        }),
-        validator: (_) => _infraBuilding == null ? l10n.issueFormBuildingRequired : null,
+      TextFormField(
+        controller: _infraBuildingController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormBuildingHint,
+          prefixIcon: const Icon(CupertinoIcons.building_2_fill, color: AppColors.textSecondary),
+        ),
+        validator: (v) => (v == null || v.trim().isEmpty) ? l10n.issueFormBuildingRequired : null,
       ),
       const SizedBox(height: 16),
 
-      // Localisation
+      // Localisation — texte libre
       Text(l10n.issueFormSourceLocation, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
-      DropdownButtonFormField<String>(
-        value: _infraLocationId,
-        hint: Text(l10n.issueFormSelectLocation),
-        items: _infraLocations
-            .map((loc) => DropdownMenuItem(
-                value: loc.id, child: Text(loc.label, overflow: TextOverflow.ellipsis)))
-            .toList(),
-        onChanged: (v) => setState(() => _infraLocationId = v),
-        validator: (_) => _infraLocationId == null ? l10n.issueFormLocationRequired2 : null,
+      TextFormField(
+        controller: _infraLocationController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormLocationHint,
+          prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
+        ),
+        validator: (v) => (v == null || v.trim().isEmpty) ? l10n.issueFormLocationRequired2 : null,
       ),
       const SizedBox(height: 16),
 
@@ -982,6 +962,18 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             .toList(),
         onChanged: (v) => setState(() => _infraIssue = v),
         validator: (_) => _infraIssue == null ? l10n.issueFormIssueRequired : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Numéro de tag (optionnel)
+      Text(l10n.issueFormInfraTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: _infraTagController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormInfraTagHint,
+          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
+        ),
       ),
     ];
   }

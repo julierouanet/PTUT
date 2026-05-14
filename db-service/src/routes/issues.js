@@ -90,16 +90,18 @@ router.get('/:id/assignable-technicians', verifyToken, requireRole('admin', 'sup
 router.post('/', verifyToken, (req, res) => {
   const db = getDb();
   const {
-    id, equipment_id, equipment_name, location_id, department,
+    id, equipment_id, equipment_name, location_id, location_text, location_tag, department,
     type, description, reporter, reporter_id, reporter_email, urgency,
     issue_category: reqCategory, assigned_group: reqGroup,
   } = req.body;
 
-  const hasEquipment = equipment_id && equipment_name;
-  const hasLocation  = !!location_id;
-  const isAutre      = reqCategory === 'Autre';
+  const hasEquipment  = equipment_id && equipment_name;
+  const hasLocation   = !!location_id;
+  const hasLocText    = !!(location_text && location_text.trim());
+  const isAutre       = reqCategory === 'Autre';
+  const isInfra       = reqCategory === 'Infrastructure';
 
-  if (!id || (!hasEquipment && !hasLocation && !isAutre) || !department || !type || !description || !reporter) {
+  if (!id || (!hasEquipment && !hasLocation && !hasLocText && !isAutre && !isInfra) || !department || !type || !description || !reporter) {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 
@@ -131,13 +133,15 @@ router.post('/', verifyToken, (req, res) => {
 
   try {
     db.prepare(`
-      INSERT INTO issues (id, equipment_id, equipment_name, location_id, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Reported')
+      INSERT INTO issues (id, equipment_id, equipment_name, location_id, location_text, location_tag, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Reported')
     `).run(
       id,
-      equipment_id  || null,
+      equipment_id   || null,
       equipment_name || null,
-      location_id   || null,
+      location_id    || null,
+      location_text  || null,
+      location_tag   || null,
       derivedCategory,
       derivedGroup,
       department, type, description, reporter,

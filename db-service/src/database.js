@@ -128,6 +128,10 @@ function initTables() {
   // Migration : ajout de la colonne urgency dans issues
   try { db.exec("ALTER TABLE issues ADD COLUMN urgency TEXT DEFAULT 'Moyen'"); } catch (_) {}
 
+  // Migration : localisation libre (infrastructure sans location_id DB)
+  try { db.exec("ALTER TABLE issues ADD COLUMN location_text TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE issues ADD COLUMN location_tag  TEXT"); } catch (_) {}
+
   // Migration : ajout de la colonne next_revision_date dans equipment
   try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
 
