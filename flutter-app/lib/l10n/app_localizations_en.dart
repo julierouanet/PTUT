@@ -2452,6 +2452,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please enter a tag number and search for the equipment';
 
   @override
+  String get issueFormQuickSearch => 'Quick Search';
+
+  @override
+  String get issueFormQuickSearchHint => 'Type a keyword to find an issue...';
+
+  @override
   String get issueFormSpecificIssue => 'Specific Issue *';
 
   @override

@@ -4652,6 +4652,18 @@ abstract class AppLocalizations {
   /// **'Veuillez saisir un numéro de tag et rechercher l\'équipement'**
   String get issueFormTagRequired;
 
+  /// No description provided for @issueFormQuickSearch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recherche rapide'**
+  String get issueFormQuickSearch;
+
+  /// No description provided for @issueFormQuickSearchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tapez un mot-clé pour trouver un problème...'**
+  String get issueFormQuickSearchHint;
+
   /// No description provided for @issueFormSpecificIssue.
   ///
   /// In fr, this message translates to:

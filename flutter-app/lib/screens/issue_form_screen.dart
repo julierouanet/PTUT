@@ -181,6 +181,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String? _infraCategory;
   String? _infraSubcategory;
   String? _infraIssue;
+  int _infraSearchKey = 0;
 
   // ── Tab 2 : IT ────────────────────────────────────────────────────────────
   final _tagController = TextEditingController();
@@ -295,6 +296,28 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           ? _kInfraCatalog[_infraCategory]![_infraSubcategory] ?? []
           : [];
 
+  Iterable<_InfraSearchResult> _searchInfraCatalog(String query) {
+    final q = query.toLowerCase().trim();
+    if (q.isEmpty) return const [];
+    final results = <_InfraSearchResult>[];
+    for (final cat in _kInfraCatalog.entries) {
+      for (final sub in cat.value.entries) {
+        for (final issue in sub.value) {
+          if (issue.toLowerCase().contains(q) ||
+              sub.key.toLowerCase().contains(q) ||
+              cat.key.toLowerCase().contains(q)) {
+            results.add(_InfraSearchResult(
+              category: cat.key,
+              subcategory: sub.key,
+              issue: issue,
+            ));
+          }
+        }
+      }
+    }
+    return results;
+  }
+
   // ── Changement d'onglet ───────────────────────────────────────────────────
 
   void _switchTab(int tab) {
@@ -304,6 +327,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _photos.clear();
       _urgency = IssueUrgency.moyen;
       _infraIssue = null;
+      _infraSearchKey++;
     });
   }
 
@@ -479,6 +503,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _infraCategory = null;
       _infraSubcategory = null;
       _infraIssue = null;
+      _infraSearchKey++;
       _tagController.clear();
       _itEquipment = null;
       _itSearching = false;
@@ -857,6 +882,65 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
       const SizedBox(height: 16),
 
+      // Recherche rapide
+      Text(l10n.issueFormQuickSearch, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      Autocomplete<_InfraSearchResult>(
+        key: ValueKey(_infraSearchKey),
+        displayStringForOption: (r) => '${r.category} / ${r.subcategory} — ${r.issue}',
+        optionsBuilder: (TextEditingValue value) => _searchInfraCatalog(value.text),
+        onSelected: (result) {
+          setState(() {
+            _infraCategory    = result.category;
+            _infraSubcategory = result.subcategory;
+            _infraIssue       = result.issue;
+            _infraSearchKey++;
+          });
+        },
+        fieldViewBuilder: (context, controller, focusNode, onSubmitted) {
+          return TextField(
+            controller: controller,
+            focusNode: focusNode,
+            onSubmitted: (_) => onSubmitted(),
+            decoration: InputDecoration(
+              hintText: l10n.issueFormQuickSearchHint,
+              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+            ),
+          );
+        },
+        optionsViewBuilder: (context, onSelected, options) => Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final r = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.build_outlined, size: 18, color: AppColors.warning),
+                    title: Text(r.issue, style: const TextStyle(fontSize: 14)),
+                    subtitle: Text(
+                      '${r.category} › ${r.subcategory}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    onTap: () => onSelected(r),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+      const Divider(height: 1),
+      const SizedBox(height: 16),
+
       // Catégorie
       Text(l10n.issueFormProblemCategory, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
@@ -1145,4 +1229,16 @@ class _PhotoItem {
   final String name;
   final Uint8List bytes;
   _PhotoItem({required this.name, required this.bytes});
+}
+
+/// Résultat de recherche rapide dans le catalogue infrastructure.
+class _InfraSearchResult {
+  final String category;
+  final String subcategory;
+  final String issue;
+  const _InfraSearchResult({
+    required this.category,
+    required this.subcategory,
+    required this.issue,
+  });
 }

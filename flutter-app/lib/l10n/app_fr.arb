@@ -877,6 +877,8 @@
   "issueFormCategoryRequired": "Veuillez sélectionner une catégorie",
   "issueFormSubcategoryRequired": "Veuillez sélectionner une sous-catégorie",
   "issueFormTagRequired": "Veuillez saisir un numéro de tag et rechercher l'équipement",
+  "issueFormQuickSearch": "Recherche rapide",
+  "issueFormQuickSearchHint": "Tapez un mot-clé pour trouver un problème...",
   "issueFormSpecificIssue": "Problème spécifique *",
   "issueFormSelectSpecificIssue": "Sélectionnez le problème",
   "issueFormIssueRequired": "Veuillez sélectionner le problème"
