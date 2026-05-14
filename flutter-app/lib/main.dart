@@ -21,6 +21,7 @@ import 'services/api_client.dart';
 import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/notification_bell.dart';
+import 'widgets/issue_category_selector.dart';
 import 'screens/home_hub_screen.dart';
 
 /// Screen types for navigation (no more string matching)
@@ -577,7 +578,13 @@ class _MainScaffoldState extends State<MainScaffold> {
                     selected: isSelected,
                     selectedTileColor: AppColors.primaryLight,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    onTap: () => _navigateTo(index),
+                    onTap: () {
+                      if (item.screenType == ScreenType.issueForm) {
+                        showIssueCategorySelector(context);
+                      } else {
+                        _navigateTo(index);
+                      }
+                    },
                   ),
                 );
               },
@@ -657,7 +664,14 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (visibleItems.length < 2) return const SizedBox.shrink();
     return NavigationBar(
       selectedIndex: _currentIndex < visibleItems.length ? _currentIndex : 0,
-      onDestinationSelected: (index) => _navigateTo(index),
+      onDestinationSelected: (index) {
+        final item = visibleItems[index];
+        if (item.screenType == ScreenType.issueForm) {
+          showIssueCategorySelector(context);
+        } else {
+          _navigateTo(index);
+        }
+      },
       labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
       destinations: visibleItems.map((item) => NavigationDestination(
         icon: Icon(item.icon),
@@ -713,7 +727,11 @@ class _MainScaffoldState extends State<MainScaffold> {
               selectedTileColor: AppColors.primaryLight,
               onTap: () {
                 Navigator.pop(context); // ferme le drawer
-                _navigateTo(index);
+                if (item.screenType == ScreenType.issueForm) {
+                  showIssueCategorySelector(context);
+                } else {
+                  _navigateTo(index);
+                }
               },
             );
           }),

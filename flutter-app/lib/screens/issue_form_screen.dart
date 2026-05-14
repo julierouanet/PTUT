@@ -33,13 +33,16 @@ const List<String> _kBioCategories = [
 class IssueFormScreen extends StatefulWidget {
   final String? equipmentId;
   final VoidCallback? onCancel;
-  // categoryFilter conservé pour rétrocompatibilité (ignoré — les onglets gèrent le filtrage)
+  /// Onglet pré-sélectionné : 0=Biomédical 1=Infrastructure 2=IT 3=Autre.
+  final int initialTab;
+  // categoryFilter conservé pour rétrocompatibilité (ignoré)
   final List<String>? categoryFilter;
 
   const IssueFormScreen({
     super.key,
     this.equipmentId,
     this.onCancel,
+    this.initialTab = 0,
     this.categoryFilter,
   });
 
@@ -96,6 +99,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedTab = widget.initialTab;
     if (widget.equipmentId != null) {
       final eq = DataService().equipment
           .where((e) => e.id == widget.equipmentId)
