@@ -262,13 +262,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Helpers infrastructure ────────────────────────────────────────────────
 
-  List<String> get _infraDepts => DataService()
-      .locations
-      .map((l) => l.department)
-      .toSet()
-      .toList()
-    ..sort();
-
   List<String> get _infraBuildings {
     var locs = DataService().locations;
     if (_infraDepartment != null) {
@@ -842,7 +835,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       DropdownButtonFormField<String>(
         value: _infraDepartment,
         hint: Text(l10n.issueFormSelectDepartment),
-        items: _infraDepts.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+        items: Department.values
+            .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
+            .toList(),
         onChanged: (v) => setState(() {
           _infraDepartment = v;
           _infraBuilding   = null;
