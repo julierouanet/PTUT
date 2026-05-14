@@ -4,100 +4,100 @@ const { getDb, closeDb } = require('./src/database');
 // EQUIPMENT
 // ──────────────────────────────────────────────
 const equipment = [
-  { id: 'eq-001', name: 'Serveur Dell PowerEdge R750',          department: 'Administration',                          category: "Équipement ICT",                  serial_number: 'SRV-DELL-2023-001', status: 'Operational',      manufacturer: 'Dell Technologies',       location: 'Administration, Salle serveur' },
-  { id: 'eq-002', name: 'Switch Cisco Catalyst 9300',           department: 'Administration',                          category: "Équipement ICT",                  serial_number: 'NET-CSC-2023-001',  status: 'Operational',      manufacturer: 'Cisco Systems',           location: 'Administration, Salle réseau' },
-  { id: 'eq-003', name: 'Tensiomètre électronique Omron',       department: 'OPD (Outpatient Department)',            category: "Équipement biomédical",           serial_number: 'BP-OMR-2023-001',   status: 'Operational',    manufacturer: 'Omron Healthcare',        location: 'OPD, Salle de consultation 1' },
-  { id: 'eq-004', name: 'PC HP ProDesk 400',                    department: 'OPD (Outpatient Department)',            category: "Équipement ICT",                  serial_number: 'PC-HP-2023-OPD-001',status: 'Operational',      manufacturer: 'HP Inc.',                 location: 'OPD, Réception' },
-  { id: 'eq-005', name: 'ECG 12 dérivations Philips',           department: 'Internal Medicine',                        category: "Équipement biomédical",           serial_number: 'ECG-PHL-2022-001',  status: 'Operational',      manufacturer: 'Philips Healthcare',      location: 'Médecine interne, Salle examen' },
-  { id: 'eq-006', name: 'Moniteur patient Dräger Infinity',     department: 'Internal Medicine',                        category: "Équipement biomédical",           serial_number: 'MON-DRG-2023-001',  status: 'Operational',      manufacturer: 'Dräger Medical',          location: 'Médecine interne, Chambre 101' },
-  { id: 'eq-007', name: 'Incubateur néonatal Atom',             department: 'Pediatrics',                               category: "Équipement biomédical",           serial_number: 'INC-ATM-2022-001',  status: 'Operational',      manufacturer: 'Atom Medical',            location: 'Pédiatrie, Unité néonat' },
-  { id: 'eq-008', name: 'Balance pèse-bébé électronique',       department: 'Pediatrics',                               category: "Équipement biomédical",           serial_number: 'BAL-PED-2023-001',  status: 'Operational',    manufacturer: 'Seca',                    location: 'Pédiatrie, Salle pesée' },
-  { id: 'eq-009', name: 'Défibrillateur Philips HeartStart',    department: 'Emergency',                                category: "Équipement biomédical",           serial_number: 'DEF-PHL-2023-001',  status: 'Operational',    manufacturer: 'Philips Healthcare',      location: 'Urgences, Chariot réa' },
-  { id: 'eq-010', name: "Chariot d'urgence complet",            department: 'Emergency',                                category: "Équipement biomédical",           serial_number: 'CHR-URG-2022-001',  status: 'Operational',      manufacturer: 'Medical Supplies Rwanda', location: 'Urgences, Zone triage' },
-  { id: 'eq-011', name: 'Générateur électrique 250kVA',         department: 'Emergency',                                category: "Équipement électrique",           serial_number: 'GEN-CAT-2021-001',  status: 'Operational',    manufacturer: 'Caterpillar',             location: 'Urgences, Zone technique' },
-  { id: 'eq-012', name: 'Analyseur hématologie Sysmex XN-1000', department: 'Laboratory',                             category: "Équipement biomédical",           serial_number: 'HEM-SYS-2023-001',  status: 'Operational',      manufacturer: 'Sysmex Corporation',      location: 'Laboratoire, Salle hémato' },
-  { id: 'eq-013', name: 'Centrifugeuse Eppendorf 5430',         department: 'Laboratory',                             category: "Équipement biomédical",           serial_number: 'CEN-EPP-2022-001',  status: 'Operational',      manufacturer: 'Eppendorf',               location: 'Laboratoire, Salle biochimie' },
-  { id: 'eq-014', name: 'Microscope optique Olympus CX43',      department: 'Laboratory',                             category: "Équipement biomédical",           serial_number: 'MIC-OLY-2023-001',  status: 'Operational',      manufacturer: 'Olympus',                 location: 'Laboratoire, Salle parasito' },
-  { id: 'eq-015', name: 'Réfrigérateur réactifs Liebherr',      department: 'Laboratory',                             category: "Équipement électrique",           serial_number: 'REF-LIE-2022-001',  status: 'Operational',      manufacturer: 'Liebherr',                location: 'Laboratoire, Stockage' },
-  { id: 'eq-016', name: 'Fauteuil dentaire Planmeca',           department: 'Stomatology',                            category: "Équipement biomédical",           serial_number: 'DEN-PLM-2022-001',  status: 'Operational',      manufacturer: 'Planmeca',                location: 'Stomatologie, Salle 1' },
-  { id: 'eq-017', name: 'Radiographie dentaire panoramique',    department: 'Stomatology',                            category: "Équipement biomédical",           serial_number: 'RAD-DEN-2021-001',  status: 'Operational',      manufacturer: 'Carestream Dental',       location: 'Stomatologie, Salle radio' },
-  { id: 'eq-018', name: 'Appareil électrothérapie Chattanooga', department: 'Kinesitherapy',                          category: "Équipement biomédical",           serial_number: 'ELT-CHT-2023-001',  status: 'Operational',    manufacturer: 'Chattanooga',             location: 'Kinésithérapie, Salle soins' },
-  { id: 'eq-019', name: 'Table de massage électrique',          department: 'Kinesitherapy',                          category: "Équipement biomédical",           serial_number: 'TBL-KIN-2022-001',  status: 'Operational',      manufacturer: 'Medical Supplies Rwanda', location: 'Kinésithérapie, Salle 2' },
-  { id: 'eq-020', name: 'Table chauffante néonatale',           department: 'Neonatology',                            category: "Équipement biomédical",           serial_number: 'TCH-NEO-2023-001',  status: 'Operational',      manufacturer: 'Fisher & Paykel',         location: 'Néonatologie, Unité soins' },
-  { id: 'eq-021', name: 'Photothérapie Dräger',                 department: 'Neonatology',                            category: "Équipement biomédical",           serial_number: 'PHT-DRG-2022-001',  status: 'Operational',    manufacturer: 'Dräger Medical',          location: 'Néonatologie, Chambre 1' },
-  { id: 'eq-022', name: 'Moniteur fœtal Philips',               department: 'Maternity',                               category: "Équipement biomédical",           serial_number: 'MON-FOE-2023-001',  status: 'Operational',      manufacturer: 'Philips Healthcare',      location: 'Maternité, Salle accouchement' },
-  { id: 'eq-023', name: "Lit d'accouchement hydraulique",       department: 'Maternity',                               category: "Équipement biomédical",           serial_number: 'LIT-MAT-2022-001',  status: 'Operational',      manufacturer: 'Hill-Rom',                location: 'Maternité, Salle 1' },
-  { id: 'eq-024', name: 'Scanner IRM Siemens 1.5T',             department: 'Surgery',                               category: "Équipement biomédical",           serial_number: 'IRM-SIE-2022-001',  status: 'Operational',      manufacturer: 'Siemens Healthineers',    location: 'Chirurgie, Imagerie' },
-  { id: 'eq-025', name: 'Bistouri électrique Valleylab',        department: 'Surgery',                               category: "Équipement biomédical",           serial_number: 'BIS-VAL-2023-001',  status: 'Operational',    manufacturer: 'Medtronic',               location: 'Chirurgie, Bloc A' },
-  { id: 'eq-026', name: "Table d'opération Maquet",             department: 'Theater',                         category: "Équipement biomédical",           serial_number: 'TBL-MAQ-2021-001',  status: 'Operational',      manufacturer: 'Maquet',                  location: 'Bloc opératoire, Salle 1' },
-  { id: 'eq-027', name: 'Respirateur anesthésie Dräger Fabius', department: 'Theater',                         category: "Équipement biomédical",           serial_number: 'RES-DRG-2022-001',  status: 'Operational',      manufacturer: 'Dräger Medical',          location: 'Bloc opératoire, Salle 1' },
-  { id: 'eq-028', name: 'Scialytique LED Trumpf',               department: 'Theater',                         category: "Équipement électrique",           serial_number: 'SCI-TRP-2023-001',  status: 'Operational',      manufacturer: 'Trumpf Medical',          location: 'Bloc opératoire, Salle 1' },
-  { id: 'eq-029', name: 'Climatisation bloc opératoire',        department: 'Theater',                         category: "Équipement électrique",           serial_number: 'CLI-BLO-2021-001',  status: 'Operational',      manufacturer: 'Daikin',                  location: 'Bloc opératoire, Technique' },
-  { id: 'eq-030', name: 'Lampe à fente Zeiss SL 800',           department: 'Ophthalmology',                           category: "Équipement biomédical",           serial_number: 'LAM-ZEI-2023-001',  status: 'Operational',    manufacturer: 'Carl Zeiss',              location: 'Ophtalmologie, Salle examen' },
-  { id: 'eq-031', name: 'Tonomètre Applanation',                department: 'Ophthalmology',                           category: "Équipement biomédical",           serial_number: 'TON-OPH-2022-001',  status: 'Operational',      manufacturer: 'Haag-Streit',             location: 'Ophtalmologie, Consultation' },
-  { id: 'eq-032', name: 'Cabine de sécurité biologique classe II', department: 'TB-MR',                   category: "Équipement biomédical",           serial_number: 'CSB-TBM-2022-001',  status: 'Operational',      manufacturer: 'Thermo Fisher',           location: 'TB-MR, Laboratoire' },
-  { id: 'eq-033', name: "Extracteur d'air HEPA",                department: 'TB-MR',                     category: "Équipement électrique",           serial_number: 'EXT-TBM-2023-001',  status: 'Operational',      manufacturer: 'Camfil',                  location: 'TB-MR, Chambre isolement' },
-  { id: 'eq-034', name: 'Kit examen médico-légal',              department: 'GBV (Gender-Based Violence Unit)',     category: "Équipement biomédical",           serial_number: 'KIT-GBV-2023-001',  status: 'Operational',    manufacturer: 'Medical Supplies Rwanda', location: 'GBV, Salle examen' },
-  { id: 'eq-035', name: 'Colposcope',                           department: 'GBV (Gender-Based Violence Unit)',     category: "Équipement biomédical",           serial_number: 'COL-GBV-2022-001',  status: 'Operational',      manufacturer: 'Olympus',                 location: 'GBV, Salle examen' },
-  { id: 'eq-036', name: 'Électroencéphalographe Nihon Kohden',  department: 'Mental Health',                           category: "Équipement biomédical",           serial_number: 'EEG-NKD-2022-001',  status: 'Operational',    manufacturer: 'Nihon Kohden',            location: 'Santé mentale, Salle diagnostic' },
-  { id: 'eq-037', name: 'Compteur CD4 BD FACSPresto',           department: 'ARV (HIV/AIDS Treatment Unit)',               category: "Équipement biomédical",           serial_number: 'CD4-BD-2023-001',   status: 'Operational',      manufacturer: 'BD Biosciences',          location: 'ARV, Laboratoire' },
-  { id: 'eq-038', name: 'Charge virale Abbott m2000',           department: 'ARV (HIV/AIDS Treatment Unit)',               category: "Équipement biomédical",           serial_number: 'VL-ABT-2022-001',   status: 'Operational',      manufacturer: 'Abbott Molecular',        location: 'ARV, Laboratoire' },
-  { id: 'eq-039', name: 'Réfrigérateur vaccins Vestfrost',      department: 'Pharmacy',                               category: 'Pharmacy',                       serial_number: 'REF-VAC-2023-001',  status: 'Operational',      manufacturer: 'Vestfrost',               location: 'Pharmacie, Chambre froide' },
-  { id: 'eq-040', name: 'Congélateur -80°C Thermo',             department: 'Pharmacy',                               category: 'Pharmacy',                       serial_number: 'CON-THR-2022-001',  status: 'Operational',      manufacturer: 'Thermo Fisher',           location: 'Pharmacie, Stockage spécialisé' },
-  { id: 'eq-041', name: 'Autoclave Steris 400',                 department: 'Theater',                         category: 'Stérilisation et buanderie',      serial_number: 'AUT-STR-2022-001',  status: 'Maintenance',manufacturer: 'Steris Corporation',      location: 'Stérilisation, Zone principale' },
-  { id: 'eq-042', name: 'Machine à laver industrielle Miele',   department: 'Administration',                          category: 'Stérilisation et buanderie',      serial_number: 'MLI-MIE-2021-001',  status: 'Operational',      manufacturer: 'Miele Professional',      location: 'Buanderie, Zone lavage' },
-  { id: 'eq-043', name: 'Séchoir industriel Electrolux',        department: 'Administration',                          category: 'Stérilisation et buanderie',      serial_number: 'SEC-ELX-2021-001',  status: 'Operational',      manufacturer: 'Electrolux Professional', location: 'Buanderie, Zone séchage' },
-  { id: 'eq-044', name: 'Distributeur gel hydroalcoolique automatique', department: 'Administration',                  category: "Matériel d'hygiène",              serial_number: 'DIS-HYG-2023-001',  status: 'Operational',    manufacturer: 'Medical Supplies Rwanda', location: 'Administration, Entrée principale' },
-  { id: 'eq-045', name: 'Poubelle médicale à pédale 60L',       department: 'Emergency',                                category: "Matériel d'hygiène",              serial_number: 'POU-HYG-2023-001',  status: 'Operational',      manufacturer: 'Medical Supplies Rwanda', location: 'Urgences, Zone triage' },
+  { id: 'eq-001', name: 'Dell PowerEdge R750 Server',              department: 'Administration',              category: 'ICT Equipment',            serial_number: 'SRV-DELL-2023-001', status: 'Operational',   manufacturer: 'Dell Technologies',       location: 'Administration, Server Room' },
+  { id: 'eq-002', name: 'Cisco Catalyst 9300 Switch',              department: 'Administration',              category: 'ICT Equipment',            serial_number: 'NET-CSC-2023-001',  status: 'Operational',   manufacturer: 'Cisco Systems',           location: 'Administration, Network Room' },
+  { id: 'eq-003', name: 'Omron Electronic Blood Pressure Monitor', department: 'OPD (Outpatient Department)', category: 'Biomedical Equipment',     serial_number: 'BP-OMR-2023-001',   status: 'Operational',   manufacturer: 'Omron Healthcare',        location: 'OPD, Consultation Room 1' },
+  { id: 'eq-004', name: 'HP ProDesk 400 PC',                       department: 'OPD (Outpatient Department)', category: 'ICT Equipment',            serial_number: 'PC-HP-2023-OPD-001',status: 'Operational',   manufacturer: 'HP Inc.',                 location: 'OPD, Reception' },
+  { id: 'eq-005', name: 'Philips 12-Lead ECG',                     department: 'Internal Medicine',           category: 'Biomedical Equipment',     serial_number: 'ECG-PHL-2022-001',  status: 'Operational',   manufacturer: 'Philips Healthcare',      location: 'Internal Medicine, Exam Room' },
+  { id: 'eq-006', name: 'Dräger Infinity Patient Monitor',         department: 'Internal Medicine',           category: 'Biomedical Equipment',     serial_number: 'MON-DRG-2023-001',  status: 'Operational',   manufacturer: 'Dräger Medical',          location: 'Internal Medicine, Room 101' },
+  { id: 'eq-007', name: 'Atom Neonatal Incubator',                 department: 'Pediatrics',                  category: 'Biomedical Equipment',     serial_number: 'INC-ATM-2022-001',  status: 'Operational',   manufacturer: 'Atom Medical',            location: 'Pediatrics, Neonatal Unit' },
+  { id: 'eq-008', name: 'Electronic Baby Scale',                   department: 'Pediatrics',                  category: 'Biomedical Equipment',     serial_number: 'BAL-PED-2023-001',  status: 'Operational',   manufacturer: 'Seca',                    location: 'Pediatrics, Weighing Room' },
+  { id: 'eq-009', name: 'Philips HeartStart Defibrillator',        department: 'Emergency',                   category: 'Biomedical Equipment',     serial_number: 'DEF-PHL-2023-001',  status: 'Operational',   manufacturer: 'Philips Healthcare',      location: 'Emergency, Resuscitation Cart' },
+  { id: 'eq-010', name: 'Complete Emergency Cart',                 department: 'Emergency',                   category: 'Biomedical Equipment',     serial_number: 'CHR-URG-2022-001',  status: 'Operational',   manufacturer: 'Medical Supplies Rwanda', location: 'Emergency, Triage Area' },
+  { id: 'eq-011', name: '250kVA Electric Generator',               department: 'Emergency',                   category: 'Electrical Equipment',     serial_number: 'GEN-CAT-2021-001',  status: 'Operational',   manufacturer: 'Caterpillar',             location: 'Emergency, Technical Area' },
+  { id: 'eq-012', name: 'Sysmex XN-1000 Hematology Analyzer',     department: 'Laboratory',                  category: 'Biomedical Equipment',     serial_number: 'HEM-SYS-2023-001',  status: 'Operational',   manufacturer: 'Sysmex Corporation',      location: 'Laboratory, Hematology Room' },
+  { id: 'eq-013', name: 'Eppendorf 5430 Centrifuge',               department: 'Laboratory',                  category: 'Biomedical Equipment',     serial_number: 'CEN-EPP-2022-001',  status: 'Operational',   manufacturer: 'Eppendorf',               location: 'Laboratory, Biochemistry Room' },
+  { id: 'eq-014', name: 'Olympus CX43 Optical Microscope',         department: 'Laboratory',                  category: 'Biomedical Equipment',     serial_number: 'MIC-OLY-2023-001',  status: 'Operational',   manufacturer: 'Olympus',                 location: 'Laboratory, Parasitology Room' },
+  { id: 'eq-015', name: 'Liebherr Reagents Refrigerator',          department: 'Laboratory',                  category: 'Electrical Equipment',     serial_number: 'REF-LIE-2022-001',  status: 'Operational',   manufacturer: 'Liebherr',                location: 'Laboratory, Storage' },
+  { id: 'eq-016', name: 'Planmeca Dental Chair',                   department: 'Stomatology',                 category: 'Biomedical Equipment',     serial_number: 'DEN-PLM-2022-001',  status: 'Operational',   manufacturer: 'Planmeca',                location: 'Stomatology, Room 1' },
+  { id: 'eq-017', name: 'Panoramic Dental X-Ray',                  department: 'Stomatology',                 category: 'Biomedical Equipment',     serial_number: 'RAD-DEN-2021-001',  status: 'Operational',   manufacturer: 'Carestream Dental',       location: 'Stomatology, X-Ray Room' },
+  { id: 'eq-018', name: 'Chattanooga Electrotherapy Device',       department: 'Kinesitherapy',               category: 'Biomedical Equipment',     serial_number: 'ELT-CHT-2023-001',  status: 'Operational',   manufacturer: 'Chattanooga',             location: 'Kinesitherapy, Treatment Room' },
+  { id: 'eq-019', name: 'Electric Massage Table',                  department: 'Kinesitherapy',               category: 'Biomedical Equipment',     serial_number: 'TBL-KIN-2022-001',  status: 'Operational',   manufacturer: 'Medical Supplies Rwanda', location: 'Kinesitherapy, Room 2' },
+  { id: 'eq-020', name: 'Neonatal Warming Table',                  department: 'Neonatology',                 category: 'Biomedical Equipment',     serial_number: 'TCH-NEO-2023-001',  status: 'Operational',   manufacturer: 'Fisher & Paykel',         location: 'Neonatology, Care Unit' },
+  { id: 'eq-021', name: 'Dräger Phototherapy Unit',                department: 'Neonatology',                 category: 'Biomedical Equipment',     serial_number: 'PHT-DRG-2022-001',  status: 'Operational',   manufacturer: 'Dräger Medical',          location: 'Neonatology, Room 1' },
+  { id: 'eq-022', name: 'Philips Fetal Monitor',                   department: 'Maternity',                   category: 'Biomedical Equipment',     serial_number: 'MON-FOE-2023-001',  status: 'Operational',   manufacturer: 'Philips Healthcare',      location: 'Maternity, Delivery Room' },
+  { id: 'eq-023', name: 'Hydraulic Delivery Bed',                  department: 'Maternity',                   category: 'Biomedical Equipment',     serial_number: 'LIT-MAT-2022-001',  status: 'Operational',   manufacturer: 'Hill-Rom',                location: 'Maternity, Room 1' },
+  { id: 'eq-024', name: 'Siemens 1.5T MRI Scanner',               department: 'Surgery',                     category: 'Biomedical Equipment',     serial_number: 'IRM-SIE-2022-001',  status: 'Operational',   manufacturer: 'Siemens Healthineers',    location: 'Surgery, Imaging' },
+  { id: 'eq-025', name: 'Valleylab Electrosurgical Unit',          department: 'Surgery',                     category: 'Biomedical Equipment',     serial_number: 'BIS-VAL-2023-001',  status: 'Operational',   manufacturer: 'Medtronic',               location: 'Surgery, Block A' },
+  { id: 'eq-026', name: 'Maquet Operating Table',                  department: 'Theater',                     category: 'Biomedical Equipment',     serial_number: 'TBL-MAQ-2021-001',  status: 'Operational',   manufacturer: 'Maquet',                  location: 'Theater, Room 1' },
+  { id: 'eq-027', name: 'Dräger Fabius Anesthesia Machine',        department: 'Theater',                     category: 'Biomedical Equipment',     serial_number: 'RES-DRG-2022-001',  status: 'Operational',   manufacturer: 'Dräger Medical',          location: 'Theater, Room 1' },
+  { id: 'eq-028', name: 'Trumpf LED Surgical Light',               department: 'Theater',                     category: 'Electrical Equipment',     serial_number: 'SCI-TRP-2023-001',  status: 'Operational',   manufacturer: 'Trumpf Medical',          location: 'Theater, Room 1' },
+  { id: 'eq-029', name: 'Operating Theater Air Conditioning',      department: 'Theater',                     category: 'Electrical Equipment',     serial_number: 'CLI-BLO-2021-001',  status: 'Operational',   manufacturer: 'Daikin',                  location: 'Theater, Technical Area' },
+  { id: 'eq-030', name: 'Zeiss SL 800 Slit Lamp',                 department: 'Ophthalmology',               category: 'Biomedical Equipment',     serial_number: 'LAM-ZEI-2023-001',  status: 'Operational',   manufacturer: 'Carl Zeiss',              location: 'Ophthalmology, Exam Room' },
+  { id: 'eq-031', name: 'Applanation Tonometer',                   department: 'Ophthalmology',               category: 'Biomedical Equipment',     serial_number: 'TON-OPH-2022-001',  status: 'Operational',   manufacturer: 'Haag-Streit',             location: 'Ophthalmology, Consultation' },
+  { id: 'eq-032', name: 'Class II Biosafety Cabinet',              department: 'TB-MR',                       category: 'Biomedical Equipment',     serial_number: 'CSB-TBM-2022-001',  status: 'Operational',   manufacturer: 'Thermo Fisher',           location: 'TB-MR, Laboratory' },
+  { id: 'eq-033', name: 'HEPA Air Extractor',                      department: 'TB-MR',                       category: 'Electrical Equipment',     serial_number: 'EXT-TBM-2023-001',  status: 'Operational',   manufacturer: 'Camfil',                  location: 'TB-MR, Isolation Room' },
+  { id: 'eq-034', name: 'Forensic Examination Kit',                department: 'GBV (Gender-Based Violence Unit)', category: 'Biomedical Equipment', serial_number: 'KIT-GBV-2023-001',  status: 'Operational',   manufacturer: 'Medical Supplies Rwanda', location: 'GBV, Exam Room' },
+  { id: 'eq-035', name: 'Colposcope',                              department: 'GBV (Gender-Based Violence Unit)', category: 'Biomedical Equipment', serial_number: 'COL-GBV-2022-001',  status: 'Operational',   manufacturer: 'Olympus',                 location: 'GBV, Exam Room' },
+  { id: 'eq-036', name: 'Nihon Kohden Electroencephalograph',      department: 'Mental Health',               category: 'Biomedical Equipment',     serial_number: 'EEG-NKD-2022-001',  status: 'Operational',   manufacturer: 'Nihon Kohden',            location: 'Mental Health, Diagnostic Room' },
+  { id: 'eq-037', name: 'BD FACSPresto CD4 Counter',               department: 'ARV (HIV/AIDS Treatment Unit)', category: 'Biomedical Equipment',   serial_number: 'CD4-BD-2023-001',   status: 'Operational',   manufacturer: 'BD Biosciences',          location: 'ARV, Laboratory' },
+  { id: 'eq-038', name: 'Abbott m2000 Viral Load Analyzer',        department: 'ARV (HIV/AIDS Treatment Unit)', category: 'Biomedical Equipment',   serial_number: 'VL-ABT-2022-001',   status: 'Operational',   manufacturer: 'Abbott Molecular',        location: 'ARV, Laboratory' },
+  { id: 'eq-039', name: 'Vestfrost Vaccine Refrigerator',          department: 'Pharmacy',                    category: 'Pharmacy',                 serial_number: 'REF-VAC-2023-001',  status: 'Operational',   manufacturer: 'Vestfrost',               location: 'Pharmacy, Cold Room' },
+  { id: 'eq-040', name: 'Thermo -80°C Freezer',                   department: 'Pharmacy',                    category: 'Pharmacy',                 serial_number: 'CON-THR-2022-001',  status: 'Operational',   manufacturer: 'Thermo Fisher',           location: 'Pharmacy, Specialized Storage' },
+  { id: 'eq-041', name: 'Steris 400 Autoclave',                    department: 'Theater',                     category: 'Sterilization and Laundry',serial_number: 'AUT-STR-2022-001',  status: 'Maintenance',   manufacturer: 'Steris Corporation',      location: 'Sterilization, Main Area' },
+  { id: 'eq-042', name: 'Miele Industrial Washing Machine',        department: 'Administration',              category: 'Sterilization and Laundry',serial_number: 'MLI-MIE-2021-001',  status: 'Operational',   manufacturer: 'Miele Professional',      location: 'Laundry, Washing Area' },
+  { id: 'eq-043', name: 'Electrolux Industrial Dryer',             department: 'Administration',              category: 'Sterilization and Laundry',serial_number: 'SEC-ELX-2021-001',  status: 'Operational',   manufacturer: 'Electrolux Professional', location: 'Laundry, Drying Area' },
+  { id: 'eq-044', name: 'Automatic Hand Sanitizer Dispenser',      department: 'Administration',              category: 'Hygiene Materials',        serial_number: 'DIS-HYG-2023-001',  status: 'Operational',   manufacturer: 'Medical Supplies Rwanda', location: 'Administration, Main Entrance' },
+  { id: 'eq-045', name: '60L Medical Pedal Bin',                   department: 'Emergency',                   category: 'Hygiene Materials',        serial_number: 'POU-HYG-2023-001',  status: 'Operational',   manufacturer: 'Medical Supplies Rwanda', location: 'Emergency, Triage Area' },
 ];
 
 const maintenanceRecords = [
-  { equipment_id: 'eq-001', date: '2024-10-20', intervention: 'Mise à jour firmware',       technician: 'IT Admin. Konaté', is_future: 0 },
-  { equipment_id: 'eq-005', date: '2024-09-15', intervention: 'Calibration annuelle',       technician: 'Tech. Baldé',      is_future: 0 },
-  { equipment_id: 'eq-005', date: '2025-09-15', intervention: 'Calibration annuelle',       technician: 'Tech. Baldé',      is_future: 1 },
-  { equipment_id: 'eq-011', date: '2024-12-01', intervention: 'Vidange et filtres',         technician: 'Tech. Touré',      is_future: 0 },
-  { equipment_id: 'eq-011', date: '2025-03-01', intervention: 'Vidange et filtres',         technician: 'Tech. Touré',      is_future: 1 },
-  { equipment_id: 'eq-024', date: '2024-11-15', intervention: 'Calibration annuelle',       technician: 'Dr. Kamara',       is_future: 0 },
-  { equipment_id: 'eq-024', date: '2024-08-22', intervention: 'Remplacement bobine RF',     technician: 'Tech. Diallo',     is_future: 0 },
-  { equipment_id: 'eq-024', date: '2025-02-15', intervention: 'Maintenance trimestrielle',  technician: 'Dr. Kamara',       is_future: 1 },
-  { equipment_id: 'eq-041', date: '2024-11-28', intervention: 'Réparation pompe à vide',   technician: 'Tech. Cissé',      is_future: 0 },
+  { equipment_id: 'eq-001', date: '2024-10-20', intervention: 'Firmware update',           technician: 'IT Admin. Konaté', is_future: 0 },
+  { equipment_id: 'eq-005', date: '2024-09-15', intervention: 'Annual calibration',         technician: 'Tech. Baldé',      is_future: 0 },
+  { equipment_id: 'eq-005', date: '2025-09-15', intervention: 'Annual calibration',         technician: 'Tech. Baldé',      is_future: 1 },
+  { equipment_id: 'eq-011', date: '2024-12-01', intervention: 'Oil change and filters',     technician: 'Tech. Touré',      is_future: 0 },
+  { equipment_id: 'eq-011', date: '2025-03-01', intervention: 'Oil change and filters',     technician: 'Tech. Touré',      is_future: 1 },
+  { equipment_id: 'eq-024', date: '2024-11-15', intervention: 'Annual calibration',         technician: 'Dr. Kamara',       is_future: 0 },
+  { equipment_id: 'eq-024', date: '2024-08-22', intervention: 'RF coil replacement',        technician: 'Tech. Diallo',     is_future: 0 },
+  { equipment_id: 'eq-024', date: '2025-02-15', intervention: 'Quarterly maintenance',      technician: 'Dr. Kamara',       is_future: 1 },
+  { equipment_id: 'eq-041', date: '2024-11-28', intervention: 'Vacuum pump repair',         technician: 'Tech. Cissé',      is_future: 0 },
 ];
 
 // ──────────────────────────────────────────────
 // LOCATIONS
 // ──────────────────────────────────────────────
 const locations = [
-  { id: 'loc-001', name: 'Salle serveur principale',        building: 'Bâtiment A',       department: 'Administration' },
-  { id: 'loc-002', name: 'Salle réseau (baie 2)',           building: 'Bâtiment A',       department: 'Administration' },
-  { id: 'loc-003', name: 'Couloir bloc opératoire',         building: 'Bâtiment B',       department: 'Theater' },
-  { id: 'loc-004', name: 'Générateur de secours',           building: 'Annexe technique', department: 'Infrastructure' },
-  { id: 'loc-005', name: 'Local électrique RDC',            building: 'Bâtiment C',       department: 'Infrastructure' },
-  { id: 'loc-006', name: 'Réseau eau chaude sanitaire',     building: 'Bâtiment B',       department: 'Infrastructure' },
+  { id: 'loc-001', name: 'Main Server Room',          building: 'Building A',        department: 'Administration' },
+  { id: 'loc-002', name: 'Network Room (Bay 2)',       building: 'Building A',        department: 'Administration' },
+  { id: 'loc-003', name: 'Theater Corridor',           building: 'Building B',        department: 'Theater' },
+  { id: 'loc-004', name: 'Backup Generator',           building: 'Technical Annex',   department: 'Infrastructure' },
+  { id: 'loc-005', name: 'Ground Floor Electrical Room', building: 'Building C',      department: 'Infrastructure' },
+  { id: 'loc-006', name: 'Hot Water Supply Network',   building: 'Building B',        department: 'Infrastructure' },
 ];
 
 // ──────────────────────────────────────────────
 // ISSUES
 // ──────────────────────────────────────────────
 const issues = [
-  { id: 'ISS-001', equipment_id: 'eq-027', equipment_name: 'Respirateur anesthésie Dräger Fabius', department: 'Theater', type: 'Équipement biomédical',       description: 'Alarme capteur O2 défaillant, affichage erratique',     reporter: 'Dr. Traoré',           created_at: '2024-12-05 08:30', status: 'En cours',  assigned_technician: 'Tech. Baldé',  diagnosis: 'Capteur O2 HS, besoin de remplacement', actions: null, parts_replaced: null },
-  { id: 'ISS-002', equipment_id: 'eq-041', equipment_name: 'Autoclave Steris 400',                 department: 'Theater', type: 'Stérilisation et buanderie',  description: 'Pompe à vide ne démarre pas, cycles incomplets',        reporter: 'Inf. Keita',           created_at: '2024-11-28 14:15', status: 'En cours',  assigned_technician: 'Tech. Cissé',  diagnosis: null, actions: null, parts_replaced: null },
-  { id: 'ISS-003', equipment_id: 'eq-001', equipment_name: 'Serveur Dell PowerEdge R750',          department: 'Administration',  type: 'Équipement ICT',              description: 'Surchauffe détectée, ventilateurs bruyants',            reporter: 'IT Admin. Konaté',     created_at: '2024-12-08 11:00', status: 'Ouvert',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
-  { id: 'ISS-004', equipment_id: 'eq-024', equipment_name: 'Scanner IRM Siemens 1.5T',            department: 'Surgery',       type: 'Équipement biomédical',       description: 'Bruit anormal pendant acquisition',                     reporter: 'Radiologue Camara',    created_at: '2024-11-20 09:45', status: 'Résolu',    assigned_technician: 'Dr. Kamara',   diagnosis: 'Gradient X désaligné', actions: 'Recalibration gradient', parts_replaced: 'Aucune' },
-  { id: 'ISS-005', equipment_id: 'eq-012', equipment_name: 'Analyseur hématologie Sysmex XN-1000', department: 'Laboratory',    type: 'Équipement biomédical',       description: "Erreur de calibration, résultats incohérents",           reporter: 'Lab. Diallo',          created_at: '2024-12-10 09:00', status: 'Ouvert',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
-  { id: 'ISS-006', equipment_id: 'eq-022', equipment_name: 'Moniteur fœtal Philips',              department: 'Maternity',       type: 'Équipement biomédical',       description: 'Perte de signal fréquente',                             reporter: 'Sage-femme Mukamana', created_at: '2024-12-09 16:30', status: 'Ouvert',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
+  { id: 'ISS-001', equipment_id: 'eq-027', equipment_name: 'Dräger Fabius Anesthesia Machine',    department: 'Theater',       type: 'Biomedical Equipment',     description: 'O2 sensor alarm fault, erratic display',              reporter: 'Dr. Traoré',           created_at: '2024-12-05 08:30', status: 'In Progress', assigned_technician: 'Tech. Baldé',  diagnosis: 'O2 sensor failure, replacement needed', actions: null, parts_replaced: null },
+  { id: 'ISS-002', equipment_id: 'eq-041', equipment_name: 'Steris 400 Autoclave',                department: 'Theater',       type: 'Sterilization and Laundry',description: 'Vacuum pump not starting, incomplete cycles',          reporter: 'Inf. Keita',           created_at: '2024-11-28 14:15', status: 'In Progress', assigned_technician: 'Tech. Cissé',  diagnosis: null, actions: null, parts_replaced: null },
+  { id: 'ISS-003', equipment_id: 'eq-001', equipment_name: 'Dell PowerEdge R750 Server',          department: 'Administration',type: 'ICT Equipment',            description: 'Overheating detected, noisy fans',                     reporter: 'IT Admin. Konaté',     created_at: '2024-12-08 11:00', status: 'Reported',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
+  { id: 'ISS-004', equipment_id: 'eq-024', equipment_name: 'Siemens 1.5T MRI Scanner',           department: 'Surgery',       type: 'Biomedical Equipment',     description: 'Abnormal noise during acquisition',                    reporter: 'Radiologist Camara',   created_at: '2024-11-20 09:45', status: 'Completed',   assigned_technician: 'Dr. Kamara',   diagnosis: 'Misaligned X gradient', actions: 'Gradient recalibration', parts_replaced: 'None' },
+  { id: 'ISS-005', equipment_id: 'eq-012', equipment_name: 'Sysmex XN-1000 Hematology Analyzer', department: 'Laboratory',    type: 'Biomedical Equipment',     description: 'Calibration error, inconsistent results',              reporter: 'Lab. Diallo',          created_at: '2024-12-10 09:00', status: 'Reported',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
+  { id: 'ISS-006', equipment_id: 'eq-022', equipment_name: 'Philips Fetal Monitor',               department: 'Maternity',     type: 'Biomedical Equipment',     description: 'Frequent signal loss',                                 reporter: 'Midwife Mukamana',     created_at: '2024-12-09 16:30', status: 'Reported',    assigned_technician: null,           diagnosis: null, actions: null, parts_replaced: null },
 ];
 
 // ──────────────────────────────────────────────
 // INVENTORY
 // ──────────────────────────────────────────────
 const inventory = [
-  { id: 'inv-001', name: 'Gants stériles (boîte 100)',       category: 'Consommable médical', current_stock: 45, min_stock: 20, unit: 'boîtes',   status: 'Normal',  last_restocked: '2024-12-01' },
-  { id: 'inv-002', name: 'Masques chirurgicaux (boîte 50)',  category: 'Consommable médical', current_stock: 12, min_stock: 15, unit: 'boîtes',   status: 'Faible',  last_restocked: '2024-11-20' },
-  { id: 'inv-003', name: 'Seringues 10ml',                   category: 'Consommable médical', current_stock: 0,  min_stock: 50, unit: 'unités',   status: 'Rupture', last_restocked: '2024-10-15' },
-  { id: 'inv-004', name: 'Solution hydroalcoolique (5L)',    category: 'Hygiène',             current_stock: 8,  min_stock: 5,  unit: 'bidons',   status: 'Normal',  last_restocked: '2024-12-05' },
-  { id: 'inv-005', name: 'Désinfectant surface (1L)',        category: 'Hygiène',             current_stock: 3,  min_stock: 10, unit: 'bouteilles',status: 'Faible',  last_restocked: '2024-11-10' },
-  { id: 'inv-006', name: 'Cathéters IV (boîte 50)',          category: 'Consommable médical', current_stock: 25, min_stock: 10, unit: 'boîtes',   status: 'Normal',  last_restocked: '2024-12-08' },
-  { id: 'inv-007', name: 'Compresses stériles (paquet 100)',  category: 'Consommable médical', current_stock: 60, min_stock: 30, unit: 'paquets',  status: 'Normal',  last_restocked: '2024-12-10' },
+  { id: 'inv-001', name: 'Sterile Gloves (box of 100)',        category: 'Medical Consumable', current_stock: 45, min_stock: 20, unit: 'boxes',   status: 'Normal', last_restocked: '2024-12-01' },
+  { id: 'inv-002', name: 'Surgical Masks (box of 50)',         category: 'Medical Consumable', current_stock: 12, min_stock: 15, unit: 'boxes',   status: 'Low',    last_restocked: '2024-11-20' },
+  { id: 'inv-003', name: '10ml Syringes',                      category: 'Medical Consumable', current_stock: 0,  min_stock: 50, unit: 'units',   status: 'Out',    last_restocked: '2024-10-15' },
+  { id: 'inv-004', name: 'Hand Sanitizer Solution (5L)',       category: 'Hygiene',            current_stock: 8,  min_stock: 5,  unit: 'cans',    status: 'Normal', last_restocked: '2024-12-05' },
+  { id: 'inv-005', name: 'Surface Disinfectant (1L)',          category: 'Hygiene',            current_stock: 3,  min_stock: 10, unit: 'bottles', status: 'Low',    last_restocked: '2024-11-10' },
+  { id: 'inv-006', name: 'IV Catheters (box of 50)',           category: 'Medical Consumable', current_stock: 25, min_stock: 10, unit: 'boxes',   status: 'Normal', last_restocked: '2024-12-08' },
+  { id: 'inv-007', name: 'Sterile Gauze Pads (pack of 100)',   category: 'Medical Consumable', current_stock: 60, min_stock: 30, unit: 'packs',   status: 'Normal', last_restocked: '2024-12-10' },
 ];
 
 // ──────────────────────────────────────────────
@@ -114,7 +114,7 @@ function seed() {
   for (const e of equipment) {
     insertEq.run(e.id, e.name, e.department, e.category, e.serial_number, e.status, e.manufacturer, e.location);
   }
-  console.log(`  ${equipment.length} équipements insérés`);
+  console.log(`  ${equipment.length} equipment records inserted`);
 
   console.log('Seeding maintenance records...');
   const insertMaint = db.prepare(`
@@ -126,7 +126,7 @@ function seed() {
   for (const m of maintenanceRecords) {
     insertMaint.run(m.equipment_id, m.date, m.intervention, m.technician, m.is_future);
   }
-  console.log(`  ${maintenanceRecords.length} enregistrements maintenance insérés`);
+  console.log(`  ${maintenanceRecords.length} maintenance records inserted`);
 
   console.log('Seeding locations...');
   const insertLoc = db.prepare(`
@@ -136,7 +136,7 @@ function seed() {
   for (const l of locations) {
     insertLoc.run(l.id, l.name, l.building, l.department);
   }
-  console.log(`  ${locations.length} lieux insérés`);
+  console.log(`  ${locations.length} locations inserted`);
 
   console.log('Seeding issues...');
   const insertIssue = db.prepare(`
@@ -146,7 +146,7 @@ function seed() {
   for (const i of issues) {
     insertIssue.run(i.id, i.equipment_id, i.equipment_name, i.department, i.type, i.description, i.reporter, i.created_at, i.status, i.assigned_technician, i.diagnosis, i.actions, i.parts_replaced, i.issue_category || 'Biomédical', i.assigned_group || 'Biomédical');
   }
-  console.log(`  ${issues.length} incidents insérés`);
+  console.log(`  ${issues.length} issues inserted`);
 
   console.log('Seeding inventory...');
   const insertInv = db.prepare(`
@@ -156,10 +156,10 @@ function seed() {
   for (const inv of inventory) {
     insertInv.run(inv.id, inv.name, inv.category, inv.current_stock, inv.min_stock, inv.unit, inv.status, inv.last_restocked);
   }
-  console.log(`  ${inventory.length} articles inventaire insérés`);
+  console.log(`  ${inventory.length} inventory items inserted`);
 
   closeDb();
-  console.log('\nSeed terminé avec succès.');
+  console.log('\nSeed completed successfully.');
 }
 
 seed();

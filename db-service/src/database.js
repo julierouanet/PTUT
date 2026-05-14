@@ -242,6 +242,25 @@ function initTables() {
     `);
   } catch (_) {}
 
+  // Migration : noms de catégories français → anglais dans equipment.
+  // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
+  try {
+    db.exec(`
+      UPDATE equipment SET category = CASE category
+        WHEN 'Équipement biomédical'      THEN 'Biomedical Equipment'
+        WHEN 'Équipement ICT'             THEN 'ICT Equipment'
+        WHEN 'Équipement électrique'      THEN 'Electrical Equipment'
+        WHEN 'Matériel d''hygiène'        THEN 'Hygiene Materials'
+        WHEN 'Stérilisation et buanderie' THEN 'Sterilization and Laundry'
+        WHEN 'Pharmacie'                  THEN 'Pharmacy'
+        ELSE category END
+      WHERE category IN (
+        'Équipement biomédical','Équipement ICT','Équipement électrique',
+        'Matériel d''hygiène','Stérilisation et buanderie','Pharmacie'
+      )
+    `);
+  } catch (_) {}
+
   // Migration : noms de départements français → anglais dans equipment, issues et locations.
   // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
   try {

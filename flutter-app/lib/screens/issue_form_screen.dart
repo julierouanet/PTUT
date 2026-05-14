@@ -137,10 +137,8 @@ const Map<String, Map<String, List<String>>> _kInfraCatalog = {
 };
 
 /// Catégories d'équipements biomédicaux (valeurs exactes de equipment.category en DB).
-/// Couvre le seed (noms FR) et le XLSX importé (noms EN).
 const List<String> _kBioCategories = [
-  'Équipement biomédical', // seed
-  'Biomedical Equipment',  // import XLSX
+  'Biomedical Equipment',
 ];
 
 /// Formulaire de signalement d'incident avec 4 onglets de catégorie.

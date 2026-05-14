@@ -22,7 +22,10 @@ const VALID_DEPARTMENTS   = [
   'Surgery', 'Theater', 'Ophthalmology', 'TB-MR', 'GBV (Gender-Based Violence Unit)',
   'Mental Health', 'ARV (HIV/AIDS Treatment Unit)', 'Pharmacy', 'Infrastructure',
 ];
-const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
+const VALID_CATEGORIES_EQ = [
+  'Biomedical Equipment', 'ICT Equipment', 'Electrical Equipment',
+  'Hygiene Materials', 'Sterilization and Laundry', 'Pharmacy',
+];
 
 // GET /api/equipment - liste tous les équipements
 router.get('/', verifyToken, (req, res) => {

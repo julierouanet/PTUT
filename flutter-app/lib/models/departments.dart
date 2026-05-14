@@ -154,21 +154,21 @@ enum EquipmentCategory {
   sterilization,
   pharmacy;
 
-  /// French display name (legacy / storage key)
+  /// English display name (storage key — matches database values)
   String get displayName {
     switch (this) {
       case EquipmentCategory.ict:
-        return 'Équipement ICT';
+        return 'ICT Equipment';
       case EquipmentCategory.hygiene:
-        return 'Matériel d\'hygiène';
+        return 'Hygiene Materials';
       case EquipmentCategory.biomedical:
-        return 'Équipement biomédical';
+        return 'Biomedical Equipment';
       case EquipmentCategory.electrical:
-        return 'Équipement électrique';
+        return 'Electrical Equipment';
       case EquipmentCategory.sterilization:
-        return 'Stérilisation et buanderie';
+        return 'Sterilization and Laundry';
       case EquipmentCategory.pharmacy:
-        return 'Pharmacie';
+        return 'Pharmacy';
     }
   }
 
