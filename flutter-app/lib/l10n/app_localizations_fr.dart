@@ -1179,6 +1179,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueUrgencyLabel => 'Niveau d\'urgence';
 
   @override
+  String get issueValidationGroupLabel => 'Equipe technique assignee :';
+
+  @override
+  String get issueValidationGroupBiomedical => 'Biomedical';
+
+  @override
+  String get issueValidationGroupIT => 'IT';
+
+  @override
+  String get issueValidationGroupInfrastructure => 'Infrastructure';
+
+  @override
+  String get issueValidationGroupNoChange => 'Garder l\'equipe actuelle';
+
+  @override
+  String get issueValidationRedirectLabel => 'Rediriger vers une autre equipe';
+
+  @override
   String get settingsMenuOrder => 'Ordre du menu';
 
   @override
@@ -2454,11 +2472,22 @@ class AppLocalizationsFr extends AppLocalizations {
       'Veuillez sélectionner un département';
 
   @override
-  String get issueFormBuildingRequired => 'Veuillez sélectionner un bâtiment';
+  String get issueFormBuildingHint => 'Ex: Bloc A, Bâtiment Principal...';
 
   @override
-  String get issueFormLocationRequired2 =>
-      'Veuillez sélectionner une localisation';
+  String get issueFormLocationHint => 'Ex: Salle 12, Couloir Nord...';
+
+  @override
+  String get issueFormInfraTagNumber => 'Numéro de tag (optionnel)';
+
+  @override
+  String get issueFormInfraTagHint => 'Ex: TG-0042';
+
+  @override
+  String get issueFormBuildingRequired => 'Veuillez saisir le nom du bâtiment';
+
+  @override
+  String get issueFormLocationRequired2 => 'Veuillez saisir la localisation';
 
   @override
   String get issueFormCategoryRequired => 'Veuillez sélectionner une catégorie';

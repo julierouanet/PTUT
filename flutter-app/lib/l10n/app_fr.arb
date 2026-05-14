@@ -416,6 +416,12 @@
   "issueValidationSignaledBy": "Signale par {reporter} • {date}",
   "@issueValidationSignaledBy": { "placeholders": { "reporter": { "type": "String" }, "date": { "type": "String" } } },
   "issueUrgencyLabel": "Niveau d'urgence",
+  "issueValidationGroupLabel": "Equipe technique assignee :",
+  "issueValidationGroupBiomedical": "Biomedical",
+  "issueValidationGroupIT": "IT",
+  "issueValidationGroupInfrastructure": "Infrastructure",
+  "issueValidationGroupNoChange": "Garder l'equipe actuelle",
+  "issueValidationRedirectLabel": "Rediriger vers une autre equipe",
 
   "settingsMenuOrder": "Ordre du menu",
   "settingsMenuOrderRole": "Configurer pour le role :",

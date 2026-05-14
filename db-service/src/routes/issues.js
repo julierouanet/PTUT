@@ -166,17 +166,20 @@ router.post('/', verifyToken, (req, res) => {
 // PUT /api/issues/:id - mettre à jour un incident
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency } = req.body;
+  const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group } = req.body;
 
-  const existing = db.prepare('SELECT id, equipment_name, status, department FROM issues WHERE id = ?').get(req.params.id);
+  const existing = db.prepare('SELECT id, equipment_name, location_id, status, department, assigned_group FROM issues WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
-  // Validation enum statut et urgence
+  // Validation enum statut, urgence et groupe
   if (status && !VALID_STATUSES.includes(status)) {
     return res.status(400).json({ error: `Statut invalide. Valeurs acceptées : ${VALID_STATUSES.join(', ')}` });
   }
   if (urgency && !VALID_URGENCIES.includes(urgency)) {
     return res.status(400).json({ error: `Urgence invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
+  }
+  if (assigned_group && !VALID_GROUPS.includes(assigned_group)) {
+    return res.status(400).json({ error: `Groupe invalide. Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
   }
 
   db.prepare(`
@@ -187,16 +190,21 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         actions = COALESCE(?, actions),
         parts_replaced = COALESCE(?, parts_replaced),
         urgency = COALESCE(?, urgency),
+        assigned_group = COALESCE(?, assigned_group),
         updated_at = datetime('now','localtime')
     WHERE id = ?
-  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, req.params.id);
+  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group || null, req.params.id);
 
+  const groupChanged = assigned_group && assigned_group !== existing.assigned_group;
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: actionLabel, target_type: 'issue', target_id: req.params.id,
     target_name: existing.equipment_name || existing.location_id || existing.department,
-    details: status ? { old_status: existing.status, new_status: status } : undefined,
+    details: {
+      ...(status ? { old_status: existing.status, new_status: status } : {}),
+      ...(groupChanged ? { old_group: existing.assigned_group, new_group: assigned_group } : {}),
+    },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident mis à jour' });

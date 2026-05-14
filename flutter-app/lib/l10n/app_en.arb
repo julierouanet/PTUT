@@ -394,6 +394,12 @@
   "issueValidationSignaledBy": "Reported by {reporter} • {date}",
   "@issueValidationSignaledBy": { "placeholders": { "reporter": { "type": "String" }, "date": { "type": "String" } } },
   "issueUrgencyLabel": "Urgency level",
+  "issueValidationGroupLabel": "Assigned technical team:",
+  "issueValidationGroupBiomedical": "Biomedical",
+  "issueValidationGroupIT": "IT",
+  "issueValidationGroupInfrastructure": "Infrastructure",
+  "issueValidationGroupNoChange": "Keep current team",
+  "issueValidationRedirectLabel": "Redirect to another team",
 
   "settingsMenuOrder": "Menu order",
   "settingsMenuOrderRole": "Configure for role:",

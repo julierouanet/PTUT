@@ -171,10 +171,10 @@ function importEquipment(db, workbook, opts) {
   // Préparation des statements (une seule fois)
   const upsert = db.prepare(`
     INSERT INTO equipment (
-      id, name, department, category, serial_number, status, supplier, location,
+      id, name, department, category, serial_number, status, location,
       manufacturer, model, manuf_year, install_date, department_id, category_id
     ) VALUES (
-      @id, @name, @department, @category, @serial_number, @status, @supplier, @location,
+      @id, @name, @department, @category, @serial_number, @status, @location,
       @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id
     )
     ON CONFLICT(id) DO UPDATE SET
@@ -183,8 +183,7 @@ function importEquipment(db, workbook, opts) {
       category       = excluded.category,
       serial_number  = excluded.serial_number,
       status         = excluded.status,
-      supplier       = COALESCE(excluded.supplier,    equipment.supplier),
-      location       = COALESCE(excluded.location,    equipment.location),
+      location       = COALESCE(excluded.location, equipment.location),
       manufacturer   = excluded.manufacturer,
       model          = excluded.model,
       manuf_year     = excluded.manuf_year,
@@ -196,10 +195,10 @@ function importEquipment(db, workbook, opts) {
 
   const insertOnly = db.prepare(`
     INSERT OR IGNORE INTO equipment (
-      id, name, department, category, serial_number, status, supplier, location,
+      id, name, department, category, serial_number, status, location,
       manufacturer, model, manuf_year, install_date, department_id, category_id
     ) VALUES (
-      @id, @name, @department, @category, @serial_number, @status, @supplier, @location,
+      @id, @name, @department, @category, @serial_number, @status, @location,
       @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id
     )
   `);
@@ -291,7 +290,6 @@ function importEquipment(db, workbook, opts) {
           category: rawCat,
           serial_number: serial,
           status,
-          supplier: null,            // non fourni dans le XLSX
           location: null,            // non fourni dans le XLSX
           manufacturer,
           model,

@@ -2252,6 +2252,42 @@ abstract class AppLocalizations {
   /// **'Niveau d\'urgence'**
   String get issueUrgencyLabel;
 
+  /// No description provided for @issueValidationGroupLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Equipe technique assignee :'**
+  String get issueValidationGroupLabel;
+
+  /// No description provided for @issueValidationGroupBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomedical'**
+  String get issueValidationGroupBiomedical;
+
+  /// No description provided for @issueValidationGroupIT.
+  ///
+  /// In fr, this message translates to:
+  /// **'IT'**
+  String get issueValidationGroupIT;
+
+  /// No description provided for @issueValidationGroupInfrastructure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get issueValidationGroupInfrastructure;
+
+  /// No description provided for @issueValidationGroupNoChange.
+  ///
+  /// In fr, this message translates to:
+  /// **'Garder l\'equipe actuelle'**
+  String get issueValidationGroupNoChange;
+
+  /// No description provided for @issueValidationRedirectLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rediriger vers une autre equipe'**
+  String get issueValidationRedirectLabel;
+
   /// No description provided for @settingsMenuOrder.
   ///
   /// In fr, this message translates to:
@@ -4622,16 +4658,40 @@ abstract class AppLocalizations {
   /// **'Veuillez sélectionner un département'**
   String get issueFormDepartmentRequired;
 
+  /// No description provided for @issueFormBuildingHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: Bloc A, Bâtiment Principal...'**
+  String get issueFormBuildingHint;
+
+  /// No description provided for @issueFormLocationHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: Salle 12, Couloir Nord...'**
+  String get issueFormLocationHint;
+
+  /// No description provided for @issueFormInfraTagNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro de tag (optionnel)'**
+  String get issueFormInfraTagNumber;
+
+  /// No description provided for @issueFormInfraTagHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: TG-0042'**
+  String get issueFormInfraTagHint;
+
   /// No description provided for @issueFormBuildingRequired.
   ///
   /// In fr, this message translates to:
-  /// **'Veuillez sélectionner un bâtiment'**
+  /// **'Veuillez saisir le nom du bâtiment'**
   String get issueFormBuildingRequired;
 
   /// No description provided for @issueFormLocationRequired2.
   ///
   /// In fr, this message translates to:
-  /// **'Veuillez sélectionner une localisation'**
+  /// **'Veuillez saisir la localisation'**
   String get issueFormLocationRequired2;
 
   /// No description provided for @issueFormCategoryRequired.

@@ -363,6 +363,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
               const SizedBox(height: 4),
               Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.issueValidationSignaledBy(issue.reporter, issue.createdAt), style: const TextStyle(color: AppColors.textMuted, fontSize: 12))),
+              if (issue.assignedGroup != null) ...[
+                const SizedBox(height: 6),
+                _buildGroupChip(issue.assignedGroup!),
+              ],
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
@@ -415,6 +419,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
               ),
               const SizedBox(width: 16),
               IssueStatusBadge(status: issue.status.displayName),
+              if (issue.assignedGroup != null) ...[
+                const SizedBox(width: 8),
+                _buildGroupChip(issue.assignedGroup!),
+              ],
               const SizedBox(width: 12),
               OutlinedButton.icon(
                 onPressed: () => _showIssueDetail(issue),
@@ -435,27 +443,65 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   void _showValidateDialog(Issue issue) {
     final l10n = AppLocalizations.of(context)!;
     IssueUrgency selectedUrgency = issue.urgency;
+    String? selectedGroup = issue.assignedGroup;
+    const groups = ['Biomédical', 'IT', 'Infrastructure'];
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           title: Text(l10n.issueValidationConfirmTitle),
-          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(l10n.issueValidationConfirmContent),
-            const SizedBox(height: 8),
-            Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            const SizedBox(height: 16),
-            Text(l10n.issueValidationUrgencyLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
-            const SizedBox(height: 8),
-            Row(
-              children: IssueUrgency.values.map((u) {
-                final sel = selectedUrgency == u;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: GestureDetector(
+          content: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(l10n.issueValidationConfirmContent),
+              const SizedBox(height: 8),
+              Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 4),
+              Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 16),
+
+              // ── Groupe technique ─────────────────────────────────────────
+              Text(l10n.issueValidationGroupLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: selectedGroup,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  isDense: true,
+                ),
+                items: groups.map((g) {
+                  final meta = _groupMeta(g, l10n);
+                  return DropdownMenuItem<String>(
+                    value: g,
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(meta.icon, size: 16, color: meta.color),
+                      const SizedBox(width: 8),
+                      Text(meta.label),
+                    ]),
+                  );
+                }).toList(),
+                onChanged: (v) => setDialogState(() => selectedGroup = v),
+              ),
+              if (selectedGroup != null && selectedGroup != issue.assignedGroup)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Row(children: [
+                    const Icon(Icons.info_outline, size: 14, color: AppColors.warning),
+                    const SizedBox(width: 4),
+                    Text(l10n.issueValidationRedirectLabel, style: const TextStyle(color: AppColors.warning, fontSize: 12)),
+                  ]),
+                ),
+
+              const SizedBox(height: 16),
+              // ── Urgence ──────────────────────────────────────────────────
+              Text(l10n.issueValidationUrgencyLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                children: IssueUrgency.values.map((u) {
+                  final sel = selectedUrgency == u;
+                  return GestureDetector(
                     onTap: () => setDialogState(() => selectedUrgency = u),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -466,16 +512,16 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                       ),
                       child: UrgencyBadge(urgency: u, isCompact: true),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              l10n.issueValidationConfirmMessage,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-          ]),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                l10n.issueValidationConfirmMessage,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+            ]),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
@@ -484,7 +530,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             ElevatedButton.icon(
               onPressed: () async {
                 Navigator.pop(ctx);
-                await _validateIssue(issue, urgency: selectedUrgency);
+                await _validateIssue(issue, urgency: selectedUrgency, newGroup: selectedGroup);
               },
               icon: const Icon(Icons.check_circle_outline, size: 16),
               label: Text(l10n.commonSave),
@@ -505,12 +551,43 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     }
   }
 
-  Future<void> _validateIssue(Issue issue, {IssueUrgency? urgency}) async {
+  // Retourne la couleur, l'icône et le libellé i18n d'un groupe technique.
+  ({Color color, IconData icon, String label}) _groupMeta(String group, AppLocalizations l10n) {
+    switch (group) {
+      case 'IT':
+        return (color: const Color(0xFF1565C0), icon: Icons.computer, label: l10n.issueValidationGroupIT);
+      case 'Infrastructure':
+        return (color: const Color(0xFFE65100), icon: Icons.construction, label: l10n.issueValidationGroupInfrastructure);
+      default: // Biomédical
+        return (color: const Color(0xFFC62828), icon: Icons.medical_services, label: l10n.issueValidationGroupBiomedical);
+    }
+  }
+
+  Widget _buildGroupChip(String group) {
+    final l10n = AppLocalizations.of(context)!;
+    final meta = _groupMeta(group, l10n);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: meta.color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: meta.color.withValues(alpha: 0.4)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(meta.icon, size: 12, color: meta.color),
+        const SizedBox(width: 4),
+        Text(meta.label, style: TextStyle(fontSize: 11, color: meta.color, fontWeight: FontWeight.w600)),
+      ]),
+    );
+  }
+
+  Future<void> _validateIssue(Issue issue, {IssueUrgency? urgency, String? newGroup}) async {
     setState(() => _isValidating = true);
     try {
       await DbApiService.instance.updateIssue(issue.id, {
         'status': 'Acknowledged',
         if (urgency != null) 'urgency': urgency.displayName,
+        if (newGroup != null && newGroup != issue.assignedGroup) 'assigned_group': newGroup,
       });
       await DataService().reloadIssues();
       if (mounted) {

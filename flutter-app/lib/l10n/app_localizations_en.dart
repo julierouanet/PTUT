@@ -1170,6 +1170,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueUrgencyLabel => 'Urgency level';
 
   @override
+  String get issueValidationGroupLabel => 'Assigned technical team:';
+
+  @override
+  String get issueValidationGroupBiomedical => 'Biomedical';
+
+  @override
+  String get issueValidationGroupIT => 'IT';
+
+  @override
+  String get issueValidationGroupInfrastructure => 'Infrastructure';
+
+  @override
+  String get issueValidationGroupNoChange => 'Keep current team';
+
+  @override
+  String get issueValidationRedirectLabel => 'Redirect to another team';
+
+  @override
   String get settingsMenuOrder => 'Menu order';
 
   @override
@@ -2434,6 +2452,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormDepartmentRequired => 'Please select a department';
+
+  @override
+  String get issueFormBuildingHint => 'E.g.: Block A, Main Building...';
+
+  @override
+  String get issueFormLocationHint => 'E.g.: Room 12, North Corridor...';
+
+  @override
+  String get issueFormInfraTagNumber => 'Tag number (optional)';
+
+  @override
+  String get issueFormInfraTagHint => 'E.g.: TG-0042';
 
   @override
   String get issueFormBuildingRequired => 'Please select a building';
