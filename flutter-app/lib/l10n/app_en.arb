@@ -854,5 +854,8 @@
   "issueFormLocationRequired2": "Please select a location",
   "issueFormCategoryRequired": "Please select a category",
   "issueFormSubcategoryRequired": "Please select a subcategory",
-  "issueFormTagRequired": "Please enter a tag number and search for the equipment"
+  "issueFormTagRequired": "Please enter a tag number and search for the equipment",
+  "issueFormSpecificIssue": "Specific Issue *",
+  "issueFormSelectSpecificIssue": "Select the specific issue",
+  "issueFormIssueRequired": "Please select the specific issue"
 }

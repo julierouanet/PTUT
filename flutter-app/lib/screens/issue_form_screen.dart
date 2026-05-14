@@ -14,14 +14,126 @@ import '../models/departments.dart';
 import '../utils/file_picker.dart';
 import '../widgets/urgency_badge.dart';
 
-/// Catalogue infrastructure : catégories → sous-catégories.
-/// Valeurs stockées en DB (canonical French), pas i18n-ées intentionnellement.
-const Map<String, List<String>> _kInfraCatalog = {
-  'Électricité':         ['Court-circuit', 'Panne de courant', 'Câblage défectueux', 'Prise non fonctionnelle', 'Éclairage défaillant'],
-  'Plomberie':           ['Fuite d\'eau', 'Canalisation bouchée', 'Robinetterie défectueuse', 'Sanitaires'],
-  'Mobilier':            ['Table/lit cassé', 'Chaise endommagée', 'Armoire abîmée', 'Autre'],
-  'Structure/Bâtiment':  ['Fissure', 'Infiltration', 'Porte/fenêtre défectueuse', 'Toiture endommagée'],
-  'Autre':               ['Problème non classifié'],
+/// Catalogue infrastructure 3 niveaux : catégorie → sous-catégorie → problèmes.
+/// Valeurs en anglais (reference standard hospitalier), stockées telles quelles en DB.
+const Map<String, Map<String, List<String>>> _kInfraCatalog = {
+  'Electrical System': {
+    'Lighting': [
+      'Bulb not working', 'Flickering light', 'Switch malfunction',
+    ],
+    'Power Supply': [
+      'No electricity', 'Partial power outage', 'Tripped breaker',
+      'Generator failure', 'UPS failure', 'Power surge damage', 'Extension cable damaged',
+    ],
+    'Electrical Outlets': [
+      'Socket not working', 'Loose outlet', 'Burnt outlet',
+      'Exposed wiring', 'Sparking outlet', 'Broken cover plate',
+    ],
+    'Wiring & Distribution': [
+      'Exposed cable', 'Damaged conduit', 'Water near electrical line',
+    ],
+  },
+  'Water Supply & Plumbing': {
+    'Water Availability': [
+      'No water', 'Low water pressure', 'Dirty water',
+    ],
+    'Faucets & Valves': [
+      'Leaking tap', 'Broken tap', 'Loose faucet', 'Valve not closing',
+    ],
+    'Toilets & Sanitation': [
+      'Toilet blocked', 'Toilet not flushing', 'Continuous flushing',
+      'Broken toilet seat', 'Urinal blocked', 'Washbasin blocked',
+    ],
+    'Pipework': [
+      'Pipe leakage', 'Burst pipe', 'Underground leakage',
+      'Corroded pipe', 'Broken pipe support',
+    ],
+    'Drainage': [
+      'Blocked drainage', 'Overflowing wastewater', 'Septic overflow',
+      'Manhole blockage', 'Stormwater blockage',
+    ],
+    'Water Storage': [
+      'Tank leakage', 'Float switch failure', 'Water pump failure',
+    ],
+  },
+  'Doors, Windows & Locks': {
+    'Doors': [
+      'Door not closing', 'Broken hinges', 'Door misalignment', 'Damaged frame',
+    ],
+    'Locks & Security': [
+      'Lock damaged', 'Key broken', 'Door cannot lock', 'Padlock missing',
+    ],
+    'Windows': [
+      'Broken glass', 'Window cannot open', 'Window cannot close',
+      'Damaged mosquito net', 'Curtain/blind damaged',
+    ],
+  },
+  'Furniture': {
+    'Office Furniture': [
+      'Broken chair', 'Damaged desk', 'Cabinet lock defective',
+      'Drawer jammed', 'Shelf damaged',
+    ],
+    'Hospital Furniture': [
+      'Bed wheel damaged', 'Bed crank failure', 'Patient trolley damaged',
+    ],
+    'Waiting Area Furniture': [
+      'Broken bench', 'Loose seating', 'Torn upholstery',
+    ],
+  },
+  'Building & Civil Works': {
+    'Walls & Finishes': [
+      'Wall cracks', 'Paint peeling', 'Damp wall', 'Mold growth', 'Tile broken',
+    ],
+    'Floors': [
+      'Floor crack', 'Slippery floor', 'Broken tile',
+      'Uneven surface', 'Damaged vinyl flooring',
+    ],
+    'Ceiling': [
+      'Ceiling leakage', 'Ceiling collapse risk',
+      'Damaged gypsum board', 'Hanging ceiling panel',
+    ],
+    'Roofing': [
+      'Roof leakage', 'Missing roofing sheet', 'Gutter blockage', 'Downpipe broken',
+    ],
+    'External Works': [
+      'Potholes', 'Broken pavement', 'Fence damaged', 'Drainage erosion',
+      'Loading ramp damage', 'Parking marking faded',
+    ],
+  },
+  'HVAC & Ventilation': {
+    'Air Conditioning': [
+      'AC not cooling', 'Water leaking from AC', 'Strange AC noise', 'AC not starting',
+    ],
+    'Ventilation': [
+      'Exhaust fan failure', 'Poor ventilation', 'Air duct blockage',
+    ],
+    'Heating': [
+      'Water heater failure',
+    ],
+  },
+  'Fire & Safety Systems': {
+    'Fire Protection': [
+      'Fire extinguisher expired', 'Missing extinguisher', 'Fire alarm fault',
+      'Smoke detector failure', 'Hose reel leakage',
+    ],
+    'Safety': [
+      'Emergency exit blocked', 'Safety sign missing', 'Handrail damaged',
+      'Slip hazard', 'Unsafe wiring',
+    ],
+  },
+  'Specialized Areas': {
+    'Medical Utility': [
+      'Medical gas leakage', 'Oxygen outlet fault', 'Air compressor issue',
+    ],
+    'Biomedical Support Infrastructure': [
+      'Equipment power issue', 'Equipment mounting failure', 'UPS for equipment failure',
+    ],
+  },
+  'Waste Management': {
+    'Waste Infrastructure': [
+      'Incinerator malfunction', 'Ash pit overflow', 'Wastewater pit overflow',
+    ],
+  },
 };
 
 /// Catégories d'équipements biomédicaux (valeurs exactes de equipment.category en DB).
@@ -68,6 +180,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String? _infraLocationId;
   String? _infraCategory;
   String? _infraSubcategory;
+  String? _infraIssue;
 
   // ── Tab 2 : IT ────────────────────────────────────────────────────────────
   final _tagController = TextEditingController();
@@ -174,6 +287,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return locs;
   }
 
+  List<String> get _infraSubcategories =>
+      _infraCategory != null ? _kInfraCatalog[_infraCategory]!.keys.toList() : [];
+
+  List<String> get _infraIssues =>
+      (_infraCategory != null && _infraSubcategory != null)
+          ? _kInfraCatalog[_infraCategory]![_infraSubcategory] ?? []
+          : [];
+
   // ── Changement d'onglet ───────────────────────────────────────────────────
 
   void _switchTab(int tab) {
@@ -182,6 +303,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _descriptionController.clear();
       _photos.clear();
       _urgency = IssueUrgency.moyen;
+      _infraIssue = null;
     });
   }
 
@@ -290,7 +412,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
           'location_id':    loc.id,
           'department':     loc.department,
-          'type':           '$_infraCategory / $_infraSubcategory',
+          'type':           '$_infraCategory / $_infraSubcategory / $_infraIssue',
           'issue_category': 'Infrastructure',
           'assigned_group': 'Infrastructure',
           ...commons,
@@ -356,6 +478,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _infraLocationId = null;
       _infraCategory = null;
       _infraSubcategory = null;
+      _infraIssue = null;
       _tagController.clear();
       _itEquipment = null;
       _itSearching = false;
@@ -687,10 +810,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
 
   List<Widget> _buildInfrastructureForm(AppLocalizations l10n) {
-    final subcategories = _infraCategory != null
-        ? _kInfraCatalog[_infraCategory] ?? []
-        : <String>[];
-
     return [
       // Département
       Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -708,15 +827,13 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
       const SizedBox(height: 16),
 
-      // Bâtiment (filtré par département)
+      // Bâtiment
       Text(l10n.issueFormBuilding, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         value: _infraBuilding,
         hint: Text(l10n.issueFormSelectBuilding),
-        items: _infraBuildings
-            .map((b) => DropdownMenuItem(value: b, child: Text(b)))
-            .toList(),
+        items: _infraBuildings.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
         onChanged: (v) => setState(() {
           _infraBuilding   = v;
           _infraLocationId = null;
@@ -725,7 +842,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
       const SizedBox(height: 16),
 
-      // Localisation (filtrée par département + bâtiment)
+      // Localisation
       Text(l10n.issueFormSourceLocation, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
@@ -733,15 +850,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         hint: Text(l10n.issueFormSelectLocation),
         items: _infraLocations
             .map((loc) => DropdownMenuItem(
-                value: loc.id,
-                child: Text(loc.label, overflow: TextOverflow.ellipsis)))
+                value: loc.id, child: Text(loc.label, overflow: TextOverflow.ellipsis)))
             .toList(),
         onChanged: (v) => setState(() => _infraLocationId = v),
         validator: (_) => _infraLocationId == null ? l10n.issueFormLocationRequired2 : null,
       ),
       const SizedBox(height: 16),
 
-      // Catégorie de problème
+      // Catégorie
       Text(l10n.issueFormProblemCategory, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
@@ -753,22 +869,40 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         onChanged: (v) => setState(() {
           _infraCategory    = v;
           _infraSubcategory = null;
+          _infraIssue       = null;
         }),
         validator: (_) => _infraCategory == null ? l10n.issueFormCategoryRequired : null,
       ),
       const SizedBox(height: 16),
 
-      // Sous-catégorie (filtrée par catégorie)
+      // Sous-catégorie
       Text(l10n.issueFormProblemSubcategory, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         value: _infraSubcategory,
         hint: Text(l10n.issueFormSelectProblemSubcategory),
-        items: subcategories
+        items: _infraSubcategories
             .map((s) => DropdownMenuItem(value: s, child: Text(s)))
             .toList(),
-        onChanged: (v) => setState(() => _infraSubcategory = v),
+        onChanged: (v) => setState(() {
+          _infraSubcategory = v;
+          _infraIssue       = null;
+        }),
         validator: (_) => _infraSubcategory == null ? l10n.issueFormSubcategoryRequired : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Problème spécifique
+      Text(l10n.issueFormSpecificIssue, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraIssue,
+        hint: Text(l10n.issueFormSelectSpecificIssue),
+        items: _infraIssues
+            .map((issue) => DropdownMenuItem(value: issue, child: Text(issue)))
+            .toList(),
+        onChanged: (v) => setState(() => _infraIssue = v),
+        validator: (_) => _infraIssue == null ? l10n.issueFormIssueRequired : null,
       ),
     ];
   }

@@ -876,5 +876,8 @@
   "issueFormLocationRequired2": "Veuillez sélectionner une localisation",
   "issueFormCategoryRequired": "Veuillez sélectionner une catégorie",
   "issueFormSubcategoryRequired": "Veuillez sélectionner une sous-catégorie",
-  "issueFormTagRequired": "Veuillez saisir un numéro de tag et rechercher l'équipement"
+  "issueFormTagRequired": "Veuillez saisir un numéro de tag et rechercher l'équipement",
+  "issueFormSpecificIssue": "Problème spécifique *",
+  "issueFormSelectSpecificIssue": "Sélectionnez le problème",
+  "issueFormIssueRequired": "Veuillez sélectionner le problème"
 }

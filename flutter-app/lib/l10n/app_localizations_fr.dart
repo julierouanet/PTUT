@@ -2470,4 +2470,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get issueFormTagRequired =>
       'Veuillez saisir un numéro de tag et rechercher l\'équipement';
+
+  @override
+  String get issueFormSpecificIssue => 'Problème spécifique *';
+
+  @override
+  String get issueFormSelectSpecificIssue => 'Sélectionnez le problème';
+
+  @override
+  String get issueFormIssueRequired => 'Veuillez sélectionner le problème';
 }

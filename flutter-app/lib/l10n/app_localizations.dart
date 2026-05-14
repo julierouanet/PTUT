@@ -4651,6 +4651,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Veuillez saisir un numéro de tag et rechercher l\'équipement'**
   String get issueFormTagRequired;
+
+  /// No description provided for @issueFormSpecificIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Problème spécifique *'**
+  String get issueFormSpecificIssue;
+
+  /// No description provided for @issueFormSelectSpecificIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez le problème'**
+  String get issueFormSelectSpecificIssue;
+
+  /// No description provided for @issueFormIssueRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner le problème'**
+  String get issueFormIssueRequired;
 }
 
 class _AppLocalizationsDelegate
