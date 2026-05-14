@@ -620,12 +620,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         builder: (ctx, setDialogState) => Dialog(
           insetPadding: const EdgeInsets.all(16),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
+            constraints: BoxConstraints(
+              maxWidth: 500,
+              maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+            ),
             padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // ── En-tête (fixe) ──────────────────────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -635,78 +639,91 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: firstNameCtrl,
-                        decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
-                      ),
+
+                // ── Corps scrollable ────────────────────────────────────
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: firstNameCtrl,
+                                decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: lastNameCtrl,
+                                decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: l10n.usersEmailLabel, prefixIcon: const Icon(Icons.email))),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: passCtrl,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: isEdit ? l10n.usersNewPassword : l10n.usersPasswordLabel,
+                            prefixIcon: const Icon(Icons.lock),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: l10n.usersPhone, prefixIcon: const Icon(Icons.phone))),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedDepartment,
+                          decoration: InputDecoration(labelText: l10n.commonDepartment, prefixIcon: const Icon(Icons.business)),
+                          items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+                          onChanged: (v) => setDialogState(() => selectedDepartment = v!),
+                        ),
+                        const SizedBox(height: 12),
+                        // Multi-sélection des rôles via FilterChip (Wrap)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4, bottom: 6),
+                            child: Text(l10n.commonRole, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ),
+                        ),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: kAssignableRoles.map((r) {
+                            final selected = selectedRoles.contains(r);
+                            final color = _getRoleColor(r);
+                            return FilterChip(
+                              label: Text(r.displayName),
+                              selected: selected,
+                              selectedColor: color.withValues(alpha: 0.15),
+                              checkmarkColor: color,
+                              side: BorderSide(color: selected ? color : AppColors.border),
+                              labelStyle: TextStyle(
+                                color: selected ? color : AppColors.textPrimary,
+                                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                              onSelected: (value) => setDialogState(() {
+                                if (value) {
+                                  selectedRoles.add(r);
+                                } else if (selectedRoles.length > 1) {
+                                  selectedRoles.remove(r);
+                                }
+                              }),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: lastNameCtrl,
-                        decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress, decoration: InputDecoration(labelText: l10n.usersEmailLabel, prefixIcon: const Icon(Icons.email))),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: passCtrl,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: isEdit ? l10n.usersNewPassword : l10n.usersPasswordLabel,
-                    prefixIcon: const Icon(Icons.lock),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(controller: phoneCtrl, decoration: InputDecoration(labelText: l10n.usersPhone, prefixIcon: const Icon(Icons.phone))),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  value: selectedDepartment,
-                  decoration: InputDecoration(labelText: l10n.commonDepartment, prefixIcon: const Icon(Icons.business)),
-                  items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                  onChanged: (v) => setDialogState(() => selectedDepartment = v!),
-                ),
-                const SizedBox(height: 12),
-                // Multi-sélection des rôles via FilterChip (Wrap)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4, bottom: 6),
-                    child: Text(l10n.commonRole, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  ),
-                ),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: kAssignableRoles.map((r) {
-                    final selected = selectedRoles.contains(r);
-                    final color = _getRoleColor(r);
-                    return FilterChip(
-                      label: Text(r.displayName),
-                      selected: selected,
-                      selectedColor: color.withValues(alpha: 0.15),
-                      checkmarkColor: color,
-                      side: BorderSide(color: selected ? color : AppColors.border),
-                      labelStyle: TextStyle(
-                        color: selected ? color : AppColors.textPrimary,
-                        fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                      onSelected: (value) => setDialogState(() {
-                        if (value) {
-                          selectedRoles.add(r);
-                        } else if (selectedRoles.length > 1) {
-                          selectedRoles.remove(r);
-                        }
-                      }),
-                    );
-                  }).toList(),
-                ),
+
+                // ── Pied (fixe) ─────────────────────────────────────────
                 const SizedBox(height: 24),
                 Row(
                   children: [
