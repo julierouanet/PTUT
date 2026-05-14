@@ -19,45 +19,45 @@ enum Department {
   arv,
   pharmacy;
 
-  /// French display name (legacy / storage key)
+  /// English display name (storage key — matches database values)
   String get displayName {
     switch (this) {
       case Department.administration:
         return 'Administration';
       case Department.opd:
-        return 'OPD (Consultations externes)';
+        return 'OPD (Outpatient Department)';
       case Department.internalMedicine:
-        return 'Médecine interne';
+        return 'Internal Medicine';
       case Department.pediatrics:
-        return 'Pédiatrie';
+        return 'Pediatrics';
       case Department.emergency:
-        return 'Urgences';
+        return 'Emergency';
       case Department.laboratory:
-        return 'Laboratoire';
+        return 'Laboratory';
       case Department.stomatology:
-        return 'Stomatologie';
+        return 'Stomatology';
       case Department.kinesitherapy:
-        return 'Kinésithérapie';
+        return 'Kinesitherapy';
       case Department.neonatology:
-        return 'Néonatologie';
+        return 'Neonatology';
       case Department.maternity:
-        return 'Maternité';
+        return 'Maternity';
       case Department.surgery:
-        return 'Chirurgie';
+        return 'Surgery';
       case Department.theater:
-        return 'Bloc opératoire';
+        return 'Theater';
       case Department.ophthalmology:
-        return 'Ophtalmologie';
+        return 'Ophthalmology';
       case Department.tbMr:
-        return 'TB-MR (Tuberculose)';
+        return 'TB-MR';
       case Department.gbv:
-        return 'GBV (Violences basées sur le genre)';
+        return 'GBV (Gender-Based Violence Unit)';
       case Department.mentalHealth:
-        return 'Santé mentale';
+        return 'Mental Health';
       case Department.arv:
-        return 'ARV (Traitement VIH/SIDA)';
+        return 'ARV (HIV/AIDS Treatment Unit)';
       case Department.pharmacy:
-        return 'Pharmacie';
+        return 'Pharmacy';
     }
   }
 

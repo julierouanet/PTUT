@@ -16,7 +16,12 @@ const VALID_STATUSES_EQ   = [
   'To be disposal',  // planifié pour mise au rebut, existe encore physiquement
   'Disposed',        // effectivement éliminé
 ];
-const VALID_DEPARTMENTS   = ['IT', 'Radiologie', 'Réanimation', 'Stérilisation', 'Laboratoire', 'Urgences', 'Maintenance', 'Infrastructure'];
+const VALID_DEPARTMENTS   = [
+  'Administration', 'OPD (Outpatient Department)', 'Internal Medicine', 'Pediatrics',
+  'Emergency', 'Laboratory', 'Stomatology', 'Kinesitherapy', 'Neonatology', 'Maternity',
+  'Surgery', 'Theater', 'Ophthalmology', 'TB-MR', 'GBV (Gender-Based Violence Unit)',
+  'Mental Health', 'ARV (HIV/AIDS Treatment Unit)', 'Pharmacy', 'Infrastructure',
+];
 const VALID_CATEGORIES_EQ = ['Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Thérapeutique', 'Informatique', 'Mobilier', 'Autre'];
 
 // GET /api/equipment - liste tous les équipements

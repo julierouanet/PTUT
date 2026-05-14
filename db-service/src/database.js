@@ -242,6 +242,37 @@ function initTables() {
     `);
   } catch (_) {}
 
+  // Migration : noms de départements français → anglais dans equipment, issues et locations.
+  // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
+  try {
+    const deptMap = `CASE department
+      WHEN 'OPD (Consultations externes)'          THEN 'OPD (Outpatient Department)'
+      WHEN 'Médecine interne'                       THEN 'Internal Medicine'
+      WHEN 'Pédiatrie'                              THEN 'Pediatrics'
+      WHEN 'Urgences'                               THEN 'Emergency'
+      WHEN 'Laboratoire'                            THEN 'Laboratory'
+      WHEN 'Stomatologie'                           THEN 'Stomatology'
+      WHEN 'Kinésithérapie'                         THEN 'Kinesitherapy'
+      WHEN 'Néonatologie'                           THEN 'Neonatology'
+      WHEN 'Maternité'                              THEN 'Maternity'
+      WHEN 'Chirurgie'                              THEN 'Surgery'
+      WHEN 'Bloc opératoire'                        THEN 'Theater'
+      WHEN 'Ophtalmologie'                          THEN 'Ophthalmology'
+      WHEN 'TB-MR (Tuberculose)'                    THEN 'TB-MR'
+      WHEN 'GBV (Violences basées sur le genre)'    THEN 'GBV (Gender-Based Violence Unit)'
+      WHEN 'Santé mentale'                          THEN 'Mental Health'
+      WHEN 'ARV (Traitement VIH/SIDA)'              THEN 'ARV (HIV/AIDS Treatment Unit)'
+      WHEN 'Pharmacie'                              THEN 'Pharmacy'
+      ELSE department END`;
+    const frDepts = `('OPD (Consultations externes)','Médecine interne','Pédiatrie','Urgences',
+      'Laboratoire','Stomatologie','Kinésithérapie','Néonatologie','Maternité','Chirurgie',
+      'Bloc opératoire','Ophtalmologie','TB-MR (Tuberculose)',
+      'GBV (Violences basées sur le genre)','Santé mentale','ARV (Traitement VIH/SIDA)','Pharmacie')`;
+    db.exec(`UPDATE equipment SET department = ${deptMap} WHERE department IN ${frDepts}`);
+    db.exec(`UPDATE issues    SET department = ${deptMap} WHERE department IN ${frDepts}`);
+    db.exec(`UPDATE locations SET department = ${deptMap} WHERE department IN ${frDepts}`);
+  } catch (_) {}
+
   // Plans de maintenance préventive (1 équipement → N plans, ex : trimestriel,
   // annuel, calibration, etc.). Le `next_preventive_maintenance` de equipment
   // peut être calculé/dénormalisé à partir du plus proche plan actif.
