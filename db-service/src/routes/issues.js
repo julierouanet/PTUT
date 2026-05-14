@@ -86,15 +86,20 @@ router.get('/:id/assignable-technicians', verifyToken, requireRole('admin', 'sup
   }
 });
 
-// POST /api/issues - signaler un incident (équipement ou lieu/infrastructure)
+// POST /api/issues - signaler un incident (équipement, lieu/infrastructure, ou catégorie libre)
 router.post('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { id, equipment_id, equipment_name, location_id, department, type, description, reporter, reporter_id, reporter_email, urgency } = req.body;
+  const {
+    id, equipment_id, equipment_name, location_id, department,
+    type, description, reporter, reporter_id, reporter_email, urgency,
+    issue_category: reqCategory, assigned_group: reqGroup,
+  } = req.body;
 
   const hasEquipment = equipment_id && equipment_name;
   const hasLocation  = !!location_id;
+  const isAutre      = reqCategory === 'Autre';
 
-  if (!id || (!hasEquipment && !hasLocation) || !department || !type || !description || !reporter) {
+  if (!id || (!hasEquipment && !hasLocation && !isAutre) || !department || !type || !description || !reporter) {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 
@@ -109,9 +114,20 @@ router.post('/', verifyToken, (req, res) => {
     return res.status(400).json({ error: `Urgence invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
   }
 
+  // Validation catégorie/groupe explicites
+  const VALID_CATEGORIES = [...VALID_GROUPS, 'Autre'];
+  if (reqCategory && !VALID_CATEGORIES.includes(reqCategory)) {
+    return res.status(400).json({ error: `Catégorie invalide. Valeurs acceptées : ${VALID_CATEGORIES.join(', ')}` });
+  }
+  if (reqGroup && !VALID_GROUPS.includes(reqGroup)) {
+    return res.status(400).json({ error: `Groupe invalide. Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
+  }
+
   const urgencyValue    = urgency || 'Moyen';
-  const derivedCategory = hasEquipment ? 'Biomédical' : 'Infrastructure';
-  const derivedGroup    = hasEquipment ? 'Biomédical' : 'Infrastructure';
+  const derivedCategory = reqCategory || (hasEquipment ? 'Biomédical' : 'Infrastructure');
+  const derivedGroup    = (reqGroup && VALID_GROUPS.includes(reqGroup))
+    ? reqGroup
+    : isAutre ? null : (hasEquipment ? 'Biomédical' : 'Infrastructure');
 
   try {
     db.prepare(`

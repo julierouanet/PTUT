@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'api_client.dart';
 import 'api_config.dart';
+import '../models/equipment.dart';
 
 /// Service de données — communique avec db-service.
 ///
@@ -34,6 +35,14 @@ class DbApiService {
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Equipment?> getEquipmentByTagNumber(String tagNumber) async {
+    final url = ApiConfig.equipmentByTagUrl(tagNumber);
+    final response = await ApiClient.get(url);
+    if (response.statusCode == 404) return null;
+    _checkStatus(response, url);
+    return Equipment.fromApiJson(jsonDecode(response.body) as Map<String, dynamic>);
   }
 
   Future<Map<String, dynamic>> createEquipment(Map<String, dynamic> data) async {

@@ -52,6 +52,9 @@ class ApiConfig {
   static String get logsUrl       => '$dbBaseUrl/api/logs';
   static String get sidebarUrl    => '$dbBaseUrl/api/sidebar/config';
 
+  static String equipmentByTagUrl(String tag) =>
+      '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
+
   // Auth extra endpoints
   static String get deptRequestsUrl => '$authBaseUrl/api/users/department-requests';
   static String get rolesUrl => '$authBaseUrl/api/roles';

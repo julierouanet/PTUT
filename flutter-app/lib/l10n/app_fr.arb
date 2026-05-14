@@ -854,5 +854,27 @@
   "issueCategoryITDesc": "Ordinateurs, imprimantes, réseau, serveurs, logiciels, systèmes d'information…",
   "issueCategoryOther": "Autre / Je ne sais pas",
   "issueCategoryOtherDesc": "Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.",
-  "issueFormNoEquipmentInCategory": "Aucun équipement de ce type trouvé dans votre département."
+  "issueFormNoEquipmentInCategory": "Aucun équipement de ce type trouvé dans votre département.",
+
+  "issueFormTagNumber": "Numéro de Tag IT",
+  "issueFormTagNumberHint": "Ex: TG-0042",
+  "issueFormTagSearching": "Recherche en cours...",
+  "issueFormTagNotFound": "Aucun équipement trouvé pour ce tag",
+  "issueFormTagFound": "Équipement trouvé",
+  "issueFormBuilding": "Bâtiment",
+  "issueFormSelectBuilding": "Sélectionnez un bâtiment",
+  "issueFormSelectDepartment": "Sélectionnez un département",
+  "issueFormProblemCategory": "Catégorie de problème *",
+  "issueFormSelectProblemCategory": "Sélectionnez une catégorie",
+  "issueFormProblemSubcategory": "Sous-catégorie *",
+  "issueFormSelectProblemSubcategory": "Sélectionnez une sous-catégorie",
+  "issueFormAutoFilled": "Informations auto-remplies depuis l'équipement",
+  "issueFormSearchEquipmentByTag": "Rechercher par numéro de tag",
+  "issueFormEquipmentRequired": "Veuillez sélectionner un équipement",
+  "issueFormDepartmentRequired": "Veuillez sélectionner un département",
+  "issueFormBuildingRequired": "Veuillez sélectionner un bâtiment",
+  "issueFormLocationRequired2": "Veuillez sélectionner une localisation",
+  "issueFormCategoryRequired": "Veuillez sélectionner une catégorie",
+  "issueFormSubcategoryRequired": "Veuillez sélectionner une sous-catégorie",
+  "issueFormTagRequired": "Veuillez saisir un numéro de tag et rechercher l'équipement"
 }

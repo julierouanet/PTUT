@@ -4076,6 +4076,24 @@ abstract class AppLocalizations {
   /// **'Technicien'**
   String get roleTechnician;
 
+  /// No description provided for @roleTechnicianBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tech. biomédical'**
+  String get roleTechnicianBiomedical;
+
+  /// No description provided for @roleTechnicianIt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tech. IT'**
+  String get roleTechnicianIt;
+
+  /// No description provided for @roleTechnicianInfra.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tech. infrastructure'**
+  String get roleTechnicianInfra;
+
   /// No description provided for @roleAdmin.
   ///
   /// In fr, this message translates to:
@@ -4507,6 +4525,132 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun équipement de ce type trouvé dans votre département.'**
   String get issueFormNoEquipmentInCategory;
+
+  /// No description provided for @issueFormTagNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro de Tag IT'**
+  String get issueFormTagNumber;
+
+  /// No description provided for @issueFormTagNumberHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: TG-0042'**
+  String get issueFormTagNumberHint;
+
+  /// No description provided for @issueFormTagSearching.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recherche en cours...'**
+  String get issueFormTagSearching;
+
+  /// No description provided for @issueFormTagNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement trouvé pour ce tag'**
+  String get issueFormTagNotFound;
+
+  /// No description provided for @issueFormTagFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement trouvé'**
+  String get issueFormTagFound;
+
+  /// No description provided for @issueFormBuilding.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bâtiment'**
+  String get issueFormBuilding;
+
+  /// No description provided for @issueFormSelectBuilding.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un bâtiment'**
+  String get issueFormSelectBuilding;
+
+  /// No description provided for @issueFormSelectDepartment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un département'**
+  String get issueFormSelectDepartment;
+
+  /// No description provided for @issueFormProblemCategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Catégorie de problème *'**
+  String get issueFormProblemCategory;
+
+  /// No description provided for @issueFormSelectProblemCategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez une catégorie'**
+  String get issueFormSelectProblemCategory;
+
+  /// No description provided for @issueFormProblemSubcategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sous-catégorie *'**
+  String get issueFormProblemSubcategory;
+
+  /// No description provided for @issueFormSelectProblemSubcategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez une sous-catégorie'**
+  String get issueFormSelectProblemSubcategory;
+
+  /// No description provided for @issueFormAutoFilled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations auto-remplies depuis l\'équipement'**
+  String get issueFormAutoFilled;
+
+  /// No description provided for @issueFormSearchEquipmentByTag.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher par numéro de tag'**
+  String get issueFormSearchEquipmentByTag;
+
+  /// No description provided for @issueFormEquipmentRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner un équipement'**
+  String get issueFormEquipmentRequired;
+
+  /// No description provided for @issueFormDepartmentRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner un département'**
+  String get issueFormDepartmentRequired;
+
+  /// No description provided for @issueFormBuildingRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner un bâtiment'**
+  String get issueFormBuildingRequired;
+
+  /// No description provided for @issueFormLocationRequired2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner une localisation'**
+  String get issueFormLocationRequired2;
+
+  /// No description provided for @issueFormCategoryRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner une catégorie'**
+  String get issueFormCategoryRequired;
+
+  /// No description provided for @issueFormSubcategoryRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez sélectionner une sous-catégorie'**
+  String get issueFormSubcategoryRequired;
+
+  /// No description provided for @issueFormTagRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez saisir un numéro de tag et rechercher l\'équipement'**
+  String get issueFormTagRequired;
 }
 
 class _AppLocalizationsDelegate

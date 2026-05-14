@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -8,13 +9,31 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
+import '../models/location.dart';
+import '../models/departments.dart';
 import '../utils/file_picker.dart';
 import '../widgets/urgency_badge.dart';
 
-/// Issue form screen - report a new equipment problem
+/// Catalogue infrastructure : catégories → sous-catégories.
+/// Valeurs stockées en DB (canonical French), pas i18n-ées intentionnellement.
+const Map<String, List<String>> _kInfraCatalog = {
+  'Électricité':         ['Court-circuit', 'Panne de courant', 'Câblage défectueux', 'Prise non fonctionnelle', 'Éclairage défaillant'],
+  'Plomberie':           ['Fuite d\'eau', 'Canalisation bouchée', 'Robinetterie défectueuse', 'Sanitaires'],
+  'Mobilier':            ['Table/lit cassé', 'Chaise endommagée', 'Armoire abîmée', 'Autre'],
+  'Structure/Bâtiment':  ['Fissure', 'Infiltration', 'Porte/fenêtre défectueuse', 'Toiture endommagée'],
+  'Autre':               ['Problème non classifié'],
+};
+
+/// Catégories d'équipements biomédicaux (valeurs exactes de equipment.category en DB).
+const List<String> _kBioCategories = [
+  'Imagerie', 'Laboratoire', 'Chirurgie', 'Monitoring', 'Therapeutique',
+];
+
+/// Formulaire de signalement d'incident avec 4 onglets de catégorie.
 class IssueFormScreen extends StatefulWidget {
   final String? equipmentId;
   final VoidCallback? onCancel;
+  // categoryFilter conservé pour rétrocompatibilité (ignoré — les onglets gèrent le filtrage)
   final List<String>? categoryFilter;
 
   const IssueFormScreen({
@@ -30,26 +49,188 @@ class IssueFormScreen extends StatefulWidget {
 
 class IssueFormScreenState extends State<IssueFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  // Source : 'equipment' ou 'location'
-  String _issueSource = 'equipment';
-  String? _selectedEquipmentId;
-  String? _selectedLocationId;
-  String _problemType = 'Panne';
+
+  // ── Onglet actif ──────────────────────────────────────────────────────────
+  int _selectedTab = 0; // 0=Biomédical 1=Infrastructure 2=IT 3=Autre
+
+  // ── Tab 0 : Biomédical ────────────────────────────────────────────────────
+  String? _bioEquipmentId;
+  int _bioAutocompleteKey = 0;
+  bool _bioEquipmentError = false;
+  String _bioProblemType = '';
+
+  // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
+  String? _infraDepartment;
+  String? _infraBuilding;
+  String? _infraLocationId;
+  String? _infraCategory;
+  String? _infraSubcategory;
+
+  // ── Tab 2 : IT ────────────────────────────────────────────────────────────
+  final _tagController = TextEditingController();
+  Equipment? _itEquipment;
+  bool _itSearching = false;
+  String? _itTagError;
+  String _itProblemType = '';
+
+  // ── Tab 3 : Autre ─────────────────────────────────────────────────────────
+  String? _autreDepartment;
+  String _autreProblemType = '';
+
+  // ── Partagés entre tous les tabs ──────────────────────────────────────────
   IssueUrgency _urgency = IssueUrgency.moyen;
   final _descriptionController = TextEditingController();
-  bool _equipmentError = false;
-  int _autocompleteResetKey = 0;
-
-  // Photo handling
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
 
-  /// Retourne true si l'utilisateur a commencé à remplir le formulaire.
+  /// Retourne true si l'utilisateur a commencé à remplir un formulaire.
   bool get hasUnsavedData =>
-      _selectedEquipmentId != null ||
-      _selectedLocationId != null ||
+      _bioEquipmentId != null ||
+      _infraLocationId != null ||
+      _itEquipment != null ||
+      _tagController.text.isNotEmpty ||
+      _autreDepartment != null ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.equipmentId != null) {
+      final eq = DataService().equipment
+          .where((e) => e.id == widget.equipmentId)
+          .firstOrNull;
+      if (eq != null) {
+        if (eq.category.toLowerCase() == 'informatique') {
+          _selectedTab = 2;
+          _itEquipment = eq;
+        } else {
+          _selectedTab = 0;
+          _bioEquipmentId = eq.id;
+        }
+      }
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final l10n = AppLocalizations.of(context)!;
+    if (_bioProblemType.isEmpty) _bioProblemType = l10n.issueFormBreakdown;
+    if (_itProblemType.isEmpty)  _itProblemType  = l10n.issueFormBreakdown;
+    if (_autreProblemType.isEmpty) _autreProblemType = l10n.issueFormBreakdown;
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _tagController.dispose();
+    super.dispose();
+  }
+
+  // ── Helpers équipements ───────────────────────────────────────────────────
+
+  Equipment? get _selectedBioEquipment {
+    if (_bioEquipmentId == null) return null;
+    return DataService().equipment
+        .where((e) => e.id == _bioEquipmentId)
+        .firstOrNull;
+  }
+
+  List<Equipment> get _bioEquipmentList => DataService().equipment
+      .where((eq) => _kBioCategories.any(
+            (c) => c.toLowerCase() == eq.category.toLowerCase()))
+      .toList();
+
+  // ── Helpers infrastructure ────────────────────────────────────────────────
+
+  List<String> get _infraDepts => DataService()
+      .locations
+      .map((l) => l.department)
+      .toSet()
+      .toList()
+    ..sort();
+
+  List<String> get _infraBuildings {
+    var locs = DataService().locations;
+    if (_infraDepartment != null) {
+      locs = locs.where((l) => l.department == _infraDepartment).toList();
+    }
+    return locs.map((l) => l.building).toSet().toList()..sort();
+  }
+
+  List<Location> get _infraLocations {
+    var locs = DataService().locations;
+    if (_infraDepartment != null) {
+      locs = locs.where((l) => l.department == _infraDepartment).toList();
+    }
+    if (_infraBuilding != null) {
+      locs = locs.where((l) => l.building == _infraBuilding).toList();
+    }
+    return locs;
+  }
+
+  // ── Changement d'onglet ───────────────────────────────────────────────────
+
+  void _switchTab(int tab) {
+    setState(() {
+      _selectedTab = tab;
+      _descriptionController.clear();
+      _photos.clear();
+      _urgency = IssueUrgency.moyen;
+    });
+  }
+
+  // ── Recherche IT par tag ──────────────────────────────────────────────────
+
+  Future<void> _searchByTagNumber() async {
+    final tag = _tagController.text.trim();
+    if (tag.isEmpty) return;
+    final l10n = AppLocalizations.of(context)!;
+    setState(() {
+      _itSearching = true;
+      _itTagError = null;
+      _itEquipment = null;
+    });
+    try {
+      final found = await DbApiService.instance.getEquipmentByTagNumber(tag);
+      if (!mounted) return;
+      setState(() {
+        _itEquipment = found;
+        _itSearching = false;
+        if (found == null) _itTagError = l10n.issueFormTagNotFound;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _itTagError = e.toString();
+        _itSearching = false;
+      });
+    }
+  }
+
+  // ── Gestion photos ────────────────────────────────────────────────────────
+
+  void _pickPhoto() {
+    final l10n = AppLocalizations.of(context)!;
+    if (_photos.length >= _maxPhotos) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.issueFormMaxPhotos(_maxPhotos)),
+        backgroundColor: AppColors.warning,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    pickImageFile((String fileName, Uint8List bytes) {
+      setState(() {
+        _photos.add(_PhotoItem(name: fileName, bytes: bytes));
+      });
+    });
+  }
+
+  void _removePhoto(int index) => setState(() => _photos.removeAt(index));
+
+  // ── Types de problème (partagés bio + IT + Autre) ─────────────────────────
 
   List<String> _problemTypes(AppLocalizations l10n) => [
     l10n.issueFormBreakdown,
@@ -60,75 +241,148 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     l10n.issueFormOther,
   ];
 
-  @override
-  void initState() {
-    super.initState();
-    _selectedEquipmentId = widget.equipmentId;
-  }
+  // ── Soumission du formulaire ───────────────────────────────────────────────
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
+  Future<void> _submitForm() async {
     final l10n = AppLocalizations.of(context)!;
-    // Initialize _problemType with the localized value if still default
-    if (_problemType == 'Panne') {
-      _problemType = l10n.issueFormBreakdown;
+
+    // Validation spécifique par tab
+    bool extraValid = true;
+    if (_selectedTab == 0 && _bioEquipmentId == null) {
+      setState(() => _bioEquipmentError = true);
+      extraValid = false;
+    }
+    if (_selectedTab == 2 && _itEquipment == null) extraValid = false;
+
+    if (!_formKey.currentState!.validate() || !extraValid) return;
+
+    final currentUser = AuthService().currentUser;
+    final commons = {
+      'description':    _descriptionController.text.trim(),
+      'reporter':       currentUser?.fullName ?? 'Inconnu',
+      'reporter_id':    currentUser?.id ?? '',
+      'reporter_email': currentUser?.email ?? '',
+      'urgency':        _urgency.displayName,
+    };
+
+    final Map<String, dynamic> issueData;
+
+    switch (_selectedTab) {
+      case 0: // Biomédical
+        final eq = _selectedBioEquipment!;
+        issueData = {
+          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'equipment_id':   eq.id,
+          'equipment_name': eq.name,
+          'department':     eq.department,
+          'type':           _bioProblemType,
+          'issue_category': 'Biomédical',
+          'assigned_group': 'Biomédical',
+          ...commons,
+        };
+      case 1: // Infrastructure
+        final loc = _infraLocations.firstWhere((l) => l.id == _infraLocationId);
+        issueData = {
+          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'location_id':    loc.id,
+          'department':     loc.department,
+          'type':           '$_infraCategory / $_infraSubcategory',
+          'issue_category': 'Infrastructure',
+          'assigned_group': 'Infrastructure',
+          ...commons,
+        };
+      case 2: // IT
+        final eq = _itEquipment!;
+        issueData = {
+          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'equipment_id':   eq.id,
+          'equipment_name': eq.name,
+          'department':     eq.department,
+          'type':           _itProblemType,
+          'issue_category': 'IT',
+          'assigned_group': 'IT',
+          ...commons,
+        };
+      default: // Autre
+        issueData = {
+          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'department':     _autreDepartment!,
+          'type':           _autreProblemType,
+          'issue_category': 'Autre',
+          ...commons,
+        };
+    }
+
+    try {
+      await DbApiService.instance.createIssue(issueData);
+      await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(_photos.isNotEmpty
+              ? l10n.issueFormSuccessWithPhotos(_photos.length)
+              : l10n.issueFormSuccess),
+        ]),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+      _resetForm(l10n);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.issueFormError(e.toString())),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
     }
   }
 
-  @override
-  void dispose() {
-    _descriptionController.dispose();
-    super.dispose();
-  }
-
-  Equipment? get _selectedEquipment {
-    if (_selectedEquipmentId == null) return null;
-    return DataService().equipment.where((e) => e.id == _selectedEquipmentId).firstOrNull;
-  }
-
-  List<Equipment> get _filteredEquipmentList {
-    final all = DataService().equipment;
-    final filter = widget.categoryFilter;
-    if (filter == null || filter.isEmpty) return all;
-    return all
-        .where((eq) => filter.any((f) => f.toLowerCase() == eq.category.toLowerCase()))
-        .toList();
-  }
-
-  void _pickPhoto() {
-    final l10n = AppLocalizations.of(context)!;
-    if (_photos.length >= _maxPhotos) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l10n.issueFormMaxPhotos(_maxPhotos)),
-          backgroundColor: AppColors.warning,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-
-    pickImageFile((String fileName, Uint8List bytes) {
-      setState(() {
-        _photos.add(_PhotoItem(
-          name: fileName,
-          bytes: bytes,
-        ));
-      });
-    });
-  }
-
-  void _removePhoto(int index) {
+  void _resetForm(AppLocalizations l10n) {
     setState(() {
-      _photos.removeAt(index);
+      _selectedTab = 0;
+      _bioEquipmentId = null;
+      _bioAutocompleteKey++;
+      _bioEquipmentError = false;
+      _bioProblemType = l10n.issueFormBreakdown;
+      _infraDepartment = null;
+      _infraBuilding = null;
+      _infraLocationId = null;
+      _infraCategory = null;
+      _infraSubcategory = null;
+      _tagController.clear();
+      _itEquipment = null;
+      _itSearching = false;
+      _itTagError = null;
+      _itProblemType = l10n.issueFormBreakdown;
+      _autreDepartment = null;
+      _autreProblemType = l10n.issueFormBreakdown;
+      _urgency = IssueUrgency.moyen;
+      _descriptionController.clear();
+      _photos.clear();
     });
   }
+
+  // ── Couleur d'urgence ─────────────────────────────────────────────────────
+
+  Color _urgencyColor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.faible:   return AppColors.textSecondary;
+      case IssueUrgency.moyen:    return AppColors.warning;
+      case IssueUrgency.urgent:   return AppColors.error;
+      case IssueUrgency.critique: return AppColors.critical;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final problemTypes = _problemTypes(l10n);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -149,9 +403,22 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             l10n.issueFormSubtitle,
             style: const TextStyle(color: AppColors.textSecondary),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
-          // Form
+          // ── 4 boutons onglets ───────────────────────────────────────────
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildTabButton(0, CupertinoIcons.heart_circle,    l10n.issueCategoryBiomedical,     AppColors.primary,       l10n),
+              _buildTabButton(1, CupertinoIcons.building_2_fill, l10n.issueCategoryInfrastructure, AppColors.warning,       l10n),
+              _buildTabButton(2, CupertinoIcons.device_desktop,  l10n.issueCategoryIT,             AppColors.textSecondary, l10n),
+              _buildTabButton(3, CupertinoIcons.question_circle, l10n.issueCategoryOther,          AppColors.textMuted,     l10n),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Formulaire dynamique ────────────────────────────────────────
           Card(
             child: Padding(
               padding: const EdgeInsets.all(24),
@@ -160,367 +427,84 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Toggle source : équipement ou lieu/infrastructure
-                    Text(
-                      l10n.issueFormSourceLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-                    SegmentedButton<String>(
-                      segments: [
-                        ButtonSegment(
-                          value: 'equipment',
-                          label: Text(l10n.issueFormSourceEquipment),
-                          icon: const Icon(Icons.medical_services_outlined),
-                        ),
-                        ButtonSegment(
-                          value: 'location',
-                          label: Text(l10n.issueFormSourceLocation),
-                          icon: const Icon(Icons.location_on_outlined),
-                        ),
-                      ],
-                      selected: {_issueSource},
-                      onSelectionChanged: (Set<String> v) {
-                        setState(() {
-                          _issueSource = v.first;
-                          if (_issueSource == 'equipment') {
-                            _selectedLocationId = null;
-                          } else {
-                            _selectedEquipmentId = null;
-                            _equipmentError = false;
-                            _autocompleteResetKey++;
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
+                    // Sous-formulaire selon l'onglet
+                    if (_selectedTab == 0) ..._buildBiomedicalForm(l10n),
+                    if (_selectedTab == 1) ..._buildInfrastructureForm(l10n),
+                    if (_selectedTab == 2) ..._buildITForm(l10n),
+                    if (_selectedTab == 3) ..._buildAutreForm(l10n),
 
-                    // Sélection équipement ou lieu selon le toggle
-                    if (_issueSource == 'equipment') ...[
-                      Text(
-                        l10n.issueFormEquipment,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      Autocomplete<Equipment>(
-                        key: ValueKey(_autocompleteResetKey),
-                        displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
-                        optionsBuilder: (TextEditingValue textEditingValue) {
-                          final query = textEditingValue.text.toLowerCase().trim();
-                          if (query.isEmpty) return const Iterable<Equipment>.empty();
-                          return _filteredEquipmentList.where((eq) =>
-                            eq.name.toLowerCase().contains(query) ||
-                            eq.serialNumber.toLowerCase().contains(query),
-                          );
-                        },
-                        onSelected: (Equipment eq) {
-                          setState(() {
-                            _selectedEquipmentId = eq.id;
-                            _equipmentError = false;
-                          });
-                        },
-                        fieldViewBuilder: (context, textController, focusNode, onFieldSubmitted) {
-                          return TextField(
-                            controller: textController,
-                            focusNode: focusNode,
-                            onSubmitted: (_) => onFieldSubmitted(),
-                            decoration: InputDecoration(
-                              hintText: l10n.issueFormSelectEquipment,
-                              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-                              suffixIcon: _selectedEquipmentId != null
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear, size: 18),
-                                    onPressed: () {
-                                      textController.clear();
-                                      setState(() {
-                                        _selectedEquipmentId = null;
-                                        _equipmentError = false;
-                                      });
-                                    },
-                                  )
-                                : null,
-                              errorText: _equipmentError ? l10n.issueFormSelectEquipment : null,
-                            ),
-                          );
-                        },
-                        optionsViewBuilder: (context, onSelected, options) {
-                          return Align(
-                            alignment: Alignment.topLeft,
-                            child: Material(
-                              elevation: 4,
-                              borderRadius: BorderRadius.circular(8),
-                              child: ConstrainedBox(
-                                constraints: const BoxConstraints(maxHeight: 250),
-                                child: ListView.builder(
-                                  padding: EdgeInsets.zero,
-                                  shrinkWrap: true,
-                                  itemCount: options.length,
-                                  itemBuilder: (context, index) {
-                                    final eq = options.elementAt(index);
-                                    return ListTile(
-                                      dense: true,
-                                      leading: const Icon(Icons.medical_services_outlined, size: 20),
-                                      title: Text(eq.name, style: const TextStyle(fontSize: 14)),
-                                      subtitle: Text(
-                                        'SN: ${eq.serialNumber} • ${eq.department}',
-                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                      ),
-                                      onTap: () => onSelected(eq),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      if (widget.categoryFilter != null && _filteredEquipmentList.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.warningLight,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.warning.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: AppColors.warning,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    AppLocalizations.of(context)!
-                                        .issueFormNoEquipmentInCategory,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.textPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (_selectedEquipment != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.info_outline, color: AppColors.primary),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _selectedEquipment!.name,
-                                      style: const TextStyle(fontWeight: FontWeight.w500),
-                                    ),
-                                    Text(
-                                      '${_selectedEquipment!.department} • ${_selectedEquipment!.location}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.textSecondary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ] else ...[
-                      Text(
-                        l10n.issueFormSourceLocation,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        value: _selectedLocationId,
-                        hint: Text(l10n.issueFormSelectLocation),
-                        items: DataService().locations.map((loc) => DropdownMenuItem(
-                          value: loc.id,
-                          child: Text(loc.label, overflow: TextOverflow.ellipsis),
-                        )).toList(),
-                        onChanged: (v) => setState(() => _selectedLocationId = v),
-                        validator: (_) => _selectedLocationId == null
-                            ? l10n.issueFormLocationRequired
-                            : null,
-                      ),
-                    ],
                     const SizedBox(height: 24),
 
-                    // Problem type
-                    Text(
-                      l10n.issueFormProblemType,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Urgence (partagée)
+                    Text(l10n.issueUrgencyLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _problemType,
-                      items: problemTypes.map((type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type),
-                      )).toList(),
-                      onChanged: (value) => setState(() => _problemType = value!),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Urgency
-                    const SizedBox(height: 24),
-                    Text(
-                      l10n.issueUrgencyLabel,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 8,
                       children: IssueUrgency.values.map((u) {
                         final selected = _urgency == u;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 10),
-                          child: GestureDetector(
-                            onTap: () => setState(() => _urgency = u),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 150),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: selected ? _urgencyColor(u).withValues(alpha: 0.15) : AppColors.background,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: selected ? _urgencyColor(u) : AppColors.border,
-                                  width: selected ? 2 : 1,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  UrgencyBadge(urgency: u, isCompact: true),
-                                ],
+                        return GestureDetector(
+                          onTap: () => setState(() => _urgency = u),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? _urgencyColor(u).withValues(alpha: 0.15)
+                                  : AppColors.background,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: selected ? _urgencyColor(u) : AppColors.border,
+                                width: selected ? 2 : 1,
                               ),
                             ),
+                            child: UrgencyBadge(urgency: u, isCompact: true),
                           ),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 24),
 
-                    // Description
-                    Text(
-                      l10n.issueFormDescription,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Description (partagée)
+                    Text(l10n.issueFormDescription, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _descriptionController,
                       maxLines: 4,
-                      decoration: InputDecoration(
-                        hintText: l10n.issueFormDescriptionHint,
-                      ),
+                      decoration: InputDecoration(hintText: l10n.issueFormDescriptionHint),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return l10n.issueFormDescriptionRequired;
                         }
-                        if (value.length < 10) {
-                          return l10n.issueFormDescriptionMinLength;
-                        }
+                        if (value.length < 10) return l10n.issueFormDescriptionMinLength;
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
 
-                    // Photo upload section
-                    Text(
-                      l10n.issueFormPhotos,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Photos (partagées)
+                    Text(l10n.issueFormPhotos, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 4),
                     Text(
                       l10n.issueFormPhotosHint(_maxPhotos),
                       style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 12),
-
-                    // Photo grid
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        // Existing photos
-                        ..._photos.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final photo = entry.value;
-                          return _buildPhotoThumbnail(photo, index);
-                        }),
-
-                        // Add photo button
-                        if (_photos.length < _maxPhotos)
-                          _buildAddPhotoButton(),
+                        ..._photos.asMap().entries.map((e) =>
+                            _buildPhotoThumbnail(e.value, e.key)),
+                        if (_photos.length < _maxPhotos) _buildAddPhotoButton(l10n),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    // Reporter — auto-filled from logged-in user
-                    Text(
-                      l10n.issueFormYourName,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
-                    ),
+                    // Reporter (partagé — auto-rempli)
+                    Text(l10n.issueFormYourName, style: const TextStyle(fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
-                    Builder(builder: (context) {
-                      final user = AuthService().currentUser;
-                      return Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.successLight,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 20,
-                              backgroundColor: AppColors.success.withValues(alpha: 0.2),
-                              child: const Icon(Icons.person, color: AppColors.success, size: 20),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    user?.fullName ?? '',
-                                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                  ),
-                                  if (user?.email != null)
-                                    Text(
-                                      user!.email,
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    ),
-                                  if (user?.department != null && user!.department.isNotEmpty)
-                                    Text(
-                                      user.department,
-                                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                                    ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.verified_user, color: AppColors.success, size: 18),
-                          ],
-                        ),
-                      );
-                    }),
+                    _buildReporterInfo(),
                     const SizedBox(height: 32),
 
                     // Boutons Annuler / Soumettre
@@ -531,7 +515,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                             child: OutlinedButton.icon(
                               onPressed: widget.onCancel,
                               icon: const Icon(Icons.close, color: AppColors.error),
-                              label: Text(l10n.commonCancel, style: const TextStyle(color: AppColors.error)),
+                              label: Text(l10n.commonCancel,
+                                  style: const TextStyle(color: AppColors.error)),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(color: AppColors.error),
                                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -544,7 +529,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                           child: ElevatedButton.icon(
                             onPressed: _submitForm,
                             icon: const Icon(Icons.send),
-                            label: Text(_photos.isNotEmpty ? l10n.issueFormSubmitWithPhotos(_photos.length) : l10n.issueFormSubmit),
+                            label: Text(_photos.isNotEmpty
+                                ? l10n.issueFormSubmitWithPhotos(_photos.length)
+                                : l10n.issueFormSubmit),
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
@@ -562,67 +549,35 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  Widget _buildPhotoThumbnail(_PhotoItem photo, int index) {
-    return Stack(
-      children: [
-        Container(
-          width: 100,
-          height: 100,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(11),
-            child: Image.memory(
-              photo.bytes,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: AppColors.background,
-                child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: 4,
-          right: 4,
-          child: GestureDetector(
-            onTap: () => _removePhoto(index),
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: AppColors.error,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.close, color: Colors.white, size: 14),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  // ── Bouton onglet ─────────────────────────────────────────────────────────
 
-  Widget _buildAddPhotoButton() {
-    final l10n = AppLocalizations.of(context)!;
+  Widget _buildTabButton(int index, IconData icon, String label, Color color, AppLocalizations l10n) {
+    final selected = _selectedTab == index;
     return GestureDetector(
-      onTap: _pickPhoto,
-      child: Container(
-        width: 100,
-        height: 100,
+      onTap: () => _switchTab(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary, style: BorderStyle.solid, width: 2),
-          color: AppColors.primaryLight,
+          color: selected ? color.withValues(alpha: 0.12) : AppColors.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color : AppColors.border,
+            width: selected ? 2 : 1,
+          ),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
-            const SizedBox(height: 4),
+            Icon(icon, size: 18, color: selected ? color : AppColors.textSecondary),
+            const SizedBox(width: 8),
             Text(
-              l10n.issueFormAddPhoto,
-              style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+                color: selected ? color : AppColors.textSecondary,
+              ),
             ),
           ],
         ),
@@ -630,101 +585,426 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  Future<void> _submitForm() async {
-    final l10n = AppLocalizations.of(context)!;
+  // ══════════════════════════════════════════════════════════════════════════
+  // SOUS-FORMULAIRES
+  // ══════════════════════════════════════════════════════════════════════════
 
-    // Validation source
-    if (_issueSource == 'equipment' && _selectedEquipmentId == null) {
-      setState(() => _equipmentError = true);
-    }
-    if (!_formKey.currentState!.validate()) return;
-    if (_issueSource == 'equipment' && _selectedEquipmentId == null) return;
+  // ── Tab 0 : Biomédical ────────────────────────────────────────────────────
 
-    final currentUser = AuthService().currentUser;
-    final Map<String, dynamic> issueData;
-
-    if (_issueSource == 'equipment') {
-      final equipment = _selectedEquipment!;
-      issueData = {
-        'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
-        'equipment_id':   equipment.id,
-        'equipment_name': equipment.name,
-        'department':     equipment.department,
-        'type':           _problemType,
-        'description':    _descriptionController.text.trim(),
-        'reporter':       currentUser?.fullName ?? 'Inconnu',
-        'reporter_id':    currentUser?.id ?? '',
-        'reporter_email': currentUser?.email ?? '',
-        'urgency':        _urgency.displayName,
-        'issue_category': 'Biomédical',
-        'assigned_group': 'Biomédical',
-      };
-    } else {
-      final location = DataService().locations.firstWhere((l) => l.id == _selectedLocationId!);
-      issueData = {
-        'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
-        'location_id':    location.id,
-        'department':     location.department,
-        'type':           _problemType,
-        'description':    _descriptionController.text.trim(),
-        'reporter':       currentUser?.fullName ?? 'Inconnu',
-        'reporter_id':    currentUser?.id ?? '',
-        'reporter_email': currentUser?.email ?? '',
-        'urgency':        _urgency.displayName,
-        'issue_category': 'Infrastructure',
-        'assigned_group': 'Infrastructure',
-      };
-    }
-
-    try {
-      await DbApiService.instance.createIssue(issueData);
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.check_circle, color: Colors.white),
-          const SizedBox(width: 12),
-          Text(_photos.isNotEmpty ? l10n.issueFormSuccessWithPhotos(_photos.length) : l10n.issueFormSuccess),
-        ]),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ));
-      setState(() {
-        _issueSource = 'equipment';
-        _selectedEquipmentId = null;
-        _selectedLocationId = null;
-        _equipmentError = false;
-        _autocompleteResetKey++;
-        _problemType = l10n.issueFormBreakdown;
-        _urgency = IssueUrgency.moyen;
-        _descriptionController.clear();
-        _photos.clear();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.issueFormError(e.toString())),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
+  List<Widget> _buildBiomedicalForm(AppLocalizations l10n) {
+    final problemTypes = _problemTypes(l10n);
+    return [
+      Text(l10n.issueFormEquipment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      Autocomplete<Equipment>(
+        key: ValueKey(_bioAutocompleteKey),
+        displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
+        optionsBuilder: (TextEditingValue value) {
+          final query = value.text.toLowerCase().trim();
+          if (query.isEmpty) return const Iterable<Equipment>.empty();
+          return _bioEquipmentList.where((eq) =>
+              eq.name.toLowerCase().contains(query) ||
+              eq.serialNumber.toLowerCase().contains(query));
+        },
+        onSelected: (eq) {
+          setState(() {
+            _bioEquipmentId = eq.id;
+            _bioEquipmentError = false;
+          });
+        },
+        fieldViewBuilder: (context, textController, focusNode, onSubmitted) {
+          return TextField(
+            controller: textController,
+            focusNode: focusNode,
+            onSubmitted: (_) => onSubmitted(),
+            decoration: InputDecoration(
+              hintText: l10n.issueFormSelectEquipment,
+              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              suffixIcon: _bioEquipmentId != null
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        textController.clear();
+                        setState(() {
+                          _bioEquipmentId = null;
+                          _bioEquipmentError = false;
+                        });
+                      },
+                    )
+                  : null,
+              errorText: _bioEquipmentError ? l10n.issueFormEquipmentRequired : null,
+            ),
+          );
+        },
+        optionsViewBuilder: (context, onSelected, options) => Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 250),
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final eq = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.medical_services_outlined, size: 20),
+                    title: Text(eq.name, style: const TextStyle(fontSize: 14)),
+                    subtitle: Text(
+                      'SN: ${eq.serialNumber} • ${eq.department}',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    onTap: () => onSelected(eq),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+      if (_selectedBioEquipment != null) ...[
+        const SizedBox(height: 12),
+        _buildEquipmentAutoFill(_selectedBioEquipment!, l10n),
+      ],
+      const SizedBox(height: 20),
+      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _bioProblemType,
+        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        onChanged: (v) => setState(() => _bioProblemType = v!),
+      ),
+    ];
   }
 
-  Color _urgencyColor(IssueUrgency u) {
-    switch (u) {
-      case IssueUrgency.faible:   return AppColors.textSecondary;
-      case IssueUrgency.moyen:    return AppColors.warning;
-      case IssueUrgency.urgent:   return AppColors.error;
-      case IssueUrgency.critique: return AppColors.critical;
-    }
+  // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
+
+  List<Widget> _buildInfrastructureForm(AppLocalizations l10n) {
+    final subcategories = _infraCategory != null
+        ? _kInfraCatalog[_infraCategory] ?? []
+        : <String>[];
+
+    return [
+      // Département
+      Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraDepartment,
+        hint: Text(l10n.issueFormSelectDepartment),
+        items: _infraDepts.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
+        onChanged: (v) => setState(() {
+          _infraDepartment = v;
+          _infraBuilding   = null;
+          _infraLocationId = null;
+        }),
+        validator: (_) => _infraDepartment == null ? l10n.issueFormDepartmentRequired : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Bâtiment (filtré par département)
+      Text(l10n.issueFormBuilding, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraBuilding,
+        hint: Text(l10n.issueFormSelectBuilding),
+        items: _infraBuildings
+            .map((b) => DropdownMenuItem(value: b, child: Text(b)))
+            .toList(),
+        onChanged: (v) => setState(() {
+          _infraBuilding   = v;
+          _infraLocationId = null;
+        }),
+        validator: (_) => _infraBuilding == null ? l10n.issueFormBuildingRequired : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Localisation (filtrée par département + bâtiment)
+      Text(l10n.issueFormSourceLocation, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraLocationId,
+        hint: Text(l10n.issueFormSelectLocation),
+        items: _infraLocations
+            .map((loc) => DropdownMenuItem(
+                value: loc.id,
+                child: Text(loc.label, overflow: TextOverflow.ellipsis)))
+            .toList(),
+        onChanged: (v) => setState(() => _infraLocationId = v),
+        validator: (_) => _infraLocationId == null ? l10n.issueFormLocationRequired2 : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Catégorie de problème
+      Text(l10n.issueFormProblemCategory, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraCategory,
+        hint: Text(l10n.issueFormSelectProblemCategory),
+        items: _kInfraCatalog.keys
+            .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
+            .toList(),
+        onChanged: (v) => setState(() {
+          _infraCategory    = v;
+          _infraSubcategory = null;
+        }),
+        validator: (_) => _infraCategory == null ? l10n.issueFormCategoryRequired : null,
+      ),
+      const SizedBox(height: 16),
+
+      // Sous-catégorie (filtrée par catégorie)
+      Text(l10n.issueFormProblemSubcategory, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _infraSubcategory,
+        hint: Text(l10n.issueFormSelectProblemSubcategory),
+        items: subcategories
+            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+            .toList(),
+        onChanged: (v) => setState(() => _infraSubcategory = v),
+        validator: (_) => _infraSubcategory == null ? l10n.issueFormSubcategoryRequired : null,
+      ),
+    ];
+  }
+
+  // ── Tab 2 : IT ────────────────────────────────────────────────────────────
+
+  List<Widget> _buildITForm(AppLocalizations l10n) {
+    final problemTypes = _problemTypes(l10n);
+    return [
+      Text(l10n.issueFormTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: _tagController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormTagNumberHint,
+          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
+          suffixIcon: IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: l10n.issueFormSearchEquipmentByTag,
+            onPressed: _itSearching ? null : _searchByTagNumber,
+          ),
+        ),
+        onFieldSubmitted: (_) => _searchByTagNumber(),
+        validator: (_) {
+          if (_itEquipment == null && !_itSearching) {
+            return l10n.issueFormTagRequired;
+          }
+          return null;
+        },
+      ),
+      if (_itSearching) ...[
+        const SizedBox(height: 8),
+        Row(children: [
+          const SizedBox(width: 4),
+          const SizedBox(
+            width: 16, height: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+          const SizedBox(width: 12),
+          Text(l10n.issueFormTagSearching,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        ]),
+      ],
+      if (_itTagError != null) ...[
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppColors.errorLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+          ),
+          child: Row(children: [
+            const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(_itTagError!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
+          ]),
+        ),
+      ],
+      if (_itEquipment != null) ...[
+        const SizedBox(height: 12),
+        _buildEquipmentAutoFill(_itEquipment!, l10n),
+      ],
+      const SizedBox(height: 20),
+      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _itProblemType,
+        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        onChanged: (v) => setState(() => _itProblemType = v!),
+      ),
+    ];
+  }
+
+  // ── Tab 3 : Autre ─────────────────────────────────────────────────────────
+
+  List<Widget> _buildAutreForm(AppLocalizations l10n) {
+    final problemTypes = _problemTypes(l10n);
+    return [
+      Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _autreDepartment,
+        hint: Text(l10n.issueFormSelectDepartment),
+        items: Department.values
+            .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
+            .toList(),
+        onChanged: (v) => setState(() => _autreDepartment = v),
+        validator: (_) => _autreDepartment == null ? l10n.issueFormDepartmentRequired : null,
+      ),
+      const SizedBox(height: 20),
+      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      DropdownButtonFormField<String>(
+        value: _autreProblemType,
+        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        onChanged: (v) => setState(() => _autreProblemType = v!),
+      ),
+    ];
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // WIDGETS PARTAGÉS
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildEquipmentAutoFill(Equipment eq, AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(children: [
+        const Icon(Icons.info_outline, color: AppColors.primary),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                eq.name,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              Text(
+                '${eq.department} • ${eq.location}',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              Text(
+                l10n.issueFormAutoFilled,
+                style: const TextStyle(fontSize: 11, color: AppColors.primary),
+              ),
+            ],
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildReporterInfo() {
+    final user = AuthService().currentUser;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.successLight,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Row(children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: AppColors.success.withValues(alpha: 0.2),
+          child: const Icon(Icons.person, color: AppColors.success, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                user?.fullName ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              if (user?.email != null)
+                Text(user!.email,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              if (user?.department != null && user!.department.isNotEmpty)
+                Text(user.department,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        const Icon(Icons.verified_user, color: AppColors.success, size: 18),
+      ]),
+    );
+  }
+
+  Widget _buildPhotoThumbnail(_PhotoItem photo, int index) {
+    return Stack(children: [
+      Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(11),
+          child: Image.memory(
+            photo.bytes,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, _) => Container(
+              color: AppColors.background,
+              child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+      ),
+      Positioned(
+        top: 4, right: 4,
+        child: GestureDetector(
+          onTap: () => _removePhoto(index),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+            child: const Icon(Icons.close, color: Colors.white, size: 14),
+          ),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _buildAddPhotoButton(AppLocalizations l10n) {
+    return GestureDetector(
+      onTap: _pickPhoto,
+      child: Container(
+        width: 100,
+        height: 100,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary, width: 2),
+          color: AppColors.primaryLight,
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
+            const SizedBox(height: 4),
+            Text(l10n.issueFormAddPhoto,
+                style: const TextStyle(
+                    color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
-/// Photo item model
+/// Modèle local pour une photo uploadée.
 class _PhotoItem {
   final String name;
   final Uint8List bytes;
-
   _PhotoItem({required this.name, required this.bytes});
 }

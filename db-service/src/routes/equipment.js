@@ -50,6 +50,25 @@ router.get('/', verifyToken, (req, res) => {
   res.json(result);
 });
 
+// GET /api/equipment/by-tag/:tagNumber — recherche équipement par tag IT
+router.get('/by-tag/:tagNumber', verifyToken, (req, res) => {
+  const db = getDb();
+  const tagNumber = req.params.tagNumber?.trim();
+  if (!tagNumber) return res.status(400).json({ error: 'Tag number requis' });
+
+  const eq = db.prepare(`
+    SELECT e.* FROM equipment e
+    JOIN equipment_tags t ON t.equipment_id = e.id
+    WHERE t.tag_number = ?
+    LIMIT 1
+  `).get(tagNumber);
+
+  if (!eq) return res.status(404).json({ error: 'Équipement introuvable pour ce tag' });
+
+  const tags = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number').all(eq.id).map(r => r.tag_number);
+  res.json({ ...eq, tags, maintenanceHistory: [], futureMaintenance: [] });
+});
+
 // POST /api/equipment/restore — restaurer un équipement supprimé (admin)
 router.post('/restore', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();

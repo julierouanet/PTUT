@@ -2140,6 +2140,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleTechnician => 'Technician';
 
   @override
+  String get roleTechnicianBiomedical => 'Biomedical technician';
+
+  @override
+  String get roleTechnicianIt => 'IT technician';
+
+  @override
+  String get roleTechnicianInfra => 'Infrastructure technician';
+
+  @override
   String get roleAdmin => 'ICT Administrator';
 
   @override
@@ -2377,4 +2386,68 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get issueFormNoEquipmentInCategory =>
       'No equipment of this type found in your department.';
+
+  @override
+  String get issueFormTagNumber => 'IT Tag Number';
+
+  @override
+  String get issueFormTagNumberHint => 'E.g.: TG-0042';
+
+  @override
+  String get issueFormTagSearching => 'Searching...';
+
+  @override
+  String get issueFormTagNotFound => 'No equipment found for this tag';
+
+  @override
+  String get issueFormTagFound => 'Equipment found';
+
+  @override
+  String get issueFormBuilding => 'Building';
+
+  @override
+  String get issueFormSelectBuilding => 'Select a building';
+
+  @override
+  String get issueFormSelectDepartment => 'Select a department';
+
+  @override
+  String get issueFormProblemCategory => 'Problem category *';
+
+  @override
+  String get issueFormSelectProblemCategory => 'Select a category';
+
+  @override
+  String get issueFormProblemSubcategory => 'Subcategory *';
+
+  @override
+  String get issueFormSelectProblemSubcategory => 'Select a subcategory';
+
+  @override
+  String get issueFormAutoFilled => 'Auto-filled from equipment';
+
+  @override
+  String get issueFormSearchEquipmentByTag => 'Search by tag number';
+
+  @override
+  String get issueFormEquipmentRequired => 'Please select an equipment';
+
+  @override
+  String get issueFormDepartmentRequired => 'Please select a department';
+
+  @override
+  String get issueFormBuildingRequired => 'Please select a building';
+
+  @override
+  String get issueFormLocationRequired2 => 'Please select a location';
+
+  @override
+  String get issueFormCategoryRequired => 'Please select a category';
+
+  @override
+  String get issueFormSubcategoryRequired => 'Please select a subcategory';
+
+  @override
+  String get issueFormTagRequired =>
+      'Please enter a tag number and search for the equipment';
 }

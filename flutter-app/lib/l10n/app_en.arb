@@ -832,5 +832,27 @@
   "issueCategoryITDesc": "Computers, printers, network, servers, software, information systems…",
   "issueCategoryOther": "Other / I don't know",
   "issueCategoryOtherDesc": "Unclassified issue or unknown category — all equipment remains available.",
-  "issueFormNoEquipmentInCategory": "No equipment of this type found in your department."
+  "issueFormNoEquipmentInCategory": "No equipment of this type found in your department.",
+
+  "issueFormTagNumber": "IT Tag Number",
+  "issueFormTagNumberHint": "E.g.: TG-0042",
+  "issueFormTagSearching": "Searching...",
+  "issueFormTagNotFound": "No equipment found for this tag",
+  "issueFormTagFound": "Equipment found",
+  "issueFormBuilding": "Building",
+  "issueFormSelectBuilding": "Select a building",
+  "issueFormSelectDepartment": "Select a department",
+  "issueFormProblemCategory": "Problem category *",
+  "issueFormSelectProblemCategory": "Select a category",
+  "issueFormProblemSubcategory": "Subcategory *",
+  "issueFormSelectProblemSubcategory": "Select a subcategory",
+  "issueFormAutoFilled": "Auto-filled from equipment",
+  "issueFormSearchEquipmentByTag": "Search by tag number",
+  "issueFormEquipmentRequired": "Please select an equipment",
+  "issueFormDepartmentRequired": "Please select a department",
+  "issueFormBuildingRequired": "Please select a building",
+  "issueFormLocationRequired2": "Please select a location",
+  "issueFormCategoryRequired": "Please select a category",
+  "issueFormSubcategoryRequired": "Please select a subcategory",
+  "issueFormTagRequired": "Please enter a tag number and search for the equipment"
 }

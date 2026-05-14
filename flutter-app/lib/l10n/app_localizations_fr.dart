@@ -2151,6 +2151,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get roleTechnician => 'Technicien';
 
   @override
+  String get roleTechnicianBiomedical => 'Tech. biomédical';
+
+  @override
+  String get roleTechnicianIt => 'Tech. IT';
+
+  @override
+  String get roleTechnicianInfra => 'Tech. infrastructure';
+
+  @override
   String get roleAdmin => 'Administrateur ICT';
 
   @override
@@ -2391,4 +2400,74 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get issueFormNoEquipmentInCategory =>
       'Aucun équipement de ce type trouvé dans votre département.';
+
+  @override
+  String get issueFormTagNumber => 'Numéro de Tag IT';
+
+  @override
+  String get issueFormTagNumberHint => 'Ex: TG-0042';
+
+  @override
+  String get issueFormTagSearching => 'Recherche en cours...';
+
+  @override
+  String get issueFormTagNotFound => 'Aucun équipement trouvé pour ce tag';
+
+  @override
+  String get issueFormTagFound => 'Équipement trouvé';
+
+  @override
+  String get issueFormBuilding => 'Bâtiment';
+
+  @override
+  String get issueFormSelectBuilding => 'Sélectionnez un bâtiment';
+
+  @override
+  String get issueFormSelectDepartment => 'Sélectionnez un département';
+
+  @override
+  String get issueFormProblemCategory => 'Catégorie de problème *';
+
+  @override
+  String get issueFormSelectProblemCategory => 'Sélectionnez une catégorie';
+
+  @override
+  String get issueFormProblemSubcategory => 'Sous-catégorie *';
+
+  @override
+  String get issueFormSelectProblemSubcategory =>
+      'Sélectionnez une sous-catégorie';
+
+  @override
+  String get issueFormAutoFilled =>
+      'Informations auto-remplies depuis l\'équipement';
+
+  @override
+  String get issueFormSearchEquipmentByTag => 'Rechercher par numéro de tag';
+
+  @override
+  String get issueFormEquipmentRequired =>
+      'Veuillez sélectionner un équipement';
+
+  @override
+  String get issueFormDepartmentRequired =>
+      'Veuillez sélectionner un département';
+
+  @override
+  String get issueFormBuildingRequired => 'Veuillez sélectionner un bâtiment';
+
+  @override
+  String get issueFormLocationRequired2 =>
+      'Veuillez sélectionner une localisation';
+
+  @override
+  String get issueFormCategoryRequired => 'Veuillez sélectionner une catégorie';
+
+  @override
+  String get issueFormSubcategoryRequired =>
+      'Veuillez sélectionner une sous-catégorie';
+
+  @override
+  String get issueFormTagRequired =>
+      'Veuillez saisir un numéro de tag et rechercher l\'équipement';
 }
