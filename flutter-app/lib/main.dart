@@ -194,6 +194,7 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
   String? _selectedEquipmentId;
   String? _selectedIssueId;
+  bool _isSidebarCollapsed = false;
   final AuthService _authService = AuthService();
   final List<int> _history = [];
   final GlobalKey<IssueFormScreenState> _issueFormKey = GlobalKey<IssueFormScreenState>();
@@ -514,55 +515,98 @@ class _MainScaffoldState extends State<MainScaffold> {
     if (confirmed == true) await _authService.logoutApi();
   }
 
+  void _handleNavTap(BuildContext context, _NavItem item, int index) {
+    if (item.screenType == ScreenType.issueForm) {
+      showIssueCategorySelector(context);
+    } else {
+      _navigateTo(index);
+    }
+  }
+
   Widget _buildSidebar(AppLocalizations l10n, List<_NavItem> navItems) {
     final currentUser = _authService.currentUser;
-    return Container(
-      width: 260,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeInOut,
+      width: _isSidebarCollapsed ? 70.0 : 260.0,
       decoration: const BoxDecoration(color: Colors.white, border: Border(right: BorderSide(color: AppColors.border))),
       child: Column(
         children: [
+          // ── En-tête : logo + nom hôpital + bouton bascule ──────────────────
           Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  child: Image.asset(
-                    'assets/images/logo_hopital.png',
-                    height: 36,
-                    width: 36,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            padding: _isSidebarCollapsed
+                ? const EdgeInsets.symmetric(vertical: 8)
+                : const EdgeInsets.all(20),
+            child: _isSidebarCollapsed
+                ? Column(
                     children: [
-                      Text(l10n.hospitalName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
-                      Text(l10n.hospitalSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                        tooltip: l10n.tooltipMenu,
+                        onPressed: () => setState(() => _isSidebarCollapsed = false),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                        child: Image.asset('assets/images/logo_hopital.png', height: 36, width: 36, fit: BoxFit.contain),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                        child: Image.asset('assets/images/logo_hopital.png', height: 36, width: 36, fit: BoxFit.contain),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(l10n.hospitalName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
+                            Text(l10n.hospitalSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left, color: AppColors.textSecondary),
+                        tooltip: l10n.tooltipMenu,
+                        onPressed: () => setState(() => _isSidebarCollapsed = true),
+                      ),
                     ],
                   ),
-                ),
-              ],
-            ),
           ),
           const Divider(height: 1),
+          // ── Bouton retour aux modules ───────────────────────────────────────
           if (widget.onBackToHub != null) ...[
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-              child: ListTile(
-                leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20),
-                title: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14))),
-                dense: true,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                tileColor: AppColors.primaryLight,
-                onTap: widget.onBackToHub,
-              ),
+              padding: EdgeInsets.fromLTRB(_isSidebarCollapsed ? 4 : 12, 8, _isSidebarCollapsed ? 4 : 12, 4),
+              child: _isSidebarCollapsed
+                  ? Tooltip(
+                      message: l10n.backToModules,
+                      child: Material(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(8),
+                        child: InkWell(
+                          onTap: widget.onBackToHub,
+                          borderRadius: BorderRadius.circular(8),
+                          child: const SizedBox(height: 44, child: Center(child: Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20))),
+                        ),
+                      ),
+                    )
+                  : ListTile(
+                      leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20),
+                      title: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14))),
+                      dense: true,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      tileColor: AppColors.primaryLight,
+                      onTap: widget.onBackToHub,
+                    ),
             ),
             const Divider(height: 1),
           ],
+          // ── Liste des items de navigation ──────────────────────────────────
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -571,63 +615,100 @@ class _MainScaffoldState extends State<MainScaffold> {
                 final item = navItems[index];
                 final isSelected = _currentIndex == index;
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                  child: ListTile(
-                    leading: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
-                    title: Text(item.label, style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
-                    selected: isSelected,
-                    selectedTileColor: AppColors.primaryLight,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    onTap: () {
-                      if (item.screenType == ScreenType.issueForm) {
-                        showIssueCategorySelector(context);
-                      } else {
-                        _navigateTo(index);
-                      }
-                    },
-                  ),
+                  padding: EdgeInsets.symmetric(horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 2),
+                  child: _isSidebarCollapsed
+                      ? Tooltip(
+                          message: item.label,
+                          child: Material(
+                            color: isSelected ? AppColors.primaryLight : Colors.transparent,
+                            borderRadius: BorderRadius.circular(8),
+                            child: InkWell(
+                              onTap: () => _handleNavTap(context, item, index),
+                              borderRadius: BorderRadius.circular(8),
+                              child: SizedBox(
+                                height: 48,
+                                child: Center(
+                                  child: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : ListTile(
+                          leading: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                          title: Text(item.label, style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                          selected: isSelected,
+                          selectedTileColor: AppColors.primaryLight,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          onTap: () => _handleNavTap(context, item, index),
+                        ),
                 );
               },
             ),
           ),
+          // ── Bouton déconnexion ─────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: ListTile(
-              leading: const Icon(Icons.logout, color: AppColors.error),
-              title: Text(l10n.logout, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onTap: () => _confirmLogout(l10n),
-            ),
+            padding: EdgeInsets.symmetric(horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 4),
+            child: _isSidebarCollapsed
+                ? Tooltip(
+                    message: l10n.logout,
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      child: InkWell(
+                        onTap: () => _confirmLogout(l10n),
+                        borderRadius: BorderRadius.circular(8),
+                        child: const SizedBox(height: 48, child: Center(child: Icon(Icons.logout, color: AppColors.error))),
+                      ),
+                    ),
+                  )
+                : ListTile(
+                    leading: const Icon(Icons.logout, color: AppColors.error),
+                    title: Text(l10n.logout, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    onTap: () => _confirmLogout(l10n),
+                  ),
           ),
           const Divider(height: 1),
+          // ── Pied de page : profil utilisateur ─────────────────────────────
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
-                  child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            padding: EdgeInsets.fromLTRB(_isSidebarCollapsed ? 0 : 16, 8, _isSidebarCollapsed ? 0 : 8, 8),
+            child: _isSidebarCollapsed
+                ? Center(
+                    child: Tooltip(
+                      message: currentUser?.fullName ?? l10n.user,
+                      child: CircleAvatar(
+                        backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
+                        child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
+                      ),
+                    ),
+                  )
+                : Row(
                     children: [
-                      Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
-                      Text(
-                        currentUser?.roles.map((r) => r.displayName).join(', ') ?? '',
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      CircleAvatar(
+                        backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
+                        child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
+                            Text(
+                              currentUser?.roles.map((r) => r.displayName).join(', ') ?? '',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
+                        tooltip: l10n.tooltipAccountSettings,
                       ),
                     ],
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
-                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
-                  tooltip: l10n.tooltipAccountSettings,
-                ),
-              ],
-            ),
           ),
         ],
       ),
