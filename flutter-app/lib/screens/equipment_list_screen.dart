@@ -194,7 +194,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             columns: [
               DataColumn(label: Text(l10n.equipmentName,
                   style: const TextStyle(fontWeight: FontWeight.w600))),
-              DataColumn(label: Text(l10n.equipmentSerialNumber,
+              DataColumn(label: Text(l10n.issueFormTagNumber,
                   style: const TextStyle(fontWeight: FontWeight.w600))),
               DataColumn(label: Text(l10n.commonStatus,
                   style: const TextStyle(fontWeight: FontWeight.w600))),
@@ -219,7 +219,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                   ],
                 )),
                 DataCell(Text(
-                  eq.serialNumber,
+                  eq.tags.isNotEmpty ? eq.tags.join(', ') : '—',
                   style: const TextStyle(
                     fontFamily: 'monospace',
                     fontSize: 13,
