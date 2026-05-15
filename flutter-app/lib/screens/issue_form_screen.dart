@@ -807,6 +807,18 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   List<Widget> _buildInfrastructureForm(AppLocalizations l10n) {
     return [
+      // Numéro de tag (optionnel)
+      Text(l10n.issueFormInfraTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: _infraTagController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormInfraTagHint,
+          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
+        ),
+      ),
+      const SizedBox(height: 16),
+
       // Département
       Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
@@ -947,23 +959,13 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       DropdownButtonFormField<String>(
         value: _infraIssue,
         hint: Text(l10n.issueFormSelectSpecificIssue),
-        items: _infraIssues
-            .map((issue) => DropdownMenuItem(value: issue, child: Text(issue)))
-            .toList(),
+        items: [
+          ..._infraIssues
+              .map((issue) => DropdownMenuItem(value: issue, child: Text(issue))),
+          DropdownMenuItem(value: 'Other', child: Text(l10n.issueFormOther)),
+        ],
         onChanged: (v) => setState(() => _infraIssue = v),
         validator: (_) => _infraIssue == null ? l10n.issueFormIssueRequired : null,
-      ),
-      const SizedBox(height: 16),
-
-      // Numéro de tag (optionnel)
-      Text(l10n.issueFormInfraTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      TextFormField(
-        controller: _infraTagController,
-        decoration: InputDecoration(
-          hintText: l10n.issueFormInfraTagHint,
-          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
-        ),
       ),
     ];
   }
