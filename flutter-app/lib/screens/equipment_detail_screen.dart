@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
+import '../services/auth_service.dart';
+import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
@@ -112,6 +114,13 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                 widget.onReport!();
               },
             ),
+          if (AuthService().canManageEquipment && eq != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: l10n.commonDelete,
+              color: AppColors.error,
+              onPressed: () => _confirmDelete(eq),
+            ),
           const SizedBox(width: 8),
         ],
       ),
@@ -153,6 +162,65 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
           if (_error != null && !_loadingDetails)
             _buildErrorBanner(l10n),
           const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  // ── Suppression ─────────────────────────────────────────────────────────────
+
+  void _confirmDelete(Equipment eq) {
+    final l10n = AppLocalizations.of(context)!;
+    final reasonController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.equipmentDeleteTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.equipmentDeleteConfirm(eq.name)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Raison de la suppression (optionnel)',
+                hintText: 'Ex : Hors service, remplacé…',
+                isDense: true,
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              Navigator.pop(ctx);
+              try {
+                await DbApiService.instance
+                    .deleteEquipment(eq.id, reason: reason.isEmpty ? null : reason);
+                await DataService().reloadEquipment();
+                if (mounted) Navigator.pop(context);
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.commonApiError),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              }
+            },
+            child: Text(l10n.commonDelete),
+          ),
         ],
       ),
     );

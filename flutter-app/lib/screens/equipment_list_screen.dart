@@ -6,7 +6,6 @@ import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../widgets/status_badge.dart';
 import 'equipment_detail_screen.dart';
-import '../widgets/equipment_history_dialog.dart';
 import '../services/config_service.dart';
 import '../services/auth_service.dart';
 
@@ -174,314 +173,70 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Equipment list — responsive: mobile list / tablet grid / desktop table
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth;
-                if (w < 600) return _buildMobileList(l10n, isAdmin);
-                if (w < 1100) return _buildTabletGrid(l10n, isAdmin);
-                return _buildDesktopTable(l10n, isAdmin);
-              },
-            ),
+            // Equipment list — tableau unifié avec scroll horizontal anti-overflow
+            _buildUnifiedTable(l10n),
           ],
         ),
       ),
     );
   }
 
-  // ── Responsive list layouts ──────────────────────────────────────────────
+  // ── DataTable unifié (toutes tailles d'écran) ────────────────────────────
 
-  Widget _buildMobileList(AppLocalizations l10n, bool isAdmin) {
-    return Column(
-      children: _filteredEquipment
-          .map((eq) => _buildEquipmentCard(eq, l10n, isAdmin, compact: false))
-          .toList(),
-    );
-  }
-
-  Widget _buildTabletGrid(AppLocalizations l10n, bool isAdmin) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 1.55,
-      ),
-      itemCount: _filteredEquipment.length,
-      itemBuilder: (_, i) =>
-          _buildEquipmentCard(_filteredEquipment[i], l10n, isAdmin, compact: true),
-    );
-  }
-
-  Widget _buildDesktopTable(AppLocalizations l10n, bool isAdmin) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1400),
-        child: Card(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 800),
-              child: DataTable(
-                headingRowColor: WidgetStateProperty.all(AppColors.background),
-                columns: [
-                  DataColumn(label: Text(l10n.equipmentName)),
-                  DataColumn(label: Text(l10n.equipmentSerialNumber)),
-                  DataColumn(label: Text(l10n.equipmentManufacturer)),
-                  DataColumn(label: Text(l10n.equipmentModel)),
-                  DataColumn(label: Text(l10n.equipmentManufYear), numeric: true),
-                  DataColumn(label: Text(l10n.commonDepartment)),
-                  DataColumn(label: Text(l10n.commonCategory)),
-                  DataColumn(label: Text(l10n.commonStatus)),
-                  DataColumn(label: Text(l10n.equipmentRevisionColumn)),
-                  DataColumn(label: Text(l10n.nextPreventiveDate)),
-                  DataColumn(label: Text(l10n.commonActions)),
-                ],
-                rows: _filteredEquipment.map((eq) => DataRow(
-                  cells: [
-                    DataCell(ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 220),
+  Widget _buildUnifiedTable(AppLocalizations l10n) {
+    return Card(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 500),
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(AppColors.background),
+            columns: [
+              DataColumn(label: Text(l10n.equipmentName,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text(l10n.equipmentSerialNumber,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text(l10n.commonStatus,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+              DataColumn(label: Text(l10n.commonActions,
+                  style: const TextStyle(fontWeight: FontWeight.w600))),
+            ],
+            rows: _filteredEquipment.map((eq) {
+              final pmBadge = _preventiveBadge(eq, l10n);
+              return DataRow(cells: [
+                DataCell(Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pmBadge != null) ...[pmBadge, const SizedBox(width: 6)],
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
                       child: Text(
                         eq.name,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                         overflow: TextOverflow.ellipsis,
                       ),
-                    )),
-                    DataCell(Text(
-                      eq.serialNumber,
-                      style: const TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    )),
-                    DataCell(_buildOptionalText(eq.manufacturer)),
-                    DataCell(_buildOptionalText(eq.model)),
-                    DataCell(_buildOptionalText(eq.manufYear?.toString())),
-                    DataCell(Text(eq.department)),
-                    DataCell(Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.background,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(eq.category, style: const TextStyle(fontSize: 13)),
-                    )),
-                    DataCell(StatusBadge(status: eq.status.displayName, isCompact: true)),
-                    DataCell(_buildRevisionCell(eq.nextRevisionDate)),
-                    DataCell(_buildPreventiveCell(eq)),
-                    DataCell(Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.visibility, size: 18),
-                          color: AppColors.primary,
-                          onPressed: () => _showEquipmentDetail(eq),
-                          tooltip: l10n.commonDetails,
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.history, size: 18),
-                          color: AppColors.warning,
-                          onPressed: () => EquipmentHistoryDialog.show(context, eq),
-                          tooltip: 'Historique',
-                        ),
-                        if (isAdmin)
-                          IconButton(
-                            icon: const Icon(Icons.edit, size: 18),
-                            color: AppColors.warning,
-                            onPressed: () => _showEditEquipmentDialog(eq),
-                            tooltip: l10n.commonEdit,
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.report_problem_outlined, size: 18),
-                          color: AppColors.error,
-                          onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                          tooltip: l10n.commonReport,
-                        ),
-                        if (isAdmin)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline, size: 18),
-                            color: AppColors.error,
-                            onPressed: () => _confirmDelete(eq),
-                            tooltip: l10n.commonDelete,
-                          ),
-                      ],
-                    )),
-                  ],
-                )).toList(),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEquipmentCard(Equipment eq, AppLocalizations l10n, bool isAdmin, {required bool compact}) {
-    return Card(
-      margin: compact ? EdgeInsets.zero : const EdgeInsets.only(bottom: 12),
-      child: Padding(
-        padding: EdgeInsets.all(compact ? 12 : 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Name + Status badge (+ badge maintenance préventive si due/soon)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Text(
-                    eq.name,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: compact ? 14 : 15,
-                      color: AppColors.textPrimary,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 2,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (_preventiveBadge(eq, l10n) != null) ...[
-                  _preventiveBadge(eq, l10n)!,
-                  const SizedBox(width: 4),
-                ],
-                StatusBadge(status: eq.status.displayName, isCompact: true),
-              ],
-            ),
-            SizedBox(height: compact ? 6 : 8),
-
-            // Serial number
-            Row(children: [
-              const Icon(Icons.qr_code, size: 13, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
+                  ],
+                )),
+                DataCell(Text(
                   eq.serialNumber,
                   style: const TextStyle(
-                    fontSize: 12,
                     fontFamily: 'monospace',
+                    fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ]),
-            const SizedBox(height: 4),
-
-            // Department
-            Row(children: [
-              const Icon(Icons.business, size: 13, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  eq.department,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ]),
-            const SizedBox(height: 4),
-
-            // Category chip
-            Row(children: [
-              const Icon(Icons.category, size: 13, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Flexible(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.background,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    eq.category,
-                    style: const TextStyle(fontSize: 11),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ),
-            ]),
-
-            // Fabricant / Modèle / Année — affichés uniquement si présents
-            if (eq.manufacturer != null && eq.manufacturer!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Row(children: [
-                const Icon(Icons.precision_manufacturing, size: 13, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    [
-                      eq.manufacturer,
-                      if (eq.model != null && eq.model!.isNotEmpty) eq.model,
-                      if (eq.manufYear != null) eq.manufYear.toString(),
-                    ].whereType<String>().join(' • '),
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ]),
-            ],
-
-            if (!compact && eq.nextRevisionDate != null && eq.nextRevisionDate!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              _buildCardRow(l10n.equipmentRevisionColumn, _formatDateDisplay(eq.nextRevisionDate!)),
-            ],
-
-            Divider(height: compact ? 12 : 16),
-
-            // Action buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.visibility, size: compact ? 18 : 20),
+                )),
+                DataCell(StatusBadge(
+                    status: eq.status.displayName, isCompact: true)),
+                DataCell(IconButton(
+                  icon: const Icon(Icons.visibility, size: 18),
                   color: AppColors.primary,
                   onPressed: () => _showEquipmentDetail(eq),
                   tooltip: l10n.commonDetails,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: const EdgeInsets.all(4),
-                ),
-                IconButton(
-                  icon: Icon(Icons.history, size: compact ? 18 : 20),
-                  color: AppColors.warning,
-                  onPressed: () => EquipmentHistoryDialog.show(context, eq),
-                  tooltip: 'Historique',
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: const EdgeInsets.all(4),
-                ),
-                if (isAdmin)
-                  IconButton(
-                    icon: Icon(Icons.edit, size: compact ? 18 : 20),
-                    color: AppColors.warning,
-                    onPressed: () => _showEditEquipmentDialog(eq),
-                    tooltip: l10n.commonEdit,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: const EdgeInsets.all(4),
-                  ),
-                IconButton(
-                  icon: Icon(Icons.report_problem_outlined, size: compact ? 18 : 20),
-                  color: AppColors.error,
-                  onPressed: () => widget.onNavigate(3, equipmentId: eq.id),
-                  tooltip: l10n.commonReport,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  padding: const EdgeInsets.all(4),
-                ),
-                if (isAdmin)
-                  IconButton(
-                    icon: Icon(Icons.delete_outline, size: compact ? 18 : 20),
-                    color: AppColors.error,
-                    onPressed: () => _confirmDelete(eq),
-                    tooltip: l10n.commonDelete,
-                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    padding: const EdgeInsets.all(4),
-                  ),
-              ],
-            ),
-          ],
+                )),
+              ]);
+            }).toList(),
+          ),
         ),
       ),
     );
@@ -509,22 +264,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       ),
       items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
       onChanged: onChanged,
-    );
-  }
-
-  Widget _buildCardRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 100,
-            child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          ),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13))),
-        ],
-      ),
     );
   }
 
@@ -928,65 +667,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     );
   }
 
-  void _confirmDelete(Equipment eq) {
-    final l10n = AppLocalizations.of(context)!;
-    final reasonController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.equipmentDeleteTitle),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(l10n.equipmentDeleteConfirm(eq.name)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Raison de la suppression (optionnel)',
-                hintText: 'Ex : Hors service, remplacé…',
-                isDense: true,
-              ),
-              maxLines: 2,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            onPressed: () async {
-              final reason = reasonController.text.trim();
-              Navigator.pop(ctx);
-              try {
-                await DbApiService.instance.deleteEquipment(eq.id, reason: reason.isEmpty ? null : reason);
-                await DataService().reloadEquipment();
-                if (mounted) setState(() {});
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(l10n.equipmentDeleted),
-                    backgroundColor: AppColors.success,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(AppLocalizations.of(context)!.commonApiError),
-                    backgroundColor: AppColors.error,
-                    behavior: SnackBarBehavior.floating,
-                  ));
-                }
-              }
-            },
-            child: Text(l10n.commonDelete),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _getStatusIcon(EquipmentStatus status) {
     IconData icon;
     Color color;
@@ -1013,17 +693,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         break;
     }
     return Icon(icon, color: color, size: 18);
-  }
-
-  /// Retourne un Text pour la cellule, avec un placeholder discret si null/vide
-  Widget _buildOptionalText(String? value) {
-    if (value == null || value.isEmpty) {
-      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
-    }
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 160),
-      child: Text(value, overflow: TextOverflow.ellipsis),
-    );
   }
 
   /// Champ date picker générique réutilisable dans le formulaire de l'équipement.
@@ -1113,56 +782,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         ]),
       ),
     );
-  }
-
-  /// Cellule date de maintenance préventive avec badge si due/soon
-  Widget _buildPreventiveCell(Equipment eq) {
-    final iso = eq.nextPreventiveMaintenance;
-    if (iso == null || iso.isEmpty) {
-      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
-    }
-    final level = eq.preventiveMaintenanceAlertLevel;
-    Color color;
-    IconData icon;
-    switch (level) {
-      case 'due':
-        color = AppColors.error;
-        icon = Icons.error_outline;
-        break;
-      case 'soon':
-        color = AppColors.warning;
-        icon = Icons.schedule;
-        break;
-      default:
-        color = AppColors.success;
-        icon = Icons.event_available;
-    }
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 13, color: color),
-      const SizedBox(width: 4),
-      Text(_formatDateDisplay(iso),
-          style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-    ]);
-  }
-
-  /// Cellule date de révision — colorée selon la proximité
-  Widget _buildRevisionCell(String? iso) {
-    if (iso == null || iso.isEmpty) {
-      return const Text('—', style: TextStyle(color: AppColors.textSecondary));
-    }
-    Color color = AppColors.textSecondary;
-    try {
-      final date = DateTime.parse(iso.substring(0, 10));
-      final diff = date.difference(DateTime.now()).inDays;
-      if (diff < 0)    color = AppColors.error;
-      else if (diff <= 30) color = AppColors.warning;
-      else                 color = AppColors.success;
-    } catch (_) {}
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(Icons.event, size: 13, color: color),
-      const SizedBox(width: 4),
-      Text(_formatDateDisplay(iso), style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500)),
-    ]);
   }
 
   /// Formate une date ISO (2025-12-31) → "31/12/2025"
