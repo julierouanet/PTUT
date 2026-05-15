@@ -100,6 +100,7 @@ Color getStatusColor(String status) {
   switch (status) {
     case 'Disponible':
     case 'Available':
+    case 'Operational':
       return AppColors.success;
     case 'En usage':
     case 'En service':
@@ -107,16 +108,20 @@ Color getStatusColor(String status) {
       return AppColors.primary;
     case 'En maintenance':
     case 'In Maintenance':
+    case 'Maintenance':
       return AppColors.warning;
     case 'Hors service':
     case 'Out of Service':
+    case 'Out of service':
       return AppColors.error;
     case 'Inactif':
     case 'Idle':
+    case 'Disposed':
       return AppColors.textSecondary;
     case 'À éliminer':
     case 'A eliminer':
     case 'To Dispose':
+    case 'To be disposal':
       return AppColors.error;
     case 'Transféré':
     case 'Transfere':
@@ -132,6 +137,7 @@ Color getStatusBackgroundColor(String status) {
   switch (status) {
     case 'Disponible':
     case 'Available':
+    case 'Operational':
       return AppColors.successLight;
     case 'En usage':
     case 'En service':
@@ -139,16 +145,20 @@ Color getStatusBackgroundColor(String status) {
       return AppColors.primaryLight;
     case 'En maintenance':
     case 'In Maintenance':
+    case 'Maintenance':
       return AppColors.warningLight;
     case 'Hors service':
     case 'Out of Service':
+    case 'Out of service':
       return AppColors.errorLight;
     case 'Inactif':
     case 'Idle':
+    case 'Disposed':
       return AppColors.background;
     case 'À éliminer':
     case 'A eliminer':
     case 'To Dispose':
+    case 'To be disposal':
       return AppColors.errorLight;
     case 'Transféré':
     case 'Transfere':
