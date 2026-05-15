@@ -475,34 +475,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     }
   }
 
-  void _resetForm(AppLocalizations l10n) {
-    setState(() {
-      _selectedTab = 0;
-      _bioEquipmentId = null;
-      _bioAutocompleteKey++;
-      _bioEquipmentError = false;
-      _bioProblemType = l10n.issueFormBreakdown;
-      _infraDepartment = null;
-      _infraBuildingController.clear();
-      _infraLocationController.clear();
-      _infraTagController.clear();
-      _infraCategory = null;
-      _infraSubcategory = null;
-      _infraIssue = null;
-      _infraSearchKey++;
-      _tagController.clear();
-      _itEquipment = null;
-      _itSearching = false;
-      _itTagError = null;
-      _itProblemType = l10n.issueFormBreakdown;
-      _autreDepartment = null;
-      _autreProblemType = l10n.issueFormBreakdown;
-      _urgency = IssueUrgency.moyen;
-      _descriptionController.clear();
-      _photos.clear();
-    });
-  }
-
   // ── Couleur d'urgence ─────────────────────────────────────────────────────
 
   Color _urgencyColor(IssueUrgency u) {
