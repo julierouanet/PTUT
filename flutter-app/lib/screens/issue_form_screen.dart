@@ -200,6 +200,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   final _descriptionController = TextEditingController();
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
+  bool _isSubmitting = false;
 
   /// Retourne true si l'utilisateur a commencé à remplir un formulaire.
   bool get hasUnsavedData =>
@@ -373,6 +374,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   // ── Soumission du formulaire ───────────────────────────────────────────────
 
   Future<void> _submitForm() async {
+    if (_isSubmitting) return;
     final l10n = AppLocalizations.of(context)!;
 
     // Validation spécifique par tab
@@ -443,6 +445,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         };
     }
 
+    setState(() => _isSubmitting = true);
     try {
       await DbApiService.instance.createIssue(issueData);
       await DataService().reloadIssues();
@@ -459,7 +462,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
-      _resetForm(l10n);
+      if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -467,6 +470,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -659,15 +664,28 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                           const SizedBox(width: 12),
                         ],
                         Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: _submitForm,
-                            icon: const Icon(Icons.send),
-                            label: Text(_photos.isNotEmpty
-                                ? l10n.issueFormSubmitWithPhotos(_photos.length)
-                                : l10n.issueFormSubmit),
+                          child: ElevatedButton(
+                            onPressed: _isSubmitting ? null : _submitForm,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 14),
                             ),
+                            child: _isSubmitting
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.send),
+                                      const SizedBox(width: 8),
+                                      Text(_photos.isNotEmpty
+                                          ? l10n.issueFormSubmitWithPhotos(_photos.length)
+                                          : l10n.issueFormSubmit),
+                                    ],
+                                  ),
                           ),
                         ),
                       ],
