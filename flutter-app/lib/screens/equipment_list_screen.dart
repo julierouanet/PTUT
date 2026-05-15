@@ -184,12 +184,15 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ── DataTable unifié (toutes tailles d'écran) ────────────────────────────
 
   Widget _buildUnifiedTable(AppLocalizations l10n) {
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 500),
-          child: DataTable(
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: DataTable(
             headingRowColor: WidgetStateProperty.all(AppColors.background),
             columns: [
               DataColumn(label: Text(l10n.equipmentName,
@@ -239,7 +242,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildSearchField() {
