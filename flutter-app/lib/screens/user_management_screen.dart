@@ -245,12 +245,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             SizedBox(
               width: double.infinity,
               child: Card(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 340),
-                    child: DataTable(
-                      headingRowColor: WidgetStateProperty.all(AppColors.background),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Scrollbar(
+                    thumbVisibility: true,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                        child: DataTable(
+                          columnSpacing: 16,
+                          headingRowColor: WidgetStateProperty.all(AppColors.background),
                       columns: [
                         DataColumn(label: Text(l10n.usersUser)),
                         DataColumn(label: Text(l10n.commonEmail)),
@@ -288,18 +292,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                 color: AppColors.primary,
                                 onPressed: () => _showUserDialog(user),
                                 tooltip: l10n.commonEdit,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.key, size: 18),
                                 color: AppColors.warning,
                                 onPressed: () => _showPermissionsDialog(user),
                                 tooltip: l10n.usersPermissions,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                               ),
                               IconButton(
                                 icon: Icon(user.isActive ? Icons.block : Icons.check_circle, size: 18),
                                 color: user.isActive ? AppColors.error : AppColors.success,
                                 onPressed: () => _toggleUserStatus(user),
                                 tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
+                                padding: const EdgeInsets.all(4),
+                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                               ),
                               Tooltip(
                                 message: user.id == AuthService().currentUser?.id
@@ -313,12 +323,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                                   onPressed: user.id == AuthService().currentUser?.id
                                       ? null
                                       : () => _confirmDeleteUser(user),
+                                  padding: const EdgeInsets.all(4),
+                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                                 ),
                               ),
                             ],
                           )),
                         ],
                       )).toList(),
+                        ),
+                      ),
                     ),
                   ),
                 ),
