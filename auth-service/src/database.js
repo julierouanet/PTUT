@@ -110,6 +110,24 @@ function initTables() {
     console.log('[DB] Migration department_change_requests : FK vers users supprimée.');
   }
 
+  // role_change_requests : sans FK vers users (Keycloak gère les users)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS role_change_requests (
+      id             TEXT PRIMARY KEY,
+      user_id        TEXT NOT NULL,
+      user_name      TEXT NOT NULL,
+      current_roles  TEXT NOT NULL,
+      requested_role TEXT NOT NULL,
+      status         TEXT NOT NULL DEFAULT 'pending',
+      admin_id       TEXT,
+      admin_note     TEXT,
+      created_at     TEXT DEFAULT CURRENT_TIMESTAMP,
+      resolved_at    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_role_req_user   ON role_change_requests(user_id);
+    CREATE INDEX IF NOT EXISTS idx_role_req_status ON role_change_requests(status);
+  `);
+
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
   const defaultPerms = {

@@ -43,6 +43,26 @@ const loginLimiter = rateLimit({
 });
 app.use('/api/auth/login', loginLimiter);
 
+// Rate limiter pour l'inscription : max 5 créations de compte par IP par heure
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Trop de tentatives d\'inscription. Réessayez dans une heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/register', registrationLimiter);
+
+// Rate limiter pour le mot de passe oublié : max 5 demandes par IP par 15 min
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Trop de demandes. Réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/forgot-password', forgotPasswordLimiter);
+
 // Rate limiter pour les endpoints d'écriture/administration
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute

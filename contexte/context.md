@@ -15,28 +15,33 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
                     |        Nginx          |
                     | (Reverse Proxy HTTPS) |
                     | Let's Encrypt SSL     |
-                    +----------+------------+
-                               |
-            +------------------+------------------+
-            |                  |                  |
-   +--------v------+  +-------v-------+  +-------v--------+
-   |  Flutter App   |  | Auth Service  |  |  DB Service    |
-   |  (Static Web)  |  | Express.js    |  |  Express.js    |
-   |  /var/www/     |  | Port 3001     |  |  Port 3002     |
-   +----------------+  +-------+-------+  +-------+--------+
-                               |                  |
-                          +----v-----+      +-----v--------+
-                          | auth.db  |      | hospital.db  |
-                          | (SQLite) |      | (SQLite)     |
-                          +----------+      +--------------+
+                    +----+----------+-------+
+                         |          |
+          +--------------+          +------------------+
+          |                                            |
+   +------v--------+  +-------v-------+  +------------v---+  +-------v--------+
+   |  Flutter App   |  | Auth Service  |  |   Keycloak     |  |  DB Service    |
+   |  (Static Web)  |  | Express.js    |  |   Port 8080    |  |  Express.js    |
+   |  /var/www/     |  | Port 3001     |  |   (IAM/JWT)    |  |  Port 3002     |
+   +----------------+  +-------+-------+  +-------+--------+  +-------+--------+
+                               |                  |                   |
+                          +----v-----+      +------v------+     +-----v--------+
+                          | auth.db  |      | PostgreSQL  |     | hospital.db  |
+                          | (SQLite) |      | (Keycloak)  |     | (SQLite)     |
+                          +----------+      +-------------+     +--------------+
 ```
+
+**Responsabilités après migration Keycloak :**
+- **Keycloak** : émission/validation JWT (RS256 asymétrique), stockage users/mots de passe/rôles, endpoint token (Direct Grant), JWKS
+- **auth-service** : proxy Admin API Keycloak (`/api/users`, `/api/roles`), `GET /api/auth/me`, gestion `department_change_requests` et `role_permissions` SQLite
+- **db-service** : validation JWT via JWKS Keycloak (jwks-rsa), CRUD équipements/incidents/inventaire
 
 ## Domaines et ports
 
-| Environnement | Frontend                 | Auth Service                  | DB Service                 |
-|---------------|--------------------------|-------------------------------|----------------------------|
-| **Production**| app.lucaslopvet.fr       | auth.lucaslopvet.fr (:3001)   | DB.lucaslopvet.fr (:3002)  |
-| **Dev**       | dev.app.lucaslopvet.fr   | dev.auth.lucaslopvet.fr (:3003)| dev.DB.lucaslopvet.fr (:3004)|
+| Environnement | Frontend                 | Auth Service                   | DB Service                  | Keycloak                        |
+|---------------|--------------------------|--------------------------------|-----------------------------|----------------------------------|
+| **Production**| app.lucaslopvet.fr       | auth.lucaslopvet.fr (:3001)    | DB.lucaslopvet.fr (:3002)   | keycloak.lucaslopvet.fr (:8080)  |
+| **Dev**       | dev.app.lucaslopvet.fr   | dev.auth.lucaslopvet.fr (:3003)| dev.DB.lucaslopvet.fr (:3004)| keycloak.lucaslopvet.fr (:8081) |
 
 ---
 
@@ -47,168 +52,117 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 
 ## 1.1 Schemas de base de donnees
 
-### Table `users`
-
-| Colonne       | Type    | Contraintes                                                              |
-|---------------|---------|--------------------------------------------------------------------------|
-| id            | TEXT    | PRIMARY KEY, format `user-{uuid}`                                        |
-| name          | TEXT    | NOT NULL, compose de first_name + last_name                              |
-| first_name    | TEXT    | Ajoute via migration                                                     |
-| last_name     | TEXT    | Ajoute via migration                                                     |
-| email         | TEXT    | UNIQUE NOT NULL                                                          |
-| password_hash | TEXT    | NOT NULL, bcrypt 12 rounds                                               |
-| department    | TEXT    | NOT NULL                                                                 |
-| role          | TEXT    | NOT NULL, CHECK IN ('hospitalStaff','supervisor','technician','admin')    |
-| phone         | TEXT    | Nullable                                                                 |
-| is_active     | INTEGER | DEFAULT 1 (1=actif, 0=inactif)                                          |
-| created_at    | TEXT    | NOT NULL, ISO timestamp                                                  |
-
-**Index** : `idx_users_email` sur (email)
-
-### Table `refresh_tokens`
-
-| Colonne    | Type    | Contraintes                                            |
-|------------|---------|--------------------------------------------------------|
-| id         | INTEGER | PRIMARY KEY AUTOINCREMENT                              |
-| user_id    | TEXT    | NOT NULL, FK -> users(id) ON DELETE CASCADE            |
-| token      | TEXT    | UNIQUE NOT NULL                                        |
-| expires_at | TEXT    | NOT NULL, ISO timestamp                                |
-| created_at | TEXT    | DEFAULT CURRENT_TIMESTAMP                              |
-
-**Index** : `idx_refresh_tokens_token` (token), `idx_refresh_tokens_user` (user_id)
-
-### Table `department_change_requests`
-
-| Colonne              | Type | Contraintes                                  |
-|----------------------|------|----------------------------------------------|
-| id                   | TEXT | PRIMARY KEY, UUID                            |
-| user_id              | TEXT | NOT NULL, FK -> users(id) ON DELETE CASCADE  |
-| user_name            | TEXT | NOT NULL                                     |
-| current_department   | TEXT | NOT NULL                                     |
-| requested_department | TEXT | NOT NULL                                     |
-| status               | TEXT | NOT NULL DEFAULT 'pending' (pending/approved/rejected) |
-| admin_id             | TEXT | Nullable                                     |
-| admin_note           | TEXT | Nullable, max 200 chars                      |
-| created_at           | TEXT | DEFAULT CURRENT_TIMESTAMP                    |
-| resolved_at          | TEXT | Nullable                                     |
-
-**Index** : `idx_dept_req_user` (user_id), `idx_dept_req_status` (status)
-
-### Table `roles`
-
-| Colonne      | Type    | Contraintes                                          |
-|--------------|---------|------------------------------------------------------|
-| name         | TEXT    | PRIMARY KEY, regex `^[a-zA-Z][a-zA-Z0-9_]*$`        |
-| display_name | TEXT    | NOT NULL                                             |
-| description  | TEXT    | Nullable                                             |
-| is_builtin   | INTEGER | DEFAULT 0 (1=builtin, 0=custom)                     |
-| created_at   | TEXT    | DEFAULT CURRENT_TIMESTAMP                            |
+> **Post-migration Keycloak** : auth.db ne contient plus que deux tables actives. Les tables `users`, `user_roles`, `refresh_tokens`, `roles` ont été supprimées — Keycloak gère désormais tout cela. Les tables legacy peuvent encore exister sur des déploiements existants (jamais recréées au démarrage, ignorées).
 
 ### Table `role_permissions`
 
-| Colonne     | Type | Contraintes                                    |
-|-------------|------|------------------------------------------------|
-| role_name   | TEXT | NOT NULL, FK -> roles(name) ON DELETE CASCADE  |
-| permission  | TEXT | NOT NULL                                       |
+| Colonne     | Type | Contraintes                           |
+|-------------|------|---------------------------------------|
+| role_name   | TEXT | NOT NULL (nom de rôle Keycloak realm) |
+| permission  | TEXT | NOT NULL                              |
 
 **Cle primaire** : (role_name, permission)
+**Pas de FK** : les rôles vivent dans Keycloak, pas dans SQLite.
+**Migration automatique** : si l'ancienne table avec FK -> roles existe, elle est recréée sans FK au démarrage (`role_permissions_v2` pattern, marqueur `_rp_migrated`).
+
+### Table `department_change_requests`
+
+| Colonne              | Type | Contraintes                              |
+|----------------------|------|------------------------------------------|
+| id                   | TEXT | PRIMARY KEY, UUID                        |
+| user_id              | TEXT | NOT NULL (UUID Keycloak — pas de FK)     |
+| user_name            | TEXT | NOT NULL                                 |
+| current_department   | TEXT | NOT NULL                                 |
+| requested_department | TEXT | NOT NULL                                 |
+| status               | TEXT | NOT NULL DEFAULT 'pending' (pending/approved/rejected) |
+| admin_id             | TEXT | Nullable (UUID Keycloak)                 |
+| admin_note           | TEXT | Nullable, max 200 chars                  |
+| created_at           | TEXT | DEFAULT CURRENT_TIMESTAMP                |
+| resolved_at          | TEXT | Nullable                                 |
+
+**Index** : `idx_dept_req_user` (user_id), `idx_dept_req_status` (status)
+**Migration automatique** : si FK -> users existe, table recrée sans FK au démarrage.
 
 **Configuration DB** : WAL mode, foreign_keys = ON
 
 ## 1.2 Roles et permissions
 
-### Roles built-in
+### Rôles de realm Keycloak (7 rôles)
 
-| Role           | Display Name           | Permissions                                                                         |
-|----------------|------------------------|-------------------------------------------------------------------------------------|
-| hospitalStaff  | Personnel hospitalier  | viewEquipment, reportIssue, trackIssues                                             |
-| supervisor     | Superviseur            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks               |
-| technician     | Technicien             | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
-| admin          | Administrateur ICT     | TOUTES les permissions (14 permissions, non modifiables)                            |
+| Rôle                  | Permissions applicatives (SQLite role_permissions)                                  |
+|-----------------------|-------------------------------------------------------------------------------------|
+| hospitalStaff         | viewEquipment, reportIssue, trackIssues                                             |
+| supervisor            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks               |
+| technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
+| technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
+| technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
+| technician_infra      | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
+| admin                 | TOUTES les permissions (14)                                                         |
+
+**SYSTEM_ROLES** filtrés des tokens : `offline_access`, `uma_authorization`, `default-roles-kabutare-hospital`
 
 ### Liste des permissions
 
 `viewEquipment`, `reportIssue`, `trackIssues`, `approveRequests`, `assignTasks`, `updateRepairs`, `registerParts`, `manageEquipment`, `manageUsers`, `manageDepartments`, `manageCategories`, `generateReports`, `viewInventory`, `changeDepartment`
 
-## 1.3 Utilisateurs seed (8 comptes)
+## 1.3 Utilisateurs — migration Keycloak
 
-| ID      | Nom                    | Email                     | Role           | Departement      | MDP          |
-|---------|------------------------|---------------------------|----------------|------------------|--------------|
-| usr-001 | Admin Systeme          | admin@kabutare.rw         | admin          | Administration   | Admin1234!   |
-| usr-002 | Dr. Habimana Jean      | j.habimana@kabutare.rw    | supervisor     | Chirurgie        | Password1!   |
-| usr-003 | Mme. Uwimana Claire    | c.uwimana@kabutare.rw     | supervisor     | Maternite        | Password1!   |
-| usr-004 | Tech. Balde Moussa     | m.balde@kabutare.rw       | technician     | Administration   | Password1!   |
-| usr-005 | Tech. Cisse Amadou     | a.cisse@kabutare.rw       | technician     | Administration   | Password1!   |
-| usr-006 | Dr. Traore Ibrahim     | i.traore@kabutare.rw      | hospitalStaff  | Bloc operatoire  | Password1!   |
-| usr-007 | Inf. Keita Fatou       | f.keita@kabutare.rw       | hospitalStaff  | Urgences         | Password1!   |
-| usr-008 | Lab. Diallo Oumar      | o.diallo@kabutare.rw      | hospitalStaff  | Laboratoire      | Password1!   |
+Les utilisateurs sont désormais dans **Keycloak** (realm `kabutare-hospital`). Script de migration one-shot : `scripts/migrate-users.js`.
+
+- Chaque utilisateur migré reçoit un mot de passe temporaire + `requiredActions: ['UPDATE_PASSWORD']`
+- Le mapping `ancien_id → keycloak_uuid` est exporté en CSV (`--output mapping.csv`)
+- Idempotent : vérifie si l'email existe avant de créer
+
+Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés ou recréés directement dans la console Keycloak (`https://keycloak.lucaslopvet.fr/admin` → realm kabutare-hospital).
 
 ## 1.4 Endpoints API
 
+> **Login / Refresh / Logout** : ces opérations se font **directement sur Keycloak** (pas via auth-service).
+> - Login : `POST https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token` (Direct Grant, form-urlencoded, `grant_type=password`)
+> - Refresh : même endpoint, `grant_type=refresh_token`
+> - Logout : suppression locale des tokens (tokens Keycloak expirent en 15 min)
+
 ### Authentification (`/api/auth`)
 
-#### POST /api/auth/login
-- **Rate limit** : 10 tentatives / 15 min par IP
-- **Body** : `{ "email": "string", "password": "string" }`
+#### GET /api/auth/me
+- **Header** : `Authorization: Bearer {token Keycloak RS256}`
 - **Reponse 200** :
 ```json
 {
-  "accessToken": "JWT (15min)",
-  "refreshToken": "JWT (7 jours)",
-  "user": {
-    "id": "string", "name": "string", "first_name": "string", "last_name": "string",
-    "email": "string", "role": "string", "department": "string",
-    "phone": "string|null", "permissions": ["string"]
-  }
+  "id": "uuid-keycloak (sub)",
+  "name": "string", "first_name": "string", "last_name": "string",
+  "email": "string", "department": "string", "phone": "string|null",
+  "roles": ["string"],
+  "permissions": ["string"]
 }
 ```
-- **Erreurs** : 400 (champs manquants), 401 (identifiants invalides)
-- **Comportement** : verifie is_active=1, bcrypt compare, cree les tokens, nettoie les tokens expires, log audit
-
-#### POST /api/auth/refresh
-- **Body** : `{ "refreshToken": "string" }`
-- **Reponse 200** : `{ "accessToken": "nouveau JWT", "refreshToken": "nouveau JWT" }`
-- **Comportement** : rotation de token (supprime ancien, cree nouveau pair), verifie user actif
-- **Erreurs** : 400 (token manquant), 403 (token invalide/expire/utilisateur introuvable)
-
-#### POST /api/auth/logout
-- **Body** : `{ "refreshToken": "string (optionnel)" }`
-- **Reponse 200** : `{ "message": "Deconnexion reussie" }`
-
-#### GET /api/auth/verify
-- **Header** : `Authorization: Bearer {token}`
-- **Reponse 200** : `{ "valid": true, "user": { id, email, role, name, department } }`
-
-#### GET /api/auth/me
-- **Header** : `Authorization: Bearer {token}`
-- **Reponse 200** : Objet utilisateur complet avec permissions
+- **Comportement** : lit les claims du JWT (sub, name, given_name, family_name, email, department) + interroge `role_permissions` SQLite pour les permissions
 
 ### Gestion des utilisateurs (`/api/users`) - Rate limit : 60 req/min
 
+> Toutes les opérations proxient vers **Keycloak Admin API**. Les IDs sont des UUID Keycloak.
+
 #### GET /api/users (Admin)
-- **Reponse** : Array d'utilisateurs (tous les champs sauf password_hash)
+- Proxy `GET /admin/realms/kabutare-hospital/users` + enrichissement des rôles en parallèle
+- Supporte `?role=X` → `GET /admin/realms/kabutare-hospital/roles/{role}/users`
 
 #### POST /api/users (Admin)
-- **Body** : `{ "first_name", "last_name", "email", "password", "department", "role", "phone?" }`
-- **Validation** : role doit etre dans [hospitalStaff, supervisor, technician, admin]
-- **Reponse 201** : `{ "message": "Utilisateur cree", "id": "user-{uuid}" }`
-- **Erreurs** : 400 (champs manquants/role invalide), 409 (email duplique)
+- **Body** : `{ "first_name", "last_name", "email", "password", "department", "roles": ["string"], "phone?" }`
+- Crée dans Keycloak + reset-password + assignation des rôles (transaction)
+- **Reponse 201** : `{ "message": "Utilisateur cree", "id": "uuid-keycloak" }`
 
 #### PUT /api/users/:id (Admin)
-- **Body** : Tous les champs optionnels (COALESCE pour mise a jour partielle)
-- **Log** : Enregistre les changements avant/apres pour chaque champ modifie
+- Met à jour Keycloak user + reset-password si `password` fourni + diff des rôles (add/remove)
 
 #### PATCH /api/users/:id/toggle (Admin)
-- Toggle is_active entre 0 et 1
-- **Reponse** : `{ "message": "Compte active/desactive", "is_active": 0|1 }`
+- GET état enabled actuel → PUT `{ enabled: !current }`
+- **Reponse** : `{ "message": "...", "is_active": 0|1 }`
 
 #### DELETE /api/users/:id (Admin)
-- **Query** : `?reason=...` (max 200 chars, optionnel)
-- Snapshot du user pour audit, interdit l'auto-suppression
+- Snapshot GET → DELETE Keycloak → audit log
 
 #### POST /api/users/restore (Admin)
-- **Body** : `{ "snapshot": { "id", "email", "name", "department?", "role?", "phone?" } }`
-- Genere mot de passe temporaire (8 hex chars)
+- Recrée dans Keycloak avec mot de passe temporaire + `UPDATE_PASSWORD` required action
 
 #### PUT /api/users/me/department (Auth + permission changeDepartment)
 - Changement direct de departement sans approbation
@@ -226,22 +180,23 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 ### Gestion des roles (`/api/roles`) - Rate limit : 60 req/min
 
 #### GET /api/roles (Admin)
-- Roles tries par is_builtin DESC, name ASC
+- Rôles Keycloak (filtrés SYSTEM_ROLES) + permissions depuis `role_permissions` SQLite
 
 #### POST /api/roles (Admin)
-- **Body** : `{ "name": "regex [a-zA-Z][a-zA-Z0-9_]*", "display_name", "description?", "permissions?": [] }`
-- Permissions validees contre la whitelist
+- Crée dans Keycloak + insère dans `role_permissions` SQLite
 
 #### PUT /api/roles/:name/permissions (Admin)
-- Admin role non modifiable, transaction DELETE+INSERT
+- Uniquement `role_permissions` SQLite (Keycloak ne connaît pas les permissions applicatives)
 
 #### DELETE /api/roles/:name (Admin)
-- Impossible de supprimer les roles builtin
+- DELETE Keycloak + DELETE `role_permissions` SQLite
 
 ## 1.5 Middleware et securite
 
-- **verifyToken** : Extraction Bearer token, verification JWT_SECRET, set req.user
-- **requireAdmin** : Verifie req.user.role === 'admin'
+- **verifyToken** : JWKS (jwks-rsa) → RS256 Keycloak en priorité, fallback HS256 shim (transition). Normalise `req.user = { id: sub, email, name, roles: realm_access.roles filtré, department, given_name, family_name, phone }`
+- **requireRole(...roles)** : vérifie `Array.isArray(req.user.roles) && roles.some(...)`
+- **requireAdmin** : vérifie `req.user.roles.includes('admin')`
+- **SYSTEM_ROLES** filtré : `offline_access`, `uma_authorization`, `default-roles-kabutare-hospital`
 - **helmet()** : Headers de securite (XSS, CSP, etc.)
 - **CORS** : Origins autorisees = `https://app.lucaslopvet.fr`, `https://dev.app.lucaslopvet.fr`, `http://localhost:(3000|3001|3002|5000|8080|4200|9000)`
 - **Trust proxy** : `app.set('trust proxy', 1)` pour Nginx
@@ -249,31 +204,42 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 
 ## 1.6 Configuration (src/config.js)
 
-| Variable             | Defaut                                                    |
-|----------------------|-----------------------------------------------------------|
-| PORT                 | 3000                                                      |
-| JWT_SECRET           | kabutare-hospital-secret-key-change-in-production         |
-| JWT_REFRESH_SECRET   | kabutare-hospital-refresh-secret-change-in-production     |
-| ACCESS_TOKEN_EXPIRY  | 15m                                                       |
-| REFRESH_TOKEN_EXPIRY | 7d (604800000 ms)                                         |
-| DB_PATH              | auth.db                                                   |
-| BCRYPT_ROUNDS        | 12                                                        |
-| DB_SERVICE_URL       | http://localhost:3002                                     |
-| INTERNAL_SECRET      | kabutare-internal-secret-change-in-production             |
+| Variable           | Defaut          | Description                                              |
+|--------------------|-----------------|----------------------------------------------------------|
+| PORT               | 3000            |                                                          |
+| DB_PATH            | auth.db         |                                                          |
+| DB_SERVICE_URL     | localhost:3002  |                                                          |
+| INTERNAL_SECRET    | (none)          | Secret communication inter-services                      |
+| JWT_SECRET         | null            | Shim transition HS256 — à supprimer en Phase 5           |
+| KC_ISSUER          | (requis)        | `https://keycloak.lucaslopvet.fr/realms/kabutare-hospital` |
+| KC_REALM           | kabutare-hospital |                                                        |
+| KC_ADMIN_URL       | (requis)        | URL interne Keycloak pour Admin API                      |
+| KC_CLIENT_ID       | auth-service    | Client Keycloak (service account)                        |
+| KC_CLIENT_SECRET   | (requis)        | Secret du client confidential auth-service               |
 
 ## 1.7 Dependances (package.json)
 
-| Package            | Version  | Role                    |
-|--------------------|----------|-------------------------|
-| express            | ^4.21.0  | Framework web           |
-| bcrypt             | ^5.1.1   | Hashage mots de passe   |
-| better-sqlite3     | ^11.7.0  | Driver SQLite           |
-| jsonwebtoken       | ^9.0.2   | Gestion JWT             |
-| helmet             | ^8.0.0   | Headers securite        |
-| express-rate-limit | ^7.1.5   | Rate limiting           |
-| cors               | ^2.8.5   | CORS middleware         |
-| jest               | ^29.7.0  | Tests (dev)             |
-| supertest          | ^7.0.0   | Tests HTTP (dev)        |
+| Package            | Version  | Role                                             |
+|--------------------|----------|--------------------------------------------------|
+| express            | ^4.21.0  | Framework web                                    |
+| better-sqlite3     | ^11.7.0  | Driver SQLite                                    |
+| jsonwebtoken       | ^9.0.2   | Validation JWT (shim HS256 + decode claims)      |
+| jwks-rsa           | ^3.1.0   | Récupération clés publiques Keycloak (JWKS)      |
+| bcrypt             | ^5.1.1   | Legacy — à supprimer en Phase 5                  |
+| helmet             | ^8.0.0   | Headers securite                                 |
+| express-rate-limit | ^7.5.1   | Rate limiting                                    |
+| cors               | ^2.8.5   | CORS middleware                                  |
+| jest               | ^29.7.0  | Tests (dev)                                      |
+| supertest          | ^7.0.0   | Tests HTTP (dev)                                 |
+
+### Scripts npm
+
+| Script          | Commande                         | Role                                      |
+|-----------------|----------------------------------|-------------------------------------------|
+| start           | `node src/index.js`              |                                           |
+| seed            | `node seed.js`                   | Données démo (legacy — ne crée plus users)|
+| kc:init         | `node scripts/keycloak-init.js`  | Bootstrap realm Keycloak (one-shot)       |
+| migrate:users   | `node scripts/migrate-users.js`  | Migration users auth.db → Keycloak        |
 
 ---
 
@@ -726,22 +692,23 @@ Methode `loadAll()` charge tout, fallback sur donnees mock si API indisponible.
 
 ### ApiConfig
 
-| Endpoint          | URL                                               |
-|-------------------|---------------------------------------------------|
-| Auth base         | https://auth.lucaslopvet.fr (configurable via --dart-define AUTH_URL) |
-| DB base           | https://DB.lucaslopvet.fr (configurable via --dart-define DB_URL)    |
-| Login             | /api/auth/login                                   |
-| Logout            | /api/auth/logout                                  |
-| Refresh           | /api/auth/refresh                                 |
-| Me                | /api/auth/me                                      |
-| Users             | /api/users                                        |
-| Dept Requests     | /api/users/department-requests                    |
-| Roles             | /api/roles                                        |
-| Equipment         | /api/equipment                                    |
-| Issues            | /api/issues                                       |
-| Inventory         | /api/inventory                                    |
-| Logs              | /api/logs                                         |
-| Sidebar           | /api/sidebar/config                               |
+| Constante / Endpoint | URL / Valeur par defaut                                      | --dart-define          |
+|----------------------|--------------------------------------------------------------|------------------------|
+| authBaseUrl          | https://auth.lucaslopvet.fr                                  | AUTH_URL               |
+| dbBaseUrl            | https://DB.lucaslopvet.fr                                    | DB_URL                 |
+| kcTokenUrl           | https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token | KC_TOKEN_URL |
+| kcClientId           | flutter-app                                                  | KC_CLIENT_ID           |
+| meUrl                | /api/auth/me                                                 |                        |
+| usersUrl             | /api/users                                                   |                        |
+| deptRequestsUrl      | /api/users/department-requests                               |                        |
+| rolesUrl             | /api/roles                                                   |                        |
+| equipmentUrl         | /api/equipment                                               |                        |
+| issuesUrl            | /api/issues                                                  |                        |
+| inventoryUrl         | /api/inventory                                               |                        |
+| logsUrl              | /api/logs                                                    |                        |
+| sidebarUrl           | /api/sidebar/config                                          |                        |
+
+> `loginUrl`, `logoutUrl`, `refreshUrl`, `verifyUrl` supprimés — ces opérations passent directement par `kcTokenUrl` (Keycloak).
 
 ## 3.3 Modeles de donnees
 
@@ -848,19 +815,21 @@ status: StockStatus (normal, low, outOfStock)
 
 *Chemin alternatif (EquipmentListScreen)* : clic "Signaler" sur une ligne => `onNavigate(3, equipmentId: eq.id)` => index-based nav, IssueFormScreen avec equipement pre-selectionne, sans selecteur ni filtre.
 
-### Login
+### Login (Direct Grant Keycloak)
 1. User saisit email/password
-2. `AuthService.loginWithApi()` -> `AuthApiService.login()` -> POST /api/auth/login
-3. Tokens sauvegardes dans SecureTokenStorage
-4. `DataService.loadAll()` charge toutes les donnees
-5. Navigation vers HomeHub
+2. `AuthService.loginWithApi()` → `AuthApiService.login()` → POST `kcTokenUrl` (`grant_type=password`, form-urlencoded)
+3. Keycloak retourne `access_token` + `refresh_token` (RS256)
+4. Tokens sauvegardés dans SecureTokenStorage
+5. `AuthApiService.getMe()` → GET `/api/auth/me` → profil complet avec permissions SQLite
+6. `DataService.loadAll()` charge toutes les données
+7. Navigation vers HomeHub
 
-### Auto-refresh JWT
-1. Requete API retourne 401
-2. `ApiClient._tryRefresh()` -> POST /api/auth/refresh avec refreshToken
-3. Nouveau pair de tokens sauvegarde (rotation)
-4. Requete originale rejouee
-5. Si refresh echoue -> `AuthService.handleSessionExpired()` -> retour login
+### Auto-refresh JWT (Keycloak)
+1. Requête API retourne 401
+2. `ApiClient._tryRefresh()` → POST `kcTokenUrl` (`grant_type=refresh_token`, form-urlencoded)
+3. Nouveau pair de tokens sauvegardé (rotation Keycloak)
+4. Requête originale rejouée
+5. Si refresh échoue → `AuthService.handleSessionExpired()` → retour login
 
 ### CRUD Equipement
 - Create: `DbApiService.createEquipment()` -> POST /api/equipment -> `DataService.reloadEquipment()`
@@ -922,37 +891,39 @@ CMD ["node", "src/index.js"]
 
 ### Docker Compose Production (docker-compose.yml)
 
-| Service         | Container            | Port       | Volume            | Health check           |
-|-----------------|----------------------|------------|-------------------|------------------------|
-| auth-service    | auth-service-prod    | 3001:3001  | auth_data_prod:/data | wget /health 30s/10s/3r |
-| db-service      | db-service-prod      | 3002:3002  | db_data_prod:/data   | wget /health 30s/10s/3r |
+| Service            | Container               | Port       | Volume                      | Health check            |
+|--------------------|-------------------------|------------|-----------------------------|-------------------------|
+| auth-service       | auth-service-prod       | 3001:3001  | auth_data_prod:/data        | wget /health 30s/10s/3r |
+| db-service         | db-service-prod         | 3002:3002  | db_data_prod:/data          | wget /health 30s/10s/3r |
+| postgres-keycloak  | postgres-keycloak-prod  | (interne)  | keycloak_postgres_data:/var/lib/postgresql/data | pg_isready 10s/5s/5r |
+| keycloak           | keycloak-prod           | 8080:8080  | (état dans PostgreSQL)      | bash /dev/tcp 9000 30s/10s/5r |
 
 **db-service depends_on auth-service (condition: service_healthy)**
+**keycloak depends_on postgres-keycloak (condition: service_healthy)**
 
 ### Docker Compose Dev (docker-compose.dev.yml)
 
-| Service           | Container            | Port       | Volume           |
-|-------------------|----------------------|------------|------------------|
-| auth-service-dev  | auth-service-dev     | 3003:3001  | auth_data_dev:/data |
-| db-service-dev    | db-service-dev       | 3004:3002  | db_data_dev:/data   |
-
-**Variables d'environnement dev** (avec defauts) :
-- JWT_SECRET_DEV: kabutare-dev-secret
-- JWT_REFRESH_SECRET_DEV: kabutare-dev-refresh-secret
-- INTERNAL_SECRET_DEV: kabutare-internal-dev-secret
+| Service           | Container      | Port       | Volume              | Notes                          |
+|-------------------|----------------|------------|---------------------|--------------------------------|
+| auth-service-dev  | auth-service-dev | 3003:3001 | auth_data_dev:/data | extra_hosts: keycloak.lucaslopvet.fr→host-gateway |
+| db-service-dev    | db-service-dev | 3004:3002  | db_data_dev:/data   | extra_hosts: keycloak.lucaslopvet.fr→host-gateway |
+| keycloak-dev      | keycloak-dev   | 8081:8081  | H2 (start-dev)      | KC_HOSTNAME=keycloak.lucaslopvet.fr, KC_PROXY_HEADERS=xforwarded |
 
 ## 4.2 Nginx (6 fichiers de config)
 
 Tous : HTTPS obligatoire (Let's Encrypt), redirect HTTP->HTTPS, proxy headers (Host, X-Real-IP, X-Forwarded-For, X-Forwarded-Proto)
 
-| Fichier       | Domaine                     | Upstream / Root                    | Cache        |
-|---------------|-----------------------------|------------------------------------|--------------|
-| app.conf      | app.lucaslopvet.fr          | /var/www/flutter-app (SPA)         | 1 an, immutable |
-| auth.conf     | auth.lucaslopvet.fr         | proxy http://127.0.0.1:3001       | -            |
-| db.conf       | DB.lucaslopvet.fr           | proxy http://127.0.0.1:3002       | -            |
-| dev-app.conf  | dev.app.lucaslopvet.fr      | /var/www/flutter-app-dev (SPA)     | 1 heure      |
-| dev-auth.conf | dev.auth.lucaslopvet.fr     | proxy http://127.0.0.1:3003       | -            |
-| dev-db.conf   | dev.DB.lucaslopvet.fr       | proxy http://127.0.0.1:3004       | -            |
+| Fichier          | Domaine                     | Upstream / Root                    | Notes                       |
+|------------------|-----------------------------|------------------------------------|------------------------------|
+| app.conf         | app.lucaslopvet.fr          | /var/www/flutter-app (SPA)         | Cache 1 an, immutable        |
+| auth.conf        | auth.lucaslopvet.fr         | proxy http://127.0.0.1:3001        |                              |
+| db.conf          | DB.lucaslopvet.fr           | proxy http://127.0.0.1:3002        |                              |
+| dev-app.conf     | dev.app.lucaslopvet.fr      | /var/www/flutter-app-dev (SPA)     | Cache 1 heure                |
+| dev-auth.conf    | dev.auth.lucaslopvet.fr     | proxy http://127.0.0.1:3003        |                              |
+| dev-db.conf      | dev.DB.lucaslopvet.fr       | proxy http://127.0.0.1:3004        |                              |
+| keycloak.conf    | keycloak.lucaslopvet.fr     | proxy http://127.0.0.1:8081 (dev) / 8080 (prod) | proxy_buffer_size 128k (grands headers JWT) |
+
+> `keycloak.conf` n'est **pas** déployé automatiquement par Jenkins — copie manuelle sur le VPS : `sudo cp nginx/conf.d/keycloak.conf /etc/nginx/conf.d/ && sudo systemctl reload nginx`
 
 **SPA routing** : `try_files $uri $uri/ /index.html`
 **Gzip** active sur text/plain, text/css, application/javascript, application/json
@@ -984,19 +955,33 @@ Tous : HTTPS obligatoire (Let's Encrypt), redirect HTTP->HTTPS, proxy headers (H
 
 ### Production (depuis /etc/kabutare/.env)
 
-| Variable           | Description                                |
-|--------------------|--------------------------------------------|
-| JWT_SECRET         | Cle de signature access tokens             |
-| JWT_REFRESH_SECRET | Cle de signature refresh tokens            |
-| INTERNAL_SECRET    | Secret communication inter-services        |
+| Variable              | Description                                               |
+|-----------------------|-----------------------------------------------------------|
+| JWT_SECRET            | Shim transition HS256 — à supprimer après Phase 5         |
+| JWT_REFRESH_SECRET    | Shim transition — à supprimer après Phase 5               |
+| INTERNAL_SECRET       | Secret communication inter-services                       |
+| KC_DB_PASSWORD        | Mot de passe PostgreSQL Keycloak                          |
+| KC_ADMIN_USER         | Login admin console Keycloak                              |
+| KC_ADMIN_PASSWORD     | Mot de passe admin console Keycloak                       |
+| KC_CLIENT_SECRET_AUTH | Secret du client `auth-service` (confidential)            |
 
 ### Dev (defauts dans docker-compose.dev.yml)
 
-| Variable                | Defaut                              |
-|-------------------------|-------------------------------------|
-| JWT_SECRET_DEV          | kabutare-dev-secret                 |
-| JWT_REFRESH_SECRET_DEV  | kabutare-dev-refresh-secret         |
-| INTERNAL_SECRET_DEV     | kabutare-internal-dev-secret        |
+| Variable                   | Defaut                              |
+|----------------------------|-------------------------------------|
+| JWT_SECRET_DEV             | kabutare-dev-secret                 |
+| INTERNAL_SECRET_DEV        | kabutare-internal-dev-secret        |
+| KC_CLIENT_SECRET_AUTH_DEV  | changeme-dev-secret                 |
+
+### Keycloak (dans les services Node)
+
+| Variable         | Valeur prod                                                        |
+|------------------|--------------------------------------------------------------------|
+| KC_ISSUER        | https://keycloak.lucaslopvet.fr/realms/kabutare-hospital           |
+| KC_REALM         | kabutare-hospital                                                  |
+| KC_ADMIN_URL     | https://keycloak.lucaslopvet.fr (prod) / http://keycloak-dev:8081 (dev) |
+| KC_CLIENT_ID     | auth-service                                                       |
+| KC_CLIENT_SECRET | ${KC_CLIENT_SECRET_AUTH}                                           |
 
 ### Communication inter-services (dans Docker)
 

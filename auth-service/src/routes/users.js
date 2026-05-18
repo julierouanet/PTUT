@@ -22,6 +22,9 @@ const router = express.Router();
 // Rôles assignables (le rôle générique `technician` est déprécié)
 const VALID_ROLES = ['hospitalStaff', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'admin'];
 
+// Rôles qu'un utilisateur peut demander lui-même (admin exclu volontairement)
+const REQUESTABLE_ROLES = ['supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
+
 const rolesCsv = (roles) => (Array.isArray(roles) ? roles.join(',') : '');
 
 // Retourne les permissions d'un ensemble de rôles (lus depuis role_permissions SQLite)
@@ -459,6 +462,93 @@ router.put('/department-requests/:id', verifyToken, requireAdmin, async (req, re
   });
 
   res.json({ message: status === 'approved' ? 'Demande approuvée, département mis à jour' : 'Demande rejetée' });
+});
+
+// ── Demandes de changement de rôle (SQLite — role_change_requests) ─────────────
+
+// POST /api/users/role-request
+router.post('/role-request', verifyToken, (req, res) => {
+  const db = getDb();
+  const { requested_role } = req.body;
+
+  if (!requested_role) return res.status(400).json({ error: 'Rôle demandé requis' });
+  if (!REQUESTABLE_ROLES.includes(requested_role)) {
+    return res.status(400).json({ error: `Rôle invalide. Valeurs possibles : ${REQUESTABLE_ROLES.join(', ')}` });
+  }
+  if (req.user.roles.includes(requested_role)) {
+    return res.status(400).json({ error: 'Vous avez déjà ce rôle' });
+  }
+
+  const existing = db.prepare(
+    "SELECT id FROM role_change_requests WHERE user_id = ? AND requested_role = ? AND status = 'pending'"
+  ).get(req.user.id, requested_role);
+  if (existing) return res.status(409).json({ error: 'Une demande pour ce rôle est déjà en attente' });
+
+  const id = crypto.randomUUID();
+  db.prepare(`
+    INSERT INTO role_change_requests (id, user_id, user_name, current_roles, requested_role, status, created_at)
+    VALUES (?, ?, ?, ?, ?, 'pending', ?)
+  `).run(id, req.user.id, req.user.name, JSON.stringify(req.user.roles), requested_role, new Date().toISOString());
+
+  res.status(201).json({ id, message: 'Demande de rôle envoyée, en attente de validation admin' });
+});
+
+// GET /api/users/role-requests (admin)
+router.get('/role-requests', verifyToken, requireAdmin, (req, res) => {
+  const db = getDb();
+  const { status } = req.query;
+  let query = 'SELECT * FROM role_change_requests';
+  const params = [];
+  if (status) { query += ' WHERE status = ?'; params.push(status); }
+  query += ' ORDER BY created_at DESC';
+  res.json(db.prepare(query).all(...params));
+});
+
+// PUT /api/users/role-requests/:id (admin approuve ou rejette)
+router.put('/role-requests/:id', verifyToken, requireAdmin, async (req, res) => {
+  const db = getDb();
+  const { status, admin_note } = req.body;
+
+  if (!['approved', 'rejected'].includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide (approved | rejected)' });
+  }
+
+  const request = db.prepare('SELECT * FROM role_change_requests WHERE id = ?').get(req.params.id);
+  if (!request) return res.status(404).json({ error: 'Demande introuvable' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'Demande déjà traitée' });
+
+  const now = new Date().toISOString();
+  db.prepare(`
+    UPDATE role_change_requests
+    SET status = ?, admin_id = ?, admin_note = ?, resolved_at = ?
+    WHERE id = ?
+  `).run(status, req.user.id, admin_note || null, now, req.params.id);
+
+  if (status === 'approved') {
+    try {
+      await assignRolesToUser(request.user_id, [request.requested_role]);
+    } catch (err) {
+      console.error('[USERS] Erreur assignation rôle Keycloak:', err.message);
+    }
+  }
+
+  sendLog({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   rolesCsv(req.user.roles),
+    action:      status === 'approved' ? 'approve_role_request' : 'reject_role_request',
+    target_type: 'user',
+    target_id:   request.user_id,
+    target_name: request.user_name,
+    details:     { requested_role: request.requested_role, admin_note },
+    ...reqMeta(req),
+  });
+
+  res.json({
+    message: status === 'approved'
+      ? 'Demande approuvée, rôle assigné dans Keycloak'
+      : 'Demande rejetée',
+  });
 });
 
 module.exports = router;

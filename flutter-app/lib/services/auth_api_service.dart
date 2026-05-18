@@ -52,14 +52,14 @@ class AuthApiService {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       final code        = body['error']             as String?;
       final description = body['error_description'] as String?;
-      // Mot de passe temporaire non changé → guider l'utilisateur
+      // Compte non activé : email non vérifié ou mot de passe temporaire
       if (code == 'invalid_grant' &&
           description != null &&
           description.contains('not fully set up')) {
         return const LoginResult(
           success: false,
-          error: 'Votre compte nécessite une réinitialisation du mot de passe. '
-              'Contactez votre administrateur.',
+          error: 'Votre compte n\'est pas encore activé. '
+              'Vérifiez votre email ou contactez votre administrateur.',
         );
       }
       return LoginResult(
@@ -233,6 +233,90 @@ class AuthApiService {
     if (response.statusCode >= 400) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       throw Exception(body['error'] ?? 'Erreur suppression rôle');
+    }
+  }
+
+  // ── Inscription ───────────────────────────────────────────────────────────────
+
+  /// Crée un nouveau compte via l'Admin API Keycloak (endpoint public).
+  /// Assigne automatiquement le rôle hospitalStaff et envoie un email de vérification.
+  Future<Map<String, dynamic>> register({
+    required String firstName,
+    required String lastName,
+    required String email,
+    required String password,
+    required String department,
+    String? phone,
+  }) async {
+    final response = await ApiClient.postPublic(ApiConfig.registerUrl, {
+      'first_name': firstName,
+      'last_name':  lastName,
+      'email':      email,
+      'password':   password,
+      'department': department,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+    });
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur lors de la création du compte');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  // ── Mot de passe oublié ────────────────────────────────────────────────────────
+
+  /// Déclenche l'envoi d'un email de réinitialisation via Keycloak.
+  /// Répond toujours sans erreur (anti-énumération côté serveur).
+  Future<void> forgotPassword(String email) async {
+    final response = await ApiClient.postPublic(
+      ApiConfig.forgotPasswordUrl,
+      {'email': email},
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur');
+    }
+  }
+
+  // ── Demandes de rôle ──────────────────────────────────────────────────────────
+
+  /// Soumet une demande de rôle supplémentaire (utilisateur connecté).
+  Future<void> requestRole(String requestedRole) async {
+    final response = await ApiClient.post(
+      '${ApiConfig.usersUrl}/role-request',
+      {'requested_role': requestedRole},
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur lors de la demande de rôle');
+    }
+  }
+
+  /// Récupère les demandes de rôle (admin seulement). [status] = pending | approved | rejected
+  Future<List<Map<String, dynamic>>> getRoleRequests({String? status}) async {
+    var url = ApiConfig.roleRequestsUrl;
+    if (status != null) url += '?status=${Uri.encodeComponent(status)}';
+    final response = await ApiClient.get(url);
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}');
+    }
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Approuve ou rejette une demande de rôle (admin seulement).
+  Future<void> resolveRoleRequest(
+    String requestId, {
+    required String status,
+    String? adminNote,
+  }) async {
+    final url = '${ApiConfig.roleRequestsUrl}/$requestId';
+    final response = await ApiClient.put(url, {
+      'status': status,
+      if (adminNote != null && adminNote.isNotEmpty) 'admin_note': adminNote,
+    });
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur résolution demande');
     }
   }
 }
