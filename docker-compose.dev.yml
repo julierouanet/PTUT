@@ -18,14 +18,16 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET_DEV:-kabutare-dev-refresh-secret}
       DB_SERVICE_URL: http://db-service-dev:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
-      # Keycloak dev (start-dev sur port 8081)
-      KC_ISSUER: http://keycloak-dev:8081/realms/kabutare-hospital
+      # Keycloak dev — issuer public (correspond au claim "iss" du token)
+      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
       KC_REALM: kabutare-hospital
       KC_ADMIN_URL: http://keycloak-dev:8081
       KC_CLIENT_ID: auth-service
       KC_CLIENT_SECRET: ${KC_CLIENT_SECRET_AUTH_DEV:-changeme-dev-secret}
     volumes:
       - auth_data_dev:/data
+    extra_hosts:
+      - "keycloak.lucaslopvet.fr:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
       interval: 30s
@@ -47,10 +49,12 @@ services:
       JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
       AUTH_SERVICE_URL: http://auth-service-dev:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
-      # Keycloak dev
-      KC_ISSUER: http://keycloak-dev:8081/realms/kabutare-hospital
+      # Keycloak dev — issuer public
+      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
     volumes:
       - db_data_dev:/data
+    extra_hosts:
+      - "keycloak.lucaslopvet.fr:host-gateway"
     depends_on:
       auth-service-dev:
         condition: service_healthy
@@ -70,6 +74,9 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8081
+      KC_HOSTNAME: keycloak.lucaslopvet.fr
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT_HTTPS: "false"
     ports:
       - "8081:8081"
     healthcheck:
