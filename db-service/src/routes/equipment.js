@@ -1,13 +1,16 @@
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken, requireRole } = require('../middleware/auth');
+const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
 // Rôles techniciens spécialisés (autorisés sur les mêmes routes que l'ancien `technician`).
 const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
-const rolesCsv = (req) => (Array.isArray(req.user?.roles) ? req.user.roles.join(',') : '');
+const rolesCsv = (req) =>
+  (Array.isArray(req.user?.roles) ? req.user.roles : [])
+    .filter((r) => !SYSTEM_ROLES.has(r))
+    .join(',');
 
 const VALID_STATUSES_EQ   = [
   'Operational',     // équipement utilisable (en service ou disponible)

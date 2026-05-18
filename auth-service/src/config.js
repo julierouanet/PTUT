@@ -1,22 +1,24 @@
 const config = {
-  PORT: process.env.PORT || 3000,
-  JWT_SECRET: process.env.JWT_SECRET || 'kabutare-hospital-secret-key-change-in-production',
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'kabutare-hospital-refresh-secret-change-in-production',
-  ACCESS_TOKEN_EXPIRY: '15m',
-  REFRESH_TOKEN_EXPIRY: '7d',
-  REFRESH_TOKEN_EXPIRY_MS: 7 * 24 * 60 * 60 * 1000,
-  DB_PATH: process.env.DB_PATH || 'auth.db',
-  BCRYPT_ROUNDS: 12,
-  DB_SERVICE_URL: process.env.DB_SERVICE_URL || 'http://localhost:3002',
-  INTERNAL_SECRET: process.env.INTERNAL_SECRET || 'kabutare-internal-secret-change-in-production',
+  PORT:                   process.env.PORT                   || 3000,
+  // Conservé pour le shim de transition Phase 5 (supprimer après migration complète)
+  JWT_SECRET:             process.env.JWT_SECRET             || null,
+  JWT_REFRESH_SECRET:     process.env.JWT_REFRESH_SECRET     || null,
+  DB_PATH:                process.env.DB_PATH                || 'auth.db',
+  DB_SERVICE_URL:         process.env.DB_SERVICE_URL         || 'http://localhost:3002',
+  INTERNAL_SECRET:        process.env.INTERNAL_SECRET        || 'kabutare-internal-secret-change-in-production',
+  // Keycloak
+  KC_ISSUER:              process.env.KC_ISSUER              || 'https://keycloak.lucaslopvet.fr/realms/kabutare-hospital',
+  KC_REALM:               process.env.KC_REALM               || 'kabutare-hospital',
+  KC_ADMIN_URL:           process.env.KC_ADMIN_URL           || 'https://keycloak.lucaslopvet.fr',
+  KC_CLIENT_ID:           process.env.KC_CLIENT_ID           || 'auth-service',
+  KC_CLIENT_SECRET:       process.env.KC_CLIENT_SECRET       || null,
 };
 
-// Avertissement si les secrets par défaut sont utilisés (critique en production)
-if (config.JWT_SECRET.includes('change-in-production') ||
-    config.JWT_REFRESH_SECRET.includes('change-in-production') ||
-    config.INTERNAL_SECRET.includes('change-in-production')) {
-  console.warn('⚠️  [SÉCURITÉ] JWT_SECRET / JWT_REFRESH_SECRET / INTERNAL_SECRET utilisent des valeurs par défaut.');
-  console.warn('⚠️  Définissez JWT_SECRET, JWT_REFRESH_SECRET et INTERNAL_SECRET dans vos variables d\'environnement avant de passer en production.');
+if (!config.KC_CLIENT_SECRET) {
+  console.warn('⚠️  [SÉCURITÉ] KC_CLIENT_SECRET non défini — les appels à l\'Admin API Keycloak échoueront.');
+}
+if (!config.INTERNAL_SECRET || config.INTERNAL_SECRET.includes('change-in-production')) {
+  console.warn('⚠️  [SÉCURITÉ] INTERNAL_SECRET utilise une valeur par défaut.');
 }
 
 module.exports = config;

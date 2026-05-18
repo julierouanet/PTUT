@@ -1,178 +1,55 @@
+// ── Routes d'authentification ─────────────────────────────────────────────────
+// Après migration Keycloak :
+//   - Login / refresh / logout : gérés par Keycloak (endpoint OIDC /token)
+//   - GET /verify : supprimé (db-service valide le JWT localement via JWKS)
+//   - GET /me     : conservé — lit les claims du token + permissions depuis SQLite
+
+'use strict';
+
 const express = require('express');
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const { getDb } = require('../database');
-const { JWT_SECRET, JWT_REFRESH_SECRET, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY_MS } = require('../config');
 const { verifyToken } = require('../middleware/auth');
-const { getUserRoles, getUserPermissions } = require('../utils/userRoles');
-
-const { sendLog, reqMeta, extractIp } = require('../utils/logger');
-
-const sendAuthLog = ({ user_id, user_name, user_role, action, details, ip_address, user_agent }) =>
-  sendLog({ user_id, user_name, user_role, action, target_type: 'auth', details, ip_address, user_agent });
 
 const router = express.Router();
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────
 
-/** Supprime les refresh tokens expirés pour garder la table propre. */
-function cleanExpiredTokens(db) {
-  db.prepare("DELETE FROM refresh_tokens WHERE expires_at < datetime('now')").run();
+/**
+ * Retourne l'union des permissions applicatives pour une liste de noms de rôles,
+ * en lisant la table `role_permissions` (conservée dans auth.db).
+ * @param {import('better-sqlite3').Database} db
+ * @param {string[]} roles
+ * @returns {string[]}
+ */
+function getPermissionsForRoles(db, roles) {
+  if (!roles || roles.length === 0) return [];
+  const placeholders = roles.map(() => '?').join(',');
+  return db
+    .prepare(`SELECT DISTINCT permission FROM role_permissions WHERE role_name IN (${placeholders}) ORDER BY permission`)
+    .all(...roles)
+    .map((r) => r.permission);
 }
-
-/** Sérialise un tableau de rôles pour la colonne `user_role` des logs (CSV). */
-function rolesToLog(roles) {
-  return Array.isArray(roles) ? roles.join(',') : '';
-}
-
-// ── POST /api/auth/login ─────────────────────────────────────────────────────
-
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
-  }
-
-  const db = getDb();
-  const user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(email);
-
-  if (!user) {
-    console.log('[AUTH] Échec login — email inconnu ou inactif');
-    sendAuthLog({ user_id: null, user_name: email, user_role: 'unknown', action: 'login_failed', details: { reason: 'email_inconnu' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  const valid = await bcrypt.compare(password, user.password_hash);
-  if (!valid) {
-    const failRoles = getUserRoles(db, user.id);
-    console.log('[AUTH] Échec login — mot de passe incorrect');
-    sendAuthLog({ user_id: user.id, user_name: user.name, user_role: rolesToLog(failRoles), action: 'login_failed', details: { reason: 'mot_de_passe_incorrect' }, ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  // Nettoyage des tokens expirés à chaque login
-  cleanExpiredTokens(db);
-
-  const roles = getUserRoles(db, user.id);
-  const permissions = getUserPermissions(db, user.id);
-
-  const payload = { id: user.id, email: user.email, roles, name: user.name, department: user.department };
-
-  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
-  const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
-
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS).toISOString();
-  db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, refreshToken, expiresAt);
-
-  console.log(`[AUTH] Login réussi (rôles: ${roles.join(',') || 'aucun'})`);
-  sendAuthLog({ user_id: user.id, user_name: user.name, user_role: rolesToLog(roles), action: 'login', ip_address: extractIp(req), user_agent: req.headers['user-agent'] });
-
-  res.json({
-    accessToken,
-    refreshToken,
-    user: {
-      id: user.id, name: user.name, first_name: user.first_name, last_name: user.last_name,
-      email: user.email, roles, department: user.department, phone: user.phone,
-      permissions,
-    },
-  });
-});
-
-// ── POST /api/auth/refresh (avec rotation du refresh token) ──────────────────
-
-router.post('/refresh', (req, res) => {
-  const { refreshToken } = req.body;
-
-  if (!refreshToken) {
-    return res.status(400).json({ error: 'Missing refresh token' });
-  }
-
-  const db = getDb();
-  const stored = db.prepare('SELECT * FROM refresh_tokens WHERE token = ?').get(refreshToken);
-
-  if (!stored || new Date(stored.expires_at) < new Date()) {
-    return res.status(403).json({ error: 'Refresh token invalide ou expiré' });
-  }
-
-  try {
-    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET);
-    const user = db.prepare('SELECT * FROM users WHERE id = ? AND is_active = 1').get(decoded.id);
-
-    if (!user) {
-      return res.status(403).json({ error: 'Utilisateur introuvable' });
-    }
-
-    // Supprimer l'ancien refresh token (rotation)
-    db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
-
-    // Émettre un nouveau couple access + refresh (les rôles sont rechargés depuis la DB
-    // pour que les modifications prennent effet sans nouveau login).
-    const roles = getUserRoles(db, user.id);
-    const payload = { id: user.id, email: user.email, roles, name: user.name, department: user.department };
-    const newAccessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRY });
-    const newRefreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRY });
-
-    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_EXPIRY_MS).toISOString();
-    db.prepare('INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (?, ?, ?)').run(user.id, newRefreshToken, expiresAt);
-
-    // Nettoyage opportuniste
-    cleanExpiredTokens(db);
-
-    console.log('[AUTH] Token refresh réussi');
-
-    res.json({ accessToken: newAccessToken, refreshToken: newRefreshToken });
-  } catch (err) {
-    return res.status(403).json({ error: 'Refresh token invalide' });
-  }
-});
-
-// ── POST /api/auth/logout ────────────────────────────────────────────────────
-
-router.post('/logout', (req, res) => {
-  const { refreshToken } = req.body;
-  const ip = extractIp(req);
-  const ua = req.headers['user-agent'];
-
-  if (refreshToken) {
-    const db = getDb();
-    // Lire d'abord, supprimer ensuite (ordre crucial pour le log)
-    try {
-      const stored = db.prepare('SELECT user_id FROM refresh_tokens WHERE token = ?').get(refreshToken);
-      if (stored) {
-        const u = db.prepare('SELECT id, name FROM users WHERE id = ?').get(stored.user_id);
-        if (u) {
-          const roles = getUserRoles(db, u.id);
-          sendAuthLog({ user_id: u.id, user_name: u.name, user_role: rolesToLog(roles), action: 'logout', ip_address: ip, user_agent: ua });
-        }
-      }
-    } catch (_) {}
-    db.prepare('DELETE FROM refresh_tokens WHERE token = ?').run(refreshToken);
-  }
-
-  console.log('[AUTH] Déconnexion effectuée');
-  res.json({ message: 'Logged out successfully' });
-});
-
-// ── GET /api/auth/verify — pour les autres services ──────────────────────────
-
-router.get('/verify', verifyToken, (req, res) => {
-  res.json({ valid: true, user: req.user });
-});
 
 // ── GET /api/auth/me — profil de l'utilisateur connecté ──────────────────────
+// Lit les claims du token Keycloak (peuplé par le middleware JWKS) et enrichit
+// la réponse avec les permissions applicatives depuis la table role_permissions.
+// Conserve le même shape de réponse pour ne pas casser le client Flutter.
 
 router.get('/me', verifyToken, (req, res) => {
-  const db = getDb();
-  const user = db.prepare('SELECT id, name, first_name, last_name, email, department, phone, created_at FROM users WHERE id = ?').get(req.user.id);
+  const db          = getDb();
+  const permissions = getPermissionsForRoles(db, req.user.roles);
 
-  if (!user) {
-    return res.status(404).json({ error: 'Utilisateur introuvable' });
-  }
-
-  const roles = getUserRoles(db, user.id);
-  const permissions = getUserPermissions(db, user.id);
-  res.json({ ...user, roles, permissions });
+  res.json({
+    id:          req.user.id,
+    name:        req.user.name,
+    first_name:  req.user.given_name  ?? req.user.name.split(' ')[0] ?? '',
+    last_name:   req.user.family_name ?? req.user.name.split(' ').slice(1).join(' ') ?? '',
+    email:       req.user.email,
+    department:  req.user.department,
+    phone:       req.user.phone ?? null,
+    roles:       req.user.roles,
+    permissions,
+  });
 });
 
 module.exports = router;

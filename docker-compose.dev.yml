@@ -13,10 +13,17 @@ services:
       PORT: 3001
       NODE_ENV: development
       DB_PATH: /data/auth.db
+      # Conservé pour le shim de transition
       JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET_DEV:-kabutare-dev-refresh-secret}
       DB_SERVICE_URL: http://db-service-dev:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
+      # Keycloak dev (start-dev sur port 8081)
+      KC_ISSUER: http://keycloak-dev:8081/realms/kabutare-hospital
+      KC_REALM: kabutare-hospital
+      KC_ADMIN_URL: http://keycloak-dev:8081
+      KC_CLIENT_ID: auth-service
+      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET_AUTH_DEV:-changeme-dev-secret}
     volumes:
       - auth_data_dev:/data
     healthcheck:
@@ -36,9 +43,12 @@ services:
       PORT: 3002
       NODE_ENV: development
       DB_PATH: /data/hospital.db
+      # Conservé pour le shim de transition
       JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
       AUTH_SERVICE_URL: http://auth-service-dev:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
+      # Keycloak dev
+      KC_ISSUER: http://keycloak-dev:8081/realms/kabutare-hospital
     volumes:
       - db_data_dev:/data
     depends_on:
@@ -50,6 +60,24 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+  keycloak-dev:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: keycloak-dev
+    restart: unless-stopped
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_PORT: 8081
+    ports:
+      - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/realms/master || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
 volumes:
   auth_data_dev:

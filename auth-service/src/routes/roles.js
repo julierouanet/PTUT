@@ -1,37 +1,59 @@
+// ── Routes de gestion des rôles ───────────────────────────────────────────────
+// Les rôles sont stockés dans Keycloak (realm roles).
+// Les permissions applicatives restent dans la table SQLite `role_permissions`.
+// L'API retourne le même shape qu'avant pour ne pas casser le client Flutter.
+
+'use strict';
+
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireAdmin } = require('../middleware/auth');
+const { kcAdminFetch } = require('../utils/keycloakAdmin');
 
 const router = express.Router();
+
+// Rôles système Keycloak à masquer dans les réponses API
+const SYSTEM_ROLES = new Set(['offline_access', 'uma_authorization', 'default-roles-kabutare-hospital']);
 
 // Liste blanche des permissions valides
 const VALID_PERMISSIONS = [
   'viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
   'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
   'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
+  'changeDepartment',
 ];
 
-// Middleware admin
-const requireAdmin = (req, res, next) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ error: 'Accès réservé aux administrateurs' });
-  }
-  next();
-};
+// ── GET /api/roles — rôles Keycloak enrichis des permissions SQLite ────────────
+router.get('/', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const resp = await kcAdminFetch('/roles');
+    if (!resp.ok) return res.status(502).json({ error: 'Erreur Keycloak' });
+    const kcRoles = await resp.json();
 
-// GET /api/roles — tous les rôles avec leurs permissions (admin seulement)
-router.get('/', verifyToken, requireAdmin, (req, res) => {
-  const db = getDb();
-  const roles = db.prepare('SELECT name, display_name, description, is_builtin, created_at FROM roles ORDER BY is_builtin DESC, name ASC').all();
-  const result = roles.map(role => {
-    const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(role.name);
-    return { ...role, permissions: perms.map(p => p.permission) };
-  });
-  res.json(result);
+    const db = getDb();
+    const result = kcRoles
+      .filter((r) => !SYSTEM_ROLES.has(r.name))
+      .map((r) => {
+        const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ? ORDER BY permission')
+          .all(r.name).map((p) => p.permission);
+        return {
+          name:        r.name,
+          display_name: r.name,
+          description: r.description ?? '',
+          is_builtin:  r.composite ? 0 : 1,
+          permissions: perms,
+        };
+      });
+
+    res.json(result);
+  } catch (err) {
+    console.error('[ROLES] Erreur GET /roles:', err.message);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
 
-// POST /api/roles — créer un rôle personnalisé (admin)
-router.post('/', verifyToken, requireAdmin, (req, res) => {
+// ── POST /api/roles — créer un rôle personnalisé (admin) ──────────────────────
+router.post('/', verifyToken, requireAdmin, async (req, res) => {
   const db = getDb();
   const { name, display_name, description, permissions = [] } = req.body;
 
@@ -42,36 +64,36 @@ router.post('/', verifyToken, requireAdmin, (req, res) => {
     return res.status(400).json({ error: 'Le nom du rôle ne doit contenir que des lettres, chiffres et underscores' });
   }
 
-  const invalidPerms = permissions.filter(p => !VALID_PERMISSIONS.includes(p));
+  const invalidPerms = permissions.filter((p) => !VALID_PERMISSIONS.includes(p));
   if (invalidPerms.length > 0) {
     return res.status(400).json({ error: `Permissions invalides : ${invalidPerms.join(', ')}` });
   }
 
-  const existing = db.prepare('SELECT name FROM roles WHERE name = ?').get(name);
-  if (existing) {
-    return res.status(409).json({ error: 'Un rôle avec ce nom existe déjà' });
-  }
-
   try {
+    // Créer dans Keycloak
+    const kcResp = await kcAdminFetch('/roles', {
+      method: 'POST',
+      body:   JSON.stringify({ name, description: description || '' }),
+    });
+    if (kcResp.status === 409) return res.status(409).json({ error: 'Un rôle avec ce nom existe déjà' });
+    if (!kcResp.ok) return res.status(502).json({ error: 'Erreur Keycloak lors de la création du rôle' });
+
+    // Insérer les permissions dans SQLite
     db.transaction(() => {
-      db.prepare('INSERT INTO roles (name, display_name, description, is_builtin) VALUES (?, ?, ?, 0)')
-        .run(name, display_name, description || null);
       const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
-      for (const perm of permissions) {
-        insertPerm.run(name, perm);
-      }
+      for (const perm of permissions) insertPerm.run(name, perm);
     })();
 
-    const created = db.prepare('SELECT name, display_name, description, is_builtin FROM roles WHERE name = ?').get(name);
-    const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ?').all(name);
-    res.status(201).json({ ...created, permissions: perms.map(p => p.permission) });
-  } catch (e) {
+    res.status(201).json({ name, display_name, description, is_builtin: 0, permissions });
+  } catch (err) {
+    console.error('[ROLES] Erreur POST /roles:', err.message);
     res.status(500).json({ error: 'Erreur lors de la création du rôle' });
   }
 });
 
-// PUT /api/roles/:name/permissions — mettre à jour les permissions d'un rôle (admin)
-router.put('/:name/permissions', verifyToken, requireAdmin, (req, res) => {
+// ── PUT /api/roles/:name/permissions — modifier les permissions (admin) ────────
+// Keycloak ne connaît pas les permissions applicatives : mise à jour SQLite uniquement.
+router.put('/:name/permissions', verifyToken, requireAdmin, async (req, res) => {
   const db = getDb();
   const { name } = req.params;
   const { permissions } = req.body;
@@ -79,40 +101,47 @@ router.put('/:name/permissions', verifyToken, requireAdmin, (req, res) => {
   if (!Array.isArray(permissions)) {
     return res.status(400).json({ error: 'permissions doit être un tableau' });
   }
-
-  const invalidPerms = permissions.filter(p => !VALID_PERMISSIONS.includes(p));
+  const invalidPerms = permissions.filter((p) => !VALID_PERMISSIONS.includes(p));
   if (invalidPerms.length > 0) {
     return res.status(400).json({ error: `Permissions invalides : ${invalidPerms.join(', ')}` });
   }
-
   if (name === 'admin') {
     return res.status(403).json({ error: 'Les permissions du rôle administrateur ne peuvent pas être modifiées' });
   }
 
-  const role = db.prepare('SELECT name FROM roles WHERE name = ?').get(name);
-  if (!role) return res.status(404).json({ error: 'Rôle introuvable' });
+  // Vérifier que le rôle existe dans Keycloak
+  const kcResp = await kcAdminFetch(`/roles/${encodeURIComponent(name)}`);
+  if (kcResp.status === 404) return res.status(404).json({ error: 'Rôle introuvable' });
 
   db.transaction(() => {
     db.prepare('DELETE FROM role_permissions WHERE role_name = ?').run(name);
-    const insertPerm = db.prepare('INSERT INTO role_permissions (role_name, permission) VALUES (?, ?)');
-    for (const perm of permissions) {
-      insertPerm.run(name, perm);
-    }
+    const ins = db.prepare('INSERT INTO role_permissions (role_name, permission) VALUES (?, ?)');
+    for (const perm of permissions) ins.run(name, perm);
   })();
 
   res.json({ message: 'Permissions mises à jour', role: name, permissions });
 });
 
-// DELETE /api/roles/:name — supprimer un rôle personnalisé (admin)
-router.delete('/:name', verifyToken, requireAdmin, (req, res) => {
+// ── DELETE /api/roles/:name — supprimer un rôle personnalisé (admin) ───────────
+router.delete('/:name', verifyToken, requireAdmin, async (req, res) => {
   const db = getDb();
   const { name } = req.params;
 
-  const role = db.prepare('SELECT name, is_builtin FROM roles WHERE name = ?').get(name);
-  if (!role) return res.status(404).json({ error: 'Rôle introuvable' });
-  if (role.is_builtin) return res.status(400).json({ error: 'Impossible de supprimer un rôle intégré' });
+  // Vérifier que le rôle existe dans Keycloak et n'est pas un rôle intégré essentiel
+  const builtinRoles = new Set(['hospitalStaff', 'supervisor', 'technician_biomedical',
+    'technician_it', 'technician_infra', 'technician', 'admin']);
+  if (builtinRoles.has(name)) {
+    return res.status(400).json({ error: 'Impossible de supprimer un rôle intégré' });
+  }
 
-  db.prepare('DELETE FROM roles WHERE name = ?').run(name);
+  const kcResp = await kcAdminFetch(`/roles/${encodeURIComponent(name)}`);
+  if (kcResp.status === 404) return res.status(404).json({ error: 'Rôle introuvable' });
+
+  const deleteResp = await kcAdminFetch(`/roles/${encodeURIComponent(name)}`, { method: 'DELETE' });
+  if (!deleteResp.ok) return res.status(502).json({ error: 'Erreur Keycloak lors de la suppression' });
+
+  db.prepare('DELETE FROM role_permissions WHERE role_name = ?').run(name);
+
   res.json({ message: 'Rôle supprimé', name });
 });
 

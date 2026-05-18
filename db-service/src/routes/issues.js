@@ -1,6 +1,6 @@
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken, requireRole } = require('../middleware/auth');
+const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { AUTH_SERVICE_URL } = require('../config');
 
@@ -22,7 +22,10 @@ const GROUP_TO_ROLE = {
 const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
 
 // Sérialise les rôles d'un user (issus du JWT) pour la colonne `user_role` des logs.
-const rolesCsv = (req) => (Array.isArray(req.user?.roles) ? req.user.roles.join(',') : '');
+const rolesCsv = (req) =>
+  (Array.isArray(req.user?.roles) ? req.user.roles : [])
+    .filter((r) => !SYSTEM_ROLES.has(r))
+    .join(',');
 
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {

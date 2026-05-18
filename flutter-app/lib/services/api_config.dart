@@ -21,6 +21,18 @@ class ApiConfig {
     defaultValue: 'https://DB.lucaslopvet.fr',
   );
 
+  // Keycloak — token endpoint (Direct Grant + refresh)
+  static const String kcTokenUrl = String.fromEnvironment(
+    'KC_TOKEN_URL',
+    defaultValue: 'https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token',
+  );
+
+  // Identifiant du client public Flutter dans Keycloak
+  static const String kcClientId = String.fromEnvironment(
+    'KC_CLIENT_ID',
+    defaultValue: 'flutter-app',
+  );
+
   /// Vérifie que les URLs de production utilisent HTTPS.
   /// Appelé au démarrage de l'application.
   static void assertSecureUrls() {
@@ -35,10 +47,6 @@ class ApiConfig {
   }
 
   // Auth endpoints
-  static String get loginUrl      => '$authBaseUrl/api/auth/login';
-  static String get logoutUrl     => '$authBaseUrl/api/auth/logout';
-  static String get refreshUrl    => '$authBaseUrl/api/auth/refresh';
-  static String get verifyUrl     => '$authBaseUrl/api/auth/verify';
   static String get meUrl         => '$authBaseUrl/api/auth/me';
 
   // Auth user management endpoint

@@ -109,7 +109,8 @@ pipeline {
                         ${FLUTTER_IMAGE} \
                         flutter build web --release \
                             --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-                            --dart-define=DB_URL=https://DB.lucaslopvet.fr
+                            --dart-define=DB_URL=https://DB.lucaslopvet.fr \
+                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
 
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \
@@ -132,7 +133,8 @@ pipeline {
                         ${FLUTTER_IMAGE} \
                         flutter build web --release \
                             --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
-                            --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr
+                            --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr \
+                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
 
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \

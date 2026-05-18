@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'api_config.dart';
 
@@ -16,52 +17,69 @@ class AuthApiService {
   AuthApiService._();
   static final AuthApiService instance = AuthApiService._();
 
-  /// Connexion avec email + mot de passe.
+  /// Connexion via Keycloak — Direct Grant (formulaire natif, pas de redirection).
   Future<LoginResult> login(String email, String password) async {
     try {
-      final response = await ApiClient.postPublic(
-        ApiConfig.loginUrl,
-        {'email': email, 'password': password},
-      );
+      final response = await http.post(
+        Uri.parse(ApiConfig.kcTokenUrl),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'grant_type': 'password',
+          'client_id':  ApiConfig.kcClientId,
+          'username':   email,
+          'password':   password,
+          'scope':      'openid profile email',
+        },
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
         await ApiClient.saveTokens(
-          data['accessToken']  as String,
-          data['refreshToken'] as String,
+          data['access_token']  as String,
+          data['refresh_token'] as String,
         );
-        return LoginResult(success: true, user: data['user'] as Map<String, dynamic>);
+        // Profil complet depuis auth-service (rôles + permissions SQLite)
+        final userData = await getMe();
+        if (userData != null) {
+          return LoginResult(success: true, user: userData);
+        }
+        return const LoginResult(
+          success: false,
+          error: 'Impossible de récupérer le profil utilisateur',
+        );
       }
 
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      return LoginResult(success: false, error: body['error'] as String? ?? 'Erreur inconnue');
+      final code        = body['error']             as String?;
+      final description = body['error_description'] as String?;
+      // Mot de passe temporaire non changé → guider l'utilisateur
+      if (code == 'invalid_grant' &&
+          description != null &&
+          description.contains('not fully set up')) {
+        return const LoginResult(
+          success: false,
+          error: 'Votre compte nécessite une réinitialisation du mot de passe. '
+              'Contactez votre administrateur.',
+        );
+      }
+      return LoginResult(
+        success: false,
+        error: description ?? code ?? 'Erreur inconnue',
+      );
     } catch (e) {
       return LoginResult(success: false, error: 'Impossible de joindre le serveur: $e');
     }
   }
 
-  /// Déconnexion — supprime les tokens.
+  /// Déconnexion — supprime les tokens localement.
+  /// Keycloak access tokens expirent rapidement (15 min) ; pas d'appel serveur nécessaire.
   Future<void> logout() async {
-    final refreshToken = await ApiClient.getRefreshToken();
-    if (refreshToken != null) {
-      try {
-        await ApiClient.postPublic(ApiConfig.logoutUrl, {'refreshToken': refreshToken});
-      } catch (_) {}
-    }
     await ApiClient.clearTokens();
   }
 
-  /// Vérifie si le token courant est valide.
+  /// Vérifie si un token d'accès est présent en stockage local.
   Future<bool> isAuthenticated() async {
-    final token = await ApiClient.getAccessToken();
-    if (token == null) return false;
-
-    try {
-      final response = await ApiClient.get(ApiConfig.verifyUrl);
-      return response.statusCode == 200;
-    } catch (_) {
-      return false;
-    }
+    return ApiClient.hasStoredTokens();
   }
 
   /// Récupère le profil de l'utilisateur connecté.

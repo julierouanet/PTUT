@@ -146,7 +146,7 @@ class ApiClient {
     return response;
   }
 
-  // ── Refresh token (avec rotation — sauvegarde aussi le nouveau refresh) ────
+  // ── Refresh token via Keycloak (rotation stricte) ────────────────────────
 
   static Future<bool> _tryRefresh() async {
     final refreshToken = await getRefreshToken();
@@ -155,16 +155,20 @@ class ApiClient {
 
     try {
       final response = await http.post(
-        Uri.parse(ApiConfig.refreshUrl),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'refreshToken': refreshToken}),
+        Uri.parse(ApiConfig.kcTokenUrl),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'grant_type':    'refresh_token',
+          'client_id':     ApiConfig.kcClientId,
+          'refresh_token': refreshToken,
+        },
       ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final newAccess  = data['accessToken']  as String?;
-        final newRefresh = data['refreshToken'] as String?;
-        // Les deux tokens sont obligatoires (rotation stricte)
+        final newAccess  = data['access_token']  as String?;
+        final newRefresh = data['refresh_token'] as String?;
+        // Les deux tokens sont obligatoires (rotation stricte Keycloak)
         if (newAccess != null && newRefresh != null) {
           await saveTokens(newAccess, newRefresh);
           return true;
@@ -175,7 +179,7 @@ class ApiClient {
       }
     } catch (_) {}
 
-    // Refresh token existait mais le serveur l'a rejeté → session expirée
+    // Refresh token rejeté par Keycloak → session expirée
     onSessionExpired?.call();
     return false;
   }
