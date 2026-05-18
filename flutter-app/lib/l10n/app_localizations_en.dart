@@ -2495,4 +2495,70 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormIssueRequired => 'Please select the specific issue';
+
+  @override
+  String get registerTitle => 'Sign Up';
+
+  @override
+  String get registerFirstName => 'First Name';
+
+  @override
+  String get registerLastName => 'Last Name';
+
+  @override
+  String get registerDepartment => 'Department';
+
+  @override
+  String get registerPhone => 'Phone (optional)';
+
+  @override
+  String get registerPasswordConfirm => 'Confirm Password';
+
+  @override
+  String get registerPasswordMinLength => 'Minimum 8 characters';
+
+  @override
+  String get registerPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get registerSubmit => 'Create Account';
+
+  @override
+  String get registerSuccess =>
+      'Account created! Check your email to activate it. Once logged in, you can request an additional role from your profile.';
+
+  @override
+  String get registerHaveAccount => 'Already have an account? Sign In';
+
+  @override
+  String get registerNoAccount => 'No account yet? Sign Up';
+
+  @override
+  String get forgotPasswordTitle => 'Forgot Password';
+
+  @override
+  String get forgotPasswordSubmit => 'Send Reset Link';
+
+  @override
+  String get forgotPasswordSuccess =>
+      'If this email exists, you will receive a reset link. Check your spam folder too.';
+
+  @override
+  String get forgotPasswordLink => 'Forgot password?';
+
+  @override
+  String get loginEmailNotVerified =>
+      'Your account is not yet activated. Check your email or contact your administrator.';
+
+  @override
+  String get roleRequestTitle => 'Request Additional Role';
+
+  @override
+  String get roleRequestLabel => 'Requested Role';
+
+  @override
+  String get roleRequestSubmit => 'Submit Request';
+
+  @override
+  String get roleRequestSuccess => 'Request sent, pending admin approval';
 }

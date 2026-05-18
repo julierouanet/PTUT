@@ -4,8 +4,10 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/config_service.dart';
 import '../services/data_service.dart';
 import '../services/notification_service.dart';
+import '../providers/locale_provider.dart';
 import '../models/user.dart';
 import '../data/mock_data.dart';
 
@@ -15,7 +17,6 @@ const bool _showDevShortcuts =
 
 enum _AuthMode { login, signup, forgotPassword }
 
-// Rôles que l'utilisateur peut demander lors de l'inscription
 const List<String> _kRequestableRoles = [
   'supervisor',
   'technician_biomedical',
@@ -24,10 +25,10 @@ const List<String> _kRequestableRoles = [
 ];
 
 const Map<String, String> _kRoleLabels = {
-  'supervisor':             'Superviseur',
-  'technician_biomedical':  'Technicien Biomédical',
-  'technician_it':          'Technicien IT',
-  'technician_infra':       'Technicien Infra',
+  'supervisor':            'Superviseur',
+  'technician_biomedical': 'Technicien Biomédical',
+  'technician_it':         'Technicien IT',
+  'technician_infra':      'Technicien Infra',
 };
 
 class LoginScreen extends StatefulWidget {
@@ -91,16 +92,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final _firstNameCtrl       = TextEditingController();
   final _lastNameCtrl        = TextEditingController();
   final _passwordConfirmCtrl = TextEditingController();
-  final _departmentCtrl      = TextEditingController();
   final _phoneCtrl           = TextEditingController();
 
-  _AuthMode _mode           = _AuthMode.login;
-  bool      _obscure        = true;
-  bool      _obscureConfirm = true;
-  bool      _loading        = false;
+  _AuthMode _mode              = _AuthMode.login;
+  bool      _obscure           = true;
+  bool      _obscureConfirm    = true;
+  bool      _loading           = false;
   String?   _error;
-  bool      _signupSuccess  = false;
-  String?   _selectedRole;   // rôle optionnel lors de l'inscription
+  bool      _signupSuccess     = false;
+  String?   _selectedDepartment; // sélection dans le dropdown inscription
+  String?   _selectedRole;        // rôle optionnel lors de l'inscription
 
   @override
   void initState() {
@@ -119,17 +120,17 @@ class _LoginScreenState extends State<LoginScreen> {
     _firstNameCtrl.dispose();
     _lastNameCtrl.dispose();
     _passwordConfirmCtrl.dispose();
-    _departmentCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
   }
 
   void _switchMode(_AuthMode mode) {
     setState(() {
-      _mode         = mode;
-      _error        = null;
-      _signupSuccess = false;
-      _selectedRole  = null;
+      _mode              = mode;
+      _error             = null;
+      _signupSuccess     = false;
+      _selectedDepartment = null;
+      _selectedRole      = null;
     });
   }
 
@@ -181,7 +182,7 @@ class _LoginScreenState extends State<LoginScreen> {
         lastName:   _lastNameCtrl.text.trim(),
         email:      _emailCtrl.text.trim(),
         password:   _passwordCtrl.text,
-        department: _departmentCtrl.text.trim(),
+        department: _selectedDepartment ?? '',
         phone:      _phoneCtrl.text.trim(),
       );
       setState(() { _loading = false; _signupSuccess = true; });
@@ -200,11 +201,10 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() { _loading = true; _error = null; });
     try {
       await AuthApiService.instance.forgotPassword(_emailCtrl.text.trim());
-      setState(() { _loading = false; _signupSuccess = true; });
     } catch (_) {
-      // Le backend répond toujours 200 ; on traite comme succès
-      setState(() { _loading = false; _signupSuccess = true; });
+      // Le backend répond toujours 200 ; on traite comme succès côté client
     }
+    setState(() { _loading = false; _signupSuccess = true; });
   }
 
   // ── Construction UI ──────────────────────────────────────────────────────────
@@ -214,60 +214,120 @@ class _LoginScreenState extends State<LoginScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                    boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.18), blurRadius: 20, offset: const Offset(0, 8))],
-                  ),
-                  child: Image.asset(
-                    'assets/images/logo_hopital.png',
-                    height: 88, width: 88, fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(l10n.hospitalName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                Text(l10n.hospitalSubtitleLong, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                const SizedBox(height: 40),
-
-                // Carte principale
-                Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  child: Padding(
-                    padding: const EdgeInsets.all(28),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 200),
-                      child: _mode == _AuthMode.login
-                          ? _buildLoginForm(l10n)
-                          : _mode == _AuthMode.signup
-                              ? _buildSignupForm(l10n)
-                              : _buildForgotPasswordForm(l10n),
+      body: Stack(
+        children: [
+          // ── Contenu principal centré ─────────────────────────────────────────
+          Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.18), blurRadius: 20, offset: const Offset(0, 8))],
+                      ),
+                      child: Image.asset(
+                        'assets/images/logo_hopital.png',
+                        height: 88, width: 88, fit: BoxFit.contain,
+                      ),
                     ),
-                  ),
-                ),
+                    const SizedBox(height: 24),
+                    Text(l10n.hospitalName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                    Text(l10n.hospitalSubtitleLong, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                    const SizedBox(height: 40),
 
-                // DEV shortcuts
-                if (_showDevShortcuts && _mode == _AuthMode.login) ...[
-                  const SizedBox(height: 24),
-                  _buildDevShortcuts(),
-                ],
-              ],
+                    // Carte principale
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(28),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          child: _mode == _AuthMode.login
+                              ? _buildLoginForm(l10n)
+                              : _mode == _AuthMode.signup
+                                  ? _buildSignupForm(l10n)
+                                  : _buildForgotPasswordForm(l10n),
+                        ),
+                      ),
+                    ),
+
+                    // DEV shortcuts
+                    if (_showDevShortcuts && _mode == _AuthMode.login) ...[
+                      const SizedBox(height: 24),
+                      _buildDevShortcuts(),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
-        ),
+
+          // ── Bouton langue — coin supérieur droit ─────────────────────────────
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: _buildLanguageToggle(),
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  // ── Bouton de changement de langue ───────────────────────────────────────────
+
+  Widget _buildLanguageToggle() {
+    return ListenableBuilder(
+      listenable: LocaleProvider(),
+      builder: (context, _) {
+        final isFr = LocaleProvider().locale.languageCode == 'fr';
+        return Material(
+          color: Colors.white,
+          elevation: 2,
+          borderRadius: BorderRadius.circular(20),
+          child: InkWell(
+            onTap: () => LocaleProvider().setLocale(
+              Locale(isFr ? 'en' : 'fr'),
+            ),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    isFr ? '🇫🇷' : '🇬🇧',
+                    style: const TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    isFr ? 'EN' : 'FR',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.primary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -339,7 +399,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Lien vers l'inscription
           Center(
             child: TextButton(
               onPressed: () => _switchMode(_AuthMode.signup),
@@ -375,6 +434,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
+    final departments = ConfigService().departmentNames;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -386,13 +447,17 @@ class _LoginScreenState extends State<LoginScreen> {
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
 
+          // Prénom + Nom sur la même ligne
           Row(children: [
             Expanded(
               child: TextFormField(
                 controller: _firstNameCtrl,
                 textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(labelText: l10n.registerFirstName, prefixIcon: const Icon(Icons.person_outlined)),
-                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.loginEmailRequired.replaceFirst('Email', l10n.registerFirstName) : null,
+                decoration: InputDecoration(
+                  labelText: l10n.registerFirstName,
+                  prefixIcon: const Icon(Icons.person_outlined),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? '${l10n.registerFirstName} requis' : null,
               ),
             ),
             const SizedBox(width: 12),
@@ -401,7 +466,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _lastNameCtrl,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(labelText: l10n.registerLastName),
-                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.loginEmailRequired.replaceFirst('Email', l10n.registerLastName) : null,
+                validator: (v) => (v == null || v.trim().isEmpty) ? '${l10n.registerLastName} requis' : null,
               ),
             ),
           ]),
@@ -410,7 +475,10 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(labelText: l10n.loginEmail, prefixIcon: const Icon(Icons.email_outlined)),
+            decoration: InputDecoration(
+              labelText: l10n.loginEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
+            ),
             validator: (v) => (v == null || v.isEmpty) ? l10n.loginEmailRequired : null,
           ),
           const SizedBox(height: 12),
@@ -454,11 +522,22 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 12),
 
-          TextFormField(
-            controller: _departmentCtrl,
-            decoration: InputDecoration(labelText: l10n.registerDepartment, prefixIcon: const Icon(Icons.apartment_outlined)),
-            validator: (v) => (v == null || v.trim().isEmpty)
-                ? l10n.loginEmailRequired.replaceFirst('Email', l10n.registerDepartment)
+          // ── Département : dropdown avec la liste des départements ────────────
+          DropdownButtonFormField<String>(
+            value: _selectedDepartment,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: l10n.registerDepartment,
+              prefixIcon: const Icon(Icons.apartment_outlined),
+            ),
+            hint: Text('Sélectionner un département',
+                style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+            items: departments
+                .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
+                .toList(),
+            onChanged: (v) => setState(() => _selectedDepartment = v),
+            validator: (_) => _selectedDepartment == null
+                ? '${l10n.registerDepartment} requis'
                 : null,
           ),
           const SizedBox(height: 12),
@@ -466,11 +545,14 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _phoneCtrl,
             keyboardType: TextInputType.phone,
-            decoration: InputDecoration(labelText: l10n.registerPhone, prefixIcon: const Icon(Icons.phone_outlined)),
+            decoration: InputDecoration(
+              labelText: l10n.registerPhone,
+              prefixIcon: const Icon(Icons.phone_outlined),
+            ),
           ),
           const SizedBox(height: 12),
 
-          // Rôle optionnel (info-bulle)
+          // ── Rôle optionnel ───────────────────────────────────────────────────
           DropdownButtonFormField<String>(
             value: _selectedRole,
             decoration: InputDecoration(
@@ -488,18 +570,16 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
             onChanged: (v) => setState(() => _selectedRole = v),
           ),
-          const SizedBox(height: 4),
-          if (_selectedRole != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                'La demande de rôle sera disponible depuis votre profil après activation de votre email.',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-              ),
+          if (_selectedRole != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              'La demande de rôle sera disponible depuis votre profil après activation de votre email.',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
             ),
+          ],
 
           _buildErrorBox(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           SizedBox(
             height: 48,
@@ -561,10 +641,10 @@ class _LoginScreenState extends State<LoginScreen> {
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
           ),
           const SizedBox(height: 24),
 
@@ -572,7 +652,10 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
-            decoration: InputDecoration(labelText: l10n.loginEmail, prefixIcon: const Icon(Icons.email_outlined)),
+            decoration: InputDecoration(
+              labelText: l10n.loginEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
+            ),
             validator: (v) => (v == null || v.isEmpty) ? l10n.loginEmailRequired : null,
             onFieldSubmitted: (_) => _submitForgotPassword(),
           ),
@@ -642,7 +725,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Icon(Icons.developer_mode, size: 16, color: Colors.orange.shade700),
             const SizedBox(width: 6),
             Text('DEV — Connexion rapide',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.orange.shade800, letterSpacing: 0.5)),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
+                    color: Colors.orange.shade800, letterSpacing: 0.5)),
           ]),
           const SizedBox(height: 12),
           GridView.count(

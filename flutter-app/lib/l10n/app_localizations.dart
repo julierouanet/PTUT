@@ -4741,6 +4741,132 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Veuillez sélectionner le problème'**
   String get issueFormIssueRequired;
+
+  /// No description provided for @registerTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inscription'**
+  String get registerTitle;
+
+  /// No description provided for @registerFirstName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prénom'**
+  String get registerFirstName;
+
+  /// No description provided for @registerLastName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom'**
+  String get registerLastName;
+
+  /// No description provided for @registerDepartment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Département'**
+  String get registerDepartment;
+
+  /// No description provided for @registerPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone (optionnel)'**
+  String get registerPhone;
+
+  /// No description provided for @registerPasswordConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer le mot de passe'**
+  String get registerPasswordConfirm;
+
+  /// No description provided for @registerPasswordMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Minimum 8 caractères'**
+  String get registerPasswordMinLength;
+
+  /// No description provided for @registerPasswordMismatch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les mots de passe ne correspondent pas'**
+  String get registerPasswordMismatch;
+
+  /// No description provided for @registerSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer mon compte'**
+  String get registerSubmit;
+
+  /// No description provided for @registerSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compte créé ! Vérifiez votre email pour l\'activer. Une fois connecté, vous pourrez demander un rôle supplémentaire depuis votre profil.'**
+  String get registerSuccess;
+
+  /// No description provided for @registerHaveAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Déjà un compte ? Se connecter'**
+  String get registerHaveAccount;
+
+  /// No description provided for @registerNoAccount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas encore de compte ? S\'inscrire'**
+  String get registerNoAccount;
+
+  /// No description provided for @forgotPasswordTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe oublié'**
+  String get forgotPasswordTitle;
+
+  /// No description provided for @forgotPasswordSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer le lien'**
+  String get forgotPasswordSubmit;
+
+  /// No description provided for @forgotPasswordSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Si cet email existe, vous recevrez un lien de réinitialisation. Vérifiez également vos spams.'**
+  String get forgotPasswordSuccess;
+
+  /// No description provided for @forgotPasswordLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe oublié ?'**
+  String get forgotPasswordLink;
+
+  /// No description provided for @loginEmailNotVerified.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre compte n\'est pas encore activé. Vérifiez votre email ou contactez votre administrateur.'**
+  String get loginEmailNotVerified;
+
+  /// No description provided for @roleRequestTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demander un rôle supplémentaire'**
+  String get roleRequestTitle;
+
+  /// No description provided for @roleRequestLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle demandé'**
+  String get roleRequestLabel;
+
+  /// No description provided for @roleRequestSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer la demande'**
+  String get roleRequestSubmit;
+
+  /// No description provided for @roleRequestSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande envoyée, en attente de validation administrateur'**
+  String get roleRequestSuccess;
 }
 
 class _AppLocalizationsDelegate

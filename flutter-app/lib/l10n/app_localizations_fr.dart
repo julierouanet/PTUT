@@ -2515,4 +2515,72 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get issueFormIssueRequired => 'Veuillez sélectionner le problème';
+
+  @override
+  String get registerTitle => 'Inscription';
+
+  @override
+  String get registerFirstName => 'Prénom';
+
+  @override
+  String get registerLastName => 'Nom';
+
+  @override
+  String get registerDepartment => 'Département';
+
+  @override
+  String get registerPhone => 'Téléphone (optionnel)';
+
+  @override
+  String get registerPasswordConfirm => 'Confirmer le mot de passe';
+
+  @override
+  String get registerPasswordMinLength => 'Minimum 8 caractères';
+
+  @override
+  String get registerPasswordMismatch =>
+      'Les mots de passe ne correspondent pas';
+
+  @override
+  String get registerSubmit => 'Créer mon compte';
+
+  @override
+  String get registerSuccess =>
+      'Compte créé ! Vérifiez votre email pour l\'activer. Une fois connecté, vous pourrez demander un rôle supplémentaire depuis votre profil.';
+
+  @override
+  String get registerHaveAccount => 'Déjà un compte ? Se connecter';
+
+  @override
+  String get registerNoAccount => 'Pas encore de compte ? S\'inscrire';
+
+  @override
+  String get forgotPasswordTitle => 'Mot de passe oublié';
+
+  @override
+  String get forgotPasswordSubmit => 'Envoyer le lien';
+
+  @override
+  String get forgotPasswordSuccess =>
+      'Si cet email existe, vous recevrez un lien de réinitialisation. Vérifiez également vos spams.';
+
+  @override
+  String get forgotPasswordLink => 'Mot de passe oublié ?';
+
+  @override
+  String get loginEmailNotVerified =>
+      'Votre compte n\'est pas encore activé. Vérifiez votre email ou contactez votre administrateur.';
+
+  @override
+  String get roleRequestTitle => 'Demander un rôle supplémentaire';
+
+  @override
+  String get roleRequestLabel => 'Rôle demandé';
+
+  @override
+  String get roleRequestSubmit => 'Envoyer la demande';
+
+  @override
+  String get roleRequestSuccess =>
+      'Demande envoyée, en attente de validation administrateur';
 }
