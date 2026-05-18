@@ -1,8 +1,5 @@
 const config = {
   PORT:                   process.env.PORT                   || 3000,
-  // Conservé pour le shim de transition Phase 5 (supprimer après migration complète)
-  JWT_SECRET:             process.env.JWT_SECRET             || null,
-  JWT_REFRESH_SECRET:     process.env.JWT_REFRESH_SECRET     || null,
   DB_PATH:                process.env.DB_PATH                || 'auth.db',
   DB_SERVICE_URL:         process.env.DB_SERVICE_URL         || 'http://localhost:3002',
   INTERNAL_SECRET:        process.env.INTERNAL_SECRET        || 'kabutare-internal-secret-change-in-production',

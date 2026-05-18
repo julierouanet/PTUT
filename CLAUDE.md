@@ -24,9 +24,9 @@
                   /data/auth.db            /data/hospital.db
 ```
 
-- Communication inter-services authentifiée par `INTERNAL_SECRET` + JWT partagé (`JWT_SECRET`).
+- Communication inter-services authentifiée par `INTERNAL_SECRET`. Tokens JWT RS256 émis par Keycloak, vérifiés localement via JWKS (plus de `JWT_SECRET` partagé).
 - Reverse-proxy Nginx (`nginx/conf.d/*.conf`) gère HTTPS sur 6 sous-domaines (`app/auth/DB.lucaslopvet.fr` + variantes `dev.*`).
-- Auth-service expose les utilisateurs/rôles/permissions ; db-service consulte auth-service via `AUTH_SERVICE_URL` pour vérifier les tokens.
+- Auth-service expose les utilisateurs/rôles/permissions (proxy Keycloak Admin API) ; db-service valide les tokens directement via JWKS sans appel vers auth-service.
 
 ### Modules majeurs
 
@@ -217,16 +217,16 @@ Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
 
 ## Variables d'environnement clés
 
-| Variable               | Service          | Rôle                                         |
-| ---------------------- | ---------------- | -------------------------------------------- |
-| `JWT_SECRET`           | auth + db        | Signature des access tokens (15 min).        |
-| `JWT_REFRESH_SECRET`   | auth             | Signature des refresh tokens (7 jours).      |
-| `INTERNAL_SECRET`      | auth + db        | Authentification service-à-service.          |
-| `DB_PATH`              | auth + db        | Chemin du fichier SQLite (`/data/*.db`).     |
-| `DB_SERVICE_URL`       | auth             | URL interne du db-service.                   |
-| `AUTH_SERVICE_URL`     | db               | URL interne de l'auth-service.               |
-| `PORT`                 | auth + db        | 3001 / 3002.                                 |
-| `AUTH_URL` / `DB_URL`  | flutter (build)  | Injectées via `--dart-define`.               |
+| Variable               | Service          | Rôle                                                                 |
+| ---------------------- | ---------------- | -------------------------------------------------------------------- |
+| `INTERNAL_SECRET`      | auth + db        | Authentification service-à-service.                                  |
+| `DB_PATH`              | auth + db        | Chemin du fichier SQLite (`/data/*.db`).                             |
+| `DB_SERVICE_URL`       | auth             | URL interne du db-service.                                           |
+| `AUTH_SERVICE_URL`     | db               | URL interne de l'auth-service (admin uniquement, pas les tokens).    |
+| `PORT`                 | auth + db        | 3001 / 3002.                                                         |
+| `KC_ISSUER`            | auth + db        | URL du realm Keycloak (ex. `https://keycloak.../realms/kabutare-hospital`). |
+| `KC_CLIENT_SECRET`     | auth             | Secret client Keycloak pour l'Admin API.                             |
+| `AUTH_URL` / `DB_URL`  | flutter (build)  | Injectées via `--dart-define`.                                       |
 
 ---
 

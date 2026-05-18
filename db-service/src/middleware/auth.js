@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
-const { JWT_SECRET, KC_ISSUER } = require('../config');
+const { KC_ISSUER } = require('../config');
 
 // ── Rôles système Keycloak à ignorer dans le RBAC applicatif ──────────────────
 const SYSTEM_ROLES = new Set([
@@ -25,32 +25,21 @@ function getKey(header, callback) {
   });
 }
 
-// ── Vérification token : RS256 Keycloak + shim HS256 legacy ───────────────────
-// Le shim permet une transition sans coupure. À supprimer en Phase 5 (après 7 jours).
+// ── Vérification token RS256 Keycloak ─────────────────────────────────────────
 function verifyToken(req, res, next) {
   const token = req.headers['authorization']?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Token manquant' });
 
   jwt.verify(token, getKey, { algorithms: ['RS256'], issuer: KC_ISSUER }, (err, decoded) => {
-    if (!err) {
-      req.user = {
-        id:         decoded.sub,
-        email:      decoded.email        ?? '',
-        name:       decoded.name         ?? `${decoded.given_name ?? ''} ${decoded.family_name ?? ''}`.trim(),
-        roles:      (decoded.realm_access?.roles ?? []).filter((r) => !SYSTEM_ROLES.has(r)),
-        department: decoded.department   ?? '',
-      };
-      return next();
-    }
-
-    // Shim Phase 5 : fallback token HS256 (ancien format) — à supprimer après migration complète
-    if (!JWT_SECRET) return res.status(401).json({ error: 'Token invalide ou expiré' });
-    try {
-      req.user = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-      return next();
-    } catch {
-      return res.status(401).json({ error: 'Token invalide ou expiré' });
-    }
+    if (err) return res.status(401).json({ error: 'Token invalide ou expiré' });
+    req.user = {
+      id:         decoded.sub,
+      email:      decoded.email      ?? '',
+      name:       decoded.name       ?? `${decoded.given_name ?? ''} ${decoded.family_name ?? ''}`.trim(),
+      roles:      (decoded.realm_access?.roles ?? []).filter((r) => !SYSTEM_ROLES.has(r)),
+      department: decoded.department ?? '',
+    };
+    next();
   });
 }
 

@@ -13,9 +13,6 @@ services:
       PORT: 3001
       NODE_ENV: production
       DB_PATH: /data/auth.db
-      # Conservé pour le shim de transition (supprimer en Phase 5)
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       DB_SERVICE_URL: http://db-service:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET}
       # Keycloak
@@ -43,8 +40,6 @@ services:
       PORT: 3002
       NODE_ENV: production
       DB_PATH: /data/hospital.db
-      # Conservé pour le shim de transition (supprimer en Phase 5)
-      JWT_SECRET: ${JWT_SECRET}
       AUTH_SERVICE_URL: http://auth-service:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET}
       # Keycloak

@@ -1,27 +1,7 @@
 const express = require('express');
 const router  = express.Router();
 const { getDb } = require('../database');
-
-// Middleware d'authentification léger (vérifie l'en-tête Authorization)
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-function verifyToken(req, res, next) {
-  const auth = req.headers['authorization'];
-  if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Non authentifié' });
-  try {
-    req.user = jwt.verify(auth.slice(7), JWT_SECRET);
-    next();
-  } catch {
-    return res.status(401).json({ error: 'Token invalide' });
-  }
-}
-
-function requireAdmin(req, res, next) {
-  const roles = Array.isArray(req.user?.roles) ? req.user.roles : [];
-  if (!roles.includes('admin')) return res.status(403).json({ error: 'Réservé aux administrateurs' });
-  next();
-}
+const { verifyToken, requireRole } = require('../middleware/auth');
 
 // Ordre de priorité utilisé pour choisir le rôle "principal" quand le user en cumule plusieurs.
 const ROLE_PRIORITY = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'technician', 'hospitalStaff'];
@@ -57,7 +37,7 @@ router.get('/', verifyToken, (req, res) => {
  * Remplace entièrement la configuration pour ce rôle.
  * Réservé aux admins.
  */
-router.put('/', verifyToken, requireAdmin, (req, res) => {
+router.put('/', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
   const { role, order } = req.body;
   if (!role || !Array.isArray(order)) {

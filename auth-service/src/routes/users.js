@@ -70,20 +70,6 @@ router.get('/', verifyToken, async (req, res) => {
   }
 });
 
-// ── GET /api/users/:id ────────────────────────────────────────────────────────
-router.get('/:id', verifyToken, requireAdmin, async (req, res) => {
-  try {
-    const resp = await kcAdminFetch(`/users/${req.params.id}`);
-    if (resp.status === 404) return res.status(404).json({ error: 'Utilisateur introuvable' });
-    if (!resp.ok) return res.status(502).json({ error: 'Erreur Keycloak' });
-    const u = await resp.json();
-    const roles = await getUserRoleNames(u.id);
-    res.json(mapKcUser(u, roles));
-  } catch (err) {
-    res.status(500).json({ error: 'Erreur interne du serveur' });
-  }
-});
-
 // ── POST /api/users — créer un utilisateur (admin) ────────────────────────────
 router.post('/', verifyToken, requireAdmin, async (req, res) => {
   const { first_name, last_name, name: rawName, email, password, department, roles, phone } = req.body;
@@ -549,6 +535,21 @@ router.put('/role-requests/:id', verifyToken, requireAdmin, async (req, res) => 
       ? 'Demande approuvée, rôle assigné dans Keycloak'
       : 'Demande rejetée',
   });
+});
+
+// ── GET /api/users/:id ────────────────────────────────────────────────────────
+// Placé en dernier pour ne pas masquer les routes statiques (/department-requests, etc.)
+router.get('/:id', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const resp = await kcAdminFetch(`/users/${req.params.id}`);
+    if (resp.status === 404) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (!resp.ok) return res.status(502).json({ error: 'Erreur Keycloak' });
+    const u = await resp.json();
+    const roles = await getUserRoleNames(u.id);
+    res.json(mapKcUser(u, roles));
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
 
 module.exports = router;

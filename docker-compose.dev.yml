@@ -13,9 +13,6 @@ services:
       PORT: 3001
       NODE_ENV: development
       DB_PATH: /data/auth.db
-      # Conservé pour le shim de transition
-      JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET_DEV:-kabutare-dev-refresh-secret}
       DB_SERVICE_URL: http://db-service-dev:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
       # Keycloak dev — issuer public (correspond au claim "iss" du token)
@@ -45,8 +42,6 @@ services:
       PORT: 3002
       NODE_ENV: development
       DB_PATH: /data/hospital.db
-      # Conservé pour le shim de transition
-      JWT_SECRET: ${JWT_SECRET_DEV:-kabutare-dev-secret}
       AUTH_SERVICE_URL: http://auth-service-dev:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
       # Keycloak dev — issuer public
