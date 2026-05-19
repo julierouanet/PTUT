@@ -159,11 +159,22 @@ pipeline {
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml down --remove-orphans 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml up -d --build --force-recreate
-                    # Seed des utilisateurs uniquement (idempotent via INSERT OR IGNORE).
-                    # db-service n'est PAS seedé : l'inventaire réel est peuplé via
-                    # scripts/import_inventory.js (XLSX hôpital). Le seed db-service
-                    # ré-introduisait les 45 fixtures de démo eq-001..eq-045.
-                    docker exec auth-service-prod node seed.js 2>/dev/null || true
+                    # Attendre que Keycloak PROD soit prêt (jusqu'à 120s)
+                    timeout 120 sh -c 'until docker exec keycloak-prod sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
+                    # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
+                    docker exec \
+                        -e KC_ADMIN_URL=http://keycloak-prod:8080 \
+                        -e KC_ADMIN_USER=\${KC_ADMIN_USER:-admin} \
+                        -e KC_ADMIN_PASSWORD=\${KC_ADMIN_PASSWORD} \
+                        auth-service-prod \
+                        node scripts/keycloak-init.js 2>/dev/null || true
+                    # Seed des comptes de démonstration dans Keycloak (idempotent)
+                    docker exec \
+                        -e KC_ADMIN_URL=http://keycloak-prod:8080 \
+                        -e KC_ADMIN_USER=\${KC_ADMIN_USER:-admin} \
+                        -e KC_ADMIN_PASSWORD=\${KC_ADMIN_PASSWORD} \
+                        auth-service-prod \
+                        node scripts/keycloak-seed.js 2>/dev/null || true
                 """
             }
         }
@@ -187,9 +198,10 @@ pipeline {
                     timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
                     docker exec auth-service-dev \
-                        sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin node scripts/keycloak-init.js' 2>/dev/null || true
-                    # Voir commentaire stage PROD : seed limité aux utilisateurs.
-                    docker exec auth-service-dev node seed.js 2>/dev/null || true
+                        sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin KC_CLIENT_SECRET_AUTH=$KC_CLIENT_SECRET node scripts/keycloak-init.js' 2>/dev/null || true
+                    # Seed des comptes de démonstration dans Keycloak (idempotent)
+                    docker exec auth-service-dev \
+                        sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin node scripts/keycloak-seed.js' 2>/dev/null || true
                 """
             }
         }

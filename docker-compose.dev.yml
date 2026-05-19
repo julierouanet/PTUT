@@ -20,7 +20,7 @@ services:
       KC_REALM: kabutare-hospital
       KC_ADMIN_URL: http://keycloak-dev:8081
       KC_CLIENT_ID: auth-service
-      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET_AUTH_DEV:-changeme-dev-secret}
+      KC_CLIENT_SECRET: ${KC_CLIENT_SECRET_AUTH_DEV:-changeme-auth-service-secret}
     volumes:
       - auth_data_dev:/data
     extra_hosts:

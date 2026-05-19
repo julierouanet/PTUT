@@ -115,8 +115,15 @@ async function ensureClient(token, clientDef) {
   const listResp = await kc(token, 'GET', `/${REALM}/clients?clientId=${encodeURIComponent(clientDef.clientId)}`);
   const list = await listResp.json();
   if (list.length > 0) {
-    console.log(`[init] Client "${clientDef.clientId}" déjà présent (id: ${list[0].id}).`);
-    return list[0].id;
+    const existingId = list[0].id;
+    console.log(`[init] Client "${clientDef.clientId}" déjà présent (id: ${existingId}).`);
+    // Mettre à jour le secret et la config si le client est confidentiel avec service account
+    if (clientDef.secret) {
+      const r = await kc(token, 'PUT', `/${REALM}/clients/${existingId}`, { ...clientDef, id: existingId });
+      if (!r.ok) console.warn(`[init] Mise à jour client "${clientDef.clientId}" échouée : ${r.status}`);
+      else console.log(`[init] Client "${clientDef.clientId}" mis à jour (secret synchronisé).`);
+    }
+    return existingId;
   }
   const r = await kc(token, 'POST', `/${REALM}/clients`, clientDef);
   if (!r.ok) throw new Error(`[init] Création client "${clientDef.clientId}" échouée : ${r.status} ${await r.text()}`);
