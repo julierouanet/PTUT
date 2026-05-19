@@ -74,6 +74,8 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: "false"
     ports:
       - "8081:8081"
+    volumes:
+      - keycloak_data_dev:/opt/keycloak/data
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q 'UP'"]
       interval: 30s
@@ -86,3 +88,5 @@ volumes:
     name: auth_data_dev
   db_data_dev:
     name: db_data_dev
+  keycloak_data_dev:
+    name: keycloak_data_dev
