@@ -34,17 +34,16 @@
 </head>
 <body>
   <script>
-    // ── Enregistrement du Service Worker push ─────────────────────────────────
-    // Distinct du flutter_service_worker.js — gère uniquement les notifications push.
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.register('/push_sw.js').then(function(reg) {
-        window._pushSW = reg;
-      }).catch(function(e) {
-        console.warn('[Push SW] Erreur enregistrement :', e);
-      });
-    }
-
-    // ── Helpers appelés depuis Dart via dart:js ───────────────────────────────
+    // ── Helpers Web Push — appelés depuis Dart via dart:js_interop ───────────
+    //
+    // En production, les handlers push sont fusionnés dans flutter_service_worker.js
+    // par le pipeline CI (cat push_sw.js >> flutter_service_worker.js).
+    // On utilise donc navigator.serviceWorker.ready pour obtenir le SW actif
+    // (Flutter's SW + nos handlers) sans enregistrement séparé.
+    //
+    // En développement local (flutter run -d chrome), le SW Flutter debug est
+    // actif. Pour tester les push en local, builder en --release ou utiliser
+    // Chrome DevTools → Application → Service Workers → Push.
 
     window.requestPushPermission = async function() {
       return await Notification.requestPermission();
@@ -56,7 +55,11 @@
 
     window.subscribeToPush = async function(vapidPublicKey) {
       try {
-        const reg = window._pushSW || await navigator.serviceWorker.ready;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null;
+
+        // Attend le SW actif (flutter_service_worker.js fusionné avec push_sw.js)
+        const reg = await navigator.serviceWorker.ready;
+
         // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager)
         const key = vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/');
         const raw = atob(key);
@@ -76,10 +79,11 @@
 
     window.unsubscribeFromPush = async function() {
       try {
+        if (!('serviceWorker' in navigator)) return;
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         if (sub) await sub.unsubscribe();
-      } catch (e) { /* silencieux */ }
+      } catch (_) { /* silencieux */ }
     };
   </script>
 

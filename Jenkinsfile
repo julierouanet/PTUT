@@ -112,6 +112,15 @@ pipeline {
                             --dart-define=DB_URL=https://DB.lucaslopvet.fr \
                             --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
 
+                    # ── Fusion push_sw.js dans le SW Flutter généré ───────────────────
+                    # Flutter génère flutter_service_worker.js et appelle skipWaiting(),
+                    # ce qui écrase push_sw.js. On injecte nos handlers push directement
+                    # dans le SW Flutter pour que les notifications arrivent même appli fermée.
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        alpine \
+                        sh -c 'printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
+
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \
                         -v ${DEPLOY_DIR_PROD}:/dst \
@@ -135,6 +144,12 @@ pipeline {
                             --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
                             --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr \
                             --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
+
+                    # ── Fusion push_sw.js dans le SW Flutter généré ───────────────────
+                    docker run --rm \
+                        -v ${HOST_WORKSPACE}/flutter-app:/app \
+                        alpine \
+                        sh -c 'printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
 
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \

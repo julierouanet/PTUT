@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
+import 'user_detail_screen.dart';
 
 /// Modèle léger pour une demande de changement de département.
 class _DeptRequest {
@@ -254,6 +255,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         constraints: BoxConstraints(minWidth: constraints.maxWidth),
                         child: DataTable(
                           columnSpacing: 16,
+                          showCheckboxColumn: false,
                           headingRowColor: WidgetStateProperty.all(AppColors.background),
                       columns: [
                         DataColumn(label: Text(l10n.usersUser)),
@@ -264,6 +266,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         DataColumn(label: Text(l10n.commonActions)),
                       ],
                       rows: _filteredUsers.map((user) => DataRow(
+                        onSelectChanged: (_) => _navigateToUserDetail(user),
                         cells: [
                           DataCell(Row(
                             mainAxisSize: MainAxisSize.min,
@@ -603,6 +606,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       case UserRole.technicianIt:         return AppColors.primary;
       case UserRole.technicianInfra:      return AppColors.warning;
       case UserRole.hospitalStaff:        return AppColors.primary;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // NAVIGATION
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Future<void> _navigateToUserDetail(User user) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
+    );
+    // Rafraîchit la liste au retour en cas de modification ou suppression.
+    if (mounted) {
+      await DataService().reloadUsers();
+      setState(() {});
     }
   }
 

@@ -1,12 +1,12 @@
 {
-    "name": "equipment_management",
-    "short_name": "equipment_management",
-    "start_url": ".",
+    "name": "Kabutare Hospital",
+    "short_name": "Kabutare",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
-    "orientation": "portrait-primary",
+    "description": "Système de gestion des équipements médicaux — Hôpital de Kabutare",
     "prefer_related_applications": false,
     "icons": [
         {
