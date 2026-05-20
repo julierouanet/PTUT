@@ -758,7 +758,15 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
             // Voir les logs d'activité (LogsScreen sans filtre pour l'instant)
             OutlinedButton.icon(
-              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LogsScreen())),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LogsScreen(
+                    filteredUserId: _user.id,
+                    filteredUserName: _user.fullName,
+                  ),
+                ),
+              ),
               icon: const Icon(Icons.history_outlined, size: 18),
               label: const Text('Voir les logs d\'activité'),
             ),

@@ -40,6 +40,9 @@ class _DeptRequest {
   );
 }
 
+/// Actions disponibles dans le menu contextuel d'une ligne utilisateur (mode compact).
+enum _UserAction { edit, permissions, toggle, delete }
+
 /// User management screen - Admin only
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -243,104 +246,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 20),
 
             // Users table
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: LayoutBuilder(
-                  builder: (context, constraints) => Scrollbar(
-                    thumbVisibility: true,
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                        child: DataTable(
-                          columnSpacing: 16,
-                          showCheckboxColumn: false,
-                          headingRowColor: WidgetStateProperty.all(AppColors.background),
-                      columns: [
-                        DataColumn(label: Text(l10n.usersUser)),
-                        DataColumn(label: Text(l10n.commonEmail)),
-                        DataColumn(label: Text(l10n.commonDepartment)),
-                        DataColumn(label: Text(l10n.commonRole)),
-                        DataColumn(label: Text(l10n.commonStatus)),
-                        DataColumn(label: Text(l10n.commonActions)),
-                      ],
-                      rows: _filteredUsers.map((user) => DataRow(
-                        onSelectChanged: (_) => _navigateToUserDetail(user),
-                        cells: [
-                          DataCell(Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CircleAvatar(
-                                radius: 16,
-                                backgroundColor: _getRoleColor(_primaryRoleOf(user)).withValues(alpha: 0.2),
-                                child: Text(
-                                  user.name.substring(0, 1).toUpperCase(),
-                                  style: TextStyle(color: _getRoleColor(_primaryRoleOf(user)), fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(user.fullName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            ],
-                          )),
-                          DataCell(Text(user.email)),
-                          DataCell(Text(user.department)),
-                          DataCell(_buildRolesBadges(user.roles)),
-                          DataCell(_buildStatusBadge(user.isActive, l10n)),
-                          DataCell(Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit, size: 18),
-                                color: AppColors.primary,
-                                onPressed: () => _showUserDialog(user),
-                                tooltip: l10n.commonEdit,
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.key, size: 18),
-                                color: AppColors.warning,
-                                onPressed: () => _showPermissionsDialog(user),
-                                tooltip: l10n.usersPermissions,
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                              ),
-                              IconButton(
-                                icon: Icon(user.isActive ? Icons.block : Icons.check_circle, size: 18),
-                                color: user.isActive ? AppColors.error : AppColors.success,
-                                onPressed: () => _toggleUserStatus(user),
-                                tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
-                                padding: const EdgeInsets.all(4),
-                                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                              ),
-                              Tooltip(
-                                message: user.id == AuthService().currentUser?.id
-                                    ? 'Impossible de supprimer son propre compte'
-                                    : l10n.commonDelete,
-                                child: IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18),
-                                  color: user.id == AuthService().currentUser?.id
-                                      ? AppColors.textMuted
-                                      : AppColors.error,
-                                  onPressed: user.id == AuthService().currentUser?.id
-                                      ? null
-                                      : () => _confirmDeleteUser(user),
-                                  padding: const EdgeInsets.all(4),
-                                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                                ),
-                              ),
-                            ],
-                          )),
-                        ],
-                      )).toList(),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+            _buildUsersTable(l10n),
           ],
         ),
       ),
@@ -507,6 +413,297 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       }
     }
   }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // TABLE UTILISATEURS RESPONSIVE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  static const _headerStyle = TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textSecondary,
+    letterSpacing: 0.3,
+  );
+
+  /// Conteneur principal de la liste. Utilise LayoutBuilder pour choisir
+  /// entre le mode large (≥ 640 px) et le mode compact (sidebar ouverte,
+  /// petit écran).
+  Widget _buildUsersTable(AppLocalizations l10n) {
+    return SizedBox(
+      width: double.infinity,
+      child: Card(
+        clipBehavior: Clip.hardEdge,
+        child: _filteredUsers.isEmpty
+            ? const Padding(
+                padding: EdgeInsets.all(32),
+                child: Center(child: Text('Aucun utilisateur', style: TextStyle(color: AppColors.textSecondary))),
+              )
+            : LayoutBuilder(
+                builder: (context, constraints) {
+                  final wide = constraints.maxWidth >= 640;
+                  return Column(
+                    children: [
+                      _buildUsersListHeader(l10n, wide: wide),
+                      ..._filteredUsers.map((u) => _buildUserRow(u, l10n, wide: wide)),
+                    ],
+                  );
+                },
+              ),
+      ),
+    );
+  }
+
+  /// Ligne d'en-tête imitant les colonnes du DataTable.
+  Widget _buildUsersListHeader(AppLocalizations l10n, {required bool wide}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: wide
+          ? Row(children: [
+              const SizedBox(width: 44), // avatar
+              Expanded(flex: 5, child: Text(l10n.usersUser,       style: _headerStyle)),
+              Expanded(flex: 4, child: Text(l10n.commonEmail,     style: _headerStyle)),
+              Expanded(flex: 3, child: Text(l10n.commonDepartment, style: _headerStyle)),
+              const SizedBox(width: 118, child: Text('Rôle',      style: _headerStyle)),
+              const SizedBox(width: 80,  child: Text('Statut',    style: _headerStyle)),
+              const SizedBox(width: 132, child: Text('Actions',   style: _headerStyle)),
+            ])
+          : Row(children: [
+              const SizedBox(width: 44),
+              Expanded(child: Text(l10n.usersUser, style: _headerStyle)),
+              SizedBox(width: 76, child: Text('Statut', style: _headerStyle, textAlign: TextAlign.center)),
+              const SizedBox(width: 40),
+            ]),
+    );
+  }
+
+  /// Ligne utilisateur — layout large ou compact selon [wide].
+  Widget _buildUserRow(User user, AppLocalizations l10n, {required bool wide}) {
+    final primaryRole = _primaryRoleOf(user);
+    final roleColor   = _getRoleColor(primaryRole);
+    final isSelf      = user.id == AuthService().currentUser?.id;
+
+    final avatar = CircleAvatar(
+      radius: 16,
+      backgroundColor: roleColor.withValues(alpha: 0.15),
+      child: Text(
+        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+        style: TextStyle(color: roleColor, fontWeight: FontWeight.bold, fontSize: 13),
+      ),
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _navigateToUserDetail(user),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            border: Border(bottom: BorderSide(color: AppColors.border, width: 0.5)),
+          ),
+          child: wide
+              // ── Mode large : toutes les colonnes en Row ────────────────────
+              ? Row(children: [
+                  avatar,
+                  const SizedBox(width: 12),
+                  // Nom
+                  Expanded(
+                    flex: 5,
+                    child: Text(
+                      user.fullName,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Email
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      user.email,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Département
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      user.department,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Rôle principal + badge "+N" si multi-rôles
+                  SizedBox(width: 110, child: _buildPrimaryRoleBadge(user)),
+                  const SizedBox(width: 8),
+                  // Statut
+                  SizedBox(width: 72, child: _buildStatusBadge(user.isActive, l10n)),
+                  const SizedBox(width: 8),
+                  // Boutons d'action (toujours visibles, largeur fixe)
+                  SizedBox(
+                    width: 132,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, size: 18),
+                          color: AppColors.primary,
+                          onPressed: () => _showUserDialog(user),
+                          tooltip: l10n.commonEdit,
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.key, size: 18),
+                          color: AppColors.warning,
+                          onPressed: () => _showPermissionsDialog(user),
+                          tooltip: l10n.usersPermissions,
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                        ),
+                        IconButton(
+                          icon: Icon(user.isActive ? Icons.block : Icons.check_circle_outline, size: 18),
+                          color: user.isActive ? AppColors.error : AppColors.success,
+                          onPressed: () => _toggleUserStatus(user),
+                          tooltip: user.isActive ? l10n.usersDisable : l10n.usersEnable,
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                        ),
+                        Tooltip(
+                          message: isSelf ? 'Impossible de supprimer son propre compte' : l10n.commonDelete,
+                          child: IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18),
+                            color: isSelf ? AppColors.textMuted : AppColors.error,
+                            onPressed: isSelf ? null : () => _confirmDeleteUser(user),
+                            padding: const EdgeInsets.all(4),
+                            constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ])
+              // ── Mode compact : nom + email empilés, popup menu ─────────────
+              : Row(children: [
+                  avatar,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          user.fullName,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                        ),
+                        Text(
+                          user.email,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _buildStatusBadge(user.isActive, l10n),
+                  // Menu déroulant compact pour les actions
+                  PopupMenuButton<_UserAction>(
+                    padding: EdgeInsets.zero,
+                    iconSize: 20,
+                    tooltip: 'Actions',
+                    onSelected: (action) {
+                      switch (action) {
+                        case _UserAction.edit:        _showUserDialog(user);
+                        case _UserAction.permissions: _showPermissionsDialog(user);
+                        case _UserAction.toggle:      _toggleUserStatus(user);
+                        case _UserAction.delete:      if (!isSelf) _confirmDeleteUser(user);
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: _UserAction.edit,
+                        child: _actionItem(Icons.edit, l10n.commonEdit, AppColors.primary),
+                      ),
+                      PopupMenuItem(
+                        value: _UserAction.permissions,
+                        child: _actionItem(Icons.key, l10n.usersPermissions, AppColors.warning),
+                      ),
+                      PopupMenuItem(
+                        value: _UserAction.toggle,
+                        child: _actionItem(
+                          user.isActive ? Icons.block : Icons.check_circle_outline,
+                          user.isActive ? l10n.usersDisable : l10n.usersEnable,
+                          user.isActive ? AppColors.error : AppColors.success,
+                        ),
+                      ),
+                      if (!isSelf)
+                        PopupMenuItem(
+                          value: _UserAction.delete,
+                          child: _actionItem(Icons.delete_outline, l10n.commonDelete, AppColors.error),
+                        ),
+                    ],
+                  ),
+                ]),
+        ),
+      ),
+    );
+  }
+
+  /// Badge du rôle principal + compteur "+N" si l'utilisateur a plusieurs rôles.
+  Widget _buildPrimaryRoleBadge(User user) {
+    final primary    = _primaryRoleOf(user);
+    final color      = _getRoleColor(primary);
+    final extraCount = (user.roles.where(kAssignableRoles.contains).length - 1).clamp(0, 99);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              primary.displayName,
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ),
+        if (extraCount > 0) ...[
+          const SizedBox(width: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+            decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(8)),
+            child: Text('+$extraCount', style: const TextStyle(color: AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Item de PopupMenu avec icône colorée.
+  Widget _actionItem(IconData icon, String label, Color color) => Row(children: [
+    Icon(icon, size: 16, color: color),
+    const SizedBox(width: 10),
+    Text(label, style: TextStyle(color: color)),
+  ]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // WIDGETS COMMUNS

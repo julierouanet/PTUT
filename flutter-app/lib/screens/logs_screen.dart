@@ -159,7 +159,12 @@ Future<String> _executeRestore(Map<String, dynamic> log, AppLocalizations l10n) 
 // ── Écran principal ───────────────────────────────────────────────────────────
 
 class LogsScreen extends StatefulWidget {
-  const LogsScreen({super.key});
+  /// Quand non nul, la liste est pré-filtrée sur cet utilisateur et l'écran
+  /// s'affiche dans son propre Scaffold (avec bouton retour natif).
+  final String? filteredUserId;
+  final String? filteredUserName;
+
+  const LogsScreen({super.key, this.filteredUserId, this.filteredUserName});
 
   @override
   State<LogsScreen> createState() => _LogsScreenState();
@@ -173,6 +178,12 @@ class _LogsScreenState extends State<LogsScreen> {
   String? _filterAction;
   String? _filterTargetType;
   final _searchController = TextEditingController();
+
+  /// true = l'utilisateur a supprimé le filtre userId via la bannière.
+  bool _filterCleared = false;
+
+  /// userId effectivement envoyé à l'API (null si vidé ou absent).
+  String? get _effectiveUserId => _filterCleared ? null : widget.filteredUserId;
 
   @override
   void initState() {
@@ -192,6 +203,7 @@ class _LogsScreenState extends State<LogsScreen> {
       final logs = await DbApiService.instance.getLogs(
         action: _filterAction,
         targetType: _filterTargetType,
+        userId: _effectiveUserId,
         limit: 500,
       );
       setState(() { _logs = logs; _isLoading = false; });
@@ -309,7 +321,7 @@ class _LogsScreenState extends State<LogsScreen> {
     final filtered = _filtered;
     final newIpIds = _newIpLoginIds;
 
-    return Column(
+    final body = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // En-tête
@@ -338,6 +350,12 @@ class _LogsScreenState extends State<LogsScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        // Bannière filtre utilisateur actif
+        if (_effectiveUserId != null)
+          Padding(
+            padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 12),
+            child: _buildUserFilterBanner(l10n),
+          ),
         // Filtres
         Padding(
           padding: EdgeInsets.symmetric(horizontal: hPad),
@@ -395,6 +413,61 @@ class _LogsScreenState extends State<LogsScreen> {
                         ),
         ),
       ],
+    );
+
+    // Quand poussé comme route (filteredUserId fourni) : Scaffold + AppBar + bouton retour natif.
+    if (widget.filteredUserId != null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            widget.filteredUserName != null
+                ? 'Logs — ${widget.filteredUserName}'
+                : l10n.logsTitle,
+          ),
+        ),
+        body: body,
+      );
+    }
+    return body;
+  }
+
+  // ── Bannière filtre utilisateur ───────────────────────────────────────────────
+
+  /// Badge visible sous le titre quand la liste est filtrée sur un utilisateur.
+  /// La croix permet de réinitialiser le filtre sans quitter l'écran.
+  Widget _buildUserFilterBanner(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.person_pin_outlined, size: 15, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Filtre : Logs de ${widget.filteredUserName ?? widget.filteredUserId}',
+              style: const TextStyle(fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Tooltip(
+            message: 'Afficher tous les logs',
+            child: InkWell(
+              onTap: () => setState(() { _filterCleared = true; _load(); }),
+              borderRadius: BorderRadius.circular(12),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(Icons.close, size: 15, color: AppColors.primary),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
