@@ -4867,6 +4867,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Demande envoyée, en attente de validation administrateur'**
   String get roleRequestSuccess;
+
+  /// No description provided for @appVersionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Version {version}'**
+  String appVersionLabel(String version);
 }
 
 class _AppLocalizationsDelegate

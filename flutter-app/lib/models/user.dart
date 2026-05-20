@@ -11,6 +11,7 @@ class User {
   final List<UserRole> roles;
   final List<Permission> permissions;
   final bool isActive;
+  final bool isEmailVerified;
   final String? phone;
   final String createdAt;
 
@@ -34,8 +35,9 @@ class User {
       department:  json['department']  as String? ?? '',
       roles:       roles,
       permissions: getPermissionsForRoles(roles),
-      isActive:    (json['is_active'] as int? ?? 1) == 1,
-      phone:       json['phone']       as String?,
+      isActive:        (json['is_active'] as int? ?? 1) == 1,
+      isEmailVerified: (json['email_verified'] as bool?) ?? true,
+      phone:           json['phone'] as String?,
       createdAt:   json['created_at']  as String? ?? '',
     );
   }
@@ -60,6 +62,7 @@ class User {
     required this.roles,
     required this.permissions,
     this.isActive = true,
+    this.isEmailVerified = true,
     this.phone,
     required this.createdAt,
   });
@@ -93,6 +96,7 @@ class User {
     List<UserRole>? roles,
     List<Permission>? permissions,
     bool? isActive,
+    bool? isEmailVerified,
     String? phone,
     String? createdAt,
   }) {
@@ -106,6 +110,7 @@ class User {
       roles: roles ?? this.roles,
       permissions: permissions ?? this.permissions,
       isActive: isActive ?? this.isActive,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
       phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
     );

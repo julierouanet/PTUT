@@ -912,5 +912,12 @@
   "roleRequestSubmit": "Submit Request",
   "@roleRequestSubmit": {},
   "roleRequestSuccess": "Request sent, pending admin approval",
-  "@roleRequestSuccess": {}
+  "@roleRequestSuccess": {},
+
+  "appVersionLabel": "Version {version}",
+  "@appVersionLabel": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  }
 }

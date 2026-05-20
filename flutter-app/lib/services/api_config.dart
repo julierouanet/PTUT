@@ -33,6 +33,13 @@ class ApiConfig {
     defaultValue: 'flutter-app',
   );
 
+  // Version injectée par Jenkins via --dart-define=APP_VERSION=x.y.z
+  // En local (flutter run sans --dart-define), affiche '1.0.0-dev'
+  static const String appVersion = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: '1.0.0-dev',
+  );
+
   /// Vérifie que les URLs de production utilisent HTTPS.
   /// Appelé au démarrage de l'application.
   static void assertSecureUrls() {

@@ -101,7 +101,11 @@ pipeline {
         stage('Flutter Build & Deploy PROD') {
             when { branch 'main' }
             steps {
-                sh """
+                script {
+                    def commitCount = sh(script: 'git rev-list --count HEAD', returnStdout: true).trim()
+                    def appVersion  = "1.0.${commitCount}"
+                    echo "Version PROD : ${appVersion}"
+                    sh """
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app:/app \
                         -e PUB_CACHE=/app/.pub-cache \
@@ -110,7 +114,8 @@ pipeline {
                         flutter build web --release \
                             --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
                             --dart-define=DB_URL=https://DB.lucaslopvet.fr \
-                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
+                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token \
+                            --dart-define=APP_VERSION=${appVersion}
 
                     # ── Fusion push_sw.js dans le SW Flutter généré ───────────────────
                     # Flutter génère flutter_service_worker.js et appelle skipWaiting(),
@@ -127,6 +132,7 @@ pipeline {
                         alpine \
                         sh -c "rm -rf /dst/* && cp -r /src/. /dst/ && chown -R 1000:1000 /dst"
                 """
+                }
             }
         }
 
@@ -134,7 +140,11 @@ pipeline {
         stage('Flutter Build & Deploy DEV') {
             when { branch 'dev' }
             steps {
-                sh """
+                script {
+                    def commitCount = sh(script: 'git rev-list --count HEAD', returnStdout: true).trim()
+                    def appVersion  = "1.0.${commitCount}-dev"
+                    echo "Version DEV : ${appVersion}"
+                    sh """
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app:/app \
                         -e PUB_CACHE=/app/.pub-cache \
@@ -143,7 +153,8 @@ pipeline {
                         flutter build web --release \
                             --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
                             --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr \
-                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
+                            --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token \
+                            --dart-define=APP_VERSION=${appVersion}
 
                     # ── Fusion push_sw.js dans le SW Flutter généré ───────────────────
                     docker run --rm \
@@ -157,6 +168,7 @@ pipeline {
                         alpine \
                         sh -c "rm -rf /dst/* && cp -r /src/. /dst/ && chown -R 1000:1000 /dst"
                 """
+                }
             }
         }
 

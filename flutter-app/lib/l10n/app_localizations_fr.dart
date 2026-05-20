@@ -2583,4 +2583,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get roleRequestSuccess =>
       'Demande envoyée, en attente de validation administrateur';
+
+  @override
+  String appVersionLabel(String version) {
+    return 'Version $version';
+  }
 }

@@ -2561,4 +2561,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleRequestSuccess => 'Request sent, pending admin approval';
+
+  @override
+  String appVersionLabel(String version) {
+    return 'Version $version';
+  }
 }

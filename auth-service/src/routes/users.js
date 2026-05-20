@@ -537,6 +537,18 @@ router.put('/role-requests/:id', verifyToken, requireAdmin, async (req, res) => 
   });
 });
 
+// ── POST /api/users/:id/send-verify-email ────────────────────────────────────
+router.post('/:id/send-verify-email', verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const r = await kcAdminFetch(`/users/${req.params.id}/send-verify-email`, { method: 'PUT' });
+    if (r.status === 404) return res.status(404).json({ error: 'Utilisateur introuvable' });
+    if (!r.ok) return res.status(502).json({ error: 'Erreur Keycloak lors de l\'envoi' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
+});
+
 // ── GET /api/users/:id ────────────────────────────────────────────────────────
 // Placé en dernier pour ne pas masquer les routes statiques (/department-requests, etc.)
 router.get('/:id', verifyToken, requireAdmin, async (req, res) => {

@@ -934,5 +934,12 @@
   "roleRequestSubmit": "Envoyer la demande",
   "@roleRequestSubmit": {},
   "roleRequestSuccess": "Demande envoyée, en attente de validation administrateur",
-  "@roleRequestSuccess": {}
+  "@roleRequestSuccess": {},
+
+  "appVersionLabel": "Version {version}",
+  "@appVersionLabel": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  }
 }

@@ -49,6 +49,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   bool _togglingStatus = false;
   bool _deletingUser = false;
   bool _resolvingRequest = false;
+  bool _sendingVerification = false;
 
   _DeptRequest? _pendingDeptRequest;
   bool _loadingDeptRequest = true;
@@ -328,6 +329,23 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
+  Future<void> _sendVerificationEmail() async {
+    setState(() => _sendingVerification = true);
+    try {
+      await AuthApiService.instance.sendVerificationEmail(_user.id);
+      if (mounted) {
+        setState(() => _sendingVerification = false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Email de vérification envoyé'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) { setState(() => _sendingVerification = false); _showErrorSnackBar(); }
+    }
+  }
+
   void _showErrorSnackBar() {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(AppLocalizations.of(context)!.commonApiError),
@@ -581,6 +599,48 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w500, fontSize: 13),
               ),
             ),
+          ],
+        ),
+      ));
+    }
+
+    // Bannière email non vérifié
+    if (!_user.isEmailVerified) {
+      alerts.add(Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.errorLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.mark_email_unread_outlined, color: AppColors.error, size: 18),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Adresse email non vérifiée',
+                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            _sendingVerification
+                ? const SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error),
+                  )
+                : TextButton.icon(
+                    onPressed: _sendVerificationEmail,
+                    icon: const Icon(Icons.send_outlined, size: 14),
+                    label: const Text('Renvoyer', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.error,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
           ],
         ),
       ));

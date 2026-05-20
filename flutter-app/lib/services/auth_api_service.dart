@@ -131,6 +131,16 @@ class AuthApiService {
     return (body['is_active'] as int) == 1;
   }
 
+  /// Demande à Keycloak de renvoyer l'email de vérification pour l'utilisateur [id].
+  Future<void> sendVerificationEmail(String id) async {
+    final url = '${ApiConfig.usersUrl}/$id/send-verify-email';
+    final response = await ApiClient.post(url, {});
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur envoi email de vérification');
+    }
+  }
+
   Future<void> deleteUser(String id, {String? reason}) async {
     var url = '${ApiConfig.usersUrl}/$id';
     if (reason != null && reason.isNotEmpty) url += '?reason=${Uri.encodeComponent(reason)}';

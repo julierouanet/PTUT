@@ -105,8 +105,9 @@ function mapKcUser(u, roles = []) {
     email:      u.email || u.username,
     department: u.attributes?.department?.[0] ?? '',
     phone:      u.attributes?.phone?.[0]       ?? null,
-    is_active:  u.enabled ? 1 : 0,
-    created_at: u.createdTimestamp
+    is_active:      u.enabled ? 1 : 0,
+    email_verified: u.emailVerified ?? false,
+    created_at:     u.createdTimestamp
       ? new Date(u.createdTimestamp).toISOString()
       : '',
     roles,

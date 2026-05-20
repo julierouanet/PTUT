@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/api_config.dart';
 import 'account_settings_screen.dart';
 
 /// Écran hub — affiché après connexion, permet de choisir un module.
@@ -76,8 +77,23 @@ class HomeHubScreen extends StatelessWidget {
                 ),
               ),
             ),
+            _buildVersionFooter(context),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildVersionFooter(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        l10n.appVersionLabel(ApiConfig.appVersion),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppColors.textSecondary.withValues(alpha: 0.55),
+        ),
+        textAlign: TextAlign.center,
       ),
     );
   }
