@@ -198,7 +198,7 @@ pipeline {
                     timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
                     docker exec auth-service-dev \
-                        sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin KC_CLIENT_SECRET_AUTH=$KC_CLIENT_SECRET node scripts/keycloak-init.js' 2>/dev/null || true
+                        sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin KC_CLIENT_SECRET_AUTH=\$KC_CLIENT_SECRET node scripts/keycloak-init.js' 2>/dev/null || true
                     # Seed des comptes de démonstration dans Keycloak (idempotent)
                     docker exec auth-service-dev \
                         sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin node scripts/keycloak-seed.js' 2>/dev/null || true
