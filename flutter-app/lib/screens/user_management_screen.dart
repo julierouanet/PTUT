@@ -485,6 +485,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final primaryRole = _primaryRoleOf(user);
     final roleColor   = _getRoleColor(primaryRole);
     final isSelf      = user.id == AuthService().currentUser?.id;
+    final severity    = _userSeverity(user);
 
     final avatar = CircleAvatar(
       radius: 16,
@@ -509,14 +510,29 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ? Row(children: [
                   avatar,
                   const SizedBox(width: 12),
-                  // Nom
+                  // Nom + icône d'alerte éventuelle
                   Expanded(
                     flex: 5,
-                    child: Text(
-                      user.fullName,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (severity != null) ...[
+                          Icon(
+                            Icons.warning_rounded,
+                            size: 16,
+                            color: severity == 'high' ? AppColors.error : AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        Flexible(
+                          child: Text(
+                            user.fullName,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -601,11 +617,26 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          user.fullName,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (severity != null) ...[
+                              Icon(
+                                Icons.warning_rounded,
+                                size: 14,
+                                color: severity == 'high' ? AppColors.error : AppColors.warning,
+                              ),
+                              const SizedBox(width: 4),
+                            ],
+                            Flexible(
+                              child: Text(
+                                user.fullName,
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
                         Text(
                           user.email,
@@ -792,6 +823,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         style: TextStyle(color: isActive ? AppColors.success : AppColors.error, fontSize: 12, fontWeight: FontWeight.w500),
       ),
     );
+  }
+
+  /// Sévérité effective d'un utilisateur : combine les données du modèle et les demandes de département chargées.
+  String? _userSeverity(User user) {
+    if (!user.isEmailVerified) return 'high';
+    if (_deptRequests.any((r) => r.userId == user.id)) return 'medium';
+    if (user.phone == null || user.phone!.isEmpty) return 'medium';
+    return null;
   }
 
   Color _getRoleColor(UserRole role) {

@@ -21,6 +21,15 @@ class User {
     return full.isNotEmpty ? full : name;
   }
 
+  /// Niveau de gravité d'alerte basé sur les données du compte.
+  /// 'high' → email non vérifié (rouge), 'medium' → téléphone manquant (orange), null → aucune alerte.
+  /// Les demandes de département en attente sont calculées côté écran (chargement async séparé).
+  String? get notificationSeverity {
+    if (!isEmailVerified) return 'high';
+    if (phone == null || phone!.isEmpty) return 'medium';
+    return null;
+  }
+
   factory User.fromApiJson(Map<String, dynamic> json) {
     final roles = _rolesFromJson(json['roles']);
     final name = json['name'] as String? ?? '';

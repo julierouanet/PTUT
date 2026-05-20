@@ -393,6 +393,47 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     );
   }
 
+  /// Sévérité globale combinant les données du modèle et la demande de département chargée.
+  String? get _overallSeverity {
+    if (!_user.isEmailVerified) return 'high';
+    if (_pendingDeptRequest != null) return 'medium';
+    if (_user.phone == null || _user.phone!.isEmpty) return 'medium';
+    return null;
+  }
+
+  /// Chip de résumé d'alerte affiché dans le header du profil.
+  Widget _buildAlertSummaryChip(String severity) {
+    final isHigh  = severity == 'high';
+    final color   = isHigh ? AppColors.error : AppColors.warning;
+    final bgColor = isHigh ? AppColors.errorLight : AppColors.warningLight;
+    final label   = isHigh
+        ? 'Email non vérifié — action requise'
+        : _pendingDeptRequest != null
+            ? 'Demande de département en attente'
+            : 'Numéro de téléphone manquant';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.warning_rounded, size: 14, color: color),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDate(String raw) {
     if (raw.isEmpty) return '—';
     try {
@@ -537,6 +578,11 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                         runSpacing: 4,
                         children: _user.roles.where(kAssignableRoles.contains).map(_buildRoleBadge).toList(),
                       ),
+                      // Chip d'alerte résumé — s'affiche si au moins une notification est active
+                      if (_overallSeverity != null) ...[
+                        const SizedBox(height: 8),
+                        _buildAlertSummaryChip(_overallSeverity!),
+                      ],
                     ],
                   ),
                 ),
