@@ -64,9 +64,14 @@ class ApiConfig {
       '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
 
   // Auth extra endpoints
-  static String get deptRequestsUrl  => '$authBaseUrl/api/users/department-requests';
-  static String get rolesUrl         => '$authBaseUrl/api/roles';
-  static String get registerUrl      => '$authBaseUrl/api/auth/register';
+  static String get deptRequestsUrl   => '$authBaseUrl/api/users/department-requests';
+  static String get rolesUrl          => '$authBaseUrl/api/roles';
+  static String get registerUrl       => '$authBaseUrl/api/auth/register';
   static String get forgotPasswordUrl => '$authBaseUrl/api/auth/forgot-password';
-  static String get roleRequestsUrl  => '$authBaseUrl/api/users/role-requests';
+  static String get roleRequestsUrl   => '$authBaseUrl/api/users/role-requests';
+
+  // Web Push endpoints (db-service)
+  static String get vapidKeyUrl        => '$dbBaseUrl/api/notifications/vapid-key';
+  static String get pushSubscribeUrl   => '$dbBaseUrl/api/notifications/subscribe';
+  static String get pushUnsubscribeUrl => '$dbBaseUrl/api/notifications/unsubscribe';
 }

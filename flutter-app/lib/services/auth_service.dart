@@ -4,6 +4,7 @@ import '../models/user_role.dart';
 import '../data/mock_data.dart';
 import 'auth_api_service.dart';
 import 'data_service.dart';
+import 'push_notification_web_service.dart';
 
 /// Service d'authentification — utilise l'API réelle en priorité,
 /// avec fallback sur les données mock si le serveur est inaccessible.
@@ -78,6 +79,8 @@ class AuthService extends ChangeNotifier {
         _currentUser = _userFromApiResponse(result.user!);
         _isLoading = false;
         notifyListeners();
+        // Demande permission push et envoie la souscription (non-bloquant)
+        PushNotificationWebService().requestAndSubscribe().catchError((_) {});
         return true;
       }
 
@@ -128,6 +131,8 @@ class AuthService extends ChangeNotifier {
         _currentUser = _userFromApiResponse(userData);
         _isLoading = false;
         notifyListeners();
+        // Réabonnement push si la session est restaurée depuis le token stocké
+        PushNotificationWebService().requestAndSubscribe().catchError((_) {});
         return true;
       }
     } catch (_) {}
@@ -158,6 +163,8 @@ class AuthService extends ChangeNotifier {
   // ── Déconnexion ────────────────────────────────────────────────────────────
 
   Future<void> logoutApi() async {
+    // Désabonnement push avant de vider le token (ApiClient a encore le Bearer)
+    await PushNotificationWebService().unsubscribe().catchError((_) {});
     await AuthApiService.instance.logout();
     _currentUser = null;
     notifyListeners();

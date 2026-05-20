@@ -3,6 +3,7 @@ const { getDb } = require('../database');
 const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { AUTH_SERVICE_URL } = require('../config');
+const { sendPushToRoles } = require('../utils/push_sender');
 
 const router = express.Router();
 
@@ -158,6 +159,20 @@ router.post('/', verifyToken, (req, res) => {
       target_name: equipment_name || location_id || department,
       details: { type, department, category: derivedCategory, group: derivedGroup },
       ...extractReqMeta(req) });
+
+    // ── Notification push aux techniciens du groupe concerné ─────────────────
+    // Async non-bloquant : la réponse HTTP est envoyée avant l'envoi push.
+    const targetRoles = derivedGroup ? [GROUP_TO_ROLE[derivedGroup]].filter(Boolean) : [];
+    if (targetRoles.length) {
+      setImmediate(() => {
+        sendPushToRoles(targetRoles, {
+          title: `Nouvel incident — ${urgencyValue}`,
+          body:  `${department} : ${description.substring(0, 100)}`,
+          icon:  '/icons/Icon-192.png',
+          data:  { issueId: id },
+        }).catch(() => {});
+      });
+    }
 
     res.status(201).json({ message: 'Incident signalé', id });
   } catch (err) {

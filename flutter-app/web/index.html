@@ -33,6 +33,56 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <script>
+    // ── Enregistrement du Service Worker push ─────────────────────────────────
+    // Distinct du flutter_service_worker.js — gère uniquement les notifications push.
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      navigator.serviceWorker.register('/push_sw.js').then(function(reg) {
+        window._pushSW = reg;
+      }).catch(function(e) {
+        console.warn('[Push SW] Erreur enregistrement :', e);
+      });
+    }
+
+    // ── Helpers appelés depuis Dart via dart:js ───────────────────────────────
+
+    window.requestPushPermission = async function() {
+      return await Notification.requestPermission();
+    };
+
+    window.getPushPermission = function() {
+      return Notification.permission;
+    };
+
+    window.subscribeToPush = async function(vapidPublicKey) {
+      try {
+        const reg = window._pushSW || await navigator.serviceWorker.ready;
+        // Convertit la clé VAPID base64url en Uint8Array (requis par pushManager)
+        const key = vapidPublicKey.replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(key);
+        const keyBytes = new Uint8Array(raw.length);
+        for (let i = 0; i < raw.length; i++) keyBytes[i] = raw.charCodeAt(i);
+
+        const sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes,
+        });
+        return JSON.stringify(sub.toJSON());
+      } catch (e) {
+        console.warn('[Push] subscribeToPush échoué :', e);
+        return null;
+      }
+    };
+
+    window.unsubscribeFromPush = async function() {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) await sub.unsubscribe();
+      } catch (e) { /* silencieux */ }
+    };
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
