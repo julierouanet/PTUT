@@ -238,7 +238,7 @@ pipeline {
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
                     # Attendre que Keycloak PROD soit prêt (jusqu'à 120s)
-                    timeout 120 sh -c 'until docker exec keycloak-prod sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
+                    timeout 120 sh -c 'until docker exec keycloak-prod wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q UP; do sleep 5; done' || true
                     # Thème email + options realm (forgot password, loginWithEmail)
                     docker exec keycloak-prod bash /opt/keycloak/scripts/configure-realm.sh 2>/dev/null || true
                     # Configuration SMTP Brevo via API REST (kcadm ne supporte pas smtpServer)
@@ -298,7 +298,7 @@ pipeline {
                     docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
                     # Attendre que Keycloak soit prêt avant d'initialiser le realm
-                    timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
+                    timeout 120 sh -c 'until docker exec keycloak-dev wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q UP; do sleep 5; done' || true
                     # Thème email + options realm (forgot password, loginWithEmail)
                     docker exec keycloak-dev bash /opt/keycloak/scripts/configure-realm.sh 2>/dev/null || true
                     # Configuration SMTP Brevo via API REST (kcadm ne supporte pas smtpServer)

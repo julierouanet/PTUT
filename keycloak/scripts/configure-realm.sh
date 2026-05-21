@@ -13,8 +13,8 @@ REALM="kabutare-hospital"
 KCADM="/opt/keycloak/bin/kcadm.sh"
 
 echo "[KC-SETUP] Vérification que Keycloak est prêt..."
-until bash -c "exec 3<>/dev/tcp/localhost/8081 2>/dev/null" 2>/dev/null; do
-  echo "[KC-SETUP] Port 8081 pas encore ouvert, attente 5s..."
+until bash -c "exec 3<>/dev/tcp/localhost/${KC_HTTP_PORT:-8080} 2>/dev/null" 2>/dev/null; do
+  echo "[KC-SETUP] Port ${KC_HTTP_PORT:-8080} pas encore ouvert, attente 5s..."
   sleep 5
 done
 echo "[KC-SETUP] Keycloak répond, démarrage de la configuration."
