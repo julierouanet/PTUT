@@ -3,22 +3,24 @@
 # Usage : docker compose -f docker-compose.ip.yml up -d
 # Pré-requis : fichier .env renseigné (voir .env.ip.example)
 #              certificat SSL dans ./ssl/cert.pem et ./ssl/key.pem
-#              build Flutter dans ./flutter-app/build/web/
+#              (généré par setup_ubuntu.sh — scp n'est pas nécessaire)
 # ============================================================
 services:
 
   # ── Nginx : HTTPS front, routing par chemin ───────────────
+  # L'image embarque le build Flutter (placeholder __SERVER_IP__).
+  # SERVER_IP est remplacé au démarrage par docker-entrypoint-ip.sh.
   nginx:
-    image: nginx:1.27-alpine
+    image: ${DOCKER_USER}/kabutare-nginx:latest
     container_name: nginx-ip
     restart: unless-stopped
+    environment:
+      SERVER_IP: ${SERVER_IP}
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf.d/ip.conf:/etc/nginx/conf.d/default.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
-      - ./flutter-app/build/web:/usr/share/nginx/html:ro
     depends_on:
       - auth-service
       - db-service

@@ -6,9 +6,12 @@
 #
 # Pré-requis :
 #   - Ubuntu 22.04 / 24.04 LTS
-#   - Les fichiers du projet copiés sur ce serveur (scp ou git clone)
-#   - Ce script exécuté depuis la racine du dépôt
-#     sudo bash setup_ubuntu.sh
+#   - build_and_push.sh exécuté au préalable sur la machine dev
+#     (images poussées sur Docker Hub)
+#   - Seulement ces deux fichiers à copier sur le serveur :
+#       scp setup_ubuntu.sh docker-compose.ip.yml user@IP:~/kabutare/
+#   - Exécuter depuis le répertoire contenant ces fichiers :
+#       sudo bash setup_ubuntu.sh
 # ============================================================
 set -euo pipefail
 
@@ -28,12 +31,12 @@ echo "========================================================"
 echo ""
 
 # ── Étape 1 : Mise à jour système ────────────────────────────
-echo "[1/8] Mise à jour du système..."
+echo "[1/7] Mise à jour du système..."
 apt-get update -qq
 apt-get upgrade -y -qq
 
 # ── Étape 2 : Installation Docker ────────────────────────────
-echo "[2/8] Installation de Docker..."
+echo "[2/7] Installation de Docker..."
 if command -v docker &>/dev/null; then
   echo "      Docker déjà installé : $(docker --version)"
 else
@@ -53,7 +56,7 @@ else
 fi
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
-echo "[3/8] Détection de l'IP publique du serveur..."
+echo "[3/7] Détection de l'IP publique du serveur..."
 DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
   || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
   || hostname -I | awk '{print $1}')
@@ -64,7 +67,7 @@ SERVER_IP="${USER_IP:-${DETECTED_IP}}"
 echo "      ✓ IP retenue : ${SERVER_IP}"
 
 # ── Étape 4 : Création du fichier .env ───────────────────────
-echo "[4/8] Configuration des variables d'environnement..."
+echo "[4/7] Configuration des variables d'environnement..."
 if [[ -f ".env" ]]; then
   echo "      Un fichier .env existe déjà, il sera conservé."
   # S'assurer que SERVER_IP et DOCKER_USER sont à jour
@@ -113,7 +116,7 @@ fi
 set -a; source .env; set +a
 
 # ── Étape 5 : Certificat SSL self-signed ─────────────────────
-echo "[5/8] Génération du certificat SSL self-signed..."
+echo "[5/7] Génération du certificat SSL self-signed..."
 mkdir -p ssl
 if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
   echo "      Certificat existant conservé."
@@ -128,42 +131,15 @@ else
   echo "      ✓ Certificat généré (valide 10 ans) : ssl/cert.pem"
 fi
 
-# ── Étape 6 : Build Flutter web ──────────────────────────────
-echo "[6/8] Build Flutter web (via image Docker Flutter)..."
-echo "      AUTH_URL  = https://${SERVER_IP}/auth"
-echo "      DB_URL    = https://${SERVER_IP}/db"
-echo "      KC_TOKEN  = https://${SERVER_IP}/keycloak/realms/kabutare-hospital/..."
-
-FLUTTER_IMAGE="ghcr.io/cirruslabs/flutter:3.41.4"
-
-# Installation des dépendances
-docker run --rm \
-  -v "$(pwd)/flutter-app:/app" \
-  -e PUB_CACHE=/app/.pub-cache \
-  -w /app \
-  "${FLUTTER_IMAGE}" \
-  flutter pub get
-
-# Build web release avec les URLs de l'IP
-docker run --rm \
-  -v "$(pwd)/flutter-app:/app" \
-  -e PUB_CACHE=/app/.pub-cache \
-  -w /app \
-  "${FLUTTER_IMAGE}" \
-  flutter build web --release \
-    --dart-define=AUTH_URL=https://${SERVER_IP}/auth \
-    --dart-define=DB_URL=https://${SERVER_IP}/db \
-    --dart-define=KC_TOKEN_URL=https://${SERVER_IP}/keycloak/realms/kabutare-hospital/protocol/openid-connect/token
-
-echo "      ✓ Flutter web buildé dans flutter-app/build/web/"
-
-# ── Étape 7 : Pull des images Docker Hub ─────────────────────
-echo "[7/8] Pull des images depuis Docker Hub (${DOCKER_USER})..."
-docker compose -f docker-compose.ip.yml pull keycloak auth-service db-service
+# ── Étape 6 : Pull des images Docker Hub ─────────────────────
+# Le build Flutter est embarqué dans l'image kabutare-nginx.
+# La substitution de SERVER_IP se fait au démarrage du conteneur.
+echo "[6/7] Pull des images depuis Docker Hub (${DOCKER_USER})..."
+docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
 echo "      ✓ Images téléchargées."
 
-# ── Étape 8 : Démarrage de la stack ──────────────────────────
-echo "[8/8] Démarrage de la stack Docker Compose..."
+# ── Étape 7 : Démarrage de la stack ──────────────────────────
+echo "[7/7] Démarrage de la stack Docker Compose..."
 docker compose -f docker-compose.ip.yml up -d
 
 echo ""
