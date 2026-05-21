@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDb } = require('../database');
 const { getUserRoles } = require('../utils/userRoles');
+const { KC_ISSUER } = require('../config');
 
 const router = express.Router();
 
@@ -119,9 +120,47 @@ router.get('/', (req, res) => {
 </html>`);
 });
 
-// GET /health
-router.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'auth-service', timestamp: new Date().toISOString() });
+// GET /health — vérifie SQLite, Keycloak et Brevo
+router.get('/health', async (req, res) => {
+  const checks = { database: 'ko', keycloak: 'ko', brevo: null };
+
+  // ── SQLite ──────────────────────────────────────────────────────────────────
+  try {
+    getDb().prepare('SELECT 1').get();
+    checks.database = 'ok';
+  } catch (_) {}
+
+  // ── Keycloak (endpoint de découverte OIDC public) ────────────────────────────
+  try {
+    const r = await fetch(`${KC_ISSUER}/.well-known/openid-configuration`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    checks.keycloak = r.ok ? 'ok' : 'ko';
+  } catch (_) {
+    checks.keycloak = 'ko';
+  }
+
+  // ── Brevo (GET /v3/account — nécessite BREVO_API_KEY) ─────────────────────
+  const brevoKey = process.env.BREVO_API_KEY;
+  if (brevoKey) {
+    try {
+      const r = await fetch('https://api.brevo.com/v3/account', {
+        headers: { 'api-key': brevoKey },
+        signal: AbortSignal.timeout(3000),
+      });
+      checks.brevo = r.ok ? 'ok' : 'ko';
+    } catch (_) {
+      checks.brevo = 'ko';
+    }
+  }
+
+  const allOk = checks.database === 'ok' && checks.keycloak === 'ok' && checks.brevo !== 'ko';
+  res.json({
+    status:    allOk ? 'ok' : 'degraded',
+    service:   'auth-service',
+    timestamp: new Date().toISOString(),
+    checks,
+  });
 });
 
 module.exports = router;

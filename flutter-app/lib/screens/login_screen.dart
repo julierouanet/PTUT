@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/auth_api_service.dart';
+import '../services/api_config.dart';
 import '../services/config_service.dart';
 import '../services/data_service.dart';
 import '../services/notification_service.dart';
@@ -103,6 +106,12 @@ class _LoginScreenState extends State<LoginScreen> {
   String?   _selectedDepartment; // sélection dans le dropdown inscription
   String?   _selectedRole;        // rôle optionnel lors de l'inscription
 
+  // ── Santé des services ────────────────────────────────────────────────────
+  // null = en cours de vérification, 'ok' = vert, 'ko' = rouge
+  final Map<String, String?> _health = {
+    'auth': null, 'db': null, 'iam': null, 'mail': null,
+  };
+
   @override
   void initState() {
     super.initState();
@@ -110,6 +119,38 @@ class _LoginScreenState extends State<LoginScreen> {
     if (sessionMsg != null) {
       _error = sessionMsg;
       AuthService().clearSessionExpiredMessage();
+    }
+    _fetchHealth();
+  }
+
+  Future<void> _fetchHealth() async {
+    try {
+      final responses = await Future.wait([
+        http.get(Uri.parse(ApiConfig.healthAuthUrl))
+            .timeout(const Duration(seconds: 5)),
+        http.get(Uri.parse(ApiConfig.healthDbUrl))
+            .timeout(const Duration(seconds: 5)),
+      ]);
+      if (!mounted) return;
+
+      final authBody = jsonDecode(responses[0].body) as Map<String, dynamic>;
+      final dbBody   = jsonDecode(responses[1].body) as Map<String, dynamic>;
+      final checks   = authBody['checks'] as Map<String, dynamic>? ?? {};
+
+      setState(() {
+        _health['auth'] = authBody['status'] as String? ?? 'ko';
+        _health['db']   = dbBody['status']   as String? ?? 'ko';
+        _health['iam']  = checks['keycloak'] as String? ?? 'ko';
+        _health['mail'] = checks['brevo']    as String?;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _health['auth'] = 'ko';
+        _health['db']   = 'ko';
+        _health['iam']  = 'ko';
+        _health['mail'] = 'ko';
+      });
     }
   }
 
@@ -282,7 +323,60 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+
+          // ── Indicateurs de santé — coin inférieur droit ───────────────────
+          Positioned(
+            bottom: 12,
+            right: 12,
+            child: _buildHealthIndicators(l10n),
+          ),
         ],
+      ),
+    );
+  }
+
+  // ── Indicateurs de statut des services ───────────────────────────────────────
+
+  Widget _buildHealthIndicators(AppLocalizations l10n) {
+    final services = [
+      ('auth', l10n.healthAuth),
+      ('db',   l10n.healthDb),
+      ('iam',  l10n.healthIam),
+      ('mail', l10n.healthMail),
+    ];
+
+    Color _dot(String key) {
+      final s = _health[key];
+      if (s == null)   return Colors.grey.shade300;
+      if (s == 'ok')   return AppColors.success;
+      return AppColors.error;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: services.map((s) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: _dot(s.$1), shape: BoxShape.circle),
+              ),
+              const SizedBox(height: 2),
+              Text(s.$2, style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+            ],
+          ),
+        )).toList(),
       ),
     );
   }

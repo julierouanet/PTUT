@@ -4868,6 +4868,150 @@ abstract class AppLocalizations {
   /// **'Demande envoyée, en attente de validation administrateur'**
   String get roleRequestSuccess;
 
+  /// No description provided for @navAnalytics.
+  ///
+  /// In fr, this message translates to:
+  /// **'Analytiques'**
+  String get navAnalytics;
+
+  /// No description provided for @navAnalyticsShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stats'**
+  String get navAnalyticsShort;
+
+  /// No description provided for @healthAuth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Auth'**
+  String get healthAuth;
+
+  /// No description provided for @healthDb.
+  ///
+  /// In fr, this message translates to:
+  /// **'BD'**
+  String get healthDb;
+
+  /// No description provided for @healthIam.
+  ///
+  /// In fr, this message translates to:
+  /// **'IAM'**
+  String get healthIam;
+
+  /// No description provided for @healthMail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mail'**
+  String get healthMail;
+
+  /// No description provided for @analyticsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Analytiques'**
+  String get analyticsTitle;
+
+  /// No description provided for @analyticsPeriod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Période :'**
+  String get analyticsPeriod;
+
+  /// No description provided for @analyticsToday.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aujourd\'hui'**
+  String get analyticsToday;
+
+  /// No description provided for @analyticsWeek.
+  ///
+  /// In fr, this message translates to:
+  /// **'7 jours'**
+  String get analyticsWeek;
+
+  /// No description provided for @analyticsMonth.
+  ///
+  /// In fr, this message translates to:
+  /// **'30 jours'**
+  String get analyticsMonth;
+
+  /// No description provided for @analyticsLogins.
+  ///
+  /// In fr, this message translates to:
+  /// **'Connexions'**
+  String get analyticsLogins;
+
+  /// No description provided for @analyticsFailedLogins.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échecs connexion'**
+  String get analyticsFailedLogins;
+
+  /// No description provided for @analyticsActiveUsers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateurs actifs'**
+  String get analyticsActiveUsers;
+
+  /// No description provided for @analyticsIssuesCreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents créés'**
+  String get analyticsIssuesCreated;
+
+  /// No description provided for @analyticsIssuesResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents résolus'**
+  String get analyticsIssuesResolved;
+
+  /// No description provided for @analyticsEquipmentTotal.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements'**
+  String get analyticsEquipmentTotal;
+
+  /// No description provided for @analyticsEquipmentByStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'État des équipements'**
+  String get analyticsEquipmentByStatus;
+
+  /// No description provided for @analyticsTopActions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activité par action'**
+  String get analyticsTopActions;
+
+  /// No description provided for @analyticsNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune donnée pour cette période.'**
+  String get analyticsNoData;
+
+  /// No description provided for @accountAlertEmailNotVerifiedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email non vérifié'**
+  String get accountAlertEmailNotVerifiedTitle;
+
+  /// No description provided for @accountAlertEmailNotVerifiedSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérifiez votre boîte mail et cliquez sur le lien de confirmation envoyé à l\'inscription.'**
+  String get accountAlertEmailNotVerifiedSubtitle;
+
+  /// No description provided for @accountAlertPhoneMissingTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro de téléphone manquant'**
+  String get accountAlertPhoneMissingTitle;
+
+  /// No description provided for @accountAlertPhoneMissingSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajoutez votre numéro dans vos informations personnelles pour être joignable en cas d\'incident.'**
+  String get accountAlertPhoneMissingSubtitle;
+
   /// No description provided for @appVersionLabel.
   ///
   /// In fr, this message translates to:

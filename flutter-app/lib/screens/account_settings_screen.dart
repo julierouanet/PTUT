@@ -75,6 +75,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            _buildAlertBanners(l10n, currentUser),
 
             // ── Paramètres du compte ───────────────────────────────────────
             Text(l10n.settingsAccountSection, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
@@ -195,6 +196,80 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ── Bannières d'alerte compte ──────────────────────────────────────────────
+
+  Widget _buildAlertBanners(AppLocalizations l10n, dynamic user) {
+    if (user == null) return const SizedBox.shrink();
+    final banners = <Widget>[];
+
+    if (user.isEmailVerified == false) {
+      banners.add(_buildAlertBanner(
+        icon: Icons.mark_email_unread_outlined,
+        color: AppColors.error,
+        bgColor: AppColors.errorLight,
+        title: l10n.accountAlertEmailNotVerifiedTitle,
+        subtitle: l10n.accountAlertEmailNotVerifiedSubtitle,
+      ));
+    }
+
+    if (user.phone == null || (user.phone as String).isEmpty) {
+      banners.add(_buildAlertBanner(
+        icon: Icons.phone_missed_outlined,
+        color: AppColors.warning,
+        bgColor: AppColors.warningLight,
+        title: l10n.accountAlertPhoneMissingTitle,
+        subtitle: l10n.accountAlertPhoneMissingSubtitle,
+      ));
+    }
+
+    if (banners.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final banner in banners) ...[
+          banner,
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 4),
+      ],
+    );
+  }
+
+  Widget _buildAlertBanner({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 3),
+                Text(subtitle, style: TextStyle(color: color.withValues(alpha: 0.85), fontSize: 12, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

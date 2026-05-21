@@ -77,6 +77,13 @@ class ApiConfig {
   static String get forgotPasswordUrl => '$authBaseUrl/api/auth/forgot-password';
   static String get roleRequestsUrl   => '$authBaseUrl/api/users/role-requests';
 
+  // Health endpoints (publics, sans authentification)
+  static String get healthAuthUrl => '$authBaseUrl/health';
+  static String get healthDbUrl   => '$dbBaseUrl/health';
+
+  // Analytics (db-service — admin uniquement)
+  static String get analyticsUrl  => '$dbBaseUrl/api/analytics';
+
   // Web Push endpoints (db-service)
   static String get vapidKeyUrl        => '$dbBaseUrl/api/notifications/vapid-key';
   static String get pushSubscribeUrl   => '$dbBaseUrl/api/notifications/subscribe';

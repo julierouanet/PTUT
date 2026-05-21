@@ -164,7 +164,18 @@ router.get('/', (req, res) => {
 });
 
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'db-service', timestamp: new Date().toISOString() });
+  let dbStatus = 'ko';
+  try {
+    getDb().prepare('SELECT 1').get();
+    dbStatus = 'ok';
+  } catch (_) {}
+
+  res.json({
+    status:    dbStatus === 'ok' ? 'ok' : 'degraded',
+    service:   'db-service',
+    timestamp: new Date().toISOString(),
+    checks:    { database: dbStatus },
+  });
 });
 
 module.exports = router;

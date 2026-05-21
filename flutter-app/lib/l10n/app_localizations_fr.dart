@@ -2585,6 +2585,80 @@ class AppLocalizationsFr extends AppLocalizations {
       'Demande envoyée, en attente de validation administrateur';
 
   @override
+  String get navAnalytics => 'Analytiques';
+
+  @override
+  String get navAnalyticsShort => 'Stats';
+
+  @override
+  String get healthAuth => 'Auth';
+
+  @override
+  String get healthDb => 'BD';
+
+  @override
+  String get healthIam => 'IAM';
+
+  @override
+  String get healthMail => 'Mail';
+
+  @override
+  String get analyticsTitle => 'Analytiques';
+
+  @override
+  String get analyticsPeriod => 'Période :';
+
+  @override
+  String get analyticsToday => 'Aujourd\'hui';
+
+  @override
+  String get analyticsWeek => '7 jours';
+
+  @override
+  String get analyticsMonth => '30 jours';
+
+  @override
+  String get analyticsLogins => 'Connexions';
+
+  @override
+  String get analyticsFailedLogins => 'Échecs connexion';
+
+  @override
+  String get analyticsActiveUsers => 'Utilisateurs actifs';
+
+  @override
+  String get analyticsIssuesCreated => 'Incidents créés';
+
+  @override
+  String get analyticsIssuesResolved => 'Incidents résolus';
+
+  @override
+  String get analyticsEquipmentTotal => 'Équipements';
+
+  @override
+  String get analyticsEquipmentByStatus => 'État des équipements';
+
+  @override
+  String get analyticsTopActions => 'Activité par action';
+
+  @override
+  String get analyticsNoData => 'Aucune donnée pour cette période.';
+
+  @override
+  String get accountAlertEmailNotVerifiedTitle => 'Email non vérifié';
+
+  @override
+  String get accountAlertEmailNotVerifiedSubtitle =>
+      'Vérifiez votre boîte mail et cliquez sur le lien de confirmation envoyé à l\'inscription.';
+
+  @override
+  String get accountAlertPhoneMissingTitle => 'Numéro de téléphone manquant';
+
+  @override
+  String get accountAlertPhoneMissingSubtitle =>
+      'Ajoutez votre numéro dans vos informations personnelles pour être joignable en cas d\'incident.';
+
+  @override
   String appVersionLabel(String version) {
     return 'Version $version';
   }

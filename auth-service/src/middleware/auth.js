@@ -33,14 +33,15 @@ function verifyToken(req, res, next) {
   jwt.verify(token, getKey, { algorithms: ['RS256'], issuer: KC_ISSUER }, (err, decoded) => {
     if (err) return res.status(401).json({ error: 'Token invalide ou expiré' });
     req.user = {
-      id:          decoded.sub,
-      email:       decoded.email         ?? '',
-      name:        decoded.name          ?? `${decoded.given_name ?? ''} ${decoded.family_name ?? ''}`.trim(),
-      given_name:  decoded.given_name    ?? '',
-      family_name: decoded.family_name   ?? '',
-      roles:       (decoded.realm_access?.roles ?? []).filter((r) => !SYSTEM_ROLES.has(r)),
-      department:  decoded.department    ?? '',
-      phone:       decoded.phone_number  ?? null,
+      id:             decoded.sub,
+      email:          decoded.email          ?? '',
+      email_verified: decoded.email_verified ?? false,
+      name:           decoded.name           ?? `${decoded.given_name ?? ''} ${decoded.family_name ?? ''}`.trim(),
+      given_name:     decoded.given_name     ?? '',
+      family_name:    decoded.family_name    ?? '',
+      roles:          (decoded.realm_access?.roles ?? []).filter((r) => !SYSTEM_ROLES.has(r)),
+      department:     decoded.department     ?? '',
+      phone:          decoded.phone_number   ?? null,
     };
     next();
   });

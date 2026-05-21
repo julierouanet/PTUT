@@ -42,14 +42,15 @@ router.get('/me', verifyToken, (req, res) => {
   const permissions = getPermissionsForRoles(db, req.user.roles);
 
   res.json({
-    id:          req.user.id,
-    name:        req.user.name,
-    first_name:  req.user.given_name  ?? req.user.name.split(' ')[0] ?? '',
-    last_name:   req.user.family_name ?? req.user.name.split(' ').slice(1).join(' ') ?? '',
-    email:       req.user.email,
-    department:  req.user.department,
-    phone:       req.user.phone ?? null,
-    roles:       req.user.roles,
+    id:             req.user.id,
+    name:           req.user.name,
+    first_name:     req.user.given_name  ?? req.user.name.split(' ')[0] ?? '',
+    last_name:      req.user.family_name ?? req.user.name.split(' ').slice(1).join(' ') ?? '',
+    email:          req.user.email,
+    email_verified: req.user.email_verified,
+    department:     req.user.department,
+    phone:          req.user.phone ?? null,
+    roles:          req.user.roles,
     permissions,
   });
 });

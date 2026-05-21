@@ -2563,6 +2563,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleRequestSuccess => 'Request sent, pending admin approval';
 
   @override
+  String get navAnalytics => 'Analytics';
+
+  @override
+  String get navAnalyticsShort => 'Stats';
+
+  @override
+  String get healthAuth => 'Auth';
+
+  @override
+  String get healthDb => 'DB';
+
+  @override
+  String get healthIam => 'IAM';
+
+  @override
+  String get healthMail => 'Mail';
+
+  @override
+  String get analyticsTitle => 'Analytics';
+
+  @override
+  String get analyticsPeriod => 'Period:';
+
+  @override
+  String get analyticsToday => 'Today';
+
+  @override
+  String get analyticsWeek => '7 days';
+
+  @override
+  String get analyticsMonth => '30 days';
+
+  @override
+  String get analyticsLogins => 'Logins';
+
+  @override
+  String get analyticsFailedLogins => 'Failed logins';
+
+  @override
+  String get analyticsActiveUsers => 'Active users';
+
+  @override
+  String get analyticsIssuesCreated => 'Issues created';
+
+  @override
+  String get analyticsIssuesResolved => 'Issues resolved';
+
+  @override
+  String get analyticsEquipmentTotal => 'Equipment';
+
+  @override
+  String get analyticsEquipmentByStatus => 'Equipment status';
+
+  @override
+  String get analyticsTopActions => 'Activity by action';
+
+  @override
+  String get analyticsNoData => 'No data for this period.';
+
+  @override
+  String get accountAlertEmailNotVerifiedTitle => 'Email not verified';
+
+  @override
+  String get accountAlertEmailNotVerifiedSubtitle =>
+      'Check your inbox and click the confirmation link sent at registration.';
+
+  @override
+  String get accountAlertPhoneMissingTitle => 'Phone number missing';
+
+  @override
+  String get accountAlertPhoneMissingSubtitle =>
+      'Add your phone number in your personal info to be reachable in case of an incident.';
+
+  @override
   String appVersionLabel(String version) {
     return 'Version $version';
   }
