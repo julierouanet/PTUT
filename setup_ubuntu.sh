@@ -30,30 +30,6 @@ echo " Déploiement Hôpital de Kabutare — serveur IP-only"
 echo "========================================================"
 echo ""
 
-# ── Étape 1 : Mise à jour système ────────────────────────────
-echo "[1/7] Mise à jour du système..."
-apt-get update -qq
-apt-get upgrade -y -qq
-
-# ── Étape 2 : Installation Docker ────────────────────────────
-echo "[2/7] Installation de Docker..."
-if command -v docker &>/dev/null; then
-  echo "      Docker déjà installé : $(docker --version)"
-else
-  apt-get install -y -qq ca-certificates curl gnupg lsb-release
-  install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-    | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  chmod a+r /etc/apt/keyrings/docker.gpg
-  echo \
-    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-    https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
-    > /etc/apt/sources.list.d/docker.list
-  apt-get update -qq
-  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-  systemctl enable --now docker
-  echo "      ✓ Docker installé."
-fi
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
 echo "[3/7] Détection de l'IP publique du serveur..."
