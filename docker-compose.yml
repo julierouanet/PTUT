@@ -92,8 +92,18 @@ services:
       KC_PROXY_HEADERS: xforwarded
       KEYCLOAK_ADMIN: ${KC_ADMIN_USER}
       KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      # ── Brevo SMTP (utilisées par keycloak/scripts/configure-realm.sh via kcadm) ──
+      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST}
+      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT}
+      BREVO_SMTP_LOGIN: ${BREVO_SMTP_LOGIN}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD}
+      BREVO_FROM_EMAIL: ${BREVO_FROM_EMAIL}
+      BREVO_FROM_NAME: ${BREVO_FROM_NAME}
     ports:
       - "8080:8080"
+    volumes:
+      - ./keycloak/themes:/opt/keycloak/themes
+      - ./keycloak/scripts:/opt/keycloak/scripts
     depends_on:
       postgres-keycloak:
         condition: service_healthy
