@@ -189,7 +189,12 @@ class HomeHubScreen extends StatelessWidget {
                   );
                 },
               );
-              if (confirmed == true) await AuthService().logoutApi();
+              if (confirmed == true && context.mounted) {
+                await AuthService().logoutApi();
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              }
             },
           ),
         ],

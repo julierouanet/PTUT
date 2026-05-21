@@ -163,8 +163,11 @@ class AuthService extends ChangeNotifier {
   // ── Déconnexion ────────────────────────────────────────────────────────────
 
   Future<void> logoutApi() async {
-    // Désabonnement push avant de vider le token (ApiClient a encore le Bearer)
-    await PushNotificationWebService().unsubscribe().catchError((_) {});
+    // Désabonnement push avec timeout court — best-effort, le token est encore valide ici
+    await PushNotificationWebService().unsubscribe()
+        .timeout(const Duration(seconds: 3))
+        .catchError((_) {});
+    // Supprimer les tokens locaux puis notifier immédiatement
     await AuthApiService.instance.logout();
     _currentUser = null;
     notifyListeners();

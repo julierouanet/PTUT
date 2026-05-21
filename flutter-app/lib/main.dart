@@ -518,7 +518,10 @@ class _MainScaffoldState extends State<MainScaffold> {
         ],
       ),
     );
-    if (confirmed == true) await _authService.logoutApi();
+    if (confirmed == true) {
+      await _authService.logoutApi();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   void _handleNavTap(BuildContext context, _NavItem item, int index) {
