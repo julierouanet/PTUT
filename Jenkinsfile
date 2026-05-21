@@ -232,8 +232,8 @@ pipeline {
                     # Nettoyage défensif : containers + réseau orphelins avant le down
                     docker rm -f auth-service-prod db-service-prod keycloak-prod postgres-keycloak-prod 2>/dev/null || true
                     docker network rm gestion-equipement-medical-prod_default 2>/dev/null || true
-                    # Libérer le port 8080 si occupé par un container résiduel (hors projet)
-                    docker ps -q --filter publish=8080 | xargs --no-run-if-empty docker rm -f 2>/dev/null || true
+                    # Libérer le port 18080 si occupé par un container résiduel (hors projet)
+                    docker ps -q --filter publish=18080 | xargs --no-run-if-empty docker rm -f 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp down --remove-orphans 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
@@ -252,13 +252,13 @@ pipeline {
                     KC_ADMIN_PASS_VAL=\$(grep '^KC_ADMIN_PASSWORD=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
                     KC_TOKEN=\$(docker run --rm --network host curlimages/curl:latest -sf \
                         --data "client_id=admin-cli&username=\${KC_ADMIN_USER_VAL}&password=\${KC_ADMIN_PASS_VAL}&grant_type=password" \
-                        'http://localhost:8080/realms/master/protocol/openid-connect/token' \
+                        'http://localhost:18080/realms/master/protocol/openid-connect/token' \
                         | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
                     [ -n "\$KC_TOKEN" ] && docker run --rm --network host curlimages/curl:latest -sf -X PUT \
                         -H "Authorization: Bearer \$KC_TOKEN" \
                         -H 'Content-Type: application/json' \
                         --data-raw "{\"smtpServer\":{\"host\":\"\$BREVO_HOST\",\"port\":\"\$BREVO_PORT\",\"from\":\"\$BREVO_FROM\",\"fromDisplayName\":\"\$BREVO_NAME\",\"replyTo\":\"\$BREVO_FROM\",\"auth\":\"true\",\"starttls\":\"true\",\"ssl\":\"false\",\"user\":\"\$BREVO_LOGIN\",\"password\":\"\$BREVO_PASS\"}}" \
-                        'http://localhost:8080/admin/realms/kabutare-hospital' \
+                        'http://localhost:18080/admin/realms/kabutare-hospital' \
                         && echo '[KC-SMTP] SMTP Brevo configuré.' || echo '[KC-SMTP] AVERTISSEMENT: SMTP non configuré'
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
                     docker exec \
