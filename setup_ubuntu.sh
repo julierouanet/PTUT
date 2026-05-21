@@ -146,7 +146,7 @@ echo ""
 echo "      Attente que Keycloak soit prêt (peut prendre 2-3 min)..."
 ATTEMPTS=0
 until docker compose -f docker-compose.ip.yml exec -T keycloak \
-    wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q UP; do
+    bash -c 'exec 3<>/dev/tcp/localhost/9000 2>/dev/null'; do
   ATTEMPTS=$((ATTEMPTS + 1))
   if [[ $ATTEMPTS -gt 36 ]]; then
     echo "      ⚠ Keycloak n'a pas démarré dans les 3 minutes."
@@ -160,7 +160,7 @@ echo ""
 
 # Configuration du realm Keycloak via kcadm (idempotent)
 if docker compose -f docker-compose.ip.yml exec -T keycloak \
-    wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q UP; then
+    bash -c 'exec 3<>/dev/tcp/localhost/9000 2>/dev/null'; then
   echo "      Configuration du realm via kcadm..."
   KCADM="docker compose -f docker-compose.ip.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh"
 
