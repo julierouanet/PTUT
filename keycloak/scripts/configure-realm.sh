@@ -27,17 +27,24 @@ ${KCADM} config credentials \
   --password "${KEYCLOAK_ADMIN_PASSWORD}"
 
 echo "[KC-SETUP] Configuration SMTP Brevo sur le realm ${REALM}..."
-${KCADM} update realms/${REALM} \
-  --set "smtpServer.host=${BREVO_SMTP_HOST}" \
-  --set "smtpServer.port=${BREVO_SMTP_PORT}" \
-  --set "smtpServer.from=${BREVO_FROM_EMAIL}" \
-  --set "smtpServer.fromDisplayName=${BREVO_FROM_NAME}" \
-  --set "smtpServer.replyTo=${BREVO_FROM_EMAIL}" \
-  --set "smtpServer.auth=true" \
-  --set "smtpServer.starttls=true" \
-  --set "smtpServer.ssl=false" \
-  --set "smtpServer.user=${BREVO_SMTP_LOGIN}" \
-  --set "smtpServer.password=${BREVO_SMTP_PASSWORD}"
+# kcadm ne supporte pas --set pour les Map<String,String> imbriquées (smtpServer)
+# → on passe l'objet entier en JSON via -f -
+${KCADM} update realms/${REALM} -f - <<EOF
+{
+  "smtpServer": {
+    "host":            "${BREVO_SMTP_HOST}",
+    "port":            "${BREVO_SMTP_PORT}",
+    "from":            "${BREVO_FROM_EMAIL}",
+    "fromDisplayName": "${BREVO_FROM_NAME}",
+    "replyTo":         "${BREVO_FROM_EMAIL}",
+    "auth":            "true",
+    "starttls":        "true",
+    "ssl":             "false",
+    "user":            "${BREVO_SMTP_LOGIN}",
+    "password":        "${BREVO_SMTP_PASSWORD}"
+  }
+}
+EOF
 
 echo "[KC-SETUP] Activation Forgot Password + Verify Email..."
 ${KCADM} update realms/${REALM} \
