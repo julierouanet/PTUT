@@ -182,9 +182,14 @@ pipeline {
             }
             steps {
                 sh """
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env down --remove-orphans 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env pull 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env up -d --build --force-recreate
+                    # Copie /etc/kabutare/.env (host) dans le workspace via Docker
+                    docker run --rm \
+                        -v /etc/kabutare:/kabutare:ro \
+                        -v ${HOST_WORKSPACE}:/out \
+                        alpine sh -c "cp /kabutare/.env /out/.env.kabutare.tmp"
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp down --remove-orphans 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
                     # Attendre que Keycloak PROD soit prêt (jusqu'à 120s)
                     timeout 120 sh -c 'until docker exec keycloak-prod sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
@@ -215,10 +220,15 @@ pipeline {
             }
             steps {
                 sh """
+                    # Copie /etc/kabutare/.env (host) dans le workspace via Docker
+                    docker run --rm \
+                        -v /etc/kabutare:/kabutare:ro \
+                        -v ${HOST_WORKSPACE}:/out \
+                        alpine sh -c "cp /kabutare/.env /out/.env.kabutare.tmp"
                     docker rm -f auth-service-dev db-service-dev 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env down --remove-orphans 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env pull 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env up -d --build --force-recreate
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp down --remove-orphans 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
                     # Attendre que Keycloak soit prêt avant d'initialiser le realm
                     timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
@@ -262,6 +272,10 @@ pipeline {
     }
 
     post {
+        always {
+            // Supprime le fichier .env temporaire copié en début de deploy
+            sh "rm -f ${WORKSPACE}/.env.kabutare.tmp || true"
+        }
         success {
             script {
                 def env_label = (env.BRANCH_NAME == 'main') ? 'PRODUCTION' : 'DEV'
