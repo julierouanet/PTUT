@@ -26,38 +26,9 @@ ${KCADM} config credentials \
   --user "${KEYCLOAK_ADMIN}" \
   --password "${KEYCLOAK_ADMIN_PASSWORD}"
 
-echo "[KC-SETUP] Configuration SMTP Brevo sur le realm ${REALM}..."
-# kcadm ne supporte pas la mise à jour de smtpServer (Map imbriquée) → API REST directe
-
-# Obtenir un token admin
-KC_TOKEN=$(curl -sf -X POST "${KC_URL}/realms/master/protocol/openid-connect/token" \
-  -d "client_id=admin-cli&username=${KEYCLOAK_ADMIN}&password=${KEYCLOAK_ADMIN_PASSWORD}&grant_type=password" \
-  | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
-
-if [ -z "${KC_TOKEN}" ]; then
-  echo "[KC-SETUP] ERREUR : impossible d'obtenir le token admin"
-  exit 1
-fi
-
-# Mettre à jour smtpServer via l'API REST
-curl -sf -X PUT "${KC_URL}/admin/realms/${REALM}" \
-  -H "Authorization: Bearer ${KC_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"smtpServer\": {
-      \"host\":            \"${BREVO_SMTP_HOST}\",
-      \"port\":            \"${BREVO_SMTP_PORT}\",
-      \"from\":            \"${BREVO_FROM_EMAIL}\",
-      \"fromDisplayName\": \"${BREVO_FROM_NAME}\",
-      \"replyTo\":         \"${BREVO_FROM_EMAIL}\",
-      \"auth\":            \"true\",
-      \"starttls\":        \"true\",
-      \"ssl\":             \"false\",
-      \"user\":            \"${BREVO_SMTP_LOGIN}\",
-      \"password\":        \"${BREVO_SMTP_PASSWORD}\"
-    }
-  }"
-echo "[KC-SETUP] SMTP configuré."
+# NOTE : la configuration SMTP (smtpServer) est faite via l'API REST dans le Jenkinsfile
+# kcadm ne supporte pas la mise à jour des champs Map<String,String> imbriqués
+# L'image ubi9-micro n'ayant pas de package manager, curl ne peut pas être installé ici
 
 echo "[KC-SETUP] Activation Forgot Password + Verify Email..."
 ${KCADM} update realms/${REALM} \

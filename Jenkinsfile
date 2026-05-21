@@ -231,6 +231,26 @@ pipeline {
                     docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
                     # Attendre que Keycloak soit prêt avant d'initialiser le realm
                     timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
+                    # Thème email + options realm (forgot password, loginWithEmail)
+                    docker exec keycloak-dev bash /opt/keycloak/scripts/configure-realm.sh 2>/dev/null || true
+                    # Configuration SMTP Brevo via API REST (kcadm ne supporte pas smtpServer)
+                    # curlimages/curl avec --network host atteint localhost:8081 du VPS
+                    BREVO_HOST=\$(grep '^BREVO_SMTP_HOST=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    BREVO_PORT=\$(grep '^BREVO_SMTP_PORT=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    BREVO_LOGIN=\$(grep '^BREVO_SMTP_LOGIN=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    BREVO_PASS=\$(grep '^BREVO_SMTP_PASSWORD=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    BREVO_FROM=\$(grep '^BREVO_FROM_EMAIL=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    BREVO_NAME=\$(grep '^BREVO_FROM_NAME=' ${WORKSPACE}/.env.kabutare.tmp | cut -d= -f2-)
+                    KC_TOKEN=\$(docker run --rm --network host curlimages/curl:8 -sf \
+                        --data 'client_id=admin-cli&username=admin&password=admin&grant_type=password' \
+                        'http://localhost:8081/realms/master/protocol/openid-connect/token' \
+                        | grep -o '"access_token":"[^"]*' | cut -d'"' -f4)
+                    [ -n "\$KC_TOKEN" ] && docker run --rm --network host curlimages/curl:8 -sf -X PUT \
+                        -H "Authorization: Bearer \$KC_TOKEN" \
+                        -H 'Content-Type: application/json' \
+                        --data-raw "{\"smtpServer\":{\"host\":\"\$BREVO_HOST\",\"port\":\"\$BREVO_PORT\",\"from\":\"\$BREVO_FROM\",\"fromDisplayName\":\"\$BREVO_NAME\",\"replyTo\":\"\$BREVO_FROM\",\"auth\":\"true\",\"starttls\":\"true\",\"ssl\":\"false\",\"user\":\"\$BREVO_LOGIN\",\"password\":\"\$BREVO_PASS\"}}" \
+                        'http://localhost:8081/admin/realms/kabutare-hospital' \
+                        && echo '[KC-SMTP] SMTP Brevo configuré.' || echo '[KC-SMTP] AVERTISSEMENT: SMTP non configuré'
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
                     docker exec auth-service-dev \
                         sh -c 'KC_ADMIN_URL=http://keycloak-dev:8081 KC_ADMIN_USER=admin KC_ADMIN_PASSWORD=admin KC_CLIENT_SECRET_AUTH=\$KC_CLIENT_SECRET node scripts/keycloak-init.js' 2>/dev/null || true
