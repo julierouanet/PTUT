@@ -225,7 +225,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         ],
       ),
     );
-    if (confirmed == true && mounted) await _authService.logoutApi();
+    if (confirmed == true && mounted) {
+      await _authService.logoutApi();
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+    }
   }
 
   // ── Dialog : informations personnelles ─────────────────────────────────────
