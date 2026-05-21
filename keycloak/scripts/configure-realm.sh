@@ -7,7 +7,8 @@
 #   BREVO_FROM_EMAIL, BREVO_FROM_NAME
 set -e
 
-KC_URL="http://localhost:8080"
+# KC_HTTP_PORT=8081 en dev, 8080 en prod (injecté par docker-compose)
+KC_URL="http://localhost:${KC_HTTP_PORT:-8080}"
 REALM="kabutare-hospital"
 KCADM="/opt/keycloak/bin/kcadm.sh"
 
