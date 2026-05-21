@@ -175,34 +175,40 @@ pipeline {
         // ── 6. Docker Hub : Build & Push images (main uniquement) ───────────────
         // Pré-requis Jenkins : credential de type "Username with password"
         //   ID = dockerhub-credentials  (Jenkins → Credentials → Global)
+        //   Username = votre USERNAME Docker Hub (pas l'email, ex: lucaslopvet)
+        //   Password = mot de passe ou Personal Access Token Docker Hub
+        // Non-bloquant : un échec ici passe le build en UNSTABLE mais ne
+        // stoppe pas Services Deploy PROD.
         stage('Docker Hub Push') {
             when { branch 'main' }
             steps {
-                script {
-                    def commitCount = sh(script: 'git rev-list --count HEAD', returnStdout: true).trim()
-                    def versionTag  = "1.0.${commitCount}"
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        def commitCount = sh(script: 'git rev-list --count HEAD', returnStdout: true).trim()
+                        def versionTag  = "1.0.${commitCount}"
 
-                    withCredentials([usernamePassword(
-                        credentialsId: 'dockerhub-credentials',
-                        usernameVariable: 'DOCKERHUB_USER',
-                        passwordVariable: 'DOCKERHUB_PASS'
-                    )]) {
-                        sh """
-                            echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
+                        withCredentials([usernamePassword(
+                            credentialsId: 'dockerhub-credentials',
+                            usernameVariable: 'DOCKERHUB_USER',
+                            passwordVariable: 'DOCKERHUB_PASS'
+                        )]) {
+                            sh """
+                                echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
 
-                            for SERVICE in auth-service db-service keycloak; do
-                                IMAGE="\$DOCKERHUB_USER/kabutare-\${SERVICE}"
-                                docker build --platform linux/amd64 \
-                                    -t "\${IMAGE}:latest" \
-                                    -t "\${IMAGE}:${versionTag}" \
-                                    ./\${SERVICE}
-                                docker push "\${IMAGE}:latest"
-                                docker push "\${IMAGE}:${versionTag}"
-                                echo "✓ \${IMAGE}:latest et :\${versionTag} poussés"
-                            done
+                                for SERVICE in auth-service db-service keycloak; do
+                                    IMAGE="\$DOCKERHUB_USER/kabutare-\${SERVICE}"
+                                    docker build --platform linux/amd64 \
+                                        -t "\${IMAGE}:latest" \
+                                        -t "\${IMAGE}:${versionTag}" \
+                                        ./\${SERVICE}
+                                    docker push "\${IMAGE}:latest"
+                                    docker push "\${IMAGE}:${versionTag}"
+                                    echo "✓ \${IMAGE}:latest et :\${versionTag} poussés"
+                                done
 
-                            docker logout
-                        """
+                                docker logout
+                            """
+                        }
                     }
                 }
             }
