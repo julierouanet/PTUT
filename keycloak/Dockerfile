@@ -4,5 +4,5 @@ FROM quay.io/keycloak/keycloak:26.0
 COPY themes/ /opt/keycloak/themes/
 
 # Script de configuration du realm (kcadm — SMTP, options realm)
-COPY scripts/ /opt/keycloak/scripts/
-RUN chmod +x /opt/keycloak/scripts/configure-realm.sh
+# --chmod=755 applique les permissions à la copie (pas de RUN chmod, Keycloak tourne non-root)
+COPY --chmod=755 scripts/ /opt/keycloak/scripts/
