@@ -26,6 +26,7 @@ app.use(cors({
     const allowed = [
       'https://app.lucaslopvet.fr',
       'https://dev.app.lucaslopvet.fr',
+      ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
     ];
     if (!origin || allowed.includes(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin)) {
       callback(null, true);

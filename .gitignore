@@ -2,6 +2,10 @@
 .env
 *.env
 !.env.example
+!.env.ip.example
+
+# ── Certificats SSL (générés par setup_ubuntu.sh) ─────────────
+ssl/
 
 # ── SQLite databases ──────────────────────────────────────────
 *.db

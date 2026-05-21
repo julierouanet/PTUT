@@ -10,8 +10,10 @@ const SYSTEM_ROLES = new Set([
 ]);
 
 // ── Client JWKS avec cache 10 min ─────────────────────────────────────────────
+// KC_JWKS_URI permet de surcharger l'URL JWKS (utile en déploiement IP/self-signed
+// où le Node ne peut pas valider le cert TLS — on pointe alors vers Keycloak en HTTP interne).
 const client = jwksClient({
-  jwksUri:         `${KC_ISSUER}/protocol/openid-connect/certs`,
+  jwksUri: process.env.KC_JWKS_URI || `${KC_ISSUER}/protocol/openid-connect/certs`,
   cache:           true,
   cacheMaxEntries: 5,
   cacheMaxAge:     10 * 60 * 1000,
