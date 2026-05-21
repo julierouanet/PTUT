@@ -206,6 +206,27 @@ pipeline {
                                     echo "✓ \${IMAGE}:latest et :\${versionTag} poussés"
                                 done
 
+                                # ── Image nginx (Flutter + placeholder IP) ──────────────
+                                docker run --rm \
+                                    -v ${HOST_WORKSPACE}/flutter-app:/app \
+                                    -e PUB_CACHE=/app/.pub-cache \
+                                    -w /app \
+                                    ghcr.io/cirruslabs/flutter:3.41.4 \
+                                    flutter build web --release \
+                                    --dart-define=AUTH_URL=https://__SERVER_IP__/auth \
+                                    --dart-define=DB_URL=https://__SERVER_IP__/db \
+                                    --dart-define=KC_TOKEN_URL=https://__SERVER_IP__/keycloak/realms/kabutare-hospital/protocol/openid-connect/token
+
+                                NGINX_IMAGE="\$DOCKERHUB_USER/kabutare-nginx"
+                                DOCKER_BUILDKIT=1 docker build --platform linux/amd64 \
+                                    -t "\${NGINX_IMAGE}:latest" \
+                                    -t "\${NGINX_IMAGE}:${versionTag}" \
+                                    -f Dockerfile.nginx \
+                                    .
+                                docker push "\${NGINX_IMAGE}:latest"
+                                docker push "\${NGINX_IMAGE}:${versionTag}"
+                                echo "✓ \${NGINX_IMAGE}:latest et :${versionTag} poussés"
+
                                 docker logout
                             """
                         }
