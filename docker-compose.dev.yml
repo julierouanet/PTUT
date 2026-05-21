@@ -76,6 +76,13 @@ services:
       KC_HOSTNAME: keycloak.lucaslopvet.fr
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT_HTTPS: "false"
+      # ── Brevo SMTP (utilisées par keycloak/scripts/configure-realm.sh via kcadm) ──
+      BREVO_SMTP_HOST: ${BREVO_SMTP_HOST}
+      BREVO_SMTP_PORT: ${BREVO_SMTP_PORT}
+      BREVO_SMTP_LOGIN: ${BREVO_SMTP_LOGIN}
+      BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD}
+      BREVO_FROM_EMAIL: ${BREVO_FROM_EMAIL}
+      BREVO_FROM_NAME: ${BREVO_FROM_NAME}
     ports:
       - "8081:8081"
     volumes:
