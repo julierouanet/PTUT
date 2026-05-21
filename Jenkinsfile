@@ -172,7 +172,43 @@ pipeline {
             }
         }
 
-        // ── 6. Docker : Build & démarrer services (main → prod) ───────────────
+        // ── 6. Docker Hub : Build & Push images (main uniquement) ───────────────
+        // Pré-requis Jenkins : credential de type "Username with password"
+        //   ID = dockerhub-credentials  (Jenkins → Credentials → Global)
+        stage('Docker Hub Push') {
+            when { branch 'main' }
+            steps {
+                script {
+                    def commitCount = sh(script: 'git rev-list --count HEAD', returnStdout: true).trim()
+                    def versionTag  = "1.0.${commitCount}"
+
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-credentials',
+                        usernameVariable: 'DOCKERHUB_USER',
+                        passwordVariable: 'DOCKERHUB_PASS'
+                    )]) {
+                        sh """
+                            echo "\$DOCKERHUB_PASS" | docker login -u "\$DOCKERHUB_USER" --password-stdin
+
+                            for SERVICE in auth-service db-service keycloak; do
+                                IMAGE="\$DOCKERHUB_USER/kabutare-\${SERVICE}"
+                                docker build --platform linux/amd64 \
+                                    -t "\${IMAGE}:latest" \
+                                    -t "\${IMAGE}:${versionTag}" \
+                                    ./\${SERVICE}
+                                docker push "\${IMAGE}:latest"
+                                docker push "\${IMAGE}:${versionTag}"
+                                echo "✓ \${IMAGE}:latest et :\${versionTag} poussés"
+                            done
+
+                            docker logout
+                        """
+                    }
+                }
+            }
+        }
+
+        // ── 7. Docker : Build & démarrer services (main → prod) ───────────────
         stage('Services Deploy PROD') {
             when {
                 allOf {
@@ -231,7 +267,7 @@ pipeline {
             }
         }
 
-        // ── 7. Docker : Build & démarrer services (dev) ───────────────────────
+        // ── 8. Docker : Build & démarrer services (dev) ───────────────────────
         stage('Services Deploy DEV') {
             when {
                 allOf {
@@ -282,7 +318,7 @@ pipeline {
             }
         }
 
-        // ── 8. Healthcheck ────────────────────────────────────────────────────
+        // ── 9. Healthcheck ────────────────────────────────────────────────────
         stage('Healthcheck') {
             when {
                 expression {
