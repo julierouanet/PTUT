@@ -229,6 +229,9 @@ pipeline {
                         -v /etc/kabutare:/kabutare:ro \
                         -v ${HOST_WORKSPACE}:/out \
                         alpine sh -c "cp /kabutare/.env /out/.env.kabutare.tmp"
+                    # Nettoyage défensif : containers + réseau orphelins avant le down
+                    docker rm -f auth-service-prod db-service-prod keycloak-prod postgres-keycloak-prod 2>/dev/null || true
+                    docker network rm gestion-equipement-medical-prod_default 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp down --remove-orphans 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
