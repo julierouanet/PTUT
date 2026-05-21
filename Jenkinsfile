@@ -197,7 +197,7 @@ pipeline {
 
                                 for SERVICE in auth-service db-service keycloak; do
                                     IMAGE="\$DOCKERHUB_USER/kabutare-\${SERVICE}"
-                                    docker build --platform linux/amd64 \
+                                    DOCKER_BUILDKIT=1 docker build --platform linux/amd64 \
                                         -t "\${IMAGE}:latest" \
                                         -t "\${IMAGE}:${versionTag}" \
                                         ./\${SERVICE}
@@ -232,6 +232,8 @@ pipeline {
                     # Nettoyage défensif : containers + réseau orphelins avant le down
                     docker rm -f auth-service-prod db-service-prod keycloak-prod postgres-keycloak-prod 2>/dev/null || true
                     docker network rm gestion-equipement-medical-prod_default 2>/dev/null || true
+                    # Libérer le port 8080 si occupé par un container résiduel (hors projet)
+                    docker ps -q --filter publish=8080 | xargs --no-run-if-empty docker rm -f 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp down --remove-orphans 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp pull 2>/dev/null || true
                     docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file ${WORKSPACE}/.env.kabutare.tmp up -d --build --force-recreate
