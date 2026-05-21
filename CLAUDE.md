@@ -1,43 +1,54 @@
 # CLAUDE.md — Guide de contexte projet
 
 > **Projet** : Système de gestion des équipements médicaux — Hôpital de Kabutare (PTUT ISIS).
-> **Stack globale** : 2 microservices Node.js/Express + SQLite, application Flutter (web prioritaire, mobile possible), Nginx reverse-proxy, Docker Compose (prod + dev), CI/CD Jenkins.
+> **Stack globale** : 2 microservices Node.js/Express + SQLite, application Flutter (web prioritaire, mobile possible), Keycloak (IAM) + PostgreSQL, Nginx reverse-proxy, Docker Compose (prod + dev), CI/CD Jenkins, Brevo (emailing).
 
 ---
 
 ## Architecture & Patterns
 
-### Vue d'ensemble — Microservices (3 tiers)
+### Vue d'ensemble — Microservices (3 tiers + IAM)
 
 ```
                  ┌──────────────────────────────────────────────┐
                  │  Flutter Web App (lib/) — port serveur HTTPS │
-                 │  Auth via JWT, stockage tokens sécurisé      │
-                 └────────┬─────────────────────────┬───────────┘
-                          │                         │
-                  ┌───────▼────────┐       ┌────────▼─────────┐
-                  │  auth-service  │       │   db-service     │
-                  │  Node + Express│◄──────┤  Node + Express  │
-                  │  port 3001     │ verify│  port 3002       │
-                  │  better-sqlite3│       │  better-sqlite3  │
-                  └────────────────┘       └──────────────────┘
-                  /data/auth.db            /data/hospital.db
+                 │  Auth via Keycloak Direct Grant (JWT RS256)  │
+                 └────┬──────────────┬──────────────┬───────────┘
+                      │ KC_TOKEN_URL │              │
+              ┌───────▼────────┐     │     ┌────────▼─────────┐
+              │   Keycloak     │     │     │   db-service     │
+              │   port 8080    │     │     │  Node + Express  │
+              │   PostgreSQL   ├─────┘     │  port 3002       │
+              │   SMTP→Brevo   │  JWKS     │  better-sqlite3  │
+              └───────┬────────┘           └──────────────────┘
+                      │ Admin API                /data/hospital.db
+              ┌───────▼────────┐
+              │  auth-service  │       ┌──────────────────────┐
+              │  Node + Express│       │        Brevo         │
+              │  port 3001     │──────►│  API transactionnelle│
+              │  better-sqlite3│       │  (incidents, depts)  │
+              └────────────────┘       └──────────────────────┘
+              /data/auth.db
+              (role_permissions)
 ```
 
-- Communication inter-services authentifiée par `INTERNAL_SECRET`. Tokens JWT RS256 émis par Keycloak, vérifiés localement via JWKS (plus de `JWT_SECRET` partagé).
+- **IAM** : Keycloak (realm `kabutare-hospital`) est la seule autorité d'identité. Les tokens JWT RS256 sont émis par Keycloak via le flux **Direct Grant** (`/realms/.../protocol/openid-connect/token`). Vérification locale via JWKS — aucun `JWT_SECRET` partagé entre services.
+- **auth-service** : ne gère **plus** les mots de passe ni le hachage bcrypt. Son rôle est désormais (1) proxy de l'Admin API Keycloak (CRUD utilisateurs/rôles Keycloak) et (2) gestion des **permissions applicatives** (table `role_permissions` dans SQLite). Il n'émet aucun token.
+- **db-service** : valide les tokens directement via JWKS, sans appel vers auth-service.
+- Communication inter-services authentifiée par `INTERNAL_SECRET`.
 - Reverse-proxy Nginx (`nginx/conf.d/*.conf`) gère HTTPS sur 6 sous-domaines (`app/auth/DB.lucaslopvet.fr` + variantes `dev.*`).
-- Auth-service expose les utilisateurs/rôles/permissions (proxy Keycloak Admin API) ; db-service valide les tokens directement via JWKS sans appel vers auth-service.
+- **Brevo** : service central d'emailing. Keycloak est configuré en SMTP sur Brevo et gère de façon **100 % autonome** l'envoi des emails système (vérification d'adresse e-mail à la création d'un compte, réinitialisation de mot de passe). Les microservices Node utilisent l'**API REST Brevo** pour les emails transactionnels applicatifs (notifications d'incidents, changements de département, etc.).
 
 ### Modules majeurs
 
-| Dossier            | Rôle                                                                     |
-| ------------------ | ------------------------------------------------------------------------ |
-| `auth-service/`    | JWT login/refresh/logout, users, roles, permissions, rate-limiting.       |
-| `db-service/`      | CRUD `equipment`, `equipment_tags`, `departments`, `equipment_categories`, `inventory`, `issues`, `logs`, `sidebar`. Script d'import XLSX dans `scripts/`. |
-| `flutter-app/lib/` | Application cliente (web + mobile). Voir sous-dossiers ci-dessous.        |
-| `nginx/conf.d/`    | Vhosts HTTPS + headers CORS.                                              |
-| `docker-compose*.yml` | Orchestration prod / dev (volumes nommés `auth_data*`, `db_data*`).    |
-| `Jenkinsfile`      | Pipeline CI/CD : analyse + tests Flutter, build web, deploy via Docker.   |
+| Dossier               | Rôle                                                                                                                           |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `auth-service/`       | Proxy Admin API Keycloak (users, roles), gestion des permissions applicatives (`role_permissions`), rate-limiting.             |
+| `db-service/`         | CRUD `equipment`, `equipment_tags`, `departments`, `equipment_categories`, `inventory`, `issues`, `logs`, `sidebar`. Script d'import XLSX dans `scripts/`. |
+| `flutter-app/lib/`    | Application cliente (web + mobile). Voir sous-dossiers ci-dessous.                                                             |
+| `nginx/conf.d/`       | Vhosts HTTPS + headers CORS.                                                                                                   |
+| `docker-compose*.yml` | Orchestration prod / dev (volumes nommés `auth_data*`, `db_data*`, `keycloak_data*`).                                         |
+| `Jenkinsfile`         | Pipeline CI/CD : analyse + tests Flutter, build web, deploy via Docker.                                                        |
 
 ### Backend — pattern routes/middleware/utils
 
@@ -49,7 +60,7 @@ src/
 ├── config.js         # constantes + lecture process.env (avec valeurs par défaut)
 ├── database.js       # better-sqlite3 + initTables() + migrations idempotentes
 ├── middleware/
-│   └── auth.js       # verifyToken, requireRole(...roles), requireAdmin
+│   └── auth.js       # verifyToken (JWKS Keycloak), requireRole(...roles), requireAdmin
 ├── routes/           # un fichier par ressource (auth, users, equipment, ...)
 └── utils/
     └── logger.js     # sendLog / logAction / extractIp / extractReqMeta
@@ -79,8 +90,8 @@ flutter-app/lib/
 
 Patterns clés :
 - **Pas de Provider/Riverpod/Bloc**. État partagé = `Singleton extends ChangeNotifier`, consommation via `ListenableBuilder(listenable: …)`.
-- **`ApiClient`** centralise tous les appels HTTP : ajoute le Bearer JWT, intercepte 401, déclenche `_tryRefresh()` (rotation stricte access+refresh), rappelle `onSessionExpired` si échec.
-- **URLs API injectées à la compilation** via `--dart-define=AUTH_URL=…` / `DB_URL=…` (voir `services/api_config.dart`). Défaut = prod.
+- **`ApiClient`** centralise tous les appels HTTP : ajoute le Bearer JWT, intercepte 401, déclenche `_tryRefresh()` (rotation stricte access+refresh via Keycloak), rappelle `onSessionExpired` si échec.
+- **URLs API injectées à la compilation** via `--dart-define=AUTH_URL=…` / `DB_URL=…` / `KC_TOKEN_URL=…` (voir `services/api_config.dart`). Défaut = prod.
 - **Stockage tokens** : `SecureTokenStorage` choisit `FlutterSecureStorage` (natif) ou `SharedPreferences` (web).
 - **Permissions UI** : enum `Permission` ; chaque entrée de sidebar déclare une `requiredPermission` filtrée par `AuthService.hasPermission(...)`.
 - **i18n obligatoire** : tout texte affiché passe par `AppLocalizations.of(context)!.xxx`. Ne **jamais** hardcoder du FR/EN dans un widget.
@@ -109,11 +120,13 @@ docker exec db-service-prod  node seed.js
 
 ```bash
 cd auth-service        # ou: cd db-service
-npm install            # installe les dépendances (bcrypt nécessite python3 + make + g++)
+npm install            # installe les dépendances
 npm start              # node src/index.js  (port 3001 / 3002)
 npm test               # jest --forceExit --detectOpenHandles  (DB en :memory:)
 npm run seed           # node seed.js — peuple la base SQLite avec les données de démo
 ```
+
+> **Note** : `bcrypt` n'est plus une dépendance active côté Node — la gestion des mots de passe est entièrement déléguée à Keycloak.
 
 ### Import de l'inventaire physique 2025-2026 (db-service)
 
@@ -149,12 +162,14 @@ flutter test                             # tests unitaires + widgets
 # Run local (par défaut pointe vers la prod — surcharger pour cibler local)
 flutter run -d chrome \
   --dart-define=AUTH_URL=http://localhost:3001 \
-  --dart-define=DB_URL=http://localhost:3002
+  --dart-define=DB_URL=http://localhost:3002 \
+  --dart-define=KC_TOKEN_URL=http://localhost:8080/realms/kabutare-hospital/protocol/openid-connect/token
 
 # Build web pour déploiement
 flutter build web --release \
   --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-  --dart-define=DB_URL=https://DB.lucaslopvet.fr
+  --dart-define=DB_URL=https://DB.lucaslopvet.fr \
+  --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
 ```
 
 ### CI/CD (Jenkins)
@@ -217,22 +232,26 @@ Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
 
 ## Variables d'environnement clés
 
-| Variable               | Service          | Rôle                                                                 |
-| ---------------------- | ---------------- | -------------------------------------------------------------------- |
-| `INTERNAL_SECRET`      | auth + db        | Authentification service-à-service.                                  |
-| `DB_PATH`              | auth + db        | Chemin du fichier SQLite (`/data/*.db`).                             |
-| `DB_SERVICE_URL`       | auth             | URL interne du db-service.                                           |
-| `AUTH_SERVICE_URL`     | db               | URL interne de l'auth-service (admin uniquement, pas les tokens).    |
-| `PORT`                 | auth + db        | 3001 / 3002.                                                         |
-| `KC_ISSUER`            | auth + db        | URL du realm Keycloak (ex. `https://keycloak.../realms/kabutare-hospital`). |
-| `KC_CLIENT_SECRET`     | auth             | Secret client Keycloak pour l'Admin API.                             |
-| `AUTH_URL` / `DB_URL`  | flutter (build)  | Injectées via `--dart-define`.                                       |
+| Variable                | Service              | Rôle                                                                                         |
+| ----------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
+| `INTERNAL_SECRET`       | auth + db            | Authentification service-à-service.                                                          |
+| `DB_PATH`               | auth + db            | Chemin du fichier SQLite (`/data/*.db`).                                                     |
+| `DB_SERVICE_URL`        | auth                 | URL interne du db-service.                                                                   |
+| `AUTH_SERVICE_URL`      | db                   | URL interne de l'auth-service (admin uniquement, pas les tokens).                            |
+| `PORT`                  | auth + db            | 3001 / 3002.                                                                                 |
+| `KC_ISSUER`             | auth + db            | URL du realm Keycloak (ex. `https://keycloak.lucaslopvet.fr/realms/kabutare-hospital`).      |
+| `KC_ADMIN_URL`          | auth                 | URL de base de l'Admin API Keycloak (ex. `https://keycloak.lucaslopvet.fr/admin/realms/...`). |
+| `KC_CLIENT_SECRET`      | auth                 | Secret client Keycloak pour l'Admin API.                                                     |
+| `BREVO_API_KEY`         | auth + db            | Clé API Brevo pour l'envoi d'emails transactionnels applicatifs (incidents, départements).   |
+| `KC_EMAIL_SMTP_PASSWORD`| Keycloak (env Docker)| Mot de passe SMTP Brevo utilisé par Keycloak pour ses emails système (vérification, reset).  |
+| `AUTH_URL` / `DB_URL`   | flutter (build)      | Injectées via `--dart-define`.                                                               |
+| `KC_TOKEN_URL`          | flutter (build)      | URL de token Keycloak injectée via `--dart-define` pour le flux Direct Grant.                |
 
 ---
 
 ## Pièges à éviter
 
-- **`docker-compose down -v`** détruirait `auth_data` / `db_data` (utilisateurs + équipements). Toujours préférer `down` sans `-v`.
+- **`docker-compose down -v`** détruirait `auth_data` / `db_data` / `keycloak_data` (utilisateurs, équipements, realm Keycloak). Toujours préférer `down` sans `-v`.
 - **Migrations DB** : ne supprimer aucune colonne dans `database.js` sans script de migration explicite — c'est lu à chaque démarrage.
 - **Dockerfile db-service** : tout nouveau dossier (ex. `scripts/`) doit être ajouté via `COPY` dans le Dockerfile, sinon il n'est pas embarqué dans l'image (le `.dockerignore` ne suffit pas).
 - **`equipment.id`** : la clé primaire est désormais dérivée du `TagNumber` slugifié pour les équipements importés (`a-z0-9_-`, max 100). Les lignes du XLSX sans `TagNumber` exploitable sont **ignorées** par `scripts/import_inventory.js`. Préserver la convention si on insère manuellement.
@@ -240,3 +259,6 @@ Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
 - **Rotation refresh token** : un refresh consomme l'ancien et en émet un nouveau ; ne jamais réutiliser le précédent côté client (déjà géré par `ApiClient._tryRefresh`).
 - **Permissions** : ajouter une nouvelle entrée dans la sidebar Flutter sans déclarer la `requiredPermission` correspondante l'expose à tous les rôles.
 - **i18n** : oublier d'ajouter une clé dans `app_en.arb` casse le build (`flutter analyze` échoue).
+- **IDs utilisateurs = UUIDs Keycloak** : les `user_id` sont désormais des UUIDs (ex. `f47ac10b-58cc-4372-a567-0e02b2c3d479`), plus des entiers auto-incrémentés. Tout code qui suppose un `id` numérique est à corriger.
+- **Emails non reçus** : si un utilisateur ne reçoit pas son email de vérification ou de réinitialisation de mot de passe, consulter **en premier** les logs de la console Keycloak (Events → Admin events / User events) et vérifier la configuration SMTP Brevo dans le realm — ce chemin est 100 % géré par Keycloak, le `auth-service` Node n'intervient pas.
+- **bcrypt obsolète côté Node** : la logique de hachage et vérification de mot de passe (bcrypt) est entièrement déléguée à Keycloak. Ne pas réintroduire de bcrypt dans les services Node pour la gestion des comptes utilisateurs.

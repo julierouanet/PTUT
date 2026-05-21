@@ -182,10 +182,9 @@ pipeline {
             }
             steps {
                 sh """
-                    [ -f /etc/kabutare/.env ] && export \$(grep -v '^#' /etc/kabutare/.env | xargs) || true
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml down --remove-orphans 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml pull 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml up -d --build --force-recreate
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env down --remove-orphans 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env pull 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical-prod -f ${WORKSPACE}/docker-compose.yml --env-file /etc/kabutare/.env up -d --build --force-recreate
                     # Attendre que Keycloak PROD soit prêt (jusqu'à 120s)
                     timeout 120 sh -c 'until docker exec keycloak-prod sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
@@ -216,11 +215,10 @@ pipeline {
             }
             steps {
                 sh """
-                    [ -f /etc/kabutare/.env ] && export \$(grep -v '^#' /etc/kabutare/.env | xargs) || true
                     docker rm -f auth-service-dev db-service-dev 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml down --remove-orphans 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml pull 2>/dev/null || true
-                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml up -d --build --force-recreate
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env down --remove-orphans 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env pull 2>/dev/null || true
+                    docker-compose -p gestion-equipement-medical_dev -f ${WORKSPACE}/docker-compose.dev.yml --env-file /etc/kabutare/.env up -d --build --force-recreate
                     # Attendre que Keycloak soit prêt avant d'initialiser le realm
                     timeout 120 sh -c 'until docker exec keycloak-dev sh -c "exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n\" >&3 && cat <&3 | grep -q UP" 2>/dev/null; do sleep 5; done' || true
                     # Initialisation idempotente du realm Keycloak (no-op si déjà configuré)
