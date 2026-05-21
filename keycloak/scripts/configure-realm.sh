@@ -12,7 +12,7 @@ REALM="kabutare-hospital"
 KCADM="/opt/keycloak/bin/kcadm.sh"
 
 echo "[KC-SETUP] Attente que Keycloak soit prêt..."
-until curl -sf "${KC_URL}/health/ready" > /dev/null; do
+until bash -c "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q 'UP'" 2>/dev/null; do
   sleep 5
 done
 
