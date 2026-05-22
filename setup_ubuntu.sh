@@ -132,9 +132,89 @@ fi
 # Charger les variables pour la suite du script
 set -a; source .env; set +a
 
-# ── Étape 5 : Certificat SSL self-signed ─────────────────────
-echo "[5/9] Génération du certificat SSL self-signed..."
-mkdir -p ssl
+# ── Étape 5 : Certificat SSL + config Nginx ──────────────────
+echo "[5/9] Génération du certificat SSL et configuration Nginx..."
+mkdir -p ssl nginx/conf.d
+
+# Config Nginx (toujours régénérée pour garantir la cohérence)
+cat > nginx/conf.d/ip.conf << 'NGINXEOF'
+server {
+    listen 80;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    http2  on;
+    server_name _;
+    ssl_certificate     /etc/nginx/ssl/cert.pem;
+    ssl_certificate_key /etc/nginx/ssl/key.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
+    location /auth/ {
+        proxy_pass         http://auth-service:3001/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_read_timeout 60s;
+    }
+    location /db/ {
+        proxy_pass         http://db-service:3002/;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto https;
+        proxy_read_timeout 60s;
+    }
+    location /keycloak/ {
+        proxy_pass              http://keycloak:8080/keycloak/;
+        proxy_http_version      1.1;
+        proxy_set_header        Host              $host;
+        proxy_set_header        X-Real-IP         $remote_addr;
+        proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header        X-Forwarded-Proto https;
+        proxy_set_header        X-Forwarded-Port  443;
+        proxy_buffer_size       128k;
+        proxy_buffers           4 256k;
+        proxy_busy_buffers_size 256k;
+        proxy_read_timeout      90s;
+    }
+    location = / { return 301 /app_isis/; }
+    location = /app_isis { return 301 /app_isis/; }
+    location ~* ^/app_isis/(.+\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))$ {
+        root       /usr/share/nginx/html;
+        try_files  /$1 =404;
+        expires    1y;
+        add_header Cache-Control "public, immutable";
+    }
+    location /app_isis/ {
+        alias      /usr/share/nginx/html/;
+        try_files  $uri $uri/ @flutter_fallback;
+        add_header Cache-Control "no-cache";
+    }
+    location @flutter_fallback {
+        root       /usr/share/nginx/html;
+        try_files  /index.html =404;
+        add_header Cache-Control "no-cache";
+    }
+    location / {
+        root      /usr/share/nginx/html;
+        try_files $uri @flutter_root_fallback;
+    }
+    location @flutter_root_fallback {
+        root      /usr/share/nginx/html;
+        try_files /index.html =404;
+        add_header Cache-Control "no-cache";
+    }
+    client_max_body_size 10M;
+}
+NGINXEOF
+echo "      ✓ Configuration Nginx générée."
 if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
   echo "      Certificat existant conservé."
 else
