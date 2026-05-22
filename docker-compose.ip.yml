@@ -136,7 +136,7 @@ services:
       KC_HEALTH_ENABLED:   "true"
     # Port exposé uniquement en localhost — accès via Nginx (HTTPS) ou SSH tunnel
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:${KC_HOST_PORT:-8080}:8080"
     depends_on:
       postgres-keycloak:
         condition: service_healthy

@@ -148,33 +148,52 @@ else
   echo "      ✓ Certificat généré (valide 10 ans) : ssl/cert.pem"
 fi
 
-# ── Étape 6 : Vérification disponibilité des ports ───────────
+# ── Étape 6 : Vérification et assignation des ports ──────────
 echo "[6/8] Vérification de la disponibilité des ports..."
-HTTP_PORT_CHECK="${HTTP_PORT:-80}"
-HTTPS_PORT_CHECK="${HTTPS_PORT:-443}"
-PORTS_OK=true
 
 port_in_use() {
   ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
 }
 
-for PORT in "${HTTP_PORT_CHECK}" "${HTTPS_PORT_CHECK}" "8080"; do
-  if port_in_use "${PORT}"; then
-    PROCESS=$(ss -tlnpH "sport = :${PORT}" 2>/dev/null | awk '{print $6}' | head -1)
-    echo "      ✗ Port ${PORT} déjà utilisé — processus : ${PROCESS:-inconnu}"
-    PORTS_OK=false
+# Retourne le premier port libre à partir du port demandé
+find_free_port() {
+  local port=$1
+  local count=0
+  while port_in_use "${port}" && [[ ${count} -lt 20 ]]; do
+    port=$((port + 1))
+    count=$((count + 1))
+  done
+  echo "${port}"
+}
+
+# Met à jour ou ajoute une variable dans .env et l'exporte
+set_env_port() {
+  local key="$1" val="$2"
+  if grep -q "^${key}=" .env 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${val}|" .env
   else
-    echo "      ✓ Port ${PORT} disponible."
+    echo "${key}=${val}" >> .env
+  fi
+  export "${key}=${val}"
+}
+
+HTTP_PORT="${HTTP_PORT:-80}"
+HTTPS_PORT="${HTTPS_PORT:-443}"
+KC_HOST_PORT="${KC_HOST_PORT:-8080}"
+
+for ENTRY in "HTTP_PORT:${HTTP_PORT}" "HTTPS_PORT:${HTTPS_PORT}" "KC_HOST_PORT:${KC_HOST_PORT}"; do
+  VAR="${ENTRY%%:*}"
+  WANTED="${ENTRY#*:}"
+  FREE=$(find_free_port "${WANTED}")
+  if [[ "${FREE}" != "${WANTED}" ]]; then
+    PROCESS=$(ss -tlnpH "sport = :${WANTED}" 2>/dev/null | awk '{print $6}' | head -1)
+    echo "      ⚠ Port ${WANTED} occupé (${PROCESS:-inconnu}) → port ${FREE} assigné automatiquement."
+    set_env_port "${VAR}" "${FREE}"
+    eval "${VAR}=${FREE}"
+  else
+    echo "      ✓ Port ${WANTED} disponible."
   fi
 done
-
-if [[ "${PORTS_OK}" == "false" ]]; then
-  echo ""
-  echo "ERREUR : un ou plusieurs ports nécessaires sont déjà utilisés."
-  echo "         Libérer ces ports avant de relancer le script."
-  echo "         Diagnostic : sudo ss -tlnp | grep -E ':(${HTTP_PORT_CHECK}|${HTTPS_PORT_CHECK}|8080) '"
-  exit 1
-fi
 
 # ── Étape 7 : Pull des images Docker Hub ─────────────────────
 # Le build Flutter est embarqué dans l'image kabutare-nginx.
@@ -230,24 +249,31 @@ if docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_READY_
 fi
 
 # ── Résumé ────────────────────────────────────────────────────
+# Construction des URLs avec les ports réellement utilisés
+HTTPS_SUFFIX=""
+[[ "${HTTPS_PORT}" != "443" ]] && HTTPS_SUFFIX=":${HTTPS_PORT}"
+BASE_URL="https://${SERVER_IP}${HTTPS_SUFFIX}"
+
 echo ""
 echo "========================================================"
 echo " ✓ Déploiement terminé !"
 echo ""
-echo " Application Flutter  : https://${SERVER_IP}/app_isis/"
-echo " Admin Keycloak        : https://${SERVER_IP}/keycloak/admin/"
-echo " Health auth-service   : https://${SERVER_IP}/auth/health"
-echo " Health db-service     : https://${SERVER_IP}/db/health"
+echo " Application Flutter  : ${BASE_URL}/app_isis/"
+echo " Admin Keycloak        : ${BASE_URL}/keycloak/admin/"
+echo " Health auth-service   : ${BASE_URL}/auth/health"
+echo " Health db-service     : ${BASE_URL}/db/health"
+[[ "${KC_HOST_PORT}" != "8080" ]] && \
+  echo " Keycloak (SSH tunnel)  : localhost:${KC_HOST_PORT}"
 echo ""
 echo " IMPORTANT — Le certificat est auto-signé."
 echo " Le navigateur affichera un avertissement à accepter."
 echo ""
 echo " IMPORTANT — Configuration Keycloak requise (une seule fois) :"
-echo " 1. Ouvrir https://${SERVER_IP}/keycloak/admin/"
+echo " 1. Ouvrir ${BASE_URL}/keycloak/admin/"
 echo " 2. Creer le realm 'kabutare-hospital' (ou importer un export)"
 echo " 3. Client 'flutter-app' (public, Direct Access Grants ON)"
-echo "    Redirect URI : https://${SERVER_IP}/app_isis/*"
-echo "    Web origins  : https://${SERVER_IP}"
+echo "    Redirect URI : ${BASE_URL}/app_isis/*"
+echo "    Web origins  : ${BASE_URL}"
 echo " 4. Client 'auth-service' (confidential, Service Accounts ON)"
 echo "    Copier le client secret dans .env (KC_CLIENT_SECRET_AUTH)"
 echo " 5. Roles realm : admin, supervisor, hospitalStaff,"
