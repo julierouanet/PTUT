@@ -132,7 +132,7 @@ services:
       BREVO_SMTP_LOGIN:    ${BREVO_SMTP_LOGIN:-}
       BREVO_SMTP_PASSWORD: ${BREVO_SMTP_PASSWORD:-}
       BREVO_FROM_EMAIL:    ${BREVO_FROM_EMAIL:-noreply@hospital.local}
-      BREVO_FROM_NAME:     ${BREVO_FROM_NAME:-Hôpital de Kabutare}
+      BREVO_FROM_NAME:     "${BREVO_FROM_NAME:-Hôpital de Kabutare}"
       KC_HEALTH_ENABLED:   "true"
     # Port exposé uniquement en localhost — accès via Nginx (HTTPS) ou SSH tunnel
     ports:
@@ -141,7 +141,7 @@ services:
       postgres-keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 2>/dev/null"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q 'UP'"]
       interval: 30s
       timeout: 10s
       retries: 5

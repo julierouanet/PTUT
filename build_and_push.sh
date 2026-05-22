@@ -65,6 +65,7 @@ docker run --rm \
   -w /app \
   "${FLUTTER_IMAGE}" \
   flutter build web --release \
+    --base-href /app_isis/ \
     --dart-define=AUTH_URL=https://__SERVER_IP__/auth \
     --dart-define=DB_URL=https://__SERVER_IP__/db \
     --dart-define=KC_TOKEN_URL=https://__SERVER_IP__/keycloak/realms/kabutare-hospital/protocol/openid-connect/token

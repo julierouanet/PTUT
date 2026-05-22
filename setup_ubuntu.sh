@@ -14,6 +14,8 @@
 #       sudo bash setup_ubuntu.sh
 # ============================================================
 set -euo pipefail
+export LC_ALL=C.UTF-8
+export LANG=C.UTF-8
 
 # ── Vérification root ─────────────────────────────────────────
 if [[ "$EUID" -ne 0 ]]; then
@@ -31,12 +33,12 @@ echo "========================================================"
 echo ""
 
 # ── Étape 1 : Mise à jour système ────────────────────────────
-echo "[1/7] Mise à jour du système..."
+echo "[1/8] Mise à jour du système..."
 apt-get update -qq
 apt-get upgrade -y -qq
 
 # ── Étape 2 : Installation Docker ────────────────────────────
-echo "[2/7] Installation de Docker..."
+echo "[2/8] Installation de Docker..."
 if command -v docker &>/dev/null; then
   echo "      Docker déjà installé : $(docker --version)"
 else
@@ -56,7 +58,7 @@ else
 fi
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
-echo "[3/7] Détection de l'IP publique du serveur..."
+echo "[3/8] Détection de l'IP publique du serveur..."
 DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
   || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
   || hostname -I | awk '{print $1}')
@@ -67,7 +69,7 @@ SERVER_IP="${USER_IP:-${DETECTED_IP}}"
 echo "      ✓ IP retenue : ${SERVER_IP}"
 
 # ── Étape 4 : Création du fichier .env ───────────────────────
-echo "[4/7] Configuration des variables d'environnement..."
+echo "[4/8] Configuration des variables d'environnement..."
 if [[ -f ".env" ]]; then
   echo "      Un fichier .env existe déjà, il sera conservé."
   # S'assurer que SERVER_IP et DOCKER_USER sont à jour
@@ -105,7 +107,7 @@ BREVO_SMTP_PORT=587
 BREVO_SMTP_LOGIN=
 BREVO_SMTP_PASSWORD=
 BREVO_FROM_EMAIL=noreply@hospital.local
-BREVO_FROM_NAME=Hôpital de Kabutare
+BREVO_FROM_NAME="Hôpital de Kabutare"
 
 BREVO_API_KEY=
 EOF
@@ -116,7 +118,7 @@ fi
 set -a; source .env; set +a
 
 # ── Étape 5 : Certificat SSL self-signed ─────────────────────
-echo "[5/7] Génération du certificat SSL self-signed..."
+echo "[5/8] Génération du certificat SSL self-signed..."
 mkdir -p ssl
 if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
   echo "      Certificat existant conservé."
@@ -131,22 +133,50 @@ else
   echo "      ✓ Certificat généré (valide 10 ans) : ssl/cert.pem"
 fi
 
-# ── Étape 6 : Pull des images Docker Hub ─────────────────────
+# ── Étape 6 : Vérification disponibilité des ports ───────────
+echo "[6/8] Vérification de la disponibilité des ports..."
+HTTP_PORT_CHECK="${HTTP_PORT:-80}"
+HTTPS_PORT_CHECK="${HTTPS_PORT:-443}"
+PORTS_OK=true
+
+port_in_use() {
+  ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
+}
+
+for PORT in "${HTTP_PORT_CHECK}" "${HTTPS_PORT_CHECK}" "8080"; do
+  if port_in_use "${PORT}"; then
+    PROCESS=$(ss -tlnpH "sport = :${PORT}" 2>/dev/null | awk '{print $6}' | head -1)
+    echo "      ✗ Port ${PORT} déjà utilisé — processus : ${PROCESS:-inconnu}"
+    PORTS_OK=false
+  else
+    echo "      ✓ Port ${PORT} disponible."
+  fi
+done
+
+if [[ "${PORTS_OK}" == "false" ]]; then
+  echo ""
+  echo "ERREUR : un ou plusieurs ports nécessaires sont déjà utilisés."
+  echo "         Libérer ces ports avant de relancer le script."
+  echo "         Diagnostic : sudo ss -tlnp | grep -E ':(${HTTP_PORT_CHECK}|${HTTPS_PORT_CHECK}|8080) '"
+  exit 1
+fi
+
+# ── Étape 7 : Pull des images Docker Hub ─────────────────────
 # Le build Flutter est embarqué dans l'image kabutare-nginx.
 # La substitution de SERVER_IP se fait au démarrage du conteneur.
-echo "[6/7] Pull des images depuis Docker Hub (${DOCKER_USER})..."
+echo "[7/8] Pull des images depuis Docker Hub (${DOCKER_USER})..."
 docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
 echo "      ✓ Images téléchargées."
 
-# ── Étape 7 : Démarrage de la stack ──────────────────────────
-echo "[7/7] Démarrage de la stack Docker Compose..."
+# ── Étape 8 : Démarrage de la stack ──────────────────────────
+echo "[8/8] Démarrage de la stack Docker Compose..."
 docker compose -f docker-compose.ip.yml up -d
 
 echo ""
 echo "      Attente que Keycloak soit prêt (peut prendre 2-3 min)..."
 ATTEMPTS=0
-until docker compose -f docker-compose.ip.yml exec -T keycloak \
-    bash -c 'exec 3<>/dev/tcp/localhost/9000 2>/dev/null'; do
+KC_READY_CHECK='exec 3<>/dev/tcp/localhost/9000 && echo -e "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | grep -q UP'
+until docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_READY_CHECK}" 2>/dev/null; do
   ATTEMPTS=$((ATTEMPTS + 1))
   if [[ $ATTEMPTS -gt 36 ]]; then
     echo "      ⚠ Keycloak n'a pas démarré dans les 3 minutes."
@@ -159,8 +189,7 @@ done
 echo ""
 
 # Configuration du realm Keycloak via kcadm (idempotent)
-if docker compose -f docker-compose.ip.yml exec -T keycloak \
-    bash -c 'exec 3<>/dev/tcp/localhost/9000 2>/dev/null'; then
+if docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_READY_CHECK}" 2>/dev/null; then
   echo "      Configuration du realm via kcadm..."
   KCADM="docker compose -f docker-compose.ip.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh"
 
@@ -190,7 +219,7 @@ echo ""
 echo "========================================================"
 echo " ✓ Déploiement terminé !"
 echo ""
-echo " Application Flutter  : https://${SERVER_IP}"
+echo " Application Flutter  : https://${SERVER_IP}/app_isis/"
 echo " Admin Keycloak        : https://${SERVER_IP}/keycloak/admin/"
 echo " Health auth-service   : https://${SERVER_IP}/auth/health"
 echo " Health db-service     : https://${SERVER_IP}/db/health"
@@ -202,7 +231,7 @@ echo " IMPORTANT — Configuration Keycloak requise (une seule fois) :"
 echo " 1. Ouvrir https://${SERVER_IP}/keycloak/admin/"
 echo " 2. Creer le realm 'kabutare-hospital' (ou importer un export)"
 echo " 3. Client 'flutter-app' (public, Direct Access Grants ON)"
-echo "    Redirect URI : https://${SERVER_IP}/*"
+echo "    Redirect URI : https://${SERVER_IP}/app_isis/*"
 echo "    Web origins  : https://${SERVER_IP}"
 echo " 4. Client 'auth-service' (confidential, Service Accounts ON)"
 echo "    Copier le client secret dans .env (KC_CLIENT_SECRET_AUTH)"

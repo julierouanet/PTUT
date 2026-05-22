@@ -73,10 +73,9 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8081
-      KC_HOSTNAME: dev.keycloak.lucaslopvet.fr
-      KC_HOSTNAME_URL: https://dev.keycloak.lucaslopvet.fr
-      KC_PROXY: edge
+      KC_HOSTNAME: https://dev.keycloak.lucaslopvet.fr
       KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
       # ── Brevo SMTP (utilisées par keycloak/scripts/configure-realm.sh via kcadm) ──
       BREVO_SMTP_HOST: ${BREVO_SMTP_HOST}
       BREVO_SMTP_PORT: ${BREVO_SMTP_PORT}
