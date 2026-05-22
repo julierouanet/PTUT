@@ -32,17 +32,29 @@ echo " Déploiement Hôpital de Kabutare — serveur IP-only"
 echo "========================================================"
 echo ""
 
-<<<<<<< HEAD
 # ── Étape 1 : Mise à jour système ────────────────────────────
-echo "[1/8] Mise à jour du système..."
-apt-get update -qq
-apt-get upgrade -y -qq
+read -rp "[1/8] Mettre à jour le système maintenant ? [o/N] : " UPDATE_SYS
+if [[ "${UPDATE_SYS,,}" == "o" ]]; then
+  echo "      Mise à jour en cours..."
+  apt-get update -qq
+  apt-get upgrade -y -qq
+  echo "      ✓ Système à jour."
+else
+  echo "      Mise à jour ignorée."
+fi
 
 # ── Étape 2 : Installation Docker ────────────────────────────
-echo "[2/8] Installation de Docker..."
+echo "[2/8] Vérification de Docker..."
 if command -v docker &>/dev/null; then
   echo "      Docker déjà installé : $(docker --version)"
+  read -rp "      Réinstaller / mettre à jour Docker ? [o/N] : " UPDATE_DOCKER
+  INSTALL_DOCKER="${UPDATE_DOCKER,,}"
 else
+  read -rp "      Docker n'est pas installé. L'installer maintenant ? [O/n] : " INSTALL_DOCKER_INPUT
+  INSTALL_DOCKER="${INSTALL_DOCKER_INPUT:-o}"
+  INSTALL_DOCKER="${INSTALL_DOCKER,,}"
+fi
+if [[ "${INSTALL_DOCKER:-o}" == "o" ]]; then
   apt-get install -y -qq ca-certificates curl gnupg lsb-release
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
@@ -56,9 +68,9 @@ else
   apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
   systemctl enable --now docker
   echo "      ✓ Docker installé."
+else
+  echo "      Installation Docker ignorée."
 fi
-=======
->>>>>>> 945ebdb07691991fc9b6b5280f0d3d80521aa537
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
 echo "[3/8] Détection de l'IP publique du serveur..."
