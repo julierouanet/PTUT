@@ -33,7 +33,7 @@ echo "========================================================"
 echo ""
 
 # ── Étape 1 : Mise à jour système ────────────────────────────
-read -rp "[1/8] Mettre à jour le système maintenant ? [o/N] : " UPDATE_SYS
+read -rp "[1/9] Mettre à jour le système maintenant ? [o/N] : " UPDATE_SYS
 if [[ "${UPDATE_SYS,,}" == "o" ]]; then
   echo "      Mise à jour en cours..."
   apt-get update -qq
@@ -44,7 +44,7 @@ else
 fi
 
 # ── Étape 2 : Installation Docker ────────────────────────────
-echo "[2/8] Vérification de Docker..."
+echo "[2/9] Vérification de Docker..."
 if command -v docker &>/dev/null; then
   echo "      Docker déjà installé : $(docker --version)"
   read -rp "      Réinstaller / mettre à jour Docker ? [o/N] : " UPDATE_DOCKER
@@ -73,7 +73,7 @@ else
 fi
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
-echo "[3/8] Détection de l'IP publique du serveur..."
+echo "[3/9] Détection de l'IP publique du serveur..."
 DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
   || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
   || hostname -I | awk '{print $1}')
@@ -84,7 +84,7 @@ SERVER_IP="${USER_IP:-${DETECTED_IP}}"
 echo "      ✓ IP retenue : ${SERVER_IP}"
 
 # ── Étape 4 : Création du fichier .env ───────────────────────
-echo "[4/8] Configuration des variables d'environnement..."
+echo "[4/9] Configuration des variables d'environnement..."
 if [[ -f ".env" ]]; then
   echo "      Un fichier .env existe déjà, il sera conservé."
   # S'assurer que SERVER_IP et DOCKER_USER sont à jour
@@ -133,7 +133,7 @@ fi
 set -a; source .env; set +a
 
 # ── Étape 5 : Certificat SSL self-signed ─────────────────────
-echo "[5/8] Génération du certificat SSL self-signed..."
+echo "[5/9] Génération du certificat SSL self-signed..."
 mkdir -p ssl
 if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
   echo "      Certificat existant conservé."
@@ -149,7 +149,7 @@ else
 fi
 
 # ── Étape 6 : Vérification et assignation des ports ──────────
-echo "[6/8] Vérification de la disponibilité des ports..."
+echo "[6/9] Vérification de la disponibilité des ports..."
 
 port_in_use() {
   ss -tlnH "sport = :$1" 2>/dev/null | grep -q .
@@ -195,22 +195,39 @@ for ENTRY in "HTTP_PORT:${HTTP_PORT}" "HTTPS_PORT:${HTTPS_PORT}" "KC_HOST_PORT:$
   fi
 done
 
-# ── Étape 7 : Pull des images Docker Hub ─────────────────────
+# ── Étape 7 : Configuration du pare-feu ──────────────────────
+echo "[7/9] Configuration du pare-feu (ufw)..."
+if command -v ufw &>/dev/null; then
+  # SSH en premier pour ne pas se bloquer
+  ufw allow 22/tcp    &>/dev/null || true
+  ufw allow "${HTTP_PORT}/tcp"  &>/dev/null || true
+  ufw allow "${HTTPS_PORT}/tcp" &>/dev/null || true
+  if ufw status | grep -q "Status: inactive"; then
+    ufw --force enable
+    echo "      ✓ Pare-feu activé."
+  else
+    echo "      ✓ Règles mises à jour (pare-feu déjà actif)."
+  fi
+  echo "      ✓ Ports ouverts : 22 (SSH), ${HTTP_PORT} (HTTP), ${HTTPS_PORT} (HTTPS)"
+else
+  echo "      ufw non disponible — vérifier manuellement les règles de pare-feu."
+fi
+
+# ── Étape 8 : Pull des images Docker Hub ─────────────────────
 # Le build Flutter est embarqué dans l'image kabutare-nginx.
 # La substitution de SERVER_IP se fait au démarrage du conteneur.
-echo "[7/8] Pull des images depuis Docker Hub (${DOCKER_USER})..."
+echo "[8/9] Pull des images depuis Docker Hub (${DOCKER_USER})..."
 docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
 echo "      ✓ Images téléchargées."
 
-# ── Étape 8 : Démarrage de la stack ──────────────────────────
-echo "[8/8] Démarrage de la stack Docker Compose..."
+# ── Étape 9 : Démarrage de la stack ──────────────────────────
+echo "[9/9] Démarrage de la stack Docker Compose..."
 docker compose -f docker-compose.ip.yml up -d
 
 echo ""
 echo "      Attente que Keycloak soit prêt (peut prendre 2-3 min)..."
 ATTEMPTS=0
-KC_READY_CHECK='exec 3<>/dev/tcp/localhost/9000 && echo -e "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3 && cat <&3 | grep -q UP'
-until docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_READY_CHECK}" 2>/dev/null; do
+until [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/null)" == "healthy" ]]; do
   ATTEMPTS=$((ATTEMPTS + 1))
   if [[ $ATTEMPTS -gt 36 ]]; then
     echo "      ⚠ Keycloak n'a pas démarré dans les 3 minutes."
@@ -222,37 +239,111 @@ until docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_REA
 done
 echo ""
 
-# Configuration du realm Keycloak via kcadm (idempotent)
-if docker compose -f docker-compose.ip.yml exec -T keycloak bash -c "${KC_READY_CHECK}" 2>/dev/null; then
-  echo "      Configuration du realm via kcadm..."
-  KCADM="docker compose -f docker-compose.ip.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh"
-
-  # Authentification admin
-  $KCADM config credentials \
-    --server "http://localhost:8080/keycloak" \
-    --realm master \
-    --user "${KC_ADMIN_USER}" \
-    --password "${KC_ADMIN_PASSWORD}" 2>/dev/null || {
-      echo "      ⚠ Realm kabutare-hospital introuvable — à créer manuellement dans l'admin Keycloak."
-      echo "        Voir la section CONFIGURATION KEYCLOAK ci-dessous."
-    }
-
-  # Activation des fonctionnalités du realm (idempotent)
-  $KCADM update "realms/kabutare-hospital" \
-    --set "resetPasswordAllowed=true" \
-    --set "verifyEmail=false" \
-    --set "loginWithEmailAllowed=true" 2>/dev/null && \
-  $KCADM update "realms/kabutare-hospital" \
-    --set "emailTheme=kabutare" 2>/dev/null && \
-    echo "      ✓ Realm kabutare-hospital configuré." || \
-    echo "      ⚠ Configuration du realm ignorée (à faire manuellement)."
-fi
-
 # ── Résumé ────────────────────────────────────────────────────
 # Construction des URLs avec les ports réellement utilisés
 HTTPS_SUFFIX=""
 [[ "${HTTPS_PORT}" != "443" ]] && HTTPS_SUFFIX=":${HTTPS_PORT}"
 BASE_URL="https://${SERVER_IP}${HTTPS_SUFFIX}"
+
+# ── Configuration Keycloak (realm, rôles, clients) ────────────
+KC_CONFIGURED=false
+if [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/null)" == "healthy" ]]; then
+  echo "      Configuration automatique de Keycloak..."
+  KCADM="docker compose -f docker-compose.ip.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh"
+
+  if $KCADM config credentials \
+      --server "http://localhost:8080/keycloak" \
+      --realm master \
+      --user "${KC_ADMIN_USER}" \
+      --password "${KC_ADMIN_PASSWORD}" 2>/dev/null; then
+
+    # Realm
+    if ! $KCADM get realms/kabutare-hospital &>/dev/null; then
+      $KCADM create realms \
+        -s realm=kabutare-hospital \
+        -s enabled=true \
+        -s resetPasswordAllowed=true \
+        -s loginWithEmailAllowed=true \
+        -s verifyEmail=false 2>/dev/null \
+        && echo "      ✓ Realm 'kabutare-hospital' créé." \
+        || echo "      ⚠ Création du realm échouée."
+    else
+      echo "      Realm 'kabutare-hospital' existant — conservé."
+    fi
+    $KCADM update realms/kabutare-hospital \
+      -s resetPasswordAllowed=true -s loginWithEmailAllowed=true \
+      -s verifyEmail=false 2>/dev/null || true
+    $KCADM update realms/kabutare-hospital -s emailTheme=kabutare 2>/dev/null || true
+
+    # Rôles realm
+    for ROLE in admin supervisor hospitalStaff technician_biomedical technician_it technician_infra; do
+      $KCADM create roles -r kabutare-hospital -s name="${ROLE}" 2>/dev/null || true
+    done
+    echo "      ✓ Rôles realm configurés."
+
+    # Client flutter-app (public, Direct Access Grants)
+    if ! $KCADM get clients -r kabutare-hospital 2>/dev/null | grep -q '"flutter-app"'; then
+      $KCADM create clients -r kabutare-hospital \
+        -s clientId=flutter-app \
+        -s publicClient=true \
+        -s directAccessGrantsEnabled=true \
+        -s "redirectUris=[\"${BASE_URL}/app_isis/*\"]" \
+        -s "webOrigins=[\"${BASE_URL}\"]" 2>/dev/null \
+        && echo "      ✓ Client 'flutter-app' créé." || true
+    fi
+
+    # Client auth-service (confidential, Service Accounts)
+    if ! $KCADM get clients -r kabutare-hospital 2>/dev/null | grep -q '"auth-service"'; then
+      $KCADM create clients -r kabutare-hospital \
+        -s clientId=auth-service \
+        -s publicClient=false \
+        -s serviceAccountsEnabled=true \
+        -s directAccessGrantsEnabled=false 2>/dev/null \
+        && echo "      ✓ Client 'auth-service' créé." || true
+    fi
+
+    # Récupération automatique du secret auth-service → .env
+    AUTH_SVC_UUID=$($KCADM get clients -r kabutare-hospital 2>/dev/null \
+      | python3 -c "
+import sys, json
+try:
+  for c in json.load(sys.stdin):
+    if c.get('clientId') == 'auth-service':
+      print(c['id']); break
+except: pass
+" 2>/dev/null)
+    if [[ -n "${AUTH_SVC_UUID}" ]]; then
+      KC_SECRET=$($KCADM get "clients/${AUTH_SVC_UUID}/client-secret" \
+        -r kabutare-hospital 2>/dev/null \
+        | python3 -c "
+import sys, json
+try: print(json.load(sys.stdin).get('value',''))
+except: pass
+" 2>/dev/null)
+      if [[ -n "${KC_SECRET}" && "${KC_SECRET}" != "null" ]]; then
+        sed -i "s|^KC_CLIENT_SECRET_AUTH=.*|KC_CLIENT_SECRET_AUTH=${KC_SECRET}|" .env
+        export KC_CLIENT_SECRET_AUTH="${KC_SECRET}"
+        echo "      ✓ KC_CLIENT_SECRET_AUTH mis à jour dans .env"
+        docker compose -f docker-compose.ip.yml up -d --force-recreate auth-service 2>/dev/null
+        echo "      ✓ auth-service redémarré avec le nouveau secret."
+      fi
+    fi
+
+    KC_CONFIGURED=true
+    echo "      ✓ Keycloak configuré."
+  else
+    echo "      ⚠ Authentification Keycloak échouée — configuration manuelle requise."
+  fi
+fi
+
+# ── Seed données de démonstration (db-service) ───────────────
+echo "      Seeding des données de démonstration (db-service)..."
+if docker compose -f docker-compose.ip.yml exec -T db-service node seed.js 2>/dev/null; then
+  echo "      ✓ Données insérées (équipements, incidents, inventaire)."
+else
+  echo "      ⚠ Seed ignoré (données déjà présentes ou service non prêt)."
+  echo "        Pour relancer : docker exec db-service-ip node seed.js"
+fi
 
 echo ""
 echo "========================================================"
@@ -268,15 +359,22 @@ echo ""
 echo " IMPORTANT — Le certificat est auto-signé."
 echo " Le navigateur affichera un avertissement à accepter."
 echo ""
-echo " IMPORTANT — Configuration Keycloak requise (une seule fois) :"
-echo " 1. Ouvrir ${BASE_URL}/keycloak/admin/"
-echo " 2. Creer le realm 'kabutare-hospital' (ou importer un export)"
-echo " 3. Client 'flutter-app' (public, Direct Access Grants ON)"
-echo "    Redirect URI : ${BASE_URL}/app_isis/*"
-echo "    Web origins  : ${BASE_URL}"
-echo " 4. Client 'auth-service' (confidential, Service Accounts ON)"
-echo "    Copier le client secret dans .env (KC_CLIENT_SECRET_AUTH)"
-echo " 5. Roles realm : admin, supervisor, hospitalStaff,"
-echo "    technician_biomedical, technician_it, technician_infra"
-echo " 6. Redemarrer : docker compose -f docker-compose.ip.yml restart auth-service"
+if [[ "${KC_CONFIGURED}" == "true" ]]; then
+  echo " Keycloak configuré automatiquement. Étapes restantes :"
+  echo " 1. Créer les utilisateurs dans ${BASE_URL}/keycloak/admin/"
+  echo "    (realm kabutare-hospital → Users → Add user)"
+  echo " 2. Assigner les rôles : admin, supervisor, hospitalStaff,"
+  echo "    technician_biomedical, technician_it, technician_infra"
+else
+  echo " IMPORTANT — Configuration Keycloak manuelle requise :"
+  echo " 1. Ouvrir ${BASE_URL}/keycloak/admin/"
+  echo " 2. Créer le realm 'kabutare-hospital'"
+  echo " 3. Client 'flutter-app' (public, Direct Access Grants ON)"
+  echo "    Redirect URI : ${BASE_URL}/app_isis/*  |  Web origins : ${BASE_URL}"
+  echo " 4. Client 'auth-service' (confidential, Service Accounts ON)"
+  echo "    Copier le client secret dans .env (KC_CLIENT_SECRET_AUTH)"
+  echo " 5. Rôles : admin, supervisor, hospitalStaff,"
+  echo "    technician_biomedical, technician_it, technician_infra"
+  echo " 6. Redémarrer : docker compose -f docker-compose.ip.yml restart auth-service"
+fi
 echo "========================================================"
