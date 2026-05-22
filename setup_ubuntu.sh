@@ -32,6 +32,7 @@ echo " Déploiement Hôpital de Kabutare — serveur IP-only"
 echo "========================================================"
 echo ""
 
+<<<<<<< HEAD
 # ── Étape 1 : Mise à jour système ────────────────────────────
 echo "[1/8] Mise à jour du système..."
 apt-get update -qq
@@ -56,6 +57,8 @@ else
   systemctl enable --now docker
   echo "      ✓ Docker installé."
 fi
+=======
+>>>>>>> 945ebdb07691991fc9b6b5280f0d3d80521aa537
 
 # ── Étape 3 : Détection de l'IP publique ─────────────────────
 echo "[3/8] Détection de l'IP publique du serveur..."
