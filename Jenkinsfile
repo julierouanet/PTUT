@@ -112,8 +112,7 @@ pipeline {
                         -w /app \
                         ${FLUTTER_IMAGE} \
                         flutter build web --release \
-                            --web-renderer html \
-                            --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
+                                                        --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
                             --dart-define=DB_URL=https://DB.lucaslopvet.fr \
                             --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token \
                             --dart-define=APP_VERSION=${appVersion}
@@ -152,8 +151,7 @@ pipeline {
                         -w /app \
                         ${FLUTTER_IMAGE} \
                         flutter build web --release \
-                            --web-renderer html \
-                            --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
+                                                        --dart-define=AUTH_URL=https://dev.auth.lucaslopvet.fr \
                             --dart-define=DB_URL=https://dev.DB.lucaslopvet.fr \
                             --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token \
                             --dart-define=APP_VERSION=${appVersion}
@@ -214,8 +212,7 @@ pipeline {
                                     -e PUB_CACHE=/app/.pub-cache \
                                     -w /app \
                                     ghcr.io/cirruslabs/flutter:3.41.4 \
-                                    flutter build web --release \
-                                    --web-renderer html
+                                    flutter build web --release
 
                                 NGINX_IMAGE="\$DOCKERHUB_USER/kabutare-nginx"
                                 DOCKER_BUILDKIT=1 docker build --platform linux/amd64 \

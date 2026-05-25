@@ -67,7 +67,6 @@ docker run --rm \
   -w /app \
   "${FLUTTER_IMAGE}" \
   flutter build web --release \
-    --web-renderer html \
     --base-href /app_isis/
 
 echo "      ✓ Flutter buildé dans flutter-app/build/web/"
