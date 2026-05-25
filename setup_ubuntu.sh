@@ -614,6 +614,55 @@ except: pass
       fi
     fi
 
+    # ── Redirect URIs multi-IP (local + publique) ─────────────────────────
+    # Construction de la liste des URIs valides pour les deux IPs
+    REDIRECT_URIS="[\"${BASE_URL}/*\""
+    WEB_ORIGINS="[\"${BASE_URL}\""
+    if [[ -n "${LOCAL_IP:-}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+      LOCAL_HTTPS_SUFFIX=""
+      [[ "${HTTPS_PORT}" != "443" ]] && LOCAL_HTTPS_SUFFIX=":${HTTPS_PORT}"
+      LOCAL_BASE_URL="https://${LOCAL_IP}${LOCAL_HTTPS_SUFFIX}"
+      REDIRECT_URIS="${REDIRECT_URIS}, \"${LOCAL_BASE_URL}/*\""
+      WEB_ORIGINS="${WEB_ORIGINS}, \"${LOCAL_BASE_URL}\""
+    fi
+    REDIRECT_URIS="${REDIRECT_URIS}]"
+    WEB_ORIGINS="${WEB_ORIGINS}]"
+
+    # Mettre à jour le client flutter-app avec les deux IPs
+    FLUTTER_UUID=$($KCADM get clients -r kabutare-hospital 2>/dev/null \
+      | python3 -c "
+import sys, json
+try:
+  for c in json.load(sys.stdin):
+    if c.get('clientId') == 'flutter-app':
+      print(c['id']); break
+except: pass
+" 2>/dev/null)
+    if [[ -n "${FLUTTER_UUID}" ]]; then
+      $KCADM update "clients/${FLUTTER_UUID}" -r kabutare-hospital \
+        -s "redirectUris=${REDIRECT_URIS}" \
+        -s "webOrigins=${WEB_ORIGINS}" 2>/dev/null \
+        && echo "      ✓ flutter-app : redirect URIs mis à jour (${SERVER_IP} + ${LOCAL_IP:-aucune IP locale})."
+    fi
+
+    # Mettre à jour security-admin-console (master realm) avec les deux IPs
+    # → corrige "Invalid parameter: redirect_uri" depuis le WiFi local
+    ADMIN_CONSOLE_UUID=$($KCADM get clients -r master 2>/dev/null \
+      | python3 -c "
+import sys, json
+try:
+  for c in json.load(sys.stdin):
+    if c.get('clientId') == 'security-admin-console':
+      print(c['id']); break
+except: pass
+" 2>/dev/null)
+    if [[ -n "${ADMIN_CONSOLE_UUID}" ]]; then
+      $KCADM update "clients/${ADMIN_CONSOLE_UUID}" -r master \
+        -s "redirectUris=${REDIRECT_URIS}" \
+        -s "webOrigins=${WEB_ORIGINS}" 2>/dev/null \
+        && echo "      ✓ security-admin-console : redirect URIs mis à jour."
+    fi
+
     KC_CONFIGURED=true
     echo "      ✓ Keycloak configuré."
   else
