@@ -242,6 +242,11 @@ server {
         proxy_buffers           4 256k;
         proxy_busy_buffers_size 256k;
         proxy_read_timeout      90s;
+        # Réécriture des redirects Keycloak : transforme les URLs absolues
+        # (https://IP_PUBLIQUE/keycloak/...) en chemins relatifs (/keycloak/...).
+        # Le navigateur résout /keycloak/... par rapport à l'IP depuis laquelle
+        # il accède → WiFi local reste sur l'IP locale, internet sur l'IP publique.
+        proxy_redirect ~^https?://[^/]+(/keycloak/.*) $1;
         # Page de chargement si Keycloak n'est pas encore prêt
         error_page 502 503 504 /keycloak-loading.html;
     }
