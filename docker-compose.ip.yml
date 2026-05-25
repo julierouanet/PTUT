@@ -39,7 +39,8 @@ services:
       DB_SERVICE_URL: http://db-service:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET}
       # Keycloak — issuer = URL externe (dans le JWT), JWKS = URL interne HTTP
-      KC_ISSUER:      https://${SERVER_IP}:${HTTPS_PORT:-443}/keycloak/realms/kabutare-hospital
+      # KC_PUBLIC_URL est défini dans .env sans :443 si port standard (Keycloak normalise l'URL)
+      KC_ISSUER:      ${KC_PUBLIC_URL}/keycloak/realms/kabutare-hospital
       KC_JWKS_URI:    http://keycloak:8080/keycloak/realms/kabutare-hospital/protocol/openid-connect/certs
       KC_REALM:       kabutare-hospital
       KC_ADMIN_URL:   http://keycloak:8080/keycloak
@@ -72,7 +73,7 @@ services:
       DB_PATH: /data/hospital.db
       AUTH_SERVICE_URL: http://auth-service:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET}
-      KC_ISSUER:   https://${SERVER_IP}:${HTTPS_PORT:-443}/keycloak/realms/kabutare-hospital
+      KC_ISSUER:   ${KC_PUBLIC_URL}/keycloak/realms/kabutare-hospital
       KC_JWKS_URI: http://keycloak:8080/keycloak/realms/kabutare-hospital/protocol/openid-connect/certs
       CORS_ORIGIN: ${CORS_ORIGIN:-https://${SERVER_IP}}
       VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
@@ -122,7 +123,8 @@ services:
       KC_DB_USERNAME: keycloak
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       # URL externe (ce que Keycloak met dans le claim "iss" des tokens)
-      KC_HOSTNAME:           https://${SERVER_IP}:${HTTPS_PORT:-443}/keycloak
+      # Doit correspondre exactement à KC_ISSUER sans le chemin /realms/...
+      KC_HOSTNAME:           ${KC_PUBLIC_URL}/keycloak
       KC_HTTP_ENABLED:       "true"
       KC_HTTP_RELATIVE_PATH: /keycloak
       KC_PROXY_HEADERS:      xforwarded

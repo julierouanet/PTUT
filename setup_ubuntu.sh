@@ -111,6 +111,16 @@ if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
   CORS_ORIGINS="${CORS_ORIGINS},https://${LOCAL_IP}"
 fi
 
+# KC_PUBLIC_URL : URL publique SANS :443 — Keycloak normalise les URLs HTTPS standard
+# et supprime le port 443 dans le claim "iss" du JWT. KC_ISSUER doit correspondre exactement.
+HTTP_PORT_TMP="${HTTP_PORT:-80}"
+HTTPS_PORT_TMP="${HTTPS_PORT:-443}"
+if [[ "${HTTPS_PORT_TMP}" == "443" ]]; then
+  KC_PUBLIC_URL="https://${SERVER_IP}"
+else
+  KC_PUBLIC_URL="https://${SERVER_IP}:${HTTPS_PORT_TMP}"
+fi
+
 if [[ -f ".env" ]]; then
   echo "      Un fichier .env existe déjà, il sera conservé."
   # Mettre à jour les IPs
@@ -129,6 +139,11 @@ if [[ -f ".env" ]]; then
   else
     echo "CORS_ORIGIN=${CORS_ORIGINS}" >> .env
   fi
+  if grep -q "^KC_PUBLIC_URL=" .env; then
+    sed -i "s|^KC_PUBLIC_URL=.*|KC_PUBLIC_URL=${KC_PUBLIC_URL}|" .env
+  else
+    echo "KC_PUBLIC_URL=${KC_PUBLIC_URL}" >> .env
+  fi
 else
   echo "      Création du fichier .env..."
 
@@ -142,6 +157,7 @@ else
 SERVER_IP=${SERVER_IP}
 LOCAL_IP=${LOCAL_IP}
 CORS_ORIGIN=${CORS_ORIGINS}
+KC_PUBLIC_URL=${KC_PUBLIC_URL}
 DOCKER_USER=${DOCKER_USER_INPUT}
 
 INTERNAL_SECRET=${INTERNAL_SECRET_GEN}
