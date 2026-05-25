@@ -5,7 +5,7 @@
 # Hôpital de Kabutare.
 #
 # Pré-requis :
-#   - Ubuntu 22.04 / 24.04 LTS
+#   - Ubuntu  22.04 / 24.04 LTS
 #   - build_and_push.sh exécuté au préalable sur la machine dev
 #     (images poussées sur Docker Hub)
 #   - Seulement ces deux fichiers à copier sur le serveur :
