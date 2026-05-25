@@ -187,6 +187,19 @@ server {
     listen 443 ssl;
     http2  on;
     server_name _;
+
+    # ── Compression gzip ─────────────────────────────────────
+    # Réduit la taille des fichiers JS Flutter de 8-15 MB → 2-4 MB
+    gzip              on;
+    gzip_vary         on;
+    gzip_proxied      any;
+    gzip_comp_level   6;
+    gzip_min_length   256;
+    gzip_types
+        text/plain text/css text/javascript
+        application/javascript application/x-javascript
+        application/json application/wasm
+        image/svg+xml font/woff font/woff2;
     ssl_certificate     /etc/nginx/ssl/cert.pem;
     ssl_certificate_key /etc/nginx/ssl/key.pem;
     ssl_protocols       TLSv1.2 TLSv1.3;
@@ -211,6 +224,12 @@ server {
         proxy_set_header   X-Forwarded-Proto https;
         proxy_read_timeout 60s;
     }
+    # Redirect /keycloak (sans slash) → /keycloak/admin/
+    # sans ça, nginx ne matche pas /keycloak/ et sert Flutter à la place
+    location = /keycloak {
+        return 301 /keycloak/admin/;
+    }
+
     location /keycloak/ {
         proxy_pass              http://keycloak:8080/keycloak/;
         proxy_http_version      1.1;
@@ -223,6 +242,15 @@ server {
         proxy_buffers           4 256k;
         proxy_busy_buffers_size 256k;
         proxy_read_timeout      90s;
+        # Page de chargement si Keycloak n'est pas encore prêt
+        error_page 502 503 504 /keycloak-loading.html;
+    }
+
+    # Page de chargement Keycloak (statique, accessible uniquement via error_page)
+    location = /keycloak-loading.html {
+        root  /usr/share/nginx/html;
+        add_header Cache-Control "no-store";
+        internal;
     }
     location = / { return 301 /app_isis/; }
     location = /app_isis { return 301 /app_isis/; }

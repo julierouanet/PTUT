@@ -15,6 +15,9 @@ COPY flutter-app/build/web /usr/share/nginx/html
 # Configuration Nginx : routing par chemin, HTTPS self-signed
 COPY nginx/conf.d/ip.conf /etc/nginx/conf.d/default.conf
 
+# Page de chargement affichée si Keycloak n'est pas encore prêt (502/503/504)
+COPY nginx/keycloak-loading.html /usr/share/nginx/html/keycloak-loading.html
+
 # Script de substitution du placeholder IP à l'initialisation du conteneur
 COPY nginx/docker-entrypoint-ip.sh /docker-entrypoint.d/40-replace-ip.sh
 RUN chmod +x /docker-entrypoint.d/40-replace-ip.sh

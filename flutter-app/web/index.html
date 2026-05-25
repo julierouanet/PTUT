@@ -1,40 +1,196 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="Gestion des équipements médicaux — Hôpital de Kabutare">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="equipment_management">
+  <meta name="apple-mobile-web-app-title" content="Kabutare">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>equipment_management</title>
+  <title>Hôpital de Kabutare</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* ── Écran de chargement — couleurs identiques à AppTheme ───────────── */
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body { background: #F9FAFB; }
+
+    #k-loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #F9FAFB;
+      z-index: 9999;
+      transition: opacity .4s ease;
+      gap: 0;
+    }
+    #k-loading.k-fade { opacity: 0; }
+
+    /* Icône croix médicale */
+    .k-icon {
+      width: 64px;
+      height: 64px;
+      background: #2563EB;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 14px rgba(37,99,235,.25);
+    }
+    .k-icon svg { width: 36px; height: 36px; fill: #fff; }
+
+    /* Textes */
+    .k-title {
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #111827;
+      letter-spacing: .01em;
+      margin-bottom: 4px;
+    }
+    .k-sub {
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+      font-size: .78rem;
+      color: #6B7280;
+      margin-bottom: 28px;
+    }
+
+    /* Barre de progression */
+    .k-track {
+      width: 220px;
+      height: 4px;
+      background: #E5E7EB;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    #k-bar {
+      height: 100%;
+      width: 0%;
+      background: #2563EB;
+      border-radius: 99px;
+      transition: width .25s ease;
+    }
+
+    /* Pourcentage */
+    #k-pct {
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+      font-size: .75rem;
+      color: #9CA3AF;
+      margin-top: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
 </head>
 <body>
+
+  <!-- ── Écran de chargement (retiré dès le 1er frame Flutter) ─────────── -->
+  <div id="k-loading">
+    <div class="k-icon">
+      <!-- Croix médicale SVG — inline, zéro requête réseau -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M19 8h-4V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4H5a1 1
+                 0 0 0-1 1v4a1 1 0 0 0 1 1h4v4a1 1 0 0 0 1 1h4a1 1
+                 0 0 0 1-1v-4h4a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
+      </svg>
+    </div>
+    <div class="k-title">Hôpital de Kabutare</div>
+    <div class="k-sub">Gestion des équipements médicaux</div>
+    <div class="k-track"><div id="k-bar"></div></div>
+    <div id="k-pct">0%</div>
+  </div>
+
   <script>
-    // ── Helpers Web Push — appelés depuis Dart via dart:js_interop ───────────
+    // ── Progression du chargement ─────────────────────────────────────────
+    (function () {
+      var bar  = document.getElementById('k-bar');
+      var pct  = document.getElementById('k-pct');
+      var scr  = document.getElementById('k-loading');
+      var cur  = 0;
+      var raf;
+
+      function setProgress(p) {
+        cur = Math.min(Math.max(p, cur), 99); // n'avance jamais en arrière
+        bar.style.width = cur + '%';
+        pct.textContent  = Math.round(cur) + '%';
+      }
+
+      // ── Progression animée (courbe ease-out) jusqu'à ~90 % ─────────────
+      // Va vite au début (0→60 % en ~2 s), puis ralentit pour attendre Flutter.
+      var t0 = performance.now();
+      var DURATION = 7000; // ms pour atteindre 90 %
+
+      function tick(now) {
+        var t = Math.min((now - t0) / DURATION, 1);
+        // ease-out cubique
+        var eased = 1 - Math.pow(1 - t, 3);
+        setProgress(eased * 90);
+        if (cur < 89) raf = requestAnimationFrame(tick);
+      }
+      raf = requestAnimationFrame(tick);
+
+      // ── Tentative de progression réelle via fetch ─────────────────────
+      // Si le serveur envoie Content-Length (sans chunked), on lit les octets réels.
+      var _fetch = window.fetch;
+      var totalBytes = 0, loadedBytes = 0;
+      window.fetch = function (resource, opts) {
+        var url = typeof resource === 'string' ? resource : (resource && resource.url) || '';
+        var isMain = /main\.dart(\.js)?$/.test(url);
+        var p = _fetch.apply(this, arguments);
+        if (!isMain) return p;
+        return p.then(function (resp) {
+          var cl = parseInt(resp.headers.get('content-length') || '0', 10);
+          if (!cl) return resp; // chunked/gzip sans longueur → garder la simulation
+          totalBytes += cl;
+          var reader = resp.body.getReader();
+          var stream = new ReadableStream({
+            start: function (ctrl) {
+              function pump() {
+                reader.read().then(function (r) {
+                  if (r.done) { ctrl.close(); return; }
+                  loadedBytes += r.value.length;
+                  setProgress(totalBytes ? (loadedBytes / totalBytes) * 85 : cur);
+                  ctrl.enqueue(r.value);
+                  pump();
+                }).catch(function (e) { ctrl.error(e); });
+              }
+              pump();
+            }
+          });
+          return new Response(stream, {
+            status: resp.status, statusText: resp.statusText, headers: resp.headers
+          });
+        });
+      };
+
+      // ── Fin du chargement : Flutter a rendu son 1er frame ────────────
+      window.addEventListener('flutter-first-frame', function () {
+        cancelAnimationFrame(raf);
+        setProgress(100);
+        bar.style.transition = 'width .15s ease';
+        pct.textContent = '100%';
+        setTimeout(function () {
+          scr.classList.add('k-fade');
+          setTimeout(function () { scr.style.display = 'none'; }, 420);
+        }, 200);
+      });
+    })();
+
+    // ── Helpers Web Push — appelés depuis Dart via dart:js_interop ─────────
     //
     // En production, les handlers push sont fusionnés dans flutter_service_worker.js
     // par le pipeline CI (cat push_sw.js >> flutter_service_worker.js).

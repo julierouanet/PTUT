@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Keycloak — Démarrage en cours…</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #F9FAFB;
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+    }
+
+    .wrap {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    /* Icône croix médicale — même style que Flutter loading */
+    .icon {
+      width: 64px;
+      height: 64px;
+      background: #2563EB;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 14px rgba(37,99,235,.25);
+    }
+    .icon svg { width: 36px; height: 36px; fill: #fff; }
+
+    .title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+    .sub {
+      font-size: .78rem;
+      color: #6B7280;
+      margin-bottom: 28px;
+    }
+
+    /* Barre de progression */
+    .track {
+      width: 220px;
+      height: 4px;
+      background: #E5E7EB;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    #bar {
+      height: 100%;
+      width: 0%;
+      background: #2563EB;
+      border-radius: 99px;
+      transition: width .3s ease;
+    }
+
+    #msg {
+      font-size: .75rem;
+      color: #9CA3AF;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 32px;
+    }
+
+    /* Bouton réessayer manuel */
+    .btn {
+      font-size: .8rem;
+      color: #2563EB;
+      background: none;
+      border: 1px solid #DBEAFE;
+      border-radius: 8px;
+      padding: 6px 16px;
+      cursor: pointer;
+      display: none; /* affiché après plusieurs échecs */
+    }
+    .btn:hover { background: #EFF6FF; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="icon">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 8h-4V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4H5a1
+               1 0 0 0-1 1v4a1 1 0 0 0 1 1h4v4a1 1 0 0 0 1 1h4a1
+               1 0 0 0 1-1v-4h4a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
+    </svg>
+  </div>
+  <div class="title">Hôpital de Kabutare</div>
+  <div class="sub">Console d'administration — démarrage en cours</div>
+  <div class="track"><div id="bar"></div></div>
+  <div id="msg">Connexion à Keycloak…</div>
+  <button class="btn" id="btn" onclick="retry()">Réessayer maintenant</button>
+</div>
+
+<script>
+  var bar      = document.getElementById('bar');
+  var msg      = document.getElementById('msg');
+  var btn      = document.getElementById('btn');
+  var attempts = 0;
+  var MAX      = 24;          // ~2 min (24 × 5 s)
+  var pct      = 0;
+  var barTimer;
+
+  /* ── Animation de la barre (ease-out vers 90 %) ─────────────────── */
+  barTimer = setInterval(function () {
+    pct += (90 - pct) * 0.025;
+    bar.style.width = Math.min(pct, 90) + '%';
+  }, 200);
+
+  /* ── Vérification que Keycloak répond ───────────────────────────── */
+  function check() {
+    attempts++;
+
+    fetch('/keycloak/health/ready')
+      .then(function (r) { return r.text(); })
+      .then(function (t) {
+        if (t.indexOf('"UP"') !== -1 || t.indexOf('"status":"UP"') !== -1) {
+          /* Keycloak est prêt → 100 % puis rechargement */
+          clearInterval(barTimer);
+          bar.style.width = '100%';
+          msg.textContent = 'Keycloak prêt — redirection…';
+          setTimeout(function () { window.location.reload(); }, 400);
+        } else {
+          schedule();
+        }
+      })
+      .catch(function () { schedule(); });
+  }
+
+  function schedule() {
+    if (attempts >= MAX) {
+      clearInterval(barTimer);
+      msg.textContent = 'Keycloak ne répond pas — vérifier les logs Docker.';
+      btn.style.display = 'inline-block';
+      return;
+    }
+
+    /* Compte à rebours affiché */
+    var wait = 5;
+    msg.textContent = 'Nouvelle tentative dans ' + wait + ' s… (' + attempts + '/' + MAX + ')';
+    var cd = setInterval(function () {
+      wait--;
+      if (wait <= 0) {
+        clearInterval(cd);
+        msg.textContent = 'Connexion à Keycloak…';
+        check();
+      } else {
+        msg.textContent = 'Nouvelle tentative dans ' + wait + ' s… (' + attempts + '/' + MAX + ')';
+      }
+    }, 1000);
+  }
+
+  function retry() {
+    btn.style.display = 'none';
+    attempts = 0;
+    pct = 0;
+    barTimer = setInterval(function () {
+      pct += (90 - pct) * 0.025;
+      bar.style.width = Math.min(pct, 90) + '%';
+    }, 200);
+    check();
+  }
+
+  /* Première vérification après 2 s */
+  setTimeout(check, 2000);
+</script>
+</body>
+</html>
