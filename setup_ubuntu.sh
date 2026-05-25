@@ -230,6 +230,34 @@ server {
         return 301 /keycloak/admin/;
     }
 
+    # Ressources statiques Keycloak (JS/CSS) — cache 7 jours + réécriture IP.
+    # sub_filter corrige les URLs absolues IP_PUBLIQUE → hôte courant du navigateur
+    # pour éviter les erreurs CORS/CSP quand accès depuis le WiFi local.
+    location ~* ^/keycloak/resources/.+\.(js|css)$ {
+        proxy_pass              http://keycloak:8080;
+        proxy_http_version      1.1;
+        proxy_set_header        Host              $host;
+        proxy_set_header        X-Forwarded-Proto https;
+        proxy_set_header        X-Forwarded-Port  443;
+        # Désactiver la compression upstream pour que sub_filter puisse lire le contenu
+        proxy_set_header        Accept-Encoding   "";
+        add_header              Cache-Control "public, max-age=604800, immutable";
+        proxy_read_timeout      30s;
+        sub_filter              'https://__NGINX_SERVER_IP__/keycloak' 'https://$host/keycloak';
+        sub_filter_once         off;
+        sub_filter_types        text/javascript application/javascript text/css;
+    }
+
+    # Fonts et images Keycloak — cache uniquement, pas de sub_filter nécessaire
+    location ~* ^/keycloak/resources/.+\.(woff2?|ttf|eot|png|gif|ico|svg)$ {
+        proxy_pass              http://keycloak:8080;
+        proxy_http_version      1.1;
+        proxy_set_header        Host              $host;
+        proxy_set_header        X-Forwarded-Proto https;
+        add_header              Cache-Control "public, max-age=604800, immutable";
+        proxy_read_timeout      30s;
+    }
+
     location /keycloak/ {
         proxy_pass              http://keycloak:8080/keycloak/;
         proxy_http_version      1.1;
@@ -238,15 +266,21 @@ server {
         proxy_set_header        X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header        X-Forwarded-Proto https;
         proxy_set_header        X-Forwarded-Port  443;
+        # Désactiver la compression upstream pour que sub_filter puisse lire le contenu
+        proxy_set_header        Accept-Encoding   "";
         proxy_buffer_size       128k;
         proxy_buffers           4 256k;
         proxy_busy_buffers_size 256k;
         proxy_read_timeout      90s;
-        # Réécriture des redirects Keycloak : transforme les URLs absolues
-        # (https://IP_PUBLIQUE/keycloak/...) en chemins relatifs (/keycloak/...).
-        # Le navigateur résout /keycloak/... par rapport à l'IP depuis laquelle
-        # il accède → WiFi local reste sur l'IP locale, internet sur l'IP publique.
-        proxy_redirect ~^https?://[^/]+(/keycloak/.*) $1;
+        # Réécriture des redirects (Location header) : relatif → le navigateur
+        # résout par rapport à l'IP depuis laquelle il accède
+        proxy_redirect          ~^https?://[^/]+(/keycloak/.*) $1;
+        # Réécriture du CONTENU HTML/JS/JSON : remplace l'IP publique par $host
+        # → corrige CORS ("Cross-Origin Request Blocked") et CSP ("frame-src 'self'")
+        # quand on accède depuis le WiFi local (IP privée ≠ IP publique Keycloak)
+        sub_filter              'https://__NGINX_SERVER_IP__/keycloak' 'https://$host/keycloak';
+        sub_filter_once         off;
+        sub_filter_types        text/html application/javascript application/json text/css;
         # Page de chargement si Keycloak n'est pas encore prêt
         error_page 502 503 504 /keycloak-loading.html;
     }
@@ -287,6 +321,9 @@ server {
     client_max_body_size 10M;
 }
 NGINXEOF
+# Injecter l'IP publique réelle dans le placeholder sub_filter
+# (le heredoc est entre guillemets simples → pas d'expansion shell directe)
+sed -i "s/__NGINX_SERVER_IP__/${SERVER_IP}/g" nginx/conf.d/ip.conf
 echo "      ✓ Configuration Nginx générée."
 
 # ── Page de chargement Keycloak (toujours régénérée) ──────────
