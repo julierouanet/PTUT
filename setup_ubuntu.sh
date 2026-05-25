@@ -135,6 +135,8 @@ set -a; source .env; set +a
 # ── Étape 5 : Certificat SSL + config Nginx ──────────────────
 echo "[5/9] Génération du certificat SSL et configuration Nginx..."
 mkdir -p ssl nginx/conf.d
+# Supprimer si c'est un dossier (artefact Docker d'un montage raté)
+[[ -d nginx/conf.d/ip.conf ]] && rm -rf nginx/conf.d/ip.conf
 
 # Config Nginx (toujours régénérée pour garantir la cohérence)
 cat > nginx/conf.d/ip.conf << 'NGINXEOF'
