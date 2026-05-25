@@ -130,12 +130,28 @@ router.get('/health', async (req, res) => {
     checks.database = 'ok';
   } catch (_) {}
 
-  // ── Keycloak (endpoint de découverte OIDC public) ────────────────────────────
+  // ── Keycloak (health/ready via URL interne HTTP) ─────────────────────────────
+  // On utilise KC_JWKS_URI (http://keycloak:8080/...) plutôt que KC_ISSUER
+  // (https://IP_PUBLIQUE/...) pour éviter deux problèmes depuis le conteneur :
+  //   1. Certificat self-signed → Node.js rejette la connexion TLS
+  //   2. Hairpin NAT → l'IP publique est injoignable depuis le réseau Docker interne
   try {
-    const r = await fetch(`${KC_ISSUER}/.well-known/openid-configuration`, {
+    // Dériver l'URL de health Keycloak depuis KC_JWKS_URI si disponible (HTTP interne)
+    // ex: http://keycloak:8080/keycloak/realms/.../certs → http://keycloak:8080/keycloak/health/ready
+    const jwksUri = process.env.KC_JWKS_URI || '';
+    const kcHealthUrl = jwksUri
+      ? `${jwksUri.split('/realms/')[0]}/health/ready`
+      : `${KC_ISSUER}/.well-known/openid-configuration`;
+    const r = await fetch(kcHealthUrl, {
       signal: AbortSignal.timeout(3000),
     });
-    checks.keycloak = r.ok ? 'ok' : 'ko';
+    if (r.ok) {
+      const body = await r.json().catch(() => ({}));
+      // health/ready → { status: 'UP' } ; well-known → objet OIDC (toujours ok si 200)
+      checks.keycloak = (!body.status || body.status === 'UP') ? 'ok' : 'ko';
+    } else {
+      checks.keycloak = 'ko';
+    }
   } catch (_) {
     checks.keycloak = 'ko';
   }
