@@ -57,7 +57,9 @@ docker run --rm \
   "${FLUTTER_IMAGE}" \
   flutter pub get
 
-# build web avec URLs placeholder
+# build web SANS --dart-define d'URL → détection automatique au runtime via Uri.base.
+# Cela permet au même build de fonctionner depuis le WiFi de l'hôpital (IP locale)
+# ET depuis internet (IP publique), sans recompilation.
 docker run --rm \
   --platform linux/amd64 \
   -v "$(pwd)/flutter-app:/app" \
@@ -65,10 +67,7 @@ docker run --rm \
   -w /app \
   "${FLUTTER_IMAGE}" \
   flutter build web --release \
-    --base-href /app_isis/ \
-    --dart-define=AUTH_URL=https://__SERVER_IP__/auth \
-    --dart-define=DB_URL=https://__SERVER_IP__/db \
-    --dart-define=KC_TOKEN_URL=https://__SERVER_IP__/keycloak/realms/kabutare-hospital/protocol/openid-connect/token
+    --base-href /app_isis/
 
 echo "      ✓ Flutter buildé dans flutter-app/build/web/"
 

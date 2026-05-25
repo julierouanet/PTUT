@@ -72,26 +72,62 @@ else
   echo "      Installation Docker ignorée."
 fi
 
-# ── Étape 3 : Détection de l'IP publique ─────────────────────
-echo "[3/9] Détection de l'IP publique du serveur..."
+# ── Étape 3 : Détection des IPs (publique + réseau local) ────
+echo "[3/9] Détection des IPs du serveur..."
+
+# IP publique (internet)
 DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
   || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
   || hostname -I | awk '{print $1}')
 
-echo "      IP détectée : ${DETECTED_IP}"
+echo "      IP publique détectée : ${DETECTED_IP}"
 read -rp "      Confirmer ou saisir l'IP publique [${DETECTED_IP}] : " USER_IP
 SERVER_IP="${USER_IP:-${DETECTED_IP}}"
-echo "      ✓ IP retenue : ${SERVER_IP}"
+echo "      ✓ IP publique retenue : ${SERVER_IP}"
+
+# IP locale (WiFi hôpital — plages privées 192.168.x.x / 10.x.x.x / 172.16-31.x.x)
+DETECTED_LOCAL_IP=$(hostname -I | tr ' ' '\n' \
+  | grep -E '^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)' \
+  | grep -v "^${SERVER_IP}$" | head -1 || true)
+
+echo ""
+echo "      IP locale réseau interne détectée : ${DETECTED_LOCAL_IP:-aucune}"
+echo "      (utilisée par les appareils connectés au WiFi de l'hôpital)"
+read -rp "      Saisir l'IP locale du serveur sur le WiFi hôpital [${DETECTED_LOCAL_IP}] (Entrée pour ignorer) : " USER_LOCAL_IP
+LOCAL_IP="${USER_LOCAL_IP:-${DETECTED_LOCAL_IP}}"
+if [[ -n "${LOCAL_IP}" ]]; then
+  echo "      ✓ IP locale retenue : ${LOCAL_IP}"
+  echo "      → Les appareils WiFi accéderont via https://${LOCAL_IP}/app_isis/"
+else
+  echo "      Pas d'IP locale configurée — accès WiFi interne désactivé."
+fi
 
 # ── Étape 4 : Création du fichier .env ───────────────────────
 echo "[4/9] Configuration des variables d'environnement..."
+
+# Construction de la valeur CORS (IP publique + IP locale si définie)
+CORS_ORIGINS="https://${SERVER_IP}"
+if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+  CORS_ORIGINS="${CORS_ORIGINS},https://${LOCAL_IP}"
+fi
+
 if [[ -f ".env" ]]; then
   echo "      Un fichier .env existe déjà, il sera conservé."
-  # S'assurer que SERVER_IP et DOCKER_USER sont à jour
+  # Mettre à jour les IPs
   if grep -q "^SERVER_IP=" .env; then
     sed -i "s|^SERVER_IP=.*|SERVER_IP=${SERVER_IP}|" .env
   else
     echo "SERVER_IP=${SERVER_IP}" >> .env
+  fi
+  if grep -q "^LOCAL_IP=" .env; then
+    sed -i "s|^LOCAL_IP=.*|LOCAL_IP=${LOCAL_IP}|" .env
+  else
+    echo "LOCAL_IP=${LOCAL_IP}" >> .env
+  fi
+  if grep -q "^CORS_ORIGIN=" .env; then
+    sed -i "s|^CORS_ORIGIN=.*|CORS_ORIGIN=${CORS_ORIGINS}|" .env
+  else
+    echo "CORS_ORIGIN=${CORS_ORIGINS}" >> .env
   fi
 else
   echo "      Création du fichier .env..."
@@ -104,6 +140,8 @@ else
 
   cat > .env <<EOF
 SERVER_IP=${SERVER_IP}
+LOCAL_IP=${LOCAL_IP}
+CORS_ORIGIN=${CORS_ORIGINS}
 DOCKER_USER=${DOCKER_USER_INPUT}
 
 INTERNAL_SECRET=${INTERNAL_SECRET_GEN}
@@ -220,11 +258,19 @@ echo "      ✓ Configuration Nginx générée."
 if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
   echo "      Certificat existant conservé."
 else
+  # SAN inclut l'IP publique + l'IP locale si définie
+  # → le même certificat est valide sur le WiFi hôpital ET depuis internet
+  SSL_SAN="IP:${SERVER_IP}"
+  if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+    SSL_SAN="${SSL_SAN},IP:${LOCAL_IP}"
+    echo "      Certificat couvrant : ${SERVER_IP} (internet) + ${LOCAL_IP} (WiFi hôpital)"
+  fi
+
   openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
     -keyout ssl/key.pem \
     -out ssl/cert.pem \
     -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=${SERVER_IP}" \
-    -addext "subjectAltName=IP:${SERVER_IP}" \
+    -addext "subjectAltName=${SSL_SAN}" \
     2>/dev/null
   chmod 600 ssl/key.pem ssl/cert.pem
   echo "      ✓ Certificat généré (valide 10 ans) : ssl/cert.pem"
@@ -437,6 +483,11 @@ echo " Health auth-service   : ${BASE_URL}/auth/health"
 echo " Health db-service     : ${BASE_URL}/db/health"
 [[ "${KC_HOST_PORT}" != "8080" ]] && \
   echo " Keycloak (SSH tunnel)  : localhost:${KC_HOST_PORT}"
+if [[ -n "${LOCAL_IP:-}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+  echo ""
+  echo " Accès WiFi hôpital    : https://${LOCAL_IP}/app_isis/"
+  echo " (Même application, backend détecté automatiquement selon le réseau)"
+fi
 echo ""
 echo " IMPORTANT — Le certificat est auto-signé."
 echo " Le navigateur affichera un avertissement à accepter."

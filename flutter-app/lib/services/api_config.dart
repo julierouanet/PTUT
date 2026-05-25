@@ -1,31 +1,32 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// Configuration des URLs des microservices.
 ///
-/// Les URLs sont injectées à la compilation via --dart-define :
-///   flutter build web --dart-define=AUTH_URL=https://auth.lucaslopvet.fr
-///                     --dart-define=DB_URL=https://DB.lucaslopvet.fr
+/// Résolution automatique selon le contexte d'accès — aucun recompilation
+/// nécessaire pour switcher entre local et en ligne :
 ///
-/// En local (flutter run), pointe vers les services de production par défaut.
-/// Vous pouvez surcharger localement :
+///   ┌─────────────────────────┬───────────────────────────────────────────┐
+///   │ Accès depuis…           │ Backend utilisé                           │
+///   ├─────────────────────────┼───────────────────────────────────────────┤
+///   │ localhost / 127.0.0.1   │ http://localhost:3001 / :3002 (local dev) │
+///   │ IP publique (nginx)     │ https://IP/auth  /  https://IP/db         │
+///   │ Domaine (Jenkins prod)  │ --dart-define AUTH_URL / DB_URL           │
+///   └─────────────────────────┴───────────────────────────────────────────┘
+///
+/// Priorité : --dart-define explicite > détection automatique via Uri.base
+///
+/// Surcharge manuelle possible :
 ///   flutter run --dart-define=AUTH_URL=http://localhost:3001
 ///               --dart-define=DB_URL=http://localhost:3002
+///               --dart-define=KC_TOKEN_URL=http://localhost:8080/realms/...
 class ApiConfig {
   ApiConfig._();
 
-  static const String authBaseUrl = String.fromEnvironment(
-    'AUTH_URL',
-    defaultValue: 'https://auth.lucaslopvet.fr',
-  );
-
-  static const String dbBaseUrl = String.fromEnvironment(
-    'DB_URL',
-    defaultValue: 'https://DB.lucaslopvet.fr',
-  );
-
-  // Keycloak — token endpoint (Direct Grant + refresh)
-  static const String kcTokenUrl = String.fromEnvironment(
-    'KC_TOKEN_URL',
-    defaultValue: 'https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token',
-  );
+  // ── Valeurs compilées via --dart-define (Jenkins / build_and_push.sh) ────────
+  // Vides si non fournis → détection automatique au runtime via Uri.base.
+  static const String _definedAuthUrl = String.fromEnvironment('AUTH_URL');
+  static const String _definedDbUrl   = String.fromEnvironment('DB_URL');
+  static const String _definedKcUrl   = String.fromEnvironment('KC_TOKEN_URL');
 
   // Identifiant du client public Flutter dans Keycloak
   static const String kcClientId = String.fromEnvironment(
@@ -34,14 +35,68 @@ class ApiConfig {
   );
 
   // Version injectée par Jenkins via --dart-define=APP_VERSION=x.y.z
-  // En local (flutter run sans --dart-define), affiche '1.0.0-dev'
   static const String appVersion = String.fromEnvironment(
     'APP_VERSION',
     defaultValue: '1.0.0-dev',
   );
 
+  // ── URLs résolues au runtime ──────────────────────────────────────────────────
+
+  /// URL de base du auth-service.
+  /// dart-define prioritaire ; sinon détection automatique depuis l'URL du navigateur.
+  static String get authBaseUrl =>
+      _definedAuthUrl.isNotEmpty ? _definedAuthUrl : _resolveAuthUrl();
+
+  /// URL de base du db-service.
+  static String get dbBaseUrl =>
+      _definedDbUrl.isNotEmpty ? _definedDbUrl : _resolveDbUrl();
+
+  /// Token endpoint Keycloak (Direct Grant + refresh).
+  static String get kcTokenUrl =>
+      _definedKcUrl.isNotEmpty ? _definedKcUrl : _resolveKcTokenUrl();
+
+  // ── Résolution automatique ────────────────────────────────────────────────────
+
+  static bool get _isLocalhost {
+    if (!kIsWeb) return true; // mobile/desktop → toujours localhost
+    final host = Uri.base.host;
+    return host == 'localhost' || host == '127.0.0.1';
+  }
+
+  static String get _webSchemeHost {
+    final uri = Uri.base;
+    // Inclure le port seulement s'il est non-standard
+    final port = uri.port;
+    final isDefaultPort = (uri.scheme == 'https' && port == 443) ||
+        (uri.scheme == 'http' && port == 80);
+    return isDefaultPort
+        ? '${uri.scheme}://${uri.host}'
+        : '${uri.scheme}://${uri.host}:$port';
+  }
+
+  static String _resolveAuthUrl() {
+    if (_isLocalhost) return 'http://localhost:3001';
+    // IP ou domaine → Nginx route /auth/ vers auth-service:3001
+    return '$_webSchemeHost/auth';
+  }
+
+  static String _resolveDbUrl() {
+    if (_isLocalhost) return 'http://localhost:3002';
+    // IP ou domaine → Nginx route /db/ vers db-service:3002
+    return '$_webSchemeHost/db';
+  }
+
+  static String _resolveKcTokenUrl() {
+    if (_isLocalhost) {
+      return 'http://localhost:8080/realms/kabutare-hospital/protocol/openid-connect/token';
+    }
+    // IP ou domaine → Nginx route /keycloak/ vers keycloak:8080
+    return '$_webSchemeHost/keycloak/realms/kabutare-hospital/protocol/openid-connect/token';
+  }
+
+  // ── Vérification sécurité (appelée au démarrage) ──────────────────────────────
+
   /// Vérifie que les URLs de production utilisent HTTPS.
-  /// Appelé au démarrage de l'application.
   static void assertSecureUrls() {
     assert(
       authBaseUrl.startsWith('https://') || authBaseUrl.startsWith('http://localhost'),
@@ -53,38 +108,32 @@ class ApiConfig {
     );
   }
 
-  // Auth endpoints
-  static String get meUrl         => '$authBaseUrl/api/auth/me';
-
-  // Auth user management endpoint
-  static String get usersUrl      => '$authBaseUrl/api/users';
-
-  // DB endpoints
-  static String get locationsUrl  => '$dbBaseUrl/api/locations';
-  static String get equipmentUrl  => '$dbBaseUrl/api/equipment';
-  static String get issuesUrl     => '$dbBaseUrl/api/issues';
-  static String get inventoryUrl  => '$dbBaseUrl/api/inventory';
-  static String get logsUrl       => '$dbBaseUrl/api/logs';
-  static String get sidebarUrl    => '$dbBaseUrl/api/sidebar/config';
-
-  static String equipmentByTagUrl(String tag) =>
-      '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
-
-  // Auth extra endpoints
+  // ── Auth endpoints ────────────────────────────────────────────────────────────
+  static String get meUrl             => '$authBaseUrl/api/auth/me';
+  static String get usersUrl          => '$authBaseUrl/api/users';
   static String get deptRequestsUrl   => '$authBaseUrl/api/users/department-requests';
   static String get rolesUrl          => '$authBaseUrl/api/roles';
   static String get registerUrl       => '$authBaseUrl/api/auth/register';
   static String get forgotPasswordUrl => '$authBaseUrl/api/auth/forgot-password';
   static String get roleRequestsUrl   => '$authBaseUrl/api/users/role-requests';
 
-  // Health endpoints (publics, sans authentification)
+  // ── DB endpoints ──────────────────────────────────────────────────────────────
+  static String get locationsUrl  => '$dbBaseUrl/api/locations';
+  static String get equipmentUrl  => '$dbBaseUrl/api/equipment';
+  static String get issuesUrl     => '$dbBaseUrl/api/issues';
+  static String get inventoryUrl  => '$dbBaseUrl/api/inventory';
+  static String get logsUrl       => '$dbBaseUrl/api/logs';
+  static String get sidebarUrl    => '$dbBaseUrl/api/sidebar/config';
+  static String get analyticsUrl  => '$dbBaseUrl/api/analytics';
+
+  static String equipmentByTagUrl(String tag) =>
+      '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
+
+  // ── Health endpoints (publics, sans authentification) ────────────────────────
   static String get healthAuthUrl => '$authBaseUrl/health';
   static String get healthDbUrl   => '$dbBaseUrl/health';
 
-  // Analytics (db-service — admin uniquement)
-  static String get analyticsUrl  => '$dbBaseUrl/api/analytics';
-
-  // Web Push endpoints (db-service)
+  // ── Web Push endpoints ────────────────────────────────────────────────────────
   static String get vapidKeyUrl        => '$dbBaseUrl/api/notifications/vapid-key';
   static String get pushSubscribeUrl   => '$dbBaseUrl/api/notifications/subscribe';
   static String get pushUnsubscribeUrl => '$dbBaseUrl/api/notifications/unsubscribe';

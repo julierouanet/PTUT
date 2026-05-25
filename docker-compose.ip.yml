@@ -44,8 +44,9 @@ services:
       KC_ADMIN_URL:   http://keycloak:8080/keycloak
       KC_CLIENT_ID:   auth-service
       KC_CLIENT_SECRET: ${KC_CLIENT_SECRET_AUTH}
-      # CORS — origine de l'application Flutter sur l'IP du serveur
-      CORS_ORIGIN:    https://${SERVER_IP}
+      # CORS — origines autorisées : IP publique + IP locale WiFi hôpital (comma-separated)
+      # Exemple : "https://41.186.x.x,https://192.168.1.100"
+      CORS_ORIGIN:    ${CORS_ORIGIN:-https://${SERVER_IP}}
       BREVO_API_KEY:  ${BREVO_API_KEY:-}
     volumes:
       - auth_data_ip:/data
@@ -72,7 +73,7 @@ services:
       INTERNAL_SECRET: ${INTERNAL_SECRET}
       KC_ISSUER:   https://${SERVER_IP}:${HTTPS_PORT:-443}/keycloak/realms/kabutare-hospital
       KC_JWKS_URI: http://keycloak:8080/keycloak/realms/kabutare-hospital/protocol/openid-connect/certs
-      CORS_ORIGIN: https://${SERVER_IP}
+      CORS_ORIGIN: ${CORS_ORIGIN:-https://${SERVER_IP}}
       VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_CONTACT:     ${VAPID_CONTACT:-mailto:admin@hospital.local}

@@ -23,7 +23,11 @@ app.use(cors({
     const allowed = [
       'https://app.lucaslopvet.fr',
       'https://dev.app.lucaslopvet.fr',
-      ...(process.env.CORS_ORIGIN ? [process.env.CORS_ORIGIN] : []),
+      // CORS_ORIGIN peut contenir plusieurs origines séparées par des virgules
+      // ex: "https://41.186.x.x,https://192.168.1.100" (internet + WiFi hôpital)
+      ...(process.env.CORS_ORIGIN
+        ? process.env.CORS_ORIGIN.split(',').map(s => s.trim()).filter(Boolean)
+        : []),
     ];
     if (!origin || allowed.includes(origin) || /^http:\/\/localhost:(3000|3001|3002|5000|8080|4200|9000)$/.test(origin)) {
       callback(null, true);
