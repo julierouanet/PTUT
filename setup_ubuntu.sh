@@ -614,6 +614,18 @@ except: pass
       fi
     fi
 
+    # ── Permissions Admin API : manage-users pour auth-service ────────────
+    # Le service account du client auth-service doit pouvoir créer/modifier
+    # des utilisateurs via l'Admin API Keycloak (inscription, gestion comptes).
+    # Sans ce rôle → HTTP 403 sur POST /api/auth/register et les routes users.
+    $KCADM add-roles \
+      -r kabutare-hospital \
+      --uusername service-account-auth-service \
+      --cclientid realm-management \
+      --rolename manage-users 2>/dev/null \
+      && echo "      ✓ manage-users assigné au service account auth-service." \
+      || echo "      ⚠ manage-users déjà assigné ou client non trouvé."
+
     # ── Redirect URIs multi-IP (local + publique) ─────────────────────────
     # Construction de la liste des URIs valides pour les deux IPs
     REDIRECT_URIS="[\"${BASE_URL}/*\""
