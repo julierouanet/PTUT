@@ -139,16 +139,21 @@ router.get('/health', async (req, res) => {
     // Dériver l'URL de health Keycloak depuis KC_JWKS_URI si disponible (HTTP interne)
     // ex: http://keycloak:8080/keycloak/realms/.../certs → http://keycloak:8080/keycloak/health/ready
     const jwksUri = process.env.KC_JWKS_URI || '';
+    // Dériver l'URL OIDC discovery via HTTP interne :
+    // KC_JWKS_URI = http://keycloak:8080/keycloak/realms/<realm>/protocol/openid-connect/certs
+    // → split('/protocol/')[0] = http://keycloak:8080/keycloak/realms/<realm>
+    // → + /.well-known/openid-configuration (toujours disponible, retourne 200 si Keycloak est UP)
     const kcHealthUrl = jwksUri
-      ? `${jwksUri.split('/realms/')[0]}/health/ready`
+      ? `${jwksUri.split('/protocol/')[0]}/.well-known/openid-configuration`
       : `${KC_ISSUER}/.well-known/openid-configuration`;
     const r = await fetch(kcHealthUrl, {
       signal: AbortSignal.timeout(3000),
     });
     if (r.ok) {
       const body = await r.json().catch(() => ({}));
-      // health/ready → { status: 'UP' } ; well-known → objet OIDC (toujours ok si 200)
-      checks.keycloak = (!body.status || body.status === 'UP') ? 'ok' : 'ko';
+      // OIDC discovery → { issuer, token_endpoint, … } (pas de champ status)
+      // Si r.ok et JSON valide avec issuer → Keycloak est UP
+      checks.keycloak = (body.issuer || !body.status || body.status === 'UP') ? 'ok' : 'ko';
     } else {
       checks.keycloak = 'ko';
     }
