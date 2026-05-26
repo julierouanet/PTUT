@@ -28,6 +28,9 @@ flutter-app/.pub-cache/
 # ── Docker ────────────────────────────────────────────────────
 docker-data/
 
+# ── Backups (générés par backup.sh — ne jamais committer) ─────
+backups/
+
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
