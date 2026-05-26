@@ -8,7 +8,7 @@
 
 # ── Réseaux cloisonnés (principe du moindre privilège) ──────
 # frontend   : nginx  ↔  auth-service, db-service
-# backend    : auth-service / db-service  ↔  keycloak (JWKS, Admin API)
+# backend    : nginx ↔ keycloak (proxy /keycloak/), auth-service/db-service ↔ keycloak (JWKS, Admin API)
 # keycloak_db: keycloak  ↔  postgres uniquement — inaccessible des services Node
 networks:
   frontend:
@@ -46,7 +46,8 @@ services:
       - ./nginx/conf.d/ip.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/keycloak-loading.html:/usr/share/nginx/html/keycloak-loading.html:ro
     networks:
-      - frontend   # nginx accède à auth-service et db-service uniquement
+      - frontend   # nginx → auth-service, db-service
+      - backend    # nginx → keycloak (proxy /keycloak/)
     depends_on:
       auth-service:
         condition: service_healthy
