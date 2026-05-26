@@ -716,14 +716,216 @@ except: pass
   fi
 fi
 
-# ── Seed données de démonstration (db-service) ───────────────
-echo "      Seeding des données de démonstration (db-service)..."
-if docker compose -f docker-compose.ip.yml exec -T db-service node seed.js 2>/dev/null; then
-  echo "      ✓ Données insérées (équipements, incidents, inventaire)."
-else
-  echo "      ⚠ Seed ignoré (données déjà présentes ou service non prêt)."
-  echo "        Pour relancer : docker exec db-service-ip node seed.js"
-fi
+# ── Initialisation des données ───────────────────────────────
+echo ""
+echo "========================================================"
+echo " Initialisation des bases de données"
+echo "========================================================"
+echo ""
+echo "  Comment souhaitez-vous initialiser les données ?"
+echo ""
+echo "  1) Seed de démonstration  — données fictives (équipements, incidents,"
+echo "     départements, utilisateurs démo) insérées via node seed.js"
+echo "  2) Restaurer un backup    — depuis des fichiers de sauvegarde existants"
+echo "     (auth.db, hospital.db, dump SQL PostgreSQL Keycloak)"
+echo "  3) Ignorer                — bases laissées dans leur état actuel"
+echo ""
+read -rp "  Votre choix [1/2/3, défaut=3] : " DATA_INIT_CHOICE
+DATA_INIT_CHOICE="${DATA_INIT_CHOICE:-3}"
+echo ""
+
+# Validation SQLite via les magic bytes (Python3 déjà utilisé dans le script)
+_is_sqlite() {
+  python3 -c "
+import sys
+try:
+  with open(sys.argv[1], 'rb') as f:
+    sys.exit(0 if f.read(6) == b'SQLite' else 1)
+except:
+  sys.exit(1)
+" "$1" 2>/dev/null
+}
+
+case "${DATA_INIT_CHOICE}" in
+
+  # ── Option 1 : Seed de démonstration ─────────────────────────
+  1)
+    echo "      Insertion des données de démonstration..."
+    echo ""
+
+    # auth-service : permissions applicatives, rôles SQLite
+    echo -n "      auth-service  : "
+    if docker compose -f docker-compose.ip.yml exec -T auth-service node seed.js 2>/dev/null; then
+      echo "✓ Données de démonstration insérées."
+    else
+      echo "⚠ Ignoré (données déjà présentes ou service non prêt)."
+      echo "        → Relancer manuellement : docker exec auth-service-ip node seed.js"
+    fi
+
+    # db-service : équipements, incidents, inventaire
+    echo -n "      db-service    : "
+    if docker compose -f docker-compose.ip.yml exec -T db-service node seed.js 2>/dev/null; then
+      echo "✓ Équipements, incidents, inventaire insérés."
+    else
+      echo "⚠ Ignoré (données déjà présentes ou service non prêt)."
+      echo "        → Relancer manuellement : docker exec db-service-ip node seed.js"
+    fi
+    ;;
+
+  # ── Option 2 : Restauration depuis un backup ─────────────────
+  2)
+    echo "      Restauration depuis des fichiers de sauvegarde."
+    echo "      Les fichiers peuvent être placés dans ./backups/ pour détection automatique."
+    echo ""
+
+    # Créer le dossier backups s'il n'existe pas (permissions 700 — root uniquement)
+    mkdir -p "${SCRIPT_DIR}/backups"
+    chmod 700 "${SCRIPT_DIR}/backups"
+    BACKUP_DIR="${SCRIPT_DIR}/backups"
+
+    # ── Détection automatique des backups les plus récents ───────
+    # Tri décroissant : le fichier le plus récent (ou le plus grand numéro de date) est retenu
+    DETECTED_AUTH_DB=$(     find "${BACKUP_DIR}" -maxdepth 1 -name "auth*.db" \
+                              2>/dev/null | sort -r | head -1 || true)
+    DETECTED_HOSPITAL_DB=$( find "${BACKUP_DIR}" -maxdepth 1 -name "hospital*.db" \
+                              2>/dev/null | sort -r | head -1 || true)
+    DETECTED_KC_SQL=$(      find "${BACKUP_DIR}" -maxdepth 1 \
+                              \( -name "keycloak*.sql" -o -name "keycloak*.dump" \) \
+                              2>/dev/null | sort -r | head -1 || true)
+
+    # ── Saisie interactive des chemins ───────────────────────────
+    echo "      [A] auth.db — permissions applicatives (auth-service)"
+    [[ -n "${DETECTED_AUTH_DB}" ]] && echo "          Détecté automatiquement : ${DETECTED_AUTH_DB}"
+    read -rp "          Chemin complet${DETECTED_AUTH_DB:+ [${DETECTED_AUTH_DB}]} (Entrée pour ignorer) : " _IN
+    AUTH_DB_BACKUP="${_IN:-${DETECTED_AUTH_DB}}"
+
+    echo ""
+    echo "      [B] hospital.db — équipements / incidents (db-service)"
+    [[ -n "${DETECTED_HOSPITAL_DB}" ]] && echo "          Détecté automatiquement : ${DETECTED_HOSPITAL_DB}"
+    read -rp "          Chemin complet${DETECTED_HOSPITAL_DB:+ [${DETECTED_HOSPITAL_DB}]} (Entrée pour ignorer) : " _IN
+    HOSPITAL_DB_BACKUP="${_IN:-${DETECTED_HOSPITAL_DB}}"
+
+    echo ""
+    echo "      [C] keycloak.sql — dump PostgreSQL (utilisateurs, realm, clients Keycloak)"
+    [[ -n "${DETECTED_KC_SQL}" ]] && echo "          Détecté automatiquement : ${DETECTED_KC_SQL}"
+    read -rp "          Chemin complet${DETECTED_KC_SQL:+ [${DETECTED_KC_SQL}]} (Entrée pour ignorer) : " _IN
+    KC_SQL_BACKUP="${_IN:-${DETECTED_KC_SQL}}"
+
+    echo ""
+    RESTORE_ANY=false
+
+    # ── Restauration auth.db ──────────────────────────────────────
+    if [[ -n "${AUTH_DB_BACKUP}" ]]; then
+      echo "      ── auth.db ───────────────────────────────────────────"
+      if [[ ! -f "${AUTH_DB_BACKUP}" ]]; then
+        echo "      ✗ Fichier introuvable : ${AUTH_DB_BACKUP}"
+      elif ! _is_sqlite "${AUTH_DB_BACKUP}"; then
+        echo "      ✗ Le fichier ne semble pas être une base SQLite — ignoré."
+      else
+        # db-service dépend d'auth-service → arrêt des deux, redémarrage en ordre
+        echo "         Arrêt de db-service et auth-service..."
+        docker compose -f docker-compose.ip.yml stop db-service auth-service 2>/dev/null
+        if docker cp "${AUTH_DB_BACKUP}" auth-service-ip:/data/auth.db 2>/dev/null; then
+          echo "      ✓ auth.db copié dans le volume auth_data_ip."
+          RESTORE_ANY=true
+        else
+          echo "      ✗ Échec de la copie — le conteneur auth-service-ip existe-t-il ?"
+        fi
+        echo "         Redémarrage auth-service..."
+        docker compose -f docker-compose.ip.yml start auth-service 2>/dev/null
+        # Attente de la santé d'auth-service avant de remonter db-service
+        echo -n "         Attente auth-service healthy"
+        _ATT=0
+        until [[ "$(docker inspect --format='{{.State.Health.Status}}' \
+                    auth-service-ip 2>/dev/null)" == "healthy" ]] \
+              || [[ $_ATT -gt 12 ]]; do
+          printf "."; sleep 5; _ATT=$((_ATT+1))
+        done
+        echo " ok"
+        docker compose -f docker-compose.ip.yml start db-service 2>/dev/null
+        echo "         db-service redémarré."
+      fi
+      echo ""
+    fi
+
+    # ── Restauration hospital.db ──────────────────────────────────
+    if [[ -n "${HOSPITAL_DB_BACKUP}" ]]; then
+      echo "      ── hospital.db ───────────────────────────────────────"
+      if [[ ! -f "${HOSPITAL_DB_BACKUP}" ]]; then
+        echo "      ✗ Fichier introuvable : ${HOSPITAL_DB_BACKUP}"
+      elif ! _is_sqlite "${HOSPITAL_DB_BACKUP}"; then
+        echo "      ✗ Le fichier ne semble pas être une base SQLite — ignoré."
+      else
+        echo "         Arrêt de db-service..."
+        docker compose -f docker-compose.ip.yml stop db-service 2>/dev/null
+        if docker cp "${HOSPITAL_DB_BACKUP}" db-service-ip:/data/hospital.db 2>/dev/null; then
+          echo "      ✓ hospital.db copié dans le volume db_data_ip."
+          RESTORE_ANY=true
+        else
+          echo "      ✗ Échec de la copie — le conteneur db-service-ip existe-t-il ?"
+        fi
+        docker compose -f docker-compose.ip.yml start db-service 2>/dev/null
+        echo "         db-service redémarré."
+      fi
+      echo ""
+    fi
+
+    # ── Restauration PostgreSQL Keycloak ──────────────────────────
+    if [[ -n "${KC_SQL_BACKUP}" ]]; then
+      echo "      ── keycloak PostgreSQL ───────────────────────────────"
+      if [[ ! -f "${KC_SQL_BACKUP}" ]]; then
+        echo "      ✗ Fichier introuvable : ${KC_SQL_BACKUP}"
+      else
+        echo "         Arrêt de Keycloak (évite les conflits d'accès concurrents)..."
+        docker compose -f docker-compose.ip.yml stop keycloak 2>/dev/null
+        # Nettoyage complet avant restauration pour éviter les conflits d'objets
+        echo "         Recréation de la base keycloak..."
+        docker exec postgres-keycloak-ip psql -U keycloak \
+          -c "DROP DATABASE IF EXISTS keycloak;" 2>/dev/null || true
+        docker exec postgres-keycloak-ip psql -U keycloak \
+          -c "CREATE DATABASE keycloak OWNER keycloak;" 2>/dev/null || true
+        # Restauration du dump SQL (format pg_dump texte ou custom)
+        echo "         Restauration en cours (30-60 s selon la taille du dump)..."
+        if docker exec -i postgres-keycloak-ip psql -U keycloak -d keycloak \
+            < "${KC_SQL_BACKUP}" > /dev/null 2>&1; then
+          echo "      ✓ Base PostgreSQL Keycloak restaurée."
+          RESTORE_ANY=true
+          KC_CONFIGURED=true   # La config Keycloak est incluse dans le backup
+        else
+          echo "      ✗ Échec de la restauration — vérifier le format du fichier."
+          echo "        Format attendu (texte pg_dump) :"
+          echo "        docker exec postgres-keycloak-ip pg_dump -U keycloak keycloak \\"
+          echo "          > backups/keycloak_YYYYMMDD.sql"
+        fi
+        # Redémarrage et attente de la santé de Keycloak
+        echo "         Redémarrage Keycloak..."
+        docker compose -f docker-compose.ip.yml start keycloak 2>/dev/null
+        echo -n "         Attente Keycloak healthy"
+        _ATT=0
+        until [[ "$(docker inspect --format='{{.State.Health.Status}}' \
+                    keycloak-ip 2>/dev/null)" == "healthy" ]] \
+              || [[ $_ATT -gt 24 ]]; do
+          printf "."; sleep 5; _ATT=$((_ATT+1))
+        done
+        echo " ok"
+      fi
+      echo ""
+    fi
+
+    if [[ "${RESTORE_ANY}" == "false" ]]; then
+      echo "      ⚠ Aucun fichier de backup valide fourni."
+      echo "        Les bases de données sont dans leur état actuel."
+      echo "        → Placer les fichiers dans ${SCRIPT_DIR}/backups/ et relancer l'étape 2,"
+      echo "          ou relancer le script complet."
+    fi
+    ;;
+
+  # ── Option 3 / défaut : ne rien faire ────────────────────────
+  *)
+    echo "      Initialisation ignorée — bases dans leur état actuel."
+    ;;
+
+esac
 
 echo ""
 echo "========================================================"
@@ -762,4 +964,26 @@ else
   echo "    technician_biomedical, technician_it, technician_infra"
   echo " 6. Redémarrer : docker compose -f docker-compose.ip.yml restart auth-service"
 fi
+echo ""
+echo " ── Sauvegardes ─────────────────────────────────────────"
+echo " Pour créer un backup complet (depuis ${SCRIPT_DIR}) :"
+echo ""
+echo "   mkdir -p backups && chmod 700 backups"
+echo ""
+echo "   # SQLite — auth-service (permissions applicatives)"
+echo "   docker cp auth-service-ip:/data/auth.db \\"
+echo "     backups/auth_\$(date +%Y%m%d_%H%M).db"
+echo ""
+echo "   # SQLite — db-service (équipements, incidents)"
+echo "   docker cp db-service-ip:/data/hospital.db \\"
+echo "     backups/hospital_\$(date +%Y%m%d_%H%M).db"
+echo ""
+echo "   # PostgreSQL — Keycloak (utilisateurs, realm, clients)"
+echo "   docker exec postgres-keycloak-ip pg_dump -U keycloak keycloak \\"
+echo "     > backups/keycloak_\$(date +%Y%m%d_%H%M).sql"
+echo ""
+echo "   chmod 600 backups/*.db backups/*.sql   # Protéger les secrets"
+echo ""
+echo " Pour restaurer depuis ces fichiers :"
+echo "   sudo bash setup_ubuntu.sh  → choisir option 2 (Restaurer un backup)"
 echo "========================================================"
