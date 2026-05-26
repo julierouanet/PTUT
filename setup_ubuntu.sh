@@ -571,15 +571,22 @@ if [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/n
   echo "      Configuration automatique de Keycloak..."
   # CRIT-3 : mot de passe passé via -e (variable d'env dans le conteneur)
   # et non en argument CLI — évite l'exposition dans `ps aux` / /proc/<pid>/cmdline
+  # Appels kcadm suivants : session stockée dans le conteneur (~/.keycloak/kcadm.config)
+  # → plus besoin de repasser le mot de passe après l'auth initiale
   KCADM="docker compose -f docker-compose.ip.yml exec -T \
-    -e KCADM_PASSWORD=${KC_ADMIN_PASSWORD} \
     keycloak /opt/keycloak/bin/kcadm.sh"
 
-  if $KCADM config credentials \
-      --server "http://localhost:8080/keycloak" \
-      --realm master \
-      --user "${KC_ADMIN_USER}" \
-      --password "env:KCADM_PASSWORD" 2>/dev/null; then
+  # Auth initiale : mot de passe passé via -e dans le conteneur (sh -c l'étend côté conteneur)
+  # → jamais visible dans `ps aux` sur l'hôte (CRIT-3)
+  if docker compose -f docker-compose.ip.yml exec -T \
+      -e KCADM_PASS="${KC_ADMIN_PASSWORD}" \
+      -e KCADM_USER="${KC_ADMIN_USER}" \
+      keycloak sh -c \
+      '/opt/keycloak/bin/kcadm.sh config credentials \
+       --server http://localhost:8080/keycloak \
+       --realm master \
+       --user "$KCADM_USER" \
+       --password "$KCADM_PASS"' 2>/dev/null; then
 
     # Realm
     if ! $KCADM get realms/kabutare-hospital &>/dev/null; then
