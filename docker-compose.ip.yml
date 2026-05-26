@@ -244,9 +244,9 @@ services:
       BREVO_FROM_EMAIL:    ${BREVO_FROM_EMAIL:-noreply@hospital.local}
       BREVO_FROM_NAME:     "${BREVO_FROM_NAME:-Hôpital de Kabutare}"
       KC_HEALTH_ENABLED:   "true"
-      # Contraintes JVM heap explicites pour éviter l'OOM-kill au premier boot
-      # (Keycloak compile un serveur optimisé au 1er démarrage — pic mémoire ~1-1.2 GB)
-      JAVA_OPTS_APPEND: "-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256M"
+      # Note : JAVA_OPTS_APPEND retiré — Keycloak 26/Quarkus gère la mémoire JVM
+      # automatiquement selon le cgroup (deploy.resources.limits.memory).
+      # Ne pas forcer -Xmx ici : Quarkus calcule le heap optimal seul.
     ports:
       # Lié à 127.0.0.1 uniquement : accès SSH tunnel ou Nginx interne — pas d'exposition publique
       - "127.0.0.1:${KC_HOST_PORT:-8080}:8080"
@@ -257,15 +257,16 @@ services:
       postgres-keycloak:
         condition: service_healthy
     healthcheck:
-      # L'image Keycloak 26 (Red Hat UBI Minimal) n'embarque NI curl NI wget.
-      # On utilise bash /dev/tcp (built-in, toujours disponible) pour ouvrir une
-      # connexion TCP sur le port 9000 (management interface Keycloak 26+).
-      # Ce port s'ouvre uniquement quand Keycloak a fini son init (DB + realm).
-      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 2>/dev/null"]
-      interval: 15s
-      timeout: 5s
-      retries: 12
-      start_period: 90s
+      # Keycloak 26 (Red Hat UBI Minimal) : ni curl, ni wget, ni bash disponibles.
+      # grep sans -q, sans quotes, sans espace trailing — forme minimale garantie.
+      # Port 9000 (management) = 0x2328 hex — confirmé présent dans /proc/net/tcp6
+      # par les diagnostics (grep trouve la ligne). On évite -q pour ne pas masquer
+      # les bugs de flag non supporté sur busybox-grep minimal.
+      test: ["CMD", "sh", "-c", "grep :2328 /proc/net/tcp6 >/dev/null 2>&1 || grep :2328 /proc/net/tcp >/dev/null 2>&1"]
+      interval: 20s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
     security_opt:
       - no-new-privileges:true
     # cap_drop intentionnellement absent : la JVM OpenJDK (Red Hat UBI) a des besoins
