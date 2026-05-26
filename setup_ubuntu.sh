@@ -180,7 +180,9 @@ BREVO_FROM_NAME="Hôpital de Kabutare"
 
 BREVO_API_KEY=
 EOF
-  echo "      ✓ Fichier .env créé."
+  chmod 600 .env           # Secrets lisibles par root uniquement (CRIT-1)
+  chown root:root .env
+  echo "      ✓ Fichier .env créé (permissions 600)."
 fi
 
 # Charger les variables pour la suite du script
@@ -189,6 +191,8 @@ set -a; source .env; set +a
 # ── Étape 5 : Certificat SSL + config Nginx ──────────────────
 echo "[5/9] Génération du certificat SSL et configuration Nginx..."
 mkdir -p ssl nginx/conf.d
+chmod 700 ssl/               # Répertoire SSL non listable par les autres utilisateurs
+chmod 755 nginx/ nginx/conf.d/
 # Supprimer si c'est un dossier (artefact Docker d'un montage raté)
 [[ -d nginx/conf.d/ip.conf ]] && rm -rf nginx/conf.d/ip.conf
 
@@ -439,14 +443,17 @@ else
     echo "      Certificat couvrant : ${SERVER_IP} (internet) + ${LOCAL_IP} (WiFi hôpital)"
   fi
 
-  openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+  # ECDSA P-384 : plus rapide que RSA-2048, aussi sûr que RSA-3072 (MAJ-1)
+  # 825 jours : durée max acceptée par Chrome/Firefox/Safari depuis 2020
+  openssl req -x509 -nodes -days 825 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
     -keyout ssl/key.pem \
     -out ssl/cert.pem \
     -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=${SERVER_IP}" \
     -addext "subjectAltName=${SSL_SAN}" \
     2>/dev/null
-  chmod 600 ssl/key.pem ssl/cert.pem
-  echo "      ✓ Certificat généré (valide 10 ans) : ssl/cert.pem"
+  chmod 600 ssl/key.pem    # Clé privée : root uniquement
+  chmod 644 ssl/cert.pem   # Certificat public : lisible par nginx
+  echo "      ✓ Certificat ECDSA P-384 généré (valide 825 jours) : ssl/cert.pem"
 fi
 
 # ── Étape 6 : Vérification et assignation des ports ──────────
@@ -490,7 +497,8 @@ for ENTRY in "HTTP_PORT:${HTTP_PORT}" "HTTPS_PORT:${HTTPS_PORT}" "KC_HOST_PORT:$
     PROCESS=$(ss -tlnpH "sport = :${WANTED}" 2>/dev/null | awk '{print $6}' | head -1)
     echo "      ⚠ Port ${WANTED} occupé (${PROCESS:-inconnu}) → port ${FREE} assigné automatiquement."
     set_env_port "${VAR}" "${FREE}"
-    eval "${VAR}=${FREE}"
+    printf -v "${VAR}" '%s' "${FREE}"   # Évite eval (risque d'injection) — MAJ-3
+    export "${VAR}"
   else
     echo "      ✓ Port ${WANTED} disponible."
   fi
@@ -499,17 +507,20 @@ done
 # ── Étape 7 : Configuration du pare-feu ──────────────────────
 echo "[7/9] Configuration du pare-feu (ufw)..."
 if command -v ufw &>/dev/null; then
-  # SSH en premier pour ne pas se bloquer
-  ufw allow 22/tcp    &>/dev/null || true
+  # Politique par défaut : tout bloquer en entrée, tout autoriser en sortie (CRIT-2)
+  ufw default deny incoming  &>/dev/null || true
+  ufw default allow outgoing &>/dev/null || true
+  # SSH avec rate-limiting intégré : max 6 tentatives/30s par IP (anti-brute-force)
+  ufw limit 22/tcp    &>/dev/null || true
   ufw allow "${HTTP_PORT}/tcp"  &>/dev/null || true
   ufw allow "${HTTPS_PORT}/tcp" &>/dev/null || true
   if ufw status | grep -q "Status: inactive"; then
     ufw --force enable
-    echo "      ✓ Pare-feu activé."
+    echo "      ✓ Pare-feu activé (politique : deny incoming par défaut)."
   else
     echo "      ✓ Règles mises à jour (pare-feu déjà actif)."
   fi
-  echo "      ✓ Ports ouverts : 22 (SSH), ${HTTP_PORT} (HTTP), ${HTTPS_PORT} (HTTPS)"
+  echo "      ✓ Ports ouverts : 22/tcp limité (SSH), ${HTTP_PORT} (HTTP), ${HTTPS_PORT} (HTTPS)"
 else
   echo "      ufw non disponible — vérifier manuellement les règles de pare-feu."
 fi
@@ -518,7 +529,10 @@ fi
 # Le build Flutter est embarqué dans l'image kabutare-nginx.
 # La substitution de SERVER_IP se fait au démarrage du conteneur.
 echo "[8/9] Pull des images depuis Docker Hub (${DOCKER_USER})..."
-docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
+# DOCKER_CONTENT_TRUST=1 : refuse les images non signées (protection supply chain — MAJ-2)
+# Pré-requis : images signées avec `docker trust sign <image>` sur la machine de build.
+# Si la signature n'est pas configurée, retirer la variable et vérifier les digests SHA256 manuellement.
+DOCKER_CONTENT_TRUST=1 docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
 echo "      ✓ Images téléchargées."
 
 # ── Étape 9 : Démarrage de la stack ──────────────────────────
@@ -550,13 +564,17 @@ BASE_URL="https://${SERVER_IP}${HTTPS_SUFFIX}"
 KC_CONFIGURED=false
 if [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/null)" == "healthy" ]]; then
   echo "      Configuration automatique de Keycloak..."
-  KCADM="docker compose -f docker-compose.ip.yml exec -T keycloak /opt/keycloak/bin/kcadm.sh"
+  # CRIT-3 : mot de passe passé via -e (variable d'env dans le conteneur)
+  # et non en argument CLI — évite l'exposition dans `ps aux` / /proc/<pid>/cmdline
+  KCADM="docker compose -f docker-compose.ip.yml exec -T \
+    -e KCADM_PASSWORD=${KC_ADMIN_PASSWORD} \
+    keycloak /opt/keycloak/bin/kcadm.sh"
 
   if $KCADM config credentials \
       --server "http://localhost:8080/keycloak" \
       --realm master \
       --user "${KC_ADMIN_USER}" \
-      --password "${KC_ADMIN_PASSWORD}" 2>/dev/null; then
+      --password "env:KCADM_PASSWORD" 2>/dev/null; then
 
     # Realm
     if ! $KCADM get realms/kabutare-hospital &>/dev/null; then
