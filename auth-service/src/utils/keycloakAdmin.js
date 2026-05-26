@@ -63,7 +63,12 @@ async function getRealmRole(roleName) {
 
 // Assigne une liste de rôles (strings) à un utilisateur Keycloak
 async function assignRolesToUser(kcUserId, roleNames) {
-  const roleObjects = (await Promise.all(roleNames.map(getRealmRole))).filter(Boolean);
+  const resolved    = await Promise.all(roleNames.map(getRealmRole));
+  const missing     = roleNames.filter((_, i) => !resolved[i]);
+  const roleObjects = resolved.filter(Boolean);
+  if (missing.length) {
+    console.warn(`[KC Admin] Rôle(s) introuvables dans Keycloak (vérifier le realm) : ${missing.join(', ')}`);
+  }
   if (!roleObjects.length) return;
   const r = await kcAdminFetch(`/users/${kcUserId}/role-mappings/realm`, {
     method: 'POST',
