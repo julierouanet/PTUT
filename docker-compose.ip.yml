@@ -233,8 +233,9 @@ services:
       KC_HTTP_ENABLED:       "true"
       KC_HTTP_RELATIVE_PATH: /keycloak
       KC_PROXY_HEADERS:      xforwarded
-      KEYCLOAK_ADMIN:         ${KC_ADMIN_USER}
-      KEYCLOAK_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
+      # Variables bootstrap Keycloak 26+ (KEYCLOAK_ADMIN* est déprécié depuis KC 26)
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_ADMIN_USER}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_ADMIN_PASSWORD}
       # Brevo SMTP (optionnel pour IP-only, laisser vide si pas d'email)
       BREVO_SMTP_HOST:     ${BREVO_SMTP_HOST:-smtp-relay.brevo.com}
       BREVO_SMTP_PORT:     ${BREVO_SMTP_PORT:-587}
@@ -243,6 +244,9 @@ services:
       BREVO_FROM_EMAIL:    ${BREVO_FROM_EMAIL:-noreply@hospital.local}
       BREVO_FROM_NAME:     "${BREVO_FROM_NAME:-Hôpital de Kabutare}"
       KC_HEALTH_ENABLED:   "true"
+      # Contraintes JVM heap explicites pour éviter l'OOM-kill au premier boot
+      # (Keycloak compile un serveur optimisé au 1er démarrage — pic mémoire ~1-1.2 GB)
+      JAVA_OPTS_APPEND: "-Xms256m -Xmx768m -XX:MetaspaceSize=96M -XX:MaxMetaspaceSize=256M"
     ports:
       # Lié à 127.0.0.1 uniquement : accès SSH tunnel ou Nginx interne — pas d'exposition publique
       - "127.0.0.1:${KC_HOST_PORT:-8080}:8080"
@@ -253,26 +257,24 @@ services:
       postgres-keycloak:
         condition: service_healthy
     healthcheck:
-      # Keycloak est basé sur Red Hat UBI : curl est disponible, wget NE l'est PAS.
-      # Tentative port management 9000 (Keycloak 23+) puis port principal 8080 (fallback).
-      # grep -q UP couvre "UP" et "\"status\":\"UP\"" quelle que soit la mise en forme JSON.
-      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health/ready 2>/dev/null | grep -q UP || curl -sf http://localhost:8080/health/ready 2>/dev/null | grep -q UP"]
+      # L'image Keycloak 26 (Red Hat UBI Minimal) n'embarque NI curl NI wget.
+      # On utilise bash /dev/tcp (built-in, toujours disponible) pour ouvrir une
+      # connexion TCP sur le port 9000 (management interface Keycloak 26+).
+      # Ce port s'ouvre uniquement quand Keycloak a fini son init (DB + realm).
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 2>/dev/null"]
       interval: 15s
-      timeout: 10s
+      timeout: 5s
       retries: 12
       start_period: 90s
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETUID     # keycloak passe du processus maître au worker (uid 1000)
-      - SETGID
-      - CHOWN
+    # cap_drop intentionnellement absent : la JVM OpenJDK (Red Hat UBI) a des besoins
+    # en capacités Linux difficiles à prévoir (perfmon, memory mapping, etc.).
+    # no-new-privileges suffit comme protection — Keycloak tourne déjà en user 1000.
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 1536M   # 1.5 GB — pic au 1er boot (compilation) + steady state ~600 MB
           cpus: "1.0"
         reservations:
           memory: 512M
