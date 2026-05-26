@@ -253,12 +253,14 @@ services:
       postgres-keycloak:
         condition: service_healthy
     healthcheck:
-      # Vérifie la disponibilité HTTP réelle via l'endpoint /health/ready (port management 9000)
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q '\"status\":\"UP\"' || exit 1"]
+      # Keycloak est basé sur Red Hat UBI : curl est disponible, wget NE l'est PAS.
+      # Tentative port management 9000 (Keycloak 23+) puis port principal 8080 (fallback).
+      # grep -q UP couvre "UP" et "\"status\":\"UP\"" quelle que soit la mise en forme JSON.
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/health/ready 2>/dev/null | grep -q UP || curl -sf http://localhost:8080/health/ready 2>/dev/null | grep -q UP"]
       interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 60s
+      timeout: 10s
+      retries: 12
+      start_period: 90s
     security_opt:
       - no-new-privileges:true
     cap_drop:

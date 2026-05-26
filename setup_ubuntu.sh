@@ -537,16 +537,21 @@ echo "      ✓ Images téléchargées."
 
 # ── Étape 9 : Démarrage de la stack ──────────────────────────
 echo "[9/9] Démarrage de la stack Docker Compose..."
-docker compose -f docker-compose.ip.yml up -d
+# `|| true` : empêche set -euo pipefail de planter le script si Keycloak
+# n'est pas encore healthy au moment où compose up rend la main.
+# La boucle d'attente ci-dessous gère le cas du démarrage lent (premier boot = 2-3 min).
+docker compose -f docker-compose.ip.yml up -d || true
 
 echo ""
-echo "      Attente que Keycloak soit prêt (peut prendre 2-3 min)..."
+echo "      Attente que Keycloak soit prêt (premier démarrage = compilation + init DB = 2-3 min)..."
 ATTEMPTS=0
 until [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/null)" == "healthy" ]]; do
   ATTEMPTS=$((ATTEMPTS + 1))
-  if [[ $ATTEMPTS -gt 36 ]]; then
-    echo "      ⚠ Keycloak n'a pas démarré dans les 3 minutes."
-    echo "        Vérifier les logs : docker compose -f docker-compose.ip.yml logs keycloak"
+  if [[ $ATTEMPTS -gt 48 ]]; then
+    echo ""
+    echo "      ⚠ Keycloak n'est pas healthy après 4 minutes."
+    echo "        Logs Keycloak  : docker compose -f docker-compose.ip.yml logs --tail=50 keycloak"
+    echo "        État conteneur : docker inspect keycloak-ip | grep -A5 Health"
     break
   fi
   printf "."
