@@ -2212,6 +2212,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permChangeDepartment => 'Change own department directly';
 
   @override
+  String get permManageFeatures => 'Manage feature flags';
+
+  @override
   String get accountFirstName => 'First name';
 
   @override
@@ -2640,4 +2643,61 @@ class AppLocalizationsEn extends AppLocalizations {
   String appVersionLabel(String version) {
     return 'Version $version';
   }
+
+  @override
+  String get navFeatureManagement => 'Feature Flags';
+
+  @override
+  String get navFeatureManagementShort => 'Flags';
+
+  @override
+  String get featureMgmtTitle => 'Feature Flags Management';
+
+  @override
+  String get featureMgmtSubtitle =>
+      'Enable or disable application modules globally or per role';
+
+  @override
+  String get featureMgmtGlobalStatusLabel => 'Globally active';
+
+  @override
+  String get featureMgmtRoleOverridesBtn => 'Role overrides';
+
+  @override
+  String get featureMgmtSaveSuccess => 'Feature updated successfully';
+
+  @override
+  String featureMgmtSaveError(String error) {
+    return 'Error while updating: $error';
+  }
+
+  @override
+  String get featureMgmtNoFeatures => 'No features available';
+
+  @override
+  String featureMgmtRoleDialogTitle(String name) {
+    return 'Role overrides — $name';
+  }
+
+  @override
+  String get featureMgmtRoleDialogHint =>
+      'Without override, the feature follows its global status.';
+
+  @override
+  String get featureMgmtRoleNoOverride => 'No override (global status)';
+
+  @override
+  String get featureMgmtRoleForceActive => 'Force active';
+
+  @override
+  String get featureMgmtRoleForceInactive => 'Force inactive';
+
+  @override
+  String get featureMgmtLoading => 'Loading features...';
+
+  @override
+  String get featureMgmtGlobalActive => 'Enabled globally';
+
+  @override
+  String get featureMgmtGlobalInactive => 'Disabled globally';
 }

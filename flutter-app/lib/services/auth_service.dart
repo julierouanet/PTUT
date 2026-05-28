@@ -4,6 +4,7 @@ import '../models/user_role.dart';
 import '../data/mock_data.dart';
 import 'auth_api_service.dart';
 import 'data_service.dart';
+import 'feature_service.dart';
 import 'push_notification_web_service.dart';
 
 /// Service d'authentification — utilise l'API réelle en priorité,
@@ -170,12 +171,14 @@ class AuthService extends ChangeNotifier {
     // Supprimer les tokens locaux puis notifier immédiatement
     await AuthApiService.instance.logout();
     _currentUser = null;
+    FeatureService().clear();
     notifyListeners();
   }
 
   /// Déconnexion simple (mock).
   void logout() {
     _currentUser = null;
+    FeatureService().clear();
     notifyListeners();
   }
 

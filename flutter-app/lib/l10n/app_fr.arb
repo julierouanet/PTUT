@@ -790,6 +790,7 @@
   "permGenerateReports": "Générer des rapports",
   "permViewInventory": "Consulter l'inventaire",
   "permChangeDepartment": "Changer son département directement",
+  "permManageFeatures": "Gérer les feature flags",
 
   "accountFirstName": "Prénom",
   "accountLastName": "Nom",
@@ -993,5 +994,26 @@
     "placeholders": {
       "version": { "type": "String" }
     }
-  }
+  },
+
+  "navFeatureManagement": "Feature Flags",
+  "navFeatureManagementShort": "Flags",
+
+  "featureMgmtTitle": "Gestion des Feature Flags",
+  "featureMgmtSubtitle": "Activez ou désactivez les modules de l'application globalement ou par rôle",
+  "featureMgmtGlobalStatusLabel": "Actif globalement",
+  "featureMgmtRoleOverridesBtn": "Exceptions par rôle",
+  "featureMgmtSaveSuccess": "Feature mise à jour avec succès",
+  "featureMgmtSaveError": "Erreur lors de la mise à jour : {error}",
+  "@featureMgmtSaveError": { "placeholders": { "error": { "type": "String" } } },
+  "featureMgmtNoFeatures": "Aucune feature disponible",
+  "featureMgmtRoleDialogTitle": "Exceptions par rôle — {name}",
+  "@featureMgmtRoleDialogTitle": { "placeholders": { "name": { "type": "String" } } },
+  "featureMgmtRoleDialogHint": "Sans exception, la feature suit son statut global.",
+  "featureMgmtRoleNoOverride": "Aucune exception (statut global)",
+  "featureMgmtRoleForceActive": "Forcé actif",
+  "featureMgmtRoleForceInactive": "Forcé inactif",
+  "featureMgmtLoading": "Chargement des features...",
+  "featureMgmtGlobalActive": "Activé globalement",
+  "featureMgmtGlobalInactive": "Désactivé globalement"
 }

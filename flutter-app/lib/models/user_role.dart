@@ -110,7 +110,8 @@ enum Permission {
   manageCategories,
   generateReports,
   viewInventory,
-  changeDepartment;
+  changeDepartment,
+  manageFeatures;
 
   String get displayName {
     switch (this) {
@@ -142,6 +143,8 @@ enum Permission {
         return 'Consulter l\'inventaire';
       case Permission.changeDepartment:
         return 'Changer son département directement';
+      case Permission.manageFeatures:
+        return 'Gérer les feature flags';
     }
   }
 
@@ -162,6 +165,7 @@ enum Permission {
       case Permission.generateReports:   return l10n.permGenerateReports as String;
       case Permission.viewInventory:     return l10n.permViewInventory as String;
       case Permission.changeDepartment:  return l10n.permChangeDepartment as String;
+      case Permission.manageFeatures:    return l10n.permManageFeatures as String;
     }
   }
 }

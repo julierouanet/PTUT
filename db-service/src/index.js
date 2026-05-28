@@ -10,6 +10,7 @@ const locationsRoutes      = require('./routes/locations');
 const sidebarRoutes        = require('./routes/sidebar');
 const pushRoutes           = require('./routes/push_notifications');
 const analyticsRoutes      = require('./routes/analytics');
+const featuresRoutes       = require('./routes/features');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 
@@ -51,6 +52,7 @@ app.use('/api/logs',           logsRoutes);
 app.use('/api/sidebar/config', sidebarRoutes);
 app.use('/api/notifications',  pushRoutes);
 app.use('/api/analytics',      analyticsRoutes);
+app.use('/api/features',       featuresRoutes);
 app.use('/',                   debugRoutes);
 
 const server = app.listen(PORT, () => {

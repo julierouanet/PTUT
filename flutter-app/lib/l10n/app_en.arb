@@ -768,6 +768,7 @@
   "permGenerateReports": "Generate reports",
   "permViewInventory": "View inventory",
   "permChangeDepartment": "Change own department directly",
+  "permManageFeatures": "Manage feature flags",
 
   "accountFirstName": "First name",
   "accountLastName": "Last name",
@@ -971,5 +972,26 @@
     "placeholders": {
       "version": { "type": "String" }
     }
-  }
+  },
+
+  "navFeatureManagement": "Feature Flags",
+  "navFeatureManagementShort": "Flags",
+
+  "featureMgmtTitle": "Feature Flags Management",
+  "featureMgmtSubtitle": "Enable or disable application modules globally or per role",
+  "featureMgmtGlobalStatusLabel": "Globally active",
+  "featureMgmtRoleOverridesBtn": "Role overrides",
+  "featureMgmtSaveSuccess": "Feature updated successfully",
+  "featureMgmtSaveError": "Error while updating: {error}",
+  "@featureMgmtSaveError": { "placeholders": { "error": { "type": "String" } } },
+  "featureMgmtNoFeatures": "No features available",
+  "featureMgmtRoleDialogTitle": "Role overrides — {name}",
+  "@featureMgmtRoleDialogTitle": { "placeholders": { "name": { "type": "String" } } },
+  "featureMgmtRoleDialogHint": "Without override, the feature follows its global status.",
+  "featureMgmtRoleNoOverride": "No override (global status)",
+  "featureMgmtRoleForceActive": "Force active",
+  "featureMgmtRoleForceInactive": "Force inactive",
+  "featureMgmtLoading": "Loading features...",
+  "featureMgmtGlobalActive": "Enabled globally",
+  "featureMgmtGlobalInactive": "Disabled globally"
 }

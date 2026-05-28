@@ -4220,6 +4220,12 @@ abstract class AppLocalizations {
   /// **'Changer son département directement'**
   String get permChangeDepartment;
 
+  /// No description provided for @permManageFeatures.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les feature flags'**
+  String get permManageFeatures;
+
   /// No description provided for @accountFirstName.
   ///
   /// In fr, this message translates to:
@@ -5017,6 +5023,108 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Version {version}'**
   String appVersionLabel(String version);
+
+  /// No description provided for @navFeatureManagement.
+  ///
+  /// In fr, this message translates to:
+  /// **'Feature Flags'**
+  String get navFeatureManagement;
+
+  /// No description provided for @navFeatureManagementShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Flags'**
+  String get navFeatureManagementShort;
+
+  /// No description provided for @featureMgmtTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des Feature Flags'**
+  String get featureMgmtTitle;
+
+  /// No description provided for @featureMgmtSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activez ou désactivez les modules de l\'application globalement ou par rôle'**
+  String get featureMgmtSubtitle;
+
+  /// No description provided for @featureMgmtGlobalStatusLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actif globalement'**
+  String get featureMgmtGlobalStatusLabel;
+
+  /// No description provided for @featureMgmtRoleOverridesBtn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exceptions par rôle'**
+  String get featureMgmtRoleOverridesBtn;
+
+  /// No description provided for @featureMgmtSaveSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Feature mise à jour avec succès'**
+  String get featureMgmtSaveSuccess;
+
+  /// No description provided for @featureMgmtSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la mise à jour : {error}'**
+  String featureMgmtSaveError(String error);
+
+  /// No description provided for @featureMgmtNoFeatures.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune feature disponible'**
+  String get featureMgmtNoFeatures;
+
+  /// No description provided for @featureMgmtRoleDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exceptions par rôle — {name}'**
+  String featureMgmtRoleDialogTitle(String name);
+
+  /// No description provided for @featureMgmtRoleDialogHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sans exception, la feature suit son statut global.'**
+  String get featureMgmtRoleDialogHint;
+
+  /// No description provided for @featureMgmtRoleNoOverride.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune exception (statut global)'**
+  String get featureMgmtRoleNoOverride;
+
+  /// No description provided for @featureMgmtRoleForceActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Forcé actif'**
+  String get featureMgmtRoleForceActive;
+
+  /// No description provided for @featureMgmtRoleForceInactive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Forcé inactif'**
+  String get featureMgmtRoleForceInactive;
+
+  /// No description provided for @featureMgmtLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chargement des features...'**
+  String get featureMgmtLoading;
+
+  /// No description provided for @featureMgmtGlobalActive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activé globalement'**
+  String get featureMgmtGlobalActive;
+
+  /// No description provided for @featureMgmtGlobalInactive.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactivé globalement'**
+  String get featureMgmtGlobalInactive;
 }
 
 class _AppLocalizationsDelegate

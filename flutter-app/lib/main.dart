@@ -24,6 +24,7 @@ import 'widgets/notification_bell.dart';
 import 'widgets/issue_category_selector.dart';
 import 'screens/home_hub_screen.dart';
 import 'screens/analytics_screen.dart';
+import 'screens/feature_management_screen.dart';
 
 /// Screen types for navigation (no more string matching)
 enum ScreenType {
@@ -38,6 +39,7 @@ enum ScreenType {
   settings,
   logs,
   analytics,
+  featureManagement,
 }
 
 void main() async {
@@ -154,6 +156,7 @@ class _AppRootState extends State<_AppRoot> {
     ScreenType.users,
     ScreenType.logs,
     ScreenType.analytics,
+    ScreenType.featureManagement,
   ];
   static const _inventoryScreens = [ScreenType.inventory];
 
@@ -224,6 +227,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
     _NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: l10n.navLogs, shortLabel: l10n.navLogsShort, screenType: ScreenType.logs, requiredPermission: Permission.manageUsers),
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: l10n.navAnalytics, shortLabel: l10n.navAnalyticsShort, screenType: ScreenType.analytics, requiredPermission: Permission.generateReports),
+    _NavItem(icon: Icons.tune_outlined, activeIcon: Icons.tune, label: l10n.navFeatureManagement, shortLabel: l10n.navFeatureManagementShort, screenType: ScreenType.featureManagement, requiredPermission: Permission.manageFeatures),
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
@@ -342,6 +346,8 @@ class _MainScaffoldState extends State<MainScaffold> {
         return const LogsScreen();
       case ScreenType.analytics:
         return const AnalyticsScreen();
+      case ScreenType.featureManagement:
+        return const FeatureManagementScreen();
     }
   }
 

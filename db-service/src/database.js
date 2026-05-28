@@ -335,6 +335,58 @@ function initTables() {
     );
     CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
   `);
+
+  // ── Feature Flags ──────────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS features (
+      id               TEXT PRIMARY KEY,
+      name             TEXT NOT NULL,
+      description      TEXT,
+      is_global_active INTEGER NOT NULL DEFAULT 1
+    );
+
+    CREATE TABLE IF NOT EXISTS feature_role_overrides (
+      feature_id TEXT NOT NULL REFERENCES features(id) ON DELETE CASCADE,
+      role_name  TEXT NOT NULL,
+      is_active  INTEGER NOT NULL DEFAULT 1,
+      PRIMARY KEY (feature_id, role_name)
+    );
+  `);
+
+  // Seed features de base (idempotent via INSERT OR IGNORE)
+  const insertFeature = db.prepare(
+    'INSERT OR IGNORE INTO features (id, name, description, is_global_active) VALUES (?, ?, ?, ?)'
+  );
+  insertFeature.run(
+    'inventory_module',
+    'Inventaire',
+    "Module de gestion de l'inventaire physique des equipements",
+    1
+  );
+  insertFeature.run(
+    'environmental_health_module',
+    'Sante environnementale',
+    "Module de suivi hygiene des mains et tri des dechets (futur)",
+    0
+  );
+  insertFeature.run(
+    'analytics_module',
+    'Analytiques',
+    "Module de rapports et analyses avancees",
+    1
+  );
+  insertFeature.run(
+    'reports_module',
+    'Rapports',
+    "Module de generation de rapports PDF",
+    1
+  );
+  insertFeature.run(
+    'push_notifications_module',
+    'Notifications Push',
+    "Activation des notifications push navigateur",
+    1
+  );
 }
 
 function closeDb() {

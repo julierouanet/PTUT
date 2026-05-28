@@ -7,6 +7,7 @@ import '../data/mock_data.dart';
 import 'db_api_service.dart';
 import 'auth_api_service.dart';
 import 'auth_service.dart';
+import 'feature_service.dart';
 import '../models/user_role.dart';
 import '../models/location.dart';
 
@@ -58,6 +59,7 @@ class DataService extends ChangeNotifier {
     await _loadSidebarConfig();
     await _loadRolesConfig();
     await _loadDeptRequests();
+    await FeatureService().loadFeatures();
 
     isLoading = false;
     isLoaded  = true;
