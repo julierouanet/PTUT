@@ -2827,4 +2827,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backupColAction => 'Action';
+
+  @override
+  String get issueDetailTitle => 'Issue Detail';
+
+  @override
+  String get issueDetailSectionContext => 'Context';
+
+  @override
+  String get issueDetailSectionFailure => 'Failure';
+
+  @override
+  String get issueDetailSectionIntervention => 'Intervention Follow-up';
+
+  @override
+  String get issueDetailSectionResources => 'Resources';
+
+  @override
+  String get issueDetailSectionHistory => 'History';
+
+  @override
+  String get issueDetailEquipmentLink => 'View equipment';
+
+  @override
+  String get issueDetailRootCause => 'Root cause (diagnosis)';
+
+  @override
+  String get issueDetailCorrectiveActions => 'Corrective actions';
+
+  @override
+  String get issueDetailPartsUsed => 'Parts replaced';
+
+  @override
+  String get issueDetailMaintenanceHistory => 'Recent maintenance';
+
+  @override
+  String get issueDetailNoHistory => 'No events recorded';
+
+  @override
+  String get issueDetailLoading => 'Loading details...';
+
+  @override
+  String get issueDetailCategory => 'Issue category';
+
+  @override
+  String get issueDetailGroup => 'Technical group';
+
+  @override
+  String get issueDetailLocation => 'Location';
+
+  @override
+  String get issueDetailUpdatedAt => 'Last updated';
+
+  @override
+  String get issueDetailUpdateButton => 'Update issue';
+
+  @override
+  String get issueDetailTypeLabel => 'Failure type';
+
+  @override
+  String get issueDetailReporter => 'Reported by';
+
+  @override
+  String get issueDetailReportDate => 'Report date';
+
+  @override
+  String get issueDetailAssignedTech => 'Assigned technician';
+
+  @override
+  String get issueDetailNoIntervention => 'No intervention recorded';
+
+  @override
+  String get issueDetailNoMaintenance => 'No maintenance recorded';
+
+  @override
+  String get issueDetailTimelineCreated => 'Issue reported';
+
+  @override
+  String get issueDetailLoadError => 'Unable to load issue details.';
 }

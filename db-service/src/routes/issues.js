@@ -45,14 +45,36 @@ router.get('/', verifyToken, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-// GET /api/issues/:id
+// GET /api/issues/:id — retourne l'incident enrichi avec équipement, logs d'audit et maintenance
 router.get('/:id', verifyToken, (req, res) => {
   const db = getDb();
   const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
 
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
-  res.json(issue);
+  // Données d'équipement lié (si applicable)
+  const equipment = issue.equipment_id
+    ? db.prepare('SELECT * FROM equipment WHERE id = ?').get(issue.equipment_id)
+    : null;
+
+  // Timeline d'audit : tous les logs liés à cet incident, ordre chronologique
+  const auditLog = db.prepare(
+    "SELECT id, timestamp, user_name, user_role, action, details FROM logs WHERE target_type = 'issue' AND target_id = ? ORDER BY timestamp ASC"
+  ).all(req.params.id);
+
+  // Enregistrements de maintenance liés à l'équipement (10 plus récents)
+  const maintenanceRecords = issue.equipment_id
+    ? db.prepare(
+        'SELECT * FROM maintenance_records WHERE equipment_id = ? ORDER BY date DESC LIMIT 10'
+      ).all(issue.equipment_id)
+    : [];
+
+  res.json({
+    ...issue,
+    equipment:           equipment   || null,
+    audit_log:           auditLog,
+    maintenance_records: maintenanceRecords,
+  });
 });
 
 // GET /api/issues/:id/assignable-technicians

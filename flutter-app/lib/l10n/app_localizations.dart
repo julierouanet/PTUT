@@ -5365,6 +5365,162 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Action'**
   String get backupColAction;
+
+  /// No description provided for @issueDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail de l\'Incident'**
+  String get issueDetailTitle;
+
+  /// No description provided for @issueDetailSectionContext.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contexte'**
+  String get issueDetailSectionContext;
+
+  /// No description provided for @issueDetailSectionFailure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Panne'**
+  String get issueDetailSectionFailure;
+
+  /// No description provided for @issueDetailSectionIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivi d\'intervention'**
+  String get issueDetailSectionIntervention;
+
+  /// No description provided for @issueDetailSectionResources.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ressources'**
+  String get issueDetailSectionResources;
+
+  /// No description provided for @issueDetailSectionHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique'**
+  String get issueDetailSectionHistory;
+
+  /// No description provided for @issueDetailEquipmentLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir l\'équipement'**
+  String get issueDetailEquipmentLink;
+
+  /// No description provided for @issueDetailRootCause.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cause racine (diagnostic)'**
+  String get issueDetailRootCause;
+
+  /// No description provided for @issueDetailCorrectiveActions.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions correctives'**
+  String get issueDetailCorrectiveActions;
+
+  /// No description provided for @issueDetailPartsUsed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pièces remplacées'**
+  String get issueDetailPartsUsed;
+
+  /// No description provided for @issueDetailMaintenanceHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance récente'**
+  String get issueDetailMaintenanceHistory;
+
+  /// No description provided for @issueDetailNoHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun événement enregistré'**
+  String get issueDetailNoHistory;
+
+  /// No description provided for @issueDetailLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chargement des détails...'**
+  String get issueDetailLoading;
+
+  /// No description provided for @issueDetailCategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Catégorie d\'incident'**
+  String get issueDetailCategory;
+
+  /// No description provided for @issueDetailGroup.
+  ///
+  /// In fr, this message translates to:
+  /// **'Groupe technique'**
+  String get issueDetailGroup;
+
+  /// No description provided for @issueDetailLocation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Localisation'**
+  String get issueDetailLocation;
+
+  /// No description provided for @issueDetailUpdatedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière mise à jour'**
+  String get issueDetailUpdatedAt;
+
+  /// No description provided for @issueDetailUpdateButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mettre à jour l\'incident'**
+  String get issueDetailUpdateButton;
+
+  /// No description provided for @issueDetailTypeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type de défaillance'**
+  String get issueDetailTypeLabel;
+
+  /// No description provided for @issueDetailReporter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalé par'**
+  String get issueDetailReporter;
+
+  /// No description provided for @issueDetailReportDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date de signalement'**
+  String get issueDetailReportDate;
+
+  /// No description provided for @issueDetailAssignedTech.
+  ///
+  /// In fr, this message translates to:
+  /// **'Technicien assigné'**
+  String get issueDetailAssignedTech;
+
+  /// No description provided for @issueDetailNoIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune intervention enregistrée'**
+  String get issueDetailNoIntervention;
+
+  /// No description provided for @issueDetailNoMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune maintenance enregistrée'**
+  String get issueDetailNoMaintenance;
+
+  /// No description provided for @issueDetailTimelineCreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident signalé'**
+  String get issueDetailTimelineCreated;
+
+  /// No description provided for @issueDetailLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger les détails de l\'incident.'**
+  String get issueDetailLoadError;
 }
 
 class _AppLocalizationsDelegate

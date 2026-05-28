@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
+import '../models/issue_detail.dart';
 
 /// Service de données — communique avec db-service.
 ///
@@ -119,6 +120,12 @@ class DbApiService {
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Retourne le détail complet d'un incident (enrichi : équipement, audit, maintenance).
+  Future<IssueDetail> getIssueDetail(String id) async {
+    final data = await getIssueById(id);
+    return IssueDetail.fromApiJson(data);
   }
 
   Future<void> createIssue(Map<String, dynamic> issue) async {

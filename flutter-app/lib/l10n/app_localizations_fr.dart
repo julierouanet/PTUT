@@ -2850,4 +2850,83 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get backupColAction => 'Action';
+
+  @override
+  String get issueDetailTitle => 'Détail de l\'Incident';
+
+  @override
+  String get issueDetailSectionContext => 'Contexte';
+
+  @override
+  String get issueDetailSectionFailure => 'Panne';
+
+  @override
+  String get issueDetailSectionIntervention => 'Suivi d\'intervention';
+
+  @override
+  String get issueDetailSectionResources => 'Ressources';
+
+  @override
+  String get issueDetailSectionHistory => 'Historique';
+
+  @override
+  String get issueDetailEquipmentLink => 'Voir l\'équipement';
+
+  @override
+  String get issueDetailRootCause => 'Cause racine (diagnostic)';
+
+  @override
+  String get issueDetailCorrectiveActions => 'Actions correctives';
+
+  @override
+  String get issueDetailPartsUsed => 'Pièces remplacées';
+
+  @override
+  String get issueDetailMaintenanceHistory => 'Maintenance récente';
+
+  @override
+  String get issueDetailNoHistory => 'Aucun événement enregistré';
+
+  @override
+  String get issueDetailLoading => 'Chargement des détails...';
+
+  @override
+  String get issueDetailCategory => 'Catégorie d\'incident';
+
+  @override
+  String get issueDetailGroup => 'Groupe technique';
+
+  @override
+  String get issueDetailLocation => 'Localisation';
+
+  @override
+  String get issueDetailUpdatedAt => 'Dernière mise à jour';
+
+  @override
+  String get issueDetailUpdateButton => 'Mettre à jour l\'incident';
+
+  @override
+  String get issueDetailTypeLabel => 'Type de défaillance';
+
+  @override
+  String get issueDetailReporter => 'Signalé par';
+
+  @override
+  String get issueDetailReportDate => 'Date de signalement';
+
+  @override
+  String get issueDetailAssignedTech => 'Technicien assigné';
+
+  @override
+  String get issueDetailNoIntervention => 'Aucune intervention enregistrée';
+
+  @override
+  String get issueDetailNoMaintenance => 'Aucune maintenance enregistrée';
+
+  @override
+  String get issueDetailTimelineCreated => 'Incident signalé';
+
+  @override
+  String get issueDetailLoadError =>
+      'Impossible de charger les détails de l\'incident.';
 }

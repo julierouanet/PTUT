@@ -9,6 +9,7 @@ import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
+import 'issue_detail_screen.dart';
 
 /// Issue tracking screen - view and manage all issues
 class IssueTrackingScreen extends StatefulWidget {
@@ -858,65 +859,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   }
 
   void _showIssueDetail(Issue issue) {
-    final l10n = AppLocalizations.of(context)!;
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        insetPadding: const EdgeInsets.all(16),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 500),
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(l10n.issuesIncidentId(issue.id), style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(children: [
-                IssueStatusBadge(status: issue.status.displayName),
-                const SizedBox(width: 8),
-                UrgencyBadge(urgency: issue.urgency),
-              ]),
-              const SizedBox(height: 20),
-              _buildDetailRow(l10n.issuesEquipment,   issue.displayName),
-              _buildDetailRow(l10n.issuesType,         issue.type),
-              _buildDetailRow(l10n.issuesDescription,  issue.description),
-              _buildDetailRow(l10n.issuesReportedBy,   issue.reporter),
-              if (issue.reporterEmail != null && issue.reporterEmail!.isNotEmpty)
-                _buildDetailRow(l10n.commonEmail,      issue.reporterEmail!),
-              _buildDetailRow(l10n.issuesReportDate,   issue.createdAt),
-              if (issue.assignedTechnician != null) _buildDetailRow(l10n.issuesAssignedTech, issue.assignedTechnician!),
-              if (issue.diagnosis != null)          _buildDetailRow(l10n.issuesDiagnosis,    issue.diagnosis!),
-              const SizedBox(height: 20),
-              Row(children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () { Navigator.pop(context); widget.onNavigate(4, issueId: issue.id); },
-                    icon: const Icon(Icons.build),
-                    label: Text(l10n.issuesUpdate),
-                  ),
-                ),
-              ]),
-            ],
-          ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => IssueDetailScreen(
+          issueId:    issue.id,
+          onNavigate: widget.onNavigate,
         ),
       ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        SizedBox(width: 140, child: Text(label, style: const TextStyle(color: AppColors.textSecondary))),
-        Expanded(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500))),
-      ]),
     );
   }
 }

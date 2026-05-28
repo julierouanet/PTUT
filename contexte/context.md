@@ -514,7 +514,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | Methode | Route                       | Auth           | Description                                              |
 |---------|-----------------------------|----------------|----------------------------------------------------------|
 | GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at |
-| GET     | /api/issues/:id             | Auth           | Details incident                                         |
+| GET     | /api/issues/:id             | Auth           | Details incident enrichis : `{ ...issue, equipment, audit_log: [{id,timestamp,user_name,user_role,action,details}], maintenance_records: [{id,equipment_id,date,intervention,technician,is_future}] }` |
 | POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
 | PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency) |
 | PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracee appendée dans `actions`. |
@@ -757,14 +757,15 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (13)
+## 3.4 Ecrans (14)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
 | 0  | LoginScreen              | -                       | Email/password, boutons dev quick-login                           |
 | 1  | DashboardScreen          | -                       | Stats equipements par statut, 4 incidents recents, alertes critiques |
 | 2  | EquipmentListScreen      | viewEquipment           | Table recherchable, filtres dept/status/categorie, CRUD, details  |
-| 3  | IssueTrackingScreen      | trackIssues             | 2 onglets (tous les incidents / a valider), filtres statut        |
+| 3  | IssueTrackingScreen      | trackIssues             | 2 onglets (tous les incidents / a valider), filtres statut. Clics naviguent vers IssueDetailScreen |
+| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : 5 sections (contexte, panne, intervention, ressources, timeline). Charge GET /api/issues/:id enrichi |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs           | Diagnostic, actions, pieces remplacees                            |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
