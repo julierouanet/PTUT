@@ -2,9 +2,6 @@
 # Nginx — déploiement IP-only (image Docker Hub)
 # Pré-requis : flutter build web doit avoir été exécuté
 #              AVANT docker build (build_and_push.sh s'en charge).
-#
-# Au démarrage du conteneur, la variable d'env SERVER_IP
-# remplace le placeholder __SERVER_IP__ dans les JS Flutter.
 # Les certificats SSL sont montés en volume (./ssl/).
 # ============================================================
 FROM nginx:1.27-alpine
@@ -17,9 +14,5 @@ COPY nginx/conf.d/ip.conf /etc/nginx/conf.d/default.conf
 
 # Page de chargement affichée si Keycloak n'est pas encore prêt (502/503/504)
 COPY nginx/keycloak-loading.html /usr/share/nginx/html/keycloak-loading.html
-
-# Script de substitution du placeholder IP à l'initialisation du conteneur
-COPY nginx/docker-entrypoint-ip.sh /docker-entrypoint.d/40-replace-ip.sh
-RUN chmod +x /docker-entrypoint.d/40-replace-ip.sh
 
 EXPOSE 80 443

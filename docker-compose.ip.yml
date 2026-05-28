@@ -29,14 +29,10 @@ x-logging: &default-logging
 services:
 
   # ── Nginx : HTTPS front, routing par chemin ───────────────
-  # L'image embarque le build Flutter (placeholder __SERVER_IP__).
-  # SERVER_IP est remplacé au démarrage par docker-entrypoint-ip.sh.
   nginx:
     image: ${DOCKER_USER}/kabutare-nginx:${APP_VERSION:-latest}
     container_name: nginx-ip
     restart: unless-stopped
-    environment:
-      SERVER_IP: ${SERVER_IP}
     ports:
       # HTTP et HTTPS : écoute sur toutes interfaces (accès public voulu)
       - "${HTTP_PORT:-80}:80"
@@ -115,8 +111,6 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     deploy:
@@ -161,8 +155,6 @@ services:
     depends_on:
       auth-service:
         condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     deploy:
@@ -196,8 +188,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
@@ -271,11 +261,9 @@ services:
       timeout: 10s
       retries: 15
       start_period: 120s
-    security_opt:
-      - no-new-privileges:true
-    # cap_drop intentionnellement absent : la JVM OpenJDK (Red Hat UBI) a des besoins
-    # en capacités Linux difficiles à prévoir (perfmon, memory mapping, etc.).
-    # no-new-privileges suffit comme protection — Keycloak tourne déjà en user 1000.
+    # cap_drop et security_opt intentionnellement absents : la JVM OpenJDK (Red Hat UBI) a des
+    # besoins en capacités Linux difficiles à prévoir (perfmon, memory mapping, etc.).
+    # no-new-privileges bloque le script de démarrage kc.sh — Keycloak tourne déjà en user 1000.
     deploy:
       resources:
         limits:

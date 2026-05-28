@@ -1,264 +1,391 @@
-# CLAUDE.md — Guide de contexte projet
+# CLAUDE.md — Instructions de Développement
 
-> **Projet** : Système de gestion des équipements médicaux — Hôpital de Kabutare (PTUT ISIS).
-> **Stack globale** : 2 microservices Node.js/Express + SQLite, application Flutter (web prioritaire, mobile possible), Keycloak (IAM) + PostgreSQL, Nginx reverse-proxy, Docker Compose (prod + dev), CI/CD Jenkins, Brevo (emailing).
-
----
-
-## Architecture & Patterns
-
-### Vue d'ensemble — Microservices (3 tiers + IAM)
-
-```
-                 ┌──────────────────────────────────────────────┐
-                 │  Flutter Web App (lib/) — port serveur HTTPS │
-                 │  Auth via Keycloak Direct Grant (JWT RS256)  │
-                 └────┬──────────────┬──────────────┬───────────┘
-                      │ KC_TOKEN_URL │              │
-              ┌───────▼────────┐     │     ┌────────▼─────────┐
-              │   Keycloak     │     │     │   db-service     │
-              │   port 8080    │     │     │  Node + Express  │
-              │   PostgreSQL   ├─────┘     │  port 3002       │
-              │   SMTP→Brevo   │  JWKS     │  better-sqlite3  │
-              └───────┬────────┘           └──────────────────┘
-                      │ Admin API                /data/hospital.db
-              ┌───────▼────────┐
-              │  auth-service  │       ┌──────────────────────┐
-              │  Node + Express│       │        Brevo         │
-              │  port 3001     │──────►│  API transactionnelle│
-              │  better-sqlite3│       │  (incidents, depts)  │
-              └────────────────┘       └──────────────────────┘
-              /data/auth.db
-              (role_permissions)
-```
-
-- **IAM** : Keycloak (realm `kabutare-hospital`) est la seule autorité d'identité. Les tokens JWT RS256 sont émis par Keycloak via le flux **Direct Grant** (`/realms/.../protocol/openid-connect/token`). Vérification locale via JWKS — aucun `JWT_SECRET` partagé entre services.
-- **auth-service** : ne gère **plus** les mots de passe ni le hachage bcrypt. Son rôle est désormais (1) proxy de l'Admin API Keycloak (CRUD utilisateurs/rôles Keycloak) et (2) gestion des **permissions applicatives** (table `role_permissions` dans SQLite). Il n'émet aucun token.
-- **db-service** : valide les tokens directement via JWKS, sans appel vers auth-service.
-- Communication inter-services authentifiée par `INTERNAL_SECRET`.
-- Reverse-proxy Nginx (`nginx/conf.d/*.conf`) gère HTTPS sur 6 sous-domaines (`app/auth/DB.lucaslopvet.fr` + variantes `dev.*`).
-- **Brevo** : service central d'emailing. Keycloak est configuré en SMTP sur Brevo et gère de façon **100 % autonome** l'envoi des emails système (vérification d'adresse e-mail à la création d'un compte, réinitialisation de mot de passe). Les microservices Node utilisent l'**API REST Brevo** pour les emails transactionnels applicatifs (notifications d'incidents, changements de département, etc.).
-
-### Modules majeurs
-
-| Dossier               | Rôle                                                                                                                           |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `auth-service/`       | Proxy Admin API Keycloak (users, roles), gestion des permissions applicatives (`role_permissions`), rate-limiting.             |
-| `db-service/`         | CRUD `equipment`, `equipment_tags`, `departments`, `equipment_categories`, `inventory`, `issues`, `logs`, `sidebar`. Script d'import XLSX dans `scripts/`. |
-| `flutter-app/lib/`    | Application cliente (web + mobile). Voir sous-dossiers ci-dessous.                                                             |
-| `nginx/conf.d/`       | Vhosts HTTPS + headers CORS.                                                                                                   |
-| `docker-compose*.yml` | Orchestration prod / dev (volumes nommés `auth_data*`, `db_data*`, `keycloak_data*`).                                         |
-| `Jenkinsfile`         | Pipeline CI/CD : analyse + tests Flutter, build web, deploy via Docker.                                                        |
-
-### Backend — pattern routes/middleware/utils
-
-Chaque service Node suit la même structure :
-
-```
-src/
-├── index.js          # bootstrap Express : helmet, CORS, rate-limit, mount routes
-├── config.js         # constantes + lecture process.env (avec valeurs par défaut)
-├── database.js       # better-sqlite3 + initTables() + migrations idempotentes
-├── middleware/
-│   └── auth.js       # verifyToken (JWKS Keycloak), requireRole(...roles), requireAdmin
-├── routes/           # un fichier par ressource (auth, users, equipment, ...)
-└── utils/
-    └── logger.js     # sendLog / logAction / extractIp / extractReqMeta
-```
-
-Conventions :
-- **better-sqlite3 en mode synchrone** (`db.prepare(...).run/get/all`). Pas d'`async` autour des accès DB. WAL activé + `foreign_keys = ON`.
-- Migrations inline dans `database.js` (`PRAGMA table_info` + `ALTER TABLE` conditionnel) — pas de framework de migration.
-- Toute action métier sensible appelle `logAction(...)` ou `sendLog(...)` (audit trail).
-- Validation manuelle des inputs côté route (whitelists `VALID_*`, regex, longueurs max). Pas de Joi/Zod.
-
-### Frontend — Flutter sans package d'état
-
-```
-flutter-app/lib/
-├── main.dart         # MaterialApp, routing impératif (enum ScreenType + setState)
-├── data/             # mock_data.dart (fallback démo / tests)
-├── l10n/             # ARB FR/EN (template = app_fr.arb), génération via flutter gen-l10n
-├── models/           # POJOs Dart, tous avec fromApiJson()
-├── providers/        # locale_provider.dart (singleton ChangeNotifier)
-├── screens/          # 1 écran = 1 fichier (login_screen.dart, dashboard_screen.dart, …)
-├── services/         # ApiClient, AuthService, DataService, NotificationService — tous Singleton + ChangeNotifier
-├── theme/            # AppTheme.lightTheme + AppColors
-├── utils/            # file_picker (stub web/native via conditional import)
-└── widgets/          # composants UI réutilisables (StatCard, StatusBadge, NotificationBell, …)
-```
-
-Patterns clés :
-- **Pas de Provider/Riverpod/Bloc**. État partagé = `Singleton extends ChangeNotifier`, consommation via `ListenableBuilder(listenable: …)`.
-- **`ApiClient`** centralise tous les appels HTTP : ajoute le Bearer JWT, intercepte 401, déclenche `_tryRefresh()` (rotation stricte access+refresh via Keycloak), rappelle `onSessionExpired` si échec.
-- **URLs API injectées à la compilation** via `--dart-define=AUTH_URL=…` / `DB_URL=…` / `KC_TOKEN_URL=…` (voir `services/api_config.dart`). Défaut = prod.
-- **Stockage tokens** : `SecureTokenStorage` choisit `FlutterSecureStorage` (natif) ou `SharedPreferences` (web).
-- **Permissions UI** : enum `Permission` ; chaque entrée de sidebar déclare une `requiredPermission` filtrée par `AuthService.hasPermission(...)`.
-- **i18n obligatoire** : tout texte affiché passe par `AppLocalizations.of(context)!.xxx`. Ne **jamais** hardcoder du FR/EN dans un widget.
+> Ce fichier définit les conventions, commandes et règles de codage du projet.
+> **Contexte métier, architecture, schémas DB et stack** → voir `contexte.md`.
 
 ---
 
-## Build & Test Commands
+## 🤖 Comportement Attendu
 
-> Toutes les commandes ci-dessous sont à exécuter **depuis la racine du dépôt**, sauf indication contraire.
+### Règles absolues
 
-### Stack complète (Docker — recommandé)
+- **Jamais de code tronqué** : tout bloc de code généré est complet. Si le fichier est long, l'écrire en entier — jamais de `// ... reste du code inchangé` ni de `// TODO: compléter`.
+- **Lire avant d'écrire** : toujours utiliser `Read` sur le fichier cible avant `Edit` ou `Write`.
+- **Vérifier après modification** : s'assurer que `npm test` ou `flutter analyze` passe encore.
+- **Commentaires en français** : tout commentaire inline est en français.
+- **Réponses en français** : communication avec le développeur en français.
+- **Expliquer le "pourquoi"** : pour tout changement non trivial, expliquer la raison avant le code.
+- **Proposer avant d'agir** sur tout changement d'architecture (nouvelles tables, nouveaux services, changement de flux auth).
+
+---
+
+## 📊 Processus Obligatoire de Livrables & Vérification Humaine
+
+> ⚡ **PRIORITÉ HAUTE — Ce processus se déclenche automatiquement à chaque feature terminée, sans exception.**
+
+### Règle
+
+Dès qu'une tâche est considérée comme **terminée** — nouveau endpoint, nouvel écran, nouveau widget, nouveau script, nouvelle règle métier — le processus de validation ci-dessous **doit se déclencher avant de clore la tâche**.
+
+### Cible du fichier
+
+| Paramètre | Valeur |
+|---|---|
+| **Chemin** | `verification/suivi_verifications.xlsx` (racine du projet) |
+| **Création auto** | Si le dossier ou le fichier n'existe pas, le script les crée |
+
+### Structure du tableau Excel
+
+| Colonne | Rempli par | Valeur par défaut |
+|---|---|---|
+| `ID Feature` | Script (auto) | `FEAT-001`, `FEAT-002`, … |
+| `Nom de la Feature` | Claude | Fourni à l'appel du script |
+| `Description concise` | Claude | Fourni à l'appel du script |
+| `Date d'ajout` | Script (auto) | Date du jour (`YYYY-MM-DD`) |
+| `Statut Vérification` | Script (auto) | `En attente de revue` |
+| `Vérifié par (Humain)` | Humain | *(vide)* |
+| `Date de Validation` | Humain | *(vide)* |
+| `Notes / Commentaires` | Claude / Humain | Optionnel |
+
+### Méthode d'enregistrement — `scripts/log_feature.py`
+
+Le script officiel utilise **openpyxl**. Il ajoute une ligne sans jamais écraser les données existantes.
 
 ```bash
-# Production (sous-domaines lucaslopvet.fr) — nécessite /etc/kabutare/.env sur le VPS
-docker-compose -p gestion-equipement-medical-prod -f docker-compose.yml up -d --build
+# Dépendance (une seule fois)
+pip install openpyxl
 
-# Développement (sous-domaines dev.*)
-docker-compose -p gestion-equipement-medical_dev -f docker-compose.dev.yml up -d --build
+# Usage depuis la racine du projet
+python -X utf8 scripts/log_feature.py \
+  --nom  "Nom court de la feature" \
+  --desc "Description concise en 1-2 phrases" \
+  --notes "Remarques optionnelles"          # facultatif
 
-# Seed d'un service (utilisateurs + données démo)
-docker exec auth-service-prod node seed.js
-docker exec db-service-prod  node seed.js
+# Exemple concret
+python -X utf8 scripts/log_feature.py \
+  --nom  "Sélecteur catégorie incident" \
+  --desc "Widget responsive (dialog ≥800px / bottom-sheet <800px) de pré-qualification avant IssueFormScreen" \
+  --notes "Testé Chrome + Android. Filtre équipements par catégorie."
+
+# Mettre à jour le statut après validation humaine
+python -X utf8 scripts/log_feature.py \
+  --update FEAT-003 --statut "Validé" --par "Prénom Nom"
 ```
 
-### auth-service / db-service (Node 20)
+> 💡 **`-X utf8`** : flag obligatoire sur Windows pour l'encodage correct des accents. Linux/Mac : flag ignoré sans effet.
 
-```bash
-cd auth-service        # ou: cd db-service
-npm install            # installe les dépendances
-npm start              # node src/index.js  (port 3001 / 3002)
-npm test               # jest --forceExit --detectOpenHandles  (DB en :memory:)
-npm run seed           # node seed.js — peuple la base SQLite avec les données de démo
+**Sortie attendue :**
+```
+✅ Feature enregistrée : FEAT-003 — "Sélecteur catégorie incident"
+   Fichier : .../verification/suivi_verifications.xlsx
 ```
 
-> **Note** : `bcrypt` n'est plus une dépendance active côté Node — la gestion des mots de passe est entièrement déléguée à Keycloak.
+### ✅ Checklist de clôture de tâche
 
-### Import de l'inventaire physique 2025-2026 (db-service)
+Avant de considérer une feature comme livrée, cocher mentalement :
 
-Script dédié `scripts/import_inventory.js` qui peuple `equipment`, `equipment_tags`, `departments` et `equipment_categories` à partir du XLSX réel de l'hôpital (feuilles `Equipment Migration Template`, `Standard_Departments`, `Standard_Equipment_Names`).
+- [ ] Code complet — aucun bloc tronqué
+- [ ] `npm test` **ou** `flutter analyze --no-fatal-infos` passe
+- [ ] `python -X utf8 scripts/log_feature.py --nom "..." --desc "..."` exécuté
+- [ ] La ligne est visible dans `verification/suivi_verifications.xlsx`
+- [ ] Mise à jour de `contexte.md` effectuée si la feature est majeure (voir règle ci-dessous)
+
+### 📝 Mise à jour de `contexte.md` — Règle de documentation continue
+
+Toute **feature majeure** doit entraîner une mise à jour de `contexte.md` (et/ou `contexte/context.md`) **avant** de clore la tâche.
+
+**Constitue une feature majeure :**
+
+| Changement | Fichier à mettre à jour |
+|---|---|
+| Nouvelle table ou colonne DB | `contexte.md` → section "Schémas de Données" + `contexte/context.md` → schéma complet |
+| Nouveau rôle Keycloak ou nouvelle permission | `contexte.md` → section "IAM & Sécurité" |
+| Nouveau endpoint API (`GET`/`POST`/`PUT`/`DELETE`) | `contexte/context.md` → section endpoints du service concerné |
+| Nouvel écran Flutter | `contexte/context.md` → section "Écrans (13)" (mettre à jour le compteur et le tableau) |
+| Nouveau service ou nouveau module | `contexte.md` → sections "Architecture" et "Structure du Projet" |
+| Changement de déploiement ou de variable d'env | `contexte.md` → sections "Déploiement" et "Variables d'Environnement" |
+
+**Ne nécessite pas de mise à jour documentaire :**
+- Corrections de bugs sans impact sur les interfaces publiques
+- Refactoring interne sans ajout de colonne ou d'endpoint
+- Modifications de style, couleurs, textes i18n
+
+> ⚠️ En cas de doute, documenter. Une documentation à jour est prioritaire sur le temps gagné à ne pas l'écrire.
+
+---
+
+## ⚙️ Commandes Essentielles
+
+### Backend (depuis `auth-service/` ou `db-service/`)
 
 ```bash
-cd db-service
-npm run import:inventory -- --dry-run                       # parse + valide sans écrire
-npm run import:inventory -- --xlsx <chemin.xlsx>            # UPSERT par défaut (préserve created_at)
-npm run import:inventory -- --xlsx <chemin.xlsx> --insert-only  # n'écrase pas les existants
+npm install                                    # installer les dépendances
+npm start                                      # lancer le service
+npm test                                       # jest --forceExit --detectOpenHandles
+npm run seed                                   # données démo SQLite
 ```
 
-Sur le VPS (en prod / dev) le XLSX doit être copié dans le conteneur :
+### Import inventaire physique (depuis `db-service/`)
 
 ```bash
-docker cp <fichier.xlsx> db-service-<env>:/tmp/inventory.xlsx
-docker exec db-service-<env> node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
+npm run import:inventory -- --dry-run                        # valider sans écrire
+npm run import:inventory -- --xlsx <chemin.xlsx>             # UPSERT (défaut)
+npm run import:inventory -- --xlsx <chemin.xlsx> --insert-only  # ne pas écraser l'existant
 ```
 
-Idempotent : un re-run sur le même XLSX exécute uniquement des UPDATE (`updated_at` rafraîchi, `created_at` préservé, aucun doublon dans `equipment_tags`).
-
-> **Pas de linter/formatter Node configuré.** Suivre le style existant (voir section Conventions).
-
-### flutter-app (Dart SDK ^3.10.7)
+### Flutter (depuis `flutter-app/`)
 
 ```bash
-cd flutter-app
-flutter pub get                          # installe les dépendances
-flutter gen-l10n                         # régénère lib/l10n/app_localizations*.dart (auto sur build)
-flutter analyze --no-fatal-infos         # lint (flutter_lints) — bloquant en CI
-flutter test                             # tests unitaires + widgets
+flutter pub get
+flutter gen-l10n                               # régénérer l10n après modif ARB
+flutter analyze --no-fatal-infos              # lint — BLOQUANT en CI
+flutter test
 
-# Run local (par défaut pointe vers la prod — surcharger pour cibler local)
+# Run local (dev)
 flutter run -d chrome \
   --dart-define=AUTH_URL=http://localhost:3001 \
   --dart-define=DB_URL=http://localhost:3002 \
   --dart-define=KC_TOKEN_URL=http://localhost:8080/realms/kabutare-hospital/protocol/openid-connect/token
 
-# Build web pour déploiement
+# Build web (prod hôpital)
 flutter build web --release \
-  --dart-define=AUTH_URL=https://auth.lucaslopvet.fr \
-  --dart-define=DB_URL=https://DB.lucaslopvet.fr \
-  --dart-define=KC_TOKEN_URL=https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/token
+  --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
+  --dart-define=DB_URL=https://kabutare.duckdns.org/db \
+  --dart-define=KC_TOKEN_URL=https://kabutare.duckdns.org/realms/kabutare-hospital/protocol/openid-connect/token
+
+# Build APK Android
+flutter build apk --release \
+  --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
+  --dart-define=DB_URL=https://kabutare.duckdns.org/db \
+  --dart-define=KC_TOKEN_URL=https://kabutare.duckdns.org/realms/kabutare-hospital/protocol/openid-connect/token
 ```
 
-### CI/CD (Jenkins)
+### Docker
 
-Le pipeline (`Jenkinsfile`) déclenche automatiquement sur push :
-1. `flutter pub get` → `flutter analyze` → `flutter test` (dans `ghcr.io/cirruslabs/flutter:3.41.4`).
-2. `flutter build web` avec les `--dart-define` correspondant à la branche.
-3. Copie vers `/var/www/flutter-app[-dev]`.
-4. `docker-compose up -d --build` du compose correspondant + `node seed.js` opportuniste.
-5. Healthcheck `curl /health` sur les deux services.
+```bash
+# Prod
+docker compose -p gestion-equipement-medical-prod -f docker-compose.yml up -d --build
 
-| Branche | Cible                     | Compose utilisé             |
-| ------- | ------------------------- | --------------------------- |
-| `main`  | PROD (lucaslopvet.fr)     | `docker-compose.yml`        |
-| `dev`   | DEV (dev.*.lucaslopvet.fr)| `docker-compose.dev.yml`    |
+# Dev
+docker compose -p gestion-equipement-medical_dev -f docker-compose.dev.yml up -d --build
+
+# Seed
+docker exec auth-service-prod node seed.js
+docker exec db-service-prod   node seed.js
+
+# Import inventaire en prod
+docker cp <fichier.xlsx> db-service-prod:/tmp/inventory.xlsx
+docker exec db-service-prod node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
+```
 
 ---
 
-## Code Style & Conventions
+## 📝 Conventions — Backend Node.js
 
-### Backend Node (auth-service / db-service)
+### Structure et style
 
-- **CommonJS** (`require` / `module.exports`) — pas d'ESM.
-- **camelCase** en JS, **snake_case** en SQL/DB (`first_name`, `is_active`, `created_at`).
-- Routes Express : un `router` par fichier, exporté en bas. Sectionner les blocs par commentaires `// ── POST /api/xxx ─────────────`.
-- **Validation explicite** au début de chaque handler (`if (!field) return res.status(400).json({ error: '…' })`). Whitelists de valeurs (`VALID_STATUSES_EQ`, `VALID_DEPARTMENTS`, …) en haut du fichier.
-- **Codes HTTP cohérents** : 400 (input), 401 (auth manquante), 403 (rôle insuffisant), 404 (introuvable), 409 (conflit unique), 500 (erreur serveur).
-- **Sécurité** : toujours `requireRole('admin', …)` sur les écritures sensibles. Sanitiser tout `req.query.reason` ou texte libre (cf. `routes/equipment.js` DELETE).
-- **Audit** : sur toute mutation (`create_*`, `update_*`, `delete_*`, `login`, `logout`, …), appeler `logAction({ user_id, user_name, user_role, action, target_type, target_id, target_name, details, ...extractReqMeta(req) })`.
-- **Pas de console.log de mot de passe / token**. Logs avec préfixe `[AUTH]`, `[DB]`, … en français.
-- Tests Jest : DB en mémoire (`process.env.DB_PATH = ':memory:'`), mock du rate-limiter (`jest.mock('express-rate-limit', …)`).
+- **CommonJS** (`require` / `module.exports`) — pas d'ESM
+- **camelCase** en JS, **snake_case** en SQL et noms de colonnes DB
+- Un `router` par fichier de route, exporté en bas du fichier
+- Délimiter les sections : `// ── POST /api/xxx ──────────────────────────`
+- **Pas de framework de migration** : ALTER TABLE inline dans `database.js` via `PRAGMA table_info`, idempotent au démarrage
+- **better-sqlite3 synchrone** : `db.prepare(...).run/get/all` — pas d'`async` autour des accès DB
+- `WAL` activé + `foreign_keys = ON` dans chaque `database.js`
 
-### Frontend Flutter (Dart)
+### Pattern d'une route type
 
-- Lints : `flutter_lints` (cf. `analysis_options.yaml`). `flutter analyze --no-fatal-infos` doit passer.
-- **Singletons** pour les services :
-  ```dart
-  class AuthService extends ChangeNotifier {
-    static final AuthService _instance = AuthService._internal();
-    factory AuthService() => _instance;
-    AuthService._internal();
-    …
+```js
+// ── PUT /api/equipment/:id ──────────────────────────
+router.put('/:id', verifyToken, requireRole('admin', 'supervisor', 'technician'), (req, res) => {
+  const { id } = req.params;
+  const { name, status } = req.body;
+
+  // 1. Validation explicite
+  if (!id) return res.status(400).json({ error: 'id requis' });
+  if (status && !VALID_STATUSES_EQ.includes(status)) {
+    return res.status(400).json({ error: 'statut invalide' });
   }
-  ```
-- **Modèles immuables** : champs `final`, constructeur `const`, factory `fromApiJson(Map<String, dynamic>)`, méthode `copyWith(...)`.
-- **Énumérations riches** : ajouter `displayName`, `localizedName(l10n)`, `fromString(value)` quand l'enum est manipulé côté API.
-- **Pas de print** : utiliser `debugPrint` si vraiment nécessaire (préférer rien).
-- **Texte UI** : exclusivement via `AppLocalizations.of(context)!.<clé>`. Toute nouvelle clé → `lib/l10n/app_fr.arb` (template) + `app_en.arb`, puis `flutter gen-l10n`.
-- **Couleurs** : importer `AppColors` depuis `theme/app_theme.dart` (pas de `Color(0xFF…)` en dur dans les widgets, sauf cas vraiment local).
-- **Navigation** : pas de `Navigator.pushNamed` global. Le routing principal vit dans `MainScaffold._navigateTo(int)` via l'enum `ScreenType`. Les sous-écrans (modaux, settings) utilisent `Navigator.push(MaterialPageRoute(builder: …))`.
-- **HTTP** : **toujours** passer par `ApiClient.{get,post,put,patch,delete}` — jamais d'appel `http.X` direct (sinon pas de retry sur 401).
 
-### Style général
+  // 2. Vérifier existence
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
-- **Commentaires en français** (le projet est francophone). Sections délimitées par `// ── Titre ──────────────────────`.
-- **Aucun secret en dur** : tout passe par `process.env.*` (Node) ou `--dart-define` (Flutter). Le `.env.example` documente les variables attendues ; `/etc/kabutare/.env` sur le VPS.
-- Ne pas committer : `*.db`, `*.sqlite`, `.env`, `node_modules/`, `flutter-app/build/`, `.dart_tool/` (déjà couverts par `.gitignore` et `.claudeignore`).
+  // 3. Opération DB (synchrone)
+  db.prepare('UPDATE equipment SET name = COALESCE(?, name), status = COALESCE(?, status), updated_at = datetime(\'now\',\'localtime\') WHERE id = ?')
+    .run(name || null, status || null, id);
+
+  // 4. Audit trail
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0],
+    action: 'update_equipment',
+    target_type: 'equipment', target_id: id, target_name: existing.name,
+    details: JSON.stringify({ status }),
+    ...extractReqMeta(req)
+  });
+
+  res.json({ message: 'Équipement mis à jour' });
+});
+```
+
+### Codes HTTP
+
+| Code | Situation |
+|---|---|
+| `400` | Input invalide ou manquant |
+| `401` | Token absent ou invalide |
+| `403` | Rôle insuffisant |
+| `404` | Ressource introuvable |
+| `409` | Conflit d'unicité (doublon) |
+| `500` | Erreur serveur inattendue |
+
+### Audit trail — obligatoire sur toute mutation
+
+```js
+logAction({
+  user_id,           // req.user.id (UUID Keycloak)
+  user_name,         // req.user.name
+  user_role,         // req.user.roles[0]
+  action,            // 'create_equipment' | 'update_issue' | 'delete_user' | ...
+  target_type,       // 'equipment' | 'issue' | 'user' | ...
+  target_id,
+  target_name,
+  details,           // JSON.stringify des champs modifiés
+  ...extractReqMeta(req)
+});
+```
+
+### Tests Jest
+
+```js
+// DB en mémoire — toujours en tête des tests
+process.env.DB_PATH = ':memory:';
+
+// Mock rate-limiter — évite les blocages en test
+jest.mock('express-rate-limit', () => () => (req, res, next) => next());
+```
 
 ---
 
-## Variables d'environnement clés
+## 🎨 Conventions — Flutter/Dart
 
-| Variable                | Service              | Rôle                                                                                         |
-| ----------------------- | -------------------- | -------------------------------------------------------------------------------------------- |
-| `INTERNAL_SECRET`       | auth + db            | Authentification service-à-service.                                                          |
-| `DB_PATH`               | auth + db            | Chemin du fichier SQLite (`/data/*.db`).                                                     |
-| `DB_SERVICE_URL`        | auth                 | URL interne du db-service.                                                                   |
-| `AUTH_SERVICE_URL`      | db                   | URL interne de l'auth-service (admin uniquement, pas les tokens).                            |
-| `PORT`                  | auth + db            | 3001 / 3002.                                                                                 |
-| `KC_ISSUER`             | auth + db            | URL du realm Keycloak (ex. `https://keycloak.lucaslopvet.fr/realms/kabutare-hospital`).      |
-| `KC_ADMIN_URL`          | auth                 | URL de base de l'Admin API Keycloak (ex. `https://keycloak.lucaslopvet.fr/admin/realms/...`). |
-| `KC_CLIENT_SECRET`      | auth                 | Secret client Keycloak pour l'Admin API.                                                     |
-| `BREVO_API_KEY`         | auth + db            | Clé API Brevo pour l'envoi d'emails transactionnels applicatifs (incidents, départements).   |
-| `KC_EMAIL_SMTP_PASSWORD`| Keycloak (env Docker)| Mot de passe SMTP Brevo utilisé par Keycloak pour ses emails système (vérification, reset).  |
-| `AUTH_URL` / `DB_URL`   | flutter (build)      | Injectées via `--dart-define`.                                                               |
-| `KC_TOKEN_URL`          | flutter (build)      | URL de token Keycloak injectée via `--dart-define` pour le flux Direct Grant.                |
+### Patterns obligatoires
+
+**Singleton service** :
+```dart
+class AuthService extends ChangeNotifier {
+  static final AuthService _instance = AuthService._internal();
+  factory AuthService() => _instance;
+  AuthService._internal();
+  // ...
+}
+```
+
+**Modèle immuable** :
+```dart
+class Equipment {
+  final String id;
+  final String name;
+  final EquipmentStatus status;
+
+  const Equipment({required this.id, required this.name, required this.status});
+
+  factory Equipment.fromApiJson(Map<String, dynamic> json) => Equipment(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    status: EquipmentStatus.fromString(json['status'] as String),
+  );
+
+  Equipment copyWith({String? id, String? name, EquipmentStatus? status}) => Equipment(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    status: status ?? this.status,
+  );
+}
+```
+
+**Enum riche** (manipulée côté API) :
+```dart
+enum EquipmentStatus {
+  operational, maintenance, outOfService, toBeDisposal, disposed;
+
+  String get displayName => switch (this) {
+    EquipmentStatus.operational  => 'Operational',
+    EquipmentStatus.maintenance  => 'Maintenance',
+    // ...
+  };
+
+  String localizedName(AppLocalizations l10n) => switch (this) {
+    EquipmentStatus.operational => l10n.statusOperational,
+    // ...
+  };
+
+  static EquipmentStatus fromString(String value) => switch (value.toLowerCase()) {
+    'operational' => EquipmentStatus.operational,
+    _             => EquipmentStatus.operational, // défaut sécurisé
+  };
+}
+```
+
+### Règles absolues Flutter
+
+- **État partagé** = Singleton `extends ChangeNotifier` consommé via `ListenableBuilder(listenable: …)` — pas de Provider/Riverpod/Bloc
+- **HTTP** : toujours `ApiClient.{get,post,put,patch,delete}` — jamais `http.X` direct (sinon pas de retry sur 401)
+- **Navigation principale** : via `MainScaffold._navigateTo(int)` (enum `ScreenType`) — pas de `Navigator.pushNamed` global
+- **Sous-écrans** (formulaires, modaux) : `Navigator.push(MaterialPageRoute(builder: …))`
+- **URLs API** : injectées via `--dart-define` dans `services/api_config.dart` — jamais hardcodées
+- **Tokens** : `SecureTokenStorage` — FlutterSecureStorage (natif) ou SharedPreferences (web)
+- **Couleurs** : `AppColors` depuis `theme/app_theme.dart` — pas de `Color(0xFF…)` inline
+- **Pas de `print`** : utiliser `debugPrint` si vraiment nécessaire (préférer rien)
+
+### i18n — Procédure obligatoire
+
+Toute nouvelle chaîne de caractères affichée dans l'UI :
+1. Ajouter la clé dans `lib/l10n/app_fr.arb` (fichier template)
+2. Ajouter la traduction dans `lib/l10n/app_en.arb`
+3. Exécuter `flutter gen-l10n`
+4. Utiliser dans le widget : `AppLocalizations.of(context)!.<clé>`
+
+> ⚠️ Oublier `app_en.arb` casse `flutter analyze` — bloquant en CI.
+
+### Signalement d'incident — Flux pré-qualification
+
+Tout déclenchement "Signaler un incident" (sidebar, bottom nav, drawer, dashboard) passe **obligatoirement** par `showIssueCategorySelector(context)` (`lib/widgets/issue_category_selector.dart`) :
+- `>= 800px` → `showDialog` (dialog centré)
+- `< 800px` → `showModalBottomSheet` (coins arrondis)
+
+| Tuile | Filtre équipements |
+|---|---|
+| Équipements Biomédicaux | Imagerie, Laboratoire, Chirurgie, Monitoring, Thérapeutique |
+| Infrastructure & Électricité | Mobilier, Autre |
+| Informatique (IT) | Informatique |
+| Autre / Je ne sais pas | `null` (tous les équipements) |
+
+**Exception** : depuis `EquipmentListScreen`, navigation directe avec équipement pré-sélectionné — pas de sélecteur.
 
 ---
 
-## Pièges à éviter
+## 🔒 Règles de Sécurité
 
-- **`docker-compose down -v`** détruirait `auth_data` / `db_data` / `keycloak_data` (utilisateurs, équipements, realm Keycloak). Toujours préférer `down` sans `-v`.
-- **Migrations DB** : ne supprimer aucune colonne dans `database.js` sans script de migration explicite — c'est lu à chaque démarrage.
-- **Dockerfile db-service** : tout nouveau dossier (ex. `scripts/`) doit être ajouté via `COPY` dans le Dockerfile, sinon il n'est pas embarqué dans l'image (le `.dockerignore` ne suffit pas).
-- **`equipment.id`** : la clé primaire est désormais dérivée du `TagNumber` slugifié pour les équipements importés (`a-z0-9_-`, max 100). Les lignes du XLSX sans `TagNumber` exploitable sont **ignorées** par `scripts/import_inventory.js`. Préserver la convention si on insère manuellement.
-- **CORS** : la liste blanche d'origines est codée dans `auth-service/src/index.js`. Ajouter explicitement tout nouveau front autorisé.
-- **Rotation refresh token** : un refresh consomme l'ancien et en émet un nouveau ; ne jamais réutiliser le précédent côté client (déjà géré par `ApiClient._tryRefresh`).
-- **Permissions** : ajouter une nouvelle entrée dans la sidebar Flutter sans déclarer la `requiredPermission` correspondante l'expose à tous les rôles.
-- **i18n** : oublier d'ajouter une clé dans `app_en.arb` casse le build (`flutter analyze` échoue).
-- **IDs utilisateurs = UUIDs Keycloak** : les `user_id` sont désormais des UUIDs (ex. `f47ac10b-58cc-4372-a567-0e02b2c3d479`), plus des entiers auto-incrémentés. Tout code qui suppose un `id` numérique est à corriger.
-- **Emails non reçus** : si un utilisateur ne reçoit pas son email de vérification ou de réinitialisation de mot de passe, consulter **en premier** les logs de la console Keycloak (Events → Admin events / User events) et vérifier la configuration SMTP Brevo dans le realm — ce chemin est 100 % géré par Keycloak, le `auth-service` Node n'intervient pas.
-- **bcrypt obsolète côté Node** : la logique de hachage et vérification de mot de passe (bcrypt) est entièrement déléguée à Keycloak. Ne pas réintroduire de bcrypt dans les services Node pour la gestion des comptes utilisateurs.
+- **Aucun secret en dur** : `process.env.*` (Node) ou `--dart-define` (Flutter)
+- **Jamais de bcrypt côté Node** : gestion des mots de passe 100% déléguée à Keycloak
+- **Jamais de `JWT_SECRET` partagé** : validation JWT via JWKS RS256 uniquement
+- **Logs** : préfixe `[AUTH]`, `[DB]`, etc. en français — jamais de token ou mot de passe dans les logs
+- **CORS** : liste blanche explicite dans `auth-service/src/index.js` **et** `db-service/src/index.js` — tout nouveau front doit y être ajouté manuellement
+- **Ne jamais committer** : `*.db`, `*.sqlite`, `.env`, `node_modules/`, `flutter-app/build/`, `.dart_tool/`
+
+---
+
+## ⚠️ Pièges Critiques
+
+| Piège | Conséquence | Solution |
+|---|---|---|
+| `docker compose down -v` | Détruit `auth_data`, `db_data`, `keycloak_data` | Toujours `down` sans `-v` |
+| Nouveau dossier dans db-service non déclaré | Non embarqué dans l'image Docker | Ajouter `COPY <dossier>/ ./<dossier>/` dans le `Dockerfile` |
+| Nouvelle entrée sidebar sans `requiredPermission` | Accessible à tous les rôles | Déclarer `requiredPermission` dans la config sidebar |
+| `equipment.id` supposé numérique | Incompatible avec les IDs slug du XLSX | Toujours TEXT `a-z0-9_-`, max 100 chars |
+| `user_id` supposé entier | Les IDs Keycloak sont des UUID | Toujours traiter les `user_id` comme TEXT |
+| Réutiliser un refresh token consommé | Keycloak invalide la session | La rotation est stricte — `ApiClient._tryRefresh` gère ça |
+| Supprimer une colonne dans `database.js` | Casse les déploiements existants | Migrer : RENAME table → CREATE new → INSERT SELECT → DROP old |
+| Build Flutter sans `--dart-define` | Pointe vers les URLs par défaut (prod) | Toujours passer les 3 `--dart-define` |
+| Email non reçu (vérification/reset) | Mauvais diagnostic → code Node | Vérifier les Events Keycloak (console admin → Events) — pas le code Node |
+| Ajouter une permission sans seed | Permission absente en prod | Mettre à jour `seed.js` auth-service ET penser à relancer `node seed.js` |

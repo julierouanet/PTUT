@@ -313,6 +313,13 @@ server {
     }
     location = / { return 301 /app_isis/; }
     location = /app_isis { return 301 /app_isis/; }
+    location ~* ^/app_isis/(flutter_service_worker\.js|flutter_bootstrap\.js)$ {
+        root       /usr/share/nginx/html;
+        try_files  /$1 =404;
+        expires    0;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma        "no-cache";
+    }
     location ~* ^/app_isis/(.+\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))$ {
         root       /usr/share/nginx/html;
         try_files  /$1 =404;
@@ -504,6 +511,25 @@ for ENTRY in "HTTP_PORT:${HTTP_PORT}" "HTTPS_PORT:${HTTPS_PORT}" "KC_HOST_PORT:$
   fi
 done
 
+# ── Mise à jour KC_PUBLIC_URL et CORS si HTTPS_PORT a changé ─
+# KC_PUBLIC_URL est calculé à l'étape 4 en supposant le port 443.
+# Si le port a été réassigné (ex: 443→444), on recalcule et met à jour le .env.
+# Sans ça : Keycloak génère des tokens avec iss=https://IP mais les services
+# attendent https://IP:444 → échec de validation JWT sur toutes les requêtes.
+if [[ "${HTTPS_PORT}" != "443" ]]; then
+  KC_PUBLIC_URL="https://${SERVER_IP}:${HTTPS_PORT}"
+  # Reconstruire CORS avec le bon port pour les deux IPs
+  CORS_ORIGINS="https://${SERVER_IP}:${HTTPS_PORT}"
+  if [[ -n "${LOCAL_IP:-}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+    CORS_ORIGINS="${CORS_ORIGINS},https://${LOCAL_IP}:${HTTPS_PORT}"
+  fi
+  sed -i "s|^KC_PUBLIC_URL=.*|KC_PUBLIC_URL=${KC_PUBLIC_URL}|" .env
+  sed -i "s|^CORS_ORIGIN=.*|CORS_ORIGIN=${CORS_ORIGINS}|"      .env
+  export KC_PUBLIC_URL CORS_ORIGINS
+  echo "      ✓ KC_PUBLIC_URL mis à jour : ${KC_PUBLIC_URL}"
+  echo "      ✓ CORS_ORIGIN mis à jour   : ${CORS_ORIGINS}"
+fi
+
 # ── Étape 7 : Configuration du pare-feu ──────────────────────
 echo "[7/9] Configuration du pare-feu (ufw)..."
 if command -v ufw &>/dev/null; then
@@ -527,7 +553,7 @@ fi
 
 # ── Étape 8 : Pull des images Docker Hub ─────────────────────
 # Le build Flutter est embarqué dans l'image kabutare-nginx.
-# La substitution de SERVER_IP se fait au démarrage du conteneur.
+# L'app utilise window.location.hostname — aucune substitution IP nécessaire au démarrage.
 echo "[8/9] Pull des images depuis Docker Hub (${DOCKER_USER})..."
 # DOCKER_CONTENT_TRUST=1 : refuse les images non signées (protection supply chain — MAJ-2)
 # Pré-requis : images signées avec `docker trust sign <image>` sur la machine de build.
