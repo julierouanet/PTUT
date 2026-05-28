@@ -15,8 +15,9 @@ services:
       DB_PATH: /data/auth.db
       DB_SERVICE_URL: http://db-service:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET}
-      # Keycloak
-      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      # iss réel émis par Keycloak (frontendUrl stockée en DB = dev.keycloak)
+      KC_ISSUER: https://dev.keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs
       KC_REALM: kabutare-hospital
       KC_ADMIN_URL: https://keycloak.lucaslopvet.fr
       KC_CLIENT_ID: auth-service
@@ -42,8 +43,9 @@ services:
       DB_PATH: /data/hospital.db
       AUTH_SERVICE_URL: http://auth-service:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET}
-      # Keycloak
-      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      # iss réel émis par Keycloak (frontendUrl stockée en DB = dev.keycloak)
+      KC_ISSUER: https://dev.keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs
       # Web Push VAPID
       VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
