@@ -141,7 +141,7 @@ function initTables() {
       'viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
       'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
       'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
-      'changeDepartment', 'manageFeatures',
+      'changeDepartment', 'manageFeatures', 'manageBackups',
     ],
   };
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');

@@ -2722,4 +2722,132 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get featureMgmtGlobalInactive => 'Désactivé globalement';
+
+  @override
+  String get navBackupManagement => 'Sauvegardes';
+
+  @override
+  String get navBackupManagementShort => 'Backup';
+
+  @override
+  String get permManageBackups => 'Gérer les sauvegardes';
+
+  @override
+  String get backupTitle => 'Gestion des Sauvegardes';
+
+  @override
+  String get backupSubtitle =>
+      'Sauvegardez, planifiez et téléchargez les données de l\'hôpital';
+
+  @override
+  String get backupLoading => 'Chargement...';
+
+  @override
+  String get backupLoadError => 'Erreur lors du chargement des données';
+
+  @override
+  String get backupRetry => 'Réessayer';
+
+  @override
+  String get backupLastStatus => 'Statut de la dernière sauvegarde';
+
+  @override
+  String get backupNoLastBackup => 'Aucune sauvegarde effectuée';
+
+  @override
+  String get backupDate => 'Date';
+
+  @override
+  String get backupSize => 'Taille';
+
+  @override
+  String get backupStatusLabel => 'Statut';
+
+  @override
+  String get backupStatusSuccess => 'Succès';
+
+  @override
+  String get backupStatusError => 'Échec';
+
+  @override
+  String get backupTypeManual => 'Manuelle';
+
+  @override
+  String get backupTypeAutomated => 'Automatique';
+
+  @override
+  String get backupTrigger => 'Exécuter une sauvegarde immédiate';
+
+  @override
+  String get backupTriggering => 'Sauvegarde en cours...';
+
+  @override
+  String get backupTriggerSuccess => 'Sauvegarde réussie';
+
+  @override
+  String backupTriggerError(String error) {
+    return 'Erreur lors de la sauvegarde : $error';
+  }
+
+  @override
+  String get backupAutomationSection => 'Automatisation';
+
+  @override
+  String get backupEnableAuto => 'Activer la sauvegarde automatique';
+
+  @override
+  String get backupScheduleLabel => 'Récurrence';
+
+  @override
+  String get backupScheduleDaily => 'Tous les jours à minuit';
+
+  @override
+  String get backupScheduleWeekly => 'Chaque semaine (dimanche à minuit)';
+
+  @override
+  String get backupSettingsSaved => 'Paramètres de sauvegarde enregistrés';
+
+  @override
+  String backupSettingsSaveError(String error) {
+    return 'Erreur lors de la mise à jour : $error';
+  }
+
+  @override
+  String get backupAlertTitle => 'Rappel Critique';
+
+  @override
+  String get backupAlertMessage =>
+      'Pour des raisons de sécurité (incendie, panne matérielle majeure), veuillez régulièrement télécharger une sauvegarde et la stocker sur un support physique hors du serveur de l\'hôpital.';
+
+  @override
+  String get backupHistorySection => 'Historique des sauvegardes';
+
+  @override
+  String get backupNoHistory => 'Aucune sauvegarde enregistrée';
+
+  @override
+  String get backupDownload => 'Télécharger';
+
+  @override
+  String get backupDownloadSuccess => 'Téléchargement démarré';
+
+  @override
+  String backupDownloadError(String error) {
+    return 'Erreur lors du téléchargement : $error';
+  }
+
+  @override
+  String get backupColDate => 'Date';
+
+  @override
+  String get backupColType => 'Type';
+
+  @override
+  String get backupColSize => 'Taille';
+
+  @override
+  String get backupColStatus => 'Statut';
+
+  @override
+  String get backupColAction => 'Action';
 }

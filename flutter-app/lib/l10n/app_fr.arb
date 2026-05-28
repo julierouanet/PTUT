@@ -1015,5 +1015,56 @@
   "featureMgmtRoleForceInactive": "Forcé inactif",
   "featureMgmtLoading": "Chargement des features...",
   "featureMgmtGlobalActive": "Activé globalement",
-  "featureMgmtGlobalInactive": "Désactivé globalement"
+  "featureMgmtGlobalInactive": "Désactivé globalement",
+
+  "navBackupManagement": "Sauvegardes",
+  "navBackupManagementShort": "Backup",
+
+  "permManageBackups": "Gérer les sauvegardes",
+
+  "backupTitle": "Gestion des Sauvegardes",
+  "backupSubtitle": "Sauvegardez, planifiez et téléchargez les données de l'hôpital",
+  "backupLoading": "Chargement...",
+  "backupLoadError": "Erreur lors du chargement des données",
+  "backupRetry": "Réessayer",
+
+  "backupLastStatus": "Statut de la dernière sauvegarde",
+  "backupNoLastBackup": "Aucune sauvegarde effectuée",
+  "backupDate": "Date",
+  "backupSize": "Taille",
+  "backupStatusLabel": "Statut",
+  "backupStatusSuccess": "Succès",
+  "backupStatusError": "Échec",
+  "backupTypeManual": "Manuelle",
+  "backupTypeAutomated": "Automatique",
+
+  "backupTrigger": "Exécuter une sauvegarde immédiate",
+  "backupTriggering": "Sauvegarde en cours...",
+  "backupTriggerSuccess": "Sauvegarde réussie",
+  "backupTriggerError": "Erreur lors de la sauvegarde : {error}",
+  "@backupTriggerError": { "placeholders": { "error": { "type": "String" } } },
+
+  "backupAutomationSection": "Automatisation",
+  "backupEnableAuto": "Activer la sauvegarde automatique",
+  "backupScheduleLabel": "Récurrence",
+  "backupScheduleDaily": "Tous les jours à minuit",
+  "backupScheduleWeekly": "Chaque semaine (dimanche à minuit)",
+  "backupSettingsSaved": "Paramètres de sauvegarde enregistrés",
+  "backupSettingsSaveError": "Erreur lors de la mise à jour : {error}",
+  "@backupSettingsSaveError": { "placeholders": { "error": { "type": "String" } } },
+
+  "backupAlertTitle": "Rappel Critique",
+  "backupAlertMessage": "Pour des raisons de sécurité (incendie, panne matérielle majeure), veuillez régulièrement télécharger une sauvegarde et la stocker sur un support physique hors du serveur de l'hôpital.",
+
+  "backupHistorySection": "Historique des sauvegardes",
+  "backupNoHistory": "Aucune sauvegarde enregistrée",
+  "backupDownload": "Télécharger",
+  "backupDownloadSuccess": "Téléchargement démarré",
+  "backupDownloadError": "Erreur lors du téléchargement : {error}",
+  "@backupDownloadError": { "placeholders": { "error": { "type": "String" } } },
+  "backupColDate": "Date",
+  "backupColType": "Type",
+  "backupColSize": "Taille",
+  "backupColStatus": "Statut",
+  "backupColAction": "Action"
 }

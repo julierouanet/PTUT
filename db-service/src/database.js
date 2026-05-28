@@ -387,6 +387,34 @@ function initTables() {
     "Activation des notifications push navigateur",
     1
   );
+
+  // ── Paramètres et historique des sauvegardes ───────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS backup_settings (
+      id          TEXT PRIMARY KEY,
+      cron_schedule TEXT,
+      is_automated INTEGER NOT NULL DEFAULT 0,
+      updated_at  TEXT DEFAULT (datetime('now','localtime'))
+    );
+
+    CREATE TABLE IF NOT EXISTS backup_history (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      filename    TEXT NOT NULL,
+      backup_type TEXT NOT NULL DEFAULT 'manual',
+      status      TEXT NOT NULL DEFAULT 'success',
+      file_size   TEXT,
+      created_at  TEXT DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
+  // Seed des paramètres par défaut (idempotent)
+  const existingSettings = db.prepare("SELECT id FROM backup_settings WHERE id = 'default'").get();
+  if (!existingSettings) {
+    db.prepare(`
+      INSERT INTO backup_settings (id, cron_schedule, is_automated, updated_at)
+      VALUES ('default', '0 0 * * *', 0, datetime('now','localtime'))
+    `).run();
+  }
 }
 
 function closeDb() {

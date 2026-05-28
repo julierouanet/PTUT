@@ -5125,6 +5125,246 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Désactivé globalement'**
   String get featureMgmtGlobalInactive;
+
+  /// No description provided for @navBackupManagement.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegardes'**
+  String get navBackupManagement;
+
+  /// No description provided for @navBackupManagementShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Backup'**
+  String get navBackupManagementShort;
+
+  /// No description provided for @permManageBackups.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gérer les sauvegardes'**
+  String get permManageBackups;
+
+  /// No description provided for @backupTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des Sauvegardes'**
+  String get backupTitle;
+
+  /// No description provided for @backupSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegardez, planifiez et téléchargez les données de l\'hôpital'**
+  String get backupSubtitle;
+
+  /// No description provided for @backupLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chargement...'**
+  String get backupLoading;
+
+  /// No description provided for @backupLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du chargement des données'**
+  String get backupLoadError;
+
+  /// No description provided for @backupRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get backupRetry;
+
+  /// No description provided for @backupLastStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut de la dernière sauvegarde'**
+  String get backupLastStatus;
+
+  /// No description provided for @backupNoLastBackup.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune sauvegarde effectuée'**
+  String get backupNoLastBackup;
+
+  /// No description provided for @backupDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date'**
+  String get backupDate;
+
+  /// No description provided for @backupSize.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taille'**
+  String get backupSize;
+
+  /// No description provided for @backupStatusLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut'**
+  String get backupStatusLabel;
+
+  /// No description provided for @backupStatusSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Succès'**
+  String get backupStatusSuccess;
+
+  /// No description provided for @backupStatusError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec'**
+  String get backupStatusError;
+
+  /// No description provided for @backupTypeManual.
+  ///
+  /// In fr, this message translates to:
+  /// **'Manuelle'**
+  String get backupTypeManual;
+
+  /// No description provided for @backupTypeAutomated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Automatique'**
+  String get backupTypeAutomated;
+
+  /// No description provided for @backupTrigger.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exécuter une sauvegarde immédiate'**
+  String get backupTrigger;
+
+  /// No description provided for @backupTriggering.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegarde en cours...'**
+  String get backupTriggering;
+
+  /// No description provided for @backupTriggerSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegarde réussie'**
+  String get backupTriggerSuccess;
+
+  /// No description provided for @backupTriggerError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la sauvegarde : {error}'**
+  String backupTriggerError(String error);
+
+  /// No description provided for @backupAutomationSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Automatisation'**
+  String get backupAutomationSection;
+
+  /// No description provided for @backupEnableAuto.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer la sauvegarde automatique'**
+  String get backupEnableAuto;
+
+  /// No description provided for @backupScheduleLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Récurrence'**
+  String get backupScheduleLabel;
+
+  /// No description provided for @backupScheduleDaily.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les jours à minuit'**
+  String get backupScheduleDaily;
+
+  /// No description provided for @backupScheduleWeekly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Chaque semaine (dimanche à minuit)'**
+  String get backupScheduleWeekly;
+
+  /// No description provided for @backupSettingsSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres de sauvegarde enregistrés'**
+  String get backupSettingsSaved;
+
+  /// No description provided for @backupSettingsSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la mise à jour : {error}'**
+  String backupSettingsSaveError(String error);
+
+  /// No description provided for @backupAlertTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rappel Critique'**
+  String get backupAlertTitle;
+
+  /// No description provided for @backupAlertMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour des raisons de sécurité (incendie, panne matérielle majeure), veuillez régulièrement télécharger une sauvegarde et la stocker sur un support physique hors du serveur de l\'hôpital.'**
+  String get backupAlertMessage;
+
+  /// No description provided for @backupHistorySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des sauvegardes'**
+  String get backupHistorySection;
+
+  /// No description provided for @backupNoHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune sauvegarde enregistrée'**
+  String get backupNoHistory;
+
+  /// No description provided for @backupDownload.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger'**
+  String get backupDownload;
+
+  /// No description provided for @backupDownloadSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléchargement démarré'**
+  String get backupDownloadSuccess;
+
+  /// No description provided for @backupDownloadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du téléchargement : {error}'**
+  String backupDownloadError(String error);
+
+  /// No description provided for @backupColDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date'**
+  String get backupColDate;
+
+  /// No description provided for @backupColType.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type'**
+  String get backupColType;
+
+  /// No description provided for @backupColSize.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taille'**
+  String get backupColSize;
+
+  /// No description provided for @backupColStatus.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut'**
+  String get backupColStatus;
+
+  /// No description provided for @backupColAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action'**
+  String get backupColAction;
 }
 
 class _AppLocalizationsDelegate

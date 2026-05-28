@@ -126,6 +126,7 @@ class ApiConfig {
   static String get sidebarUrl    => '$dbBaseUrl/api/sidebar/config';
   static String get analyticsUrl  => '$dbBaseUrl/api/analytics';
   static String get featuresUrl   => '$dbBaseUrl/api/features';
+  static String get backupsUrl    => '$dbBaseUrl/api/admin/backups';
 
   static String equipmentByTagUrl(String tag) =>
       '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';

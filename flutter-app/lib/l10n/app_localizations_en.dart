@@ -2700,4 +2700,131 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get featureMgmtGlobalInactive => 'Disabled globally';
+
+  @override
+  String get navBackupManagement => 'Backups';
+
+  @override
+  String get navBackupManagementShort => 'Backup';
+
+  @override
+  String get permManageBackups => 'Manage backups';
+
+  @override
+  String get backupTitle => 'Backup Management';
+
+  @override
+  String get backupSubtitle => 'Back up, schedule, and download hospital data';
+
+  @override
+  String get backupLoading => 'Loading...';
+
+  @override
+  String get backupLoadError => 'Error loading backup data';
+
+  @override
+  String get backupRetry => 'Retry';
+
+  @override
+  String get backupLastStatus => 'Last Backup Status';
+
+  @override
+  String get backupNoLastBackup => 'No backup performed yet';
+
+  @override
+  String get backupDate => 'Date';
+
+  @override
+  String get backupSize => 'Size';
+
+  @override
+  String get backupStatusLabel => 'Status';
+
+  @override
+  String get backupStatusSuccess => 'Success';
+
+  @override
+  String get backupStatusError => 'Failed';
+
+  @override
+  String get backupTypeManual => 'Manual';
+
+  @override
+  String get backupTypeAutomated => 'Automated';
+
+  @override
+  String get backupTrigger => 'Run Immediate Backup';
+
+  @override
+  String get backupTriggering => 'Backup in progress...';
+
+  @override
+  String get backupTriggerSuccess => 'Backup completed successfully';
+
+  @override
+  String backupTriggerError(String error) {
+    return 'Backup error: $error';
+  }
+
+  @override
+  String get backupAutomationSection => 'Automation';
+
+  @override
+  String get backupEnableAuto => 'Enable automatic backup';
+
+  @override
+  String get backupScheduleLabel => 'Frequency';
+
+  @override
+  String get backupScheduleDaily => 'Every day at midnight';
+
+  @override
+  String get backupScheduleWeekly => 'Every week (Sunday at midnight)';
+
+  @override
+  String get backupSettingsSaved => 'Backup settings saved';
+
+  @override
+  String backupSettingsSaveError(String error) {
+    return 'Error saving settings: $error';
+  }
+
+  @override
+  String get backupAlertTitle => 'Critical Reminder';
+
+  @override
+  String get backupAlertMessage =>
+      'For security reasons (fire, major hardware failure), please regularly download a backup and store it on a physical medium outside the hospital server.';
+
+  @override
+  String get backupHistorySection => 'Backup History';
+
+  @override
+  String get backupNoHistory => 'No backups recorded';
+
+  @override
+  String get backupDownload => 'Download';
+
+  @override
+  String get backupDownloadSuccess => 'Download started';
+
+  @override
+  String backupDownloadError(String error) {
+    return 'Download error: $error';
+  }
+
+  @override
+  String get backupColDate => 'Date';
+
+  @override
+  String get backupColType => 'Type';
+
+  @override
+  String get backupColSize => 'Size';
+
+  @override
+  String get backupColStatus => 'Status';
+
+  @override
+  String get backupColAction => 'Action';
 }

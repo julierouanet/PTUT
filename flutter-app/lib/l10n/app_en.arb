@@ -993,5 +993,56 @@
   "featureMgmtRoleForceInactive": "Force inactive",
   "featureMgmtLoading": "Loading features...",
   "featureMgmtGlobalActive": "Enabled globally",
-  "featureMgmtGlobalInactive": "Disabled globally"
+  "featureMgmtGlobalInactive": "Disabled globally",
+
+  "navBackupManagement": "Backups",
+  "navBackupManagementShort": "Backup",
+
+  "permManageBackups": "Manage backups",
+
+  "backupTitle": "Backup Management",
+  "backupSubtitle": "Back up, schedule, and download hospital data",
+  "backupLoading": "Loading...",
+  "backupLoadError": "Error loading backup data",
+  "backupRetry": "Retry",
+
+  "backupLastStatus": "Last Backup Status",
+  "backupNoLastBackup": "No backup performed yet",
+  "backupDate": "Date",
+  "backupSize": "Size",
+  "backupStatusLabel": "Status",
+  "backupStatusSuccess": "Success",
+  "backupStatusError": "Failed",
+  "backupTypeManual": "Manual",
+  "backupTypeAutomated": "Automated",
+
+  "backupTrigger": "Run Immediate Backup",
+  "backupTriggering": "Backup in progress...",
+  "backupTriggerSuccess": "Backup completed successfully",
+  "backupTriggerError": "Backup error: {error}",
+  "@backupTriggerError": { "placeholders": { "error": { "type": "String" } } },
+
+  "backupAutomationSection": "Automation",
+  "backupEnableAuto": "Enable automatic backup",
+  "backupScheduleLabel": "Frequency",
+  "backupScheduleDaily": "Every day at midnight",
+  "backupScheduleWeekly": "Every week (Sunday at midnight)",
+  "backupSettingsSaved": "Backup settings saved",
+  "backupSettingsSaveError": "Error saving settings: {error}",
+  "@backupSettingsSaveError": { "placeholders": { "error": { "type": "String" } } },
+
+  "backupAlertTitle": "Critical Reminder",
+  "backupAlertMessage": "For security reasons (fire, major hardware failure), please regularly download a backup and store it on a physical medium outside the hospital server.",
+
+  "backupHistorySection": "Backup History",
+  "backupNoHistory": "No backups recorded",
+  "backupDownload": "Download",
+  "backupDownloadSuccess": "Download started",
+  "backupDownloadError": "Download error: {error}",
+  "@backupDownloadError": { "placeholders": { "error": { "type": "String" } } },
+  "backupColDate": "Date",
+  "backupColType": "Type",
+  "backupColSize": "Size",
+  "backupColStatus": "Status",
+  "backupColAction": "Action"
 }

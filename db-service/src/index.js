@@ -11,6 +11,7 @@ const sidebarRoutes        = require('./routes/sidebar');
 const pushRoutes           = require('./routes/push_notifications');
 const analyticsRoutes      = require('./routes/analytics');
 const featuresRoutes       = require('./routes/features');
+const { router: backupsRoutes, initBackupCron } = require('./routes/backups');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 
@@ -18,6 +19,8 @@ const app = express();
 
 // Initialize DB on startup
 getDb();
+// Activer le cron de sauvegarde automatique si configuré
+initBackupCron();
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
@@ -53,6 +56,7 @@ app.use('/api/sidebar/config', sidebarRoutes);
 app.use('/api/notifications',  pushRoutes);
 app.use('/api/analytics',      analyticsRoutes);
 app.use('/api/features',       featuresRoutes);
+app.use('/api/admin/backups',  backupsRoutes);
 app.use('/',                   debugRoutes);
 
 const server = app.listen(PORT, () => {
