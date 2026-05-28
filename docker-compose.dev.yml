@@ -17,8 +17,6 @@ services:
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
       # Keycloak dev — issuer public (correspond au claim "iss" du token)
       KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
-      # JWKS en HTTP direct sur le port interne de Keycloak prod (évite le TLS via host-gateway)
-      KC_JWKS_URI: http://keycloak.lucaslopvet.fr:18080/realms/kabutare-hospital/protocol/openid-connect/certs
       KC_REALM: kabutare-hospital
       KC_ADMIN_URL: http://keycloak-dev:8081
       KC_CLIENT_ID: auth-service
