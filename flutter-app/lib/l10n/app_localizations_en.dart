@@ -3109,4 +3109,53 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get forgotPasswordHint =>
       'Enter your email address. You will receive a link to reset your password.';
+
+  // ── Dashboard — Data freshness ────────────────────────────────────────────
+
+  @override
+  String dashboardRefreshedAt(String time) => 'Updated at $time';
+
+  @override
+  String dashboardRefreshedAgo(int n) => '${n} min ago';
+
+  @override
+  String get dashboardRefreshedJustNow => 'Just now';
+
+  @override
+  String get dashboardRefreshTooltip => 'Refresh data';
+
+  // ── Dashboard — Preventive maintenance ───────────────────────────────────
+
+  @override
+  String get dashboardPmOverdue => 'Overdue PM';
+
+  // ── Dashboard — Priority incidents ───────────────────────────────────────
+
+  @override
+  String get dashboardPriorityIssues => 'Priority Incidents';
+
+  @override
+  String get dashboardCriticalIssue24h => 'Critical issue >24h';
+
+  // ── Dashboard — Technician metrics ───────────────────────────────────────
+
+  @override
+  String get dashboardTechSection => 'Operational Metrics';
+
+  @override
+  String get dashboardTechBacklogLabel => 'Group Backlog';
+
+  @override
+  String get dashboardTechCriticalOos => 'Critical Out of Service';
+
+  // ── Dashboard — Desktop side panel ───────────────────────────────────────
+
+  @override
+  String get dashboardSidePanelTitle => 'Critical Equipment';
+
+  @override
+  String get dashboardSidePanelSubtitle => 'Out of service, criticality A';
+
+  @override
+  String get dashboardSidePanelEmpty => 'No critical equipment out of service';
 }

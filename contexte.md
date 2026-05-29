@@ -333,6 +333,54 @@ Administration, OPD, Médecine Interne, Pédiatrie, Urgences, Laboratoire, Stoma
 
 ---
 
+## 🖥️ Dashboard Flutter — Logique métier (v2)
+
+Le `DashboardScreen` (`lib/screens/dashboard_screen.dart`) est un `StatefulWidget` répondant aux `notifyListeners()` de `DataService` via `ListenableBuilder`.
+
+### KPIs affichés (5 StatCards)
+
+| Carte | Source |
+|---|---|
+| Total équipements | `DataService().equipment.length` |
+| Opérationnels | `status == operational` |
+| Maintenance | `status == maintenance` |
+| Hors service | `status == outOfService` |
+| **PM en retard** | `equipment.preventiveMaintenanceAlertLevel == 'due'` (date dépassée) |
+
+### Algorithme de tri des incidents prioritaires
+
+```
+openIssues = issues.where(status ∈ {reported, acknowledged, assigned, inProgress, waitingMaterials, redirected})
+openIssues.sort:
+  1. urgency.index DESC  (critique=3 > urgent=2 > moyen=1 > faible=0)
+  2. createdAt DESC      (plus récent en premier si urgences égales)
+Prend les 4 premiers.
+```
+
+### Alertes urgentes (double source)
+
+1. Tous les équipements `outOfService`
+2. Incidents urgents ou critiques **ouverts depuis ≥ 24h** (`now - DateTime.parse(createdAt) ≥ 24h`)
+
+### Affichage conditionnel par rôle (RBAC)
+
+| Rôle | Vue |
+|---|---|
+| `hospitalStaff` | StatCards + bouton signaler + incidents prioritaires + alertes |
+| `technician*` / `supervisor` / `admin` | + Section indicateurs opérationnels + panel latéral desktop |
+
+### Layout responsive
+
+- **< 600px** (mobile) : colonnes empilées, StatCards en 2×2+1
+- **600–799px** (tablette) : StatCards en ligne de 5, sections empilées
+- **≥ 800px** (desktop) : 2 colonnes (incidents | alertes) + 3e colonne panel si technicien/admin
+
+### Fraîcheur des données
+
+Timestamp `_lastRefresh` mis à jour au mount et lors des rafraîchissements manuels. Bouton `refresh` déclenche `DataService().reloadEquipment()` + `reloadIssues()`.
+
+---
+
 ## 📚 Documentation Complémentaire
 
 | Fichier | Contenu |

@@ -5899,6 +5899,68 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.'**
   String get forgotPasswordHint;
+
+  // ── Dashboard — Fraîcheur des données ────────────────────────────────────
+
+  /// Affiche l'heure de la dernière actualisation.
+  /// In fr: 'Actualisé à {time}'
+  String dashboardRefreshedAt(String time);
+
+  /// Affiche le nombre de minutes depuis la dernière actualisation.
+  /// In fr: 'Il y a {n} min'
+  String dashboardRefreshedAgo(int n);
+
+  /// Affiché quand la donnée a moins d'une minute.
+  /// In fr: 'À l\'instant'
+  String get dashboardRefreshedJustNow;
+
+  /// Infobulle du bouton d'actualisation.
+  /// In fr: 'Actualiser les données'
+  String get dashboardRefreshTooltip;
+
+  // ── Dashboard — Maintenance préventive ───────────────────────────────────
+
+  /// Libellé de la StatCard "PM en retard".
+  /// In fr: 'PM en retard'
+  String get dashboardPmOverdue;
+
+  // ── Dashboard — Incidents prioritaires ───────────────────────────────────
+
+  /// Titre de la section incidents triés par urgence.
+  /// In fr: 'Incidents prioritaires'
+  String get dashboardPriorityIssues;
+
+  /// Libellé d'alerte pour un incident critique ou urgent ouvert >24h.
+  /// In fr: 'Incident critique >24h'
+  String get dashboardCriticalIssue24h;
+
+  // ── Dashboard — Indicateurs technicien ───────────────────────────────────
+
+  /// Titre de la section métriques opérationnelles.
+  /// In fr: 'Indicateurs opérationnels'
+  String get dashboardTechSection;
+
+  /// Libellé de la métrique backlog du groupe.
+  /// In fr: 'Backlog groupe'
+  String get dashboardTechBacklogLabel;
+
+  /// Libellé de la métrique équipements critiques hors service.
+  /// In fr: 'Critiques Hors Service'
+  String get dashboardTechCriticalOos;
+
+  // ── Dashboard — Panel latéral desktop ────────────────────────────────────
+
+  /// Titre du panel latéral (équipements critiques HS).
+  /// In fr: 'Équipements critiques'
+  String get dashboardSidePanelTitle;
+
+  /// Sous-titre du panel latéral.
+  /// In fr: 'Hors service, criticité A'
+  String get dashboardSidePanelSubtitle;
+
+  /// Message affiché quand aucun équipement critique n'est HS.
+  /// In fr: 'Aucun équipement critique HS'
+  String get dashboardSidePanelEmpty;
 }
 
 class _AppLocalizationsDelegate

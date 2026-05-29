@@ -3136,4 +3136,53 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get forgotPasswordHint =>
       'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.';
+
+  // ── Dashboard — Fraîcheur des données ────────────────────────────────────
+
+  @override
+  String dashboardRefreshedAt(String time) => 'Actualisé à $time';
+
+  @override
+  String dashboardRefreshedAgo(int n) => 'Il y a $n min';
+
+  @override
+  String get dashboardRefreshedJustNow => 'À l\'instant';
+
+  @override
+  String get dashboardRefreshTooltip => 'Actualiser les données';
+
+  // ── Dashboard — Maintenance préventive ───────────────────────────────────
+
+  @override
+  String get dashboardPmOverdue => 'PM en retard';
+
+  // ── Dashboard — Incidents prioritaires ───────────────────────────────────
+
+  @override
+  String get dashboardPriorityIssues => 'Incidents prioritaires';
+
+  @override
+  String get dashboardCriticalIssue24h => 'Incident critique >24h';
+
+  // ── Dashboard — Indicateurs technicien ───────────────────────────────────
+
+  @override
+  String get dashboardTechSection => 'Indicateurs opérationnels';
+
+  @override
+  String get dashboardTechBacklogLabel => 'Backlog groupe';
+
+  @override
+  String get dashboardTechCriticalOos => 'Critiques Hors Service';
+
+  // ── Dashboard — Panel latéral desktop ────────────────────────────────────
+
+  @override
+  String get dashboardSidePanelTitle => 'Équipements critiques';
+
+  @override
+  String get dashboardSidePanelSubtitle => 'Hors service, criticité A';
+
+  @override
+  String get dashboardSidePanelEmpty => 'Aucun équipement critique HS';
 }
