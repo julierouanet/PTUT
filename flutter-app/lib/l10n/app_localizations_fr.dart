@@ -3137,52 +3137,106 @@ class AppLocalizationsFr extends AppLocalizations {
   String get forgotPasswordHint =>
       'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.';
 
-  // ── Dashboard — Fraîcheur des données ────────────────────────────────────
+  @override
+  String get commonNext => 'Suivant';
 
   @override
-  String dashboardRefreshedAt(String time) => 'Actualisé à $time';
-
-  @override
-  String dashboardRefreshedAgo(int n) => 'Il y a $n min';
+  String get commonBack => 'Retour';
 
   @override
   String get dashboardRefreshedJustNow => 'À l\'instant';
 
   @override
-  String get dashboardRefreshTooltip => 'Actualiser les données';
+  String dashboardRefreshedAgo(int n) {
+    return 'Il y a $n min';
+  }
 
-  // ── Dashboard — Maintenance préventive ───────────────────────────────────
+  @override
+  String dashboardRefreshedAt(String time) {
+    return 'Actualisé à $time';
+  }
+
+  @override
+  String get dashboardRefreshTooltip => 'Actualiser';
 
   @override
   String get dashboardPmOverdue => 'PM en retard';
-
-  // ── Dashboard — Incidents prioritaires ───────────────────────────────────
 
   @override
   String get dashboardPriorityIssues => 'Incidents prioritaires';
 
   @override
-  String get dashboardCriticalIssue24h => 'Incident critique >24h';
-
-  // ── Dashboard — Indicateurs technicien ───────────────────────────────────
+  String get dashboardCriticalIssue24h => 'Incident critique (24h)';
 
   @override
-  String get dashboardTechSection => 'Indicateurs opérationnels';
+  String get dashboardTechSection => 'Tableau technicien';
 
   @override
-  String get dashboardTechBacklogLabel => 'Backlog groupe';
+  String get dashboardTechBacklogLabel => 'File d\'attente';
 
   @override
-  String get dashboardTechCriticalOos => 'Critiques Hors Service';
-
-  // ── Dashboard — Panel latéral desktop ────────────────────────────────────
+  String get dashboardTechCriticalOos => 'Hors service critiques';
 
   @override
-  String get dashboardSidePanelTitle => 'Équipements critiques';
+  String get dashboardSidePanelTitle => 'Hors service critiques';
 
   @override
-  String get dashboardSidePanelSubtitle => 'Hors service, criticité A';
+  String get dashboardSidePanelSubtitle =>
+      'Équipements hors service avec criticité A';
 
   @override
-  String get dashboardSidePanelEmpty => 'Aucun équipement critique HS';
+  String get dashboardSidePanelEmpty =>
+      'Aucun équipement critique hors service';
+
+  @override
+  String get equipmentExportCsv => 'Exporter CSV';
+
+  @override
+  String get equipmentExportCsvTooltip => 'Télécharger la liste filtrée en CSV';
+
+  @override
+  String get equipmentSchedulePm => 'Planifier PM';
+
+  @override
+  String get equipmentSchedulePmSuccess => 'Maintenance préventive planifiée';
+
+  @override
+  String get equipmentFilterPmOverdueChip => 'PM en retard';
+
+  @override
+  String get equipmentFilterPmSoonChip => 'PM imminente (<7j)';
+
+  @override
+  String get equipmentFormStep1 => 'Infos essentielles';
+
+  @override
+  String get equipmentFormStep2 => 'Infos techniques';
+
+  @override
+  String get equipmentFormStep3 => 'GMAO & Maintenance';
+
+  @override
+  String get equipmentFormStep1Subtitle =>
+      'Nom, catégorie, département, statut';
+
+  @override
+  String get equipmentFormStep2Subtitle =>
+      'Fabricant, numéro de série, localisation';
+
+  @override
+  String get equipmentFormStep3Subtitle =>
+      'Maintenance préventive, criticité, révision';
+
+  @override
+  String get equipmentReportBreakdown => 'Signaler une panne';
+
+  @override
+  String get equipmentColumnInstallDate => 'Date install.';
+
+  @override
+  String get equipmentCsvWebOnly =>
+      'Export CSV disponible sur navigateur web uniquement';
+
+  @override
+  String get equipmentSortBy => 'Trier par';
 }

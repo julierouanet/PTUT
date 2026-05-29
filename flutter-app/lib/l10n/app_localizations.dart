@@ -5900,67 +5900,191 @@ abstract class AppLocalizations {
   /// **'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.'**
   String get forgotPasswordHint;
 
-  // ── Dashboard — Fraîcheur des données ────────────────────────────────────
+  /// No description provided for @commonNext.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivant'**
+  String get commonNext;
 
-  /// Affiche l'heure de la dernière actualisation.
-  /// In fr: 'Actualisé à {time}'
-  String dashboardRefreshedAt(String time);
+  /// No description provided for @commonBack.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour'**
+  String get commonBack;
 
-  /// Affiche le nombre de minutes depuis la dernière actualisation.
-  /// In fr: 'Il y a {n} min'
-  String dashboardRefreshedAgo(int n);
-
-  /// Affiché quand la donnée a moins d'une minute.
-  /// In fr: 'À l\'instant'
+  /// No description provided for @dashboardRefreshedJustNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'À l\'instant'**
   String get dashboardRefreshedJustNow;
 
-  /// Infobulle du bouton d'actualisation.
-  /// In fr: 'Actualiser les données'
+  /// No description provided for @dashboardRefreshedAgo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Il y a {n} min'**
+  String dashboardRefreshedAgo(int n);
+
+  /// No description provided for @dashboardRefreshedAt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actualisé à {time}'**
+  String dashboardRefreshedAt(String time);
+
+  /// No description provided for @dashboardRefreshTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actualiser'**
   String get dashboardRefreshTooltip;
 
-  // ── Dashboard — Maintenance préventive ───────────────────────────────────
-
-  /// Libellé de la StatCard "PM en retard".
-  /// In fr: 'PM en retard'
+  /// No description provided for @dashboardPmOverdue.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM en retard'**
   String get dashboardPmOverdue;
 
-  // ── Dashboard — Incidents prioritaires ───────────────────────────────────
-
-  /// Titre de la section incidents triés par urgence.
-  /// In fr: 'Incidents prioritaires'
+  /// No description provided for @dashboardPriorityIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents prioritaires'**
   String get dashboardPriorityIssues;
 
-  /// Libellé d'alerte pour un incident critique ou urgent ouvert >24h.
-  /// In fr: 'Incident critique >24h'
+  /// No description provided for @dashboardCriticalIssue24h.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident critique (24h)'**
   String get dashboardCriticalIssue24h;
 
-  // ── Dashboard — Indicateurs technicien ───────────────────────────────────
-
-  /// Titre de la section métriques opérationnelles.
-  /// In fr: 'Indicateurs opérationnels'
+  /// No description provided for @dashboardTechSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tableau technicien'**
   String get dashboardTechSection;
 
-  /// Libellé de la métrique backlog du groupe.
-  /// In fr: 'Backlog groupe'
+  /// No description provided for @dashboardTechBacklogLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'File d\'attente'**
   String get dashboardTechBacklogLabel;
 
-  /// Libellé de la métrique équipements critiques hors service.
-  /// In fr: 'Critiques Hors Service'
+  /// No description provided for @dashboardTechCriticalOos.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors service critiques'**
   String get dashboardTechCriticalOos;
 
-  // ── Dashboard — Panel latéral desktop ────────────────────────────────────
-
-  /// Titre du panel latéral (équipements critiques HS).
-  /// In fr: 'Équipements critiques'
+  /// No description provided for @dashboardSidePanelTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors service critiques'**
   String get dashboardSidePanelTitle;
 
-  /// Sous-titre du panel latéral.
-  /// In fr: 'Hors service, criticité A'
+  /// No description provided for @dashboardSidePanelSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements hors service avec criticité A'**
   String get dashboardSidePanelSubtitle;
 
-  /// Message affiché quand aucun équipement critique n'est HS.
-  /// In fr: 'Aucun équipement critique HS'
+  /// No description provided for @dashboardSidePanelEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement critique hors service'**
   String get dashboardSidePanelEmpty;
+
+  /// No description provided for @equipmentExportCsv.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exporter CSV'**
+  String get equipmentExportCsv;
+
+  /// No description provided for @equipmentExportCsvTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger la liste filtrée en CSV'**
+  String get equipmentExportCsvTooltip;
+
+  /// No description provided for @equipmentSchedulePm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planifier PM'**
+  String get equipmentSchedulePm;
+
+  /// No description provided for @equipmentSchedulePmSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive planifiée'**
+  String get equipmentSchedulePmSuccess;
+
+  /// No description provided for @equipmentFilterPmOverdueChip.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM en retard'**
+  String get equipmentFilterPmOverdueChip;
+
+  /// No description provided for @equipmentFilterPmSoonChip.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM imminente (<7j)'**
+  String get equipmentFilterPmSoonChip;
+
+  /// No description provided for @equipmentFormStep1.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infos essentielles'**
+  String get equipmentFormStep1;
+
+  /// No description provided for @equipmentFormStep2.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infos techniques'**
+  String get equipmentFormStep2;
+
+  /// No description provided for @equipmentFormStep3.
+  ///
+  /// In fr, this message translates to:
+  /// **'GMAO & Maintenance'**
+  String get equipmentFormStep3;
+
+  /// No description provided for @equipmentFormStep1Subtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom, catégorie, département, statut'**
+  String get equipmentFormStep1Subtitle;
+
+  /// No description provided for @equipmentFormStep2Subtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricant, numéro de série, localisation'**
+  String get equipmentFormStep2Subtitle;
+
+  /// No description provided for @equipmentFormStep3Subtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive, criticité, révision'**
+  String get equipmentFormStep3Subtitle;
+
+  /// No description provided for @equipmentReportBreakdown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler une panne'**
+  String get equipmentReportBreakdown;
+
+  /// No description provided for @equipmentColumnInstallDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date install.'**
+  String get equipmentColumnInstallDate;
+
+  /// No description provided for @equipmentCsvWebOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Export CSV disponible sur navigateur web uniquement'**
+  String get equipmentCsvWebOnly;
+
+  /// No description provided for @equipmentSortBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Trier par'**
+  String get equipmentSortBy;
 }
 
 class _AppLocalizationsDelegate

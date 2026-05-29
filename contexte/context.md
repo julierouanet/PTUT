@@ -781,7 +781,8 @@ status: StockStatus (normal, low, outOfStock)
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
 | 0  | LoginScreen              | -                       | Email/password, boutons dev quick-login                           |
 | 1  | DashboardScreen          | -                       | Stats equipements par statut, 4 incidents recents, alertes critiques |
-| 2  | EquipmentListScreen      | viewEquipment           | Table recherchable, filtres dept/status/categorie, CRUD, details  |
+| 2  | EquipmentListScreen      | viewEquipment           | SliverList virtualisé, tri sur 4 colonnes, filtres PM (retard/imminente), RBAC colonnes (staffMedical vs technicien), export CSV liste filtrée, bouton "Planifier PM" quick-action, délègue créa/édition à EquipmentFormScreen |
+| 2b | EquipmentFormScreen      | manageEquipment         | Nouvel écran dédié créa/édition : Stepper 3 étapes (Infos essentielles / Infos techniques / GMAO & Maintenance). Remplace le dialog mono-bloc. |
 | 3  | IssueTrackingScreen      | trackIssues             | 2 onglets (tous les incidents / a valider), filtres statut. Clics naviguent vers IssueDetailScreen |
 | 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : 5 sections (contexte, panne, intervention, ressources, timeline). Charge GET /api/issues/:id enrichi |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
