@@ -8,6 +8,7 @@ import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
+import 'issue_detail_screen.dart';
 
 /// Statuts considérés comme « actifs » (pas encore résolus)
 const _activeStatuses = {
@@ -264,11 +265,23 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
             _buildSectionTitle(l10n.equipmentGeneralSection),
             _buildInfoRow(l10n.commonDepartment, eq.department),
             _buildInfoRow(l10n.commonCategory, eq.category),
+            if (eq.macroCategory != null && eq.macroCategory!.isNotEmpty)
+              _buildInfoRow(l10n.macroCategoryLabel, eq.macroCategory!),
+            if (eq.subcategoryName != null && eq.subcategoryName!.isNotEmpty)
+              _buildInfoRow(l10n.subcategoryLabel, eq.subcategoryName!),
             if (eq.serialNumber.isNotEmpty)
               _buildInfoRow(l10n.equipmentSerialNumber, eq.serialNumber),
             if (eq.location.isNotEmpty)
               _buildInfoRow(l10n.equipmentLocation, eq.location),
             _buildInfoRow(l10n.equipmentInternalId, eq.id, mono: true),
+
+            // ── Criticité & garantie ──────────────────────────────────────
+            if (eq.criticality != null) ...[
+              const SizedBox(height: 4),
+              _buildCriticalityRow(l10n, eq.criticality!),
+            ],
+            if (eq.warrantyEndDate != null && eq.warrantyEndDate!.isNotEmpty)
+              _buildWarrantyRow(l10n, eq),
 
             // ── Inventaire ────────────────────────────────────────────────
             if (_hasInventoryFields(eq)) ...[
@@ -550,71 +563,198 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
   }
 
   Widget _buildIssueCard(AppLocalizations l10n, Issue issue) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Badges urgence + statut ───────────────────────────────────
-          Row(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => IssueDetailScreen(issueId: issue.id),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              UrgencyBadge(urgency: issue.urgency, isCompact: true),
-              const SizedBox(width: 8),
-              IssueStatusBadge(status: issue.status.displayName),
-              const Spacer(),
-              Text(
-                _formatDateShort(issue.createdAt),
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textSecondary),
+              // ── Badges urgence + statut ─────────────────────────────
+              Row(
+                children: [
+                  UrgencyBadge(urgency: issue.urgency, isCompact: true),
+                  const SizedBox(width: 8),
+                  IssueStatusBadge(status: issue.status.displayName),
+                  const Spacer(),
+                  Text(
+                    _formatDateShort(issue.createdAt),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.chevron_right,
+                      size: 16, color: AppColors.textSecondary),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 8),
+              const SizedBox(height: 8),
 
-          // ── Type + description ────────────────────────────────────────
-          Text(
-            issue.type,
-            style: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            issue.description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-          ),
+              // ── Type + description ──────────────────────────────────
+              Text(
+                issue.type,
+                style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                issue.description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
 
-          // ── Technicien assigné ────────────────────────────────────────
-          if (issue.assignedTechnician != null &&
-              issue.assignedTechnician!.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Row(
-              children: [
-                const Icon(Icons.person_outline,
-                    size: 13, color: AppColors.textSecondary),
-                const SizedBox(width: 4),
-                Text(
-                  issue.assignedTechnician!,
-                  style: const TextStyle(
-                      fontSize: 12, color: AppColors.textSecondary),
+              // ── Technicien assigné ──────────────────────────────────
+              if (issue.assignedTechnician != null &&
+                  issue.assignedTechnician!.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(Icons.person_outline,
+                        size: 13, color: AppColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                      issue.assignedTechnician!,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                  ],
                 ),
               ],
-            ),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
 
   // ── Widgets utilitaires ──────────────────────────────────────────────────────
+
+  Widget _buildCriticalityRow(AppLocalizations l10n, EquipmentCriticality c) {
+    final (label, color, tooltip) = switch (c) {
+      EquipmentCriticality.a => (
+          l10n.criticalityA,
+          AppColors.error,
+          l10n.criticalityTooltipA,
+        ),
+      EquipmentCriticality.b => (
+          l10n.criticalityB,
+          AppColors.warning,
+          l10n.criticalityTooltipB,
+        ),
+      EquipmentCriticality.c => (
+          l10n.criticalityC,
+          AppColors.success,
+          l10n.criticalityTooltipC,
+        ),
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              l10n.criticalityLabel,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ),
+          Tooltip(
+            message: tooltip,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarrantyRow(AppLocalizations l10n, Equipment eq) {
+    final level = eq.warrantyAlertLevel;
+    final (statusLabel, color) = switch (level) {
+      'expired'       => (l10n.warrantyExpired, AppColors.error),
+      'expiring_soon' => (l10n.warrantyExpiringSoon, AppColors.warning),
+      _               => (l10n.warrantyValid, AppColors.success),
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              l10n.warrantyEndDate,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Text(
+                  _formatDate(eq.warrantyEndDate!),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 13,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
