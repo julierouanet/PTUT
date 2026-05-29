@@ -140,9 +140,12 @@ function seedReferences(db, workbook, dryRun) {
 function buildRefCaches(db) {
   const deps = db.prepare('SELECT id, name FROM departments').all();
   const cats = db.prepare('SELECT id, name FROM equipment_categories').all();
+  const subs = db.prepare('SELECT id, name, macro_category_id FROM equipment_subcategories').all();
   const depMap = new Map(deps.map(r => [r.name.toLowerCase(), r.id]));
   const catMap = new Map(cats.map(r => [r.name.toLowerCase(), r.id]));
-  return { depMap, catMap };
+  // subMap : name → { id, macro_category_id }
+  const subMap = new Map(subs.map(r => [r.name.toLowerCase(), { id: r.id, macroId: r.macro_category_id }]));
+  return { depMap, catMap, subMap };
 }
 
 // ── Détection de la ligne d'en-tête dans la feuille d'inventaire ────────────
@@ -166,46 +169,53 @@ function importEquipment(db, workbook, opts) {
   const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: null });
   const headerIdx = findHeaderRow(rows);
 
-  const { depMap, catMap } = buildRefCaches(db);
+  const { depMap, catMap, subMap } = buildRefCaches(db);
 
   // Préparation des statements (une seule fois)
   const upsert = db.prepare(`
     INSERT INTO equipment (
       id, name, department, category, serial_number, status, location,
-      manufacturer, model, manuf_year, install_date, department_id, category_id
+      manufacturer, model, manuf_year, install_date, department_id, category_id,
+      subcategory_id, macro_category_id
     ) VALUES (
       @id, @name, @department, @category, @serial_number, @status, @location,
-      @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id
+      @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id,
+      @subcategory_id, @macro_category_id
     )
     ON CONFLICT(id) DO UPDATE SET
-      name           = excluded.name,
-      department     = excluded.department,
-      category       = excluded.category,
-      serial_number  = excluded.serial_number,
-      status         = excluded.status,
-      location       = COALESCE(excluded.location, equipment.location),
-      manufacturer   = excluded.manufacturer,
-      model          = excluded.model,
-      manuf_year     = excluded.manuf_year,
-      install_date   = excluded.install_date,
-      department_id  = excluded.department_id,
-      category_id    = excluded.category_id,
-      updated_at     = datetime('now','localtime')
+      name              = excluded.name,
+      department        = excluded.department,
+      category          = excluded.category,
+      serial_number     = excluded.serial_number,
+      status            = excluded.status,
+      location          = COALESCE(excluded.location, equipment.location),
+      manufacturer      = excluded.manufacturer,
+      model             = excluded.model,
+      manuf_year        = excluded.manuf_year,
+      install_date      = excluded.install_date,
+      department_id     = excluded.department_id,
+      category_id       = excluded.category_id,
+      subcategory_id    = excluded.subcategory_id,
+      macro_category_id = excluded.macro_category_id,
+      updated_at        = datetime('now','localtime')
   `);
 
   const insertOnly = db.prepare(`
     INSERT OR IGNORE INTO equipment (
       id, name, department, category, serial_number, status, location,
-      manufacturer, model, manuf_year, install_date, department_id, category_id
+      manufacturer, model, manuf_year, install_date, department_id, category_id,
+      subcategory_id, macro_category_id
     ) VALUES (
       @id, @name, @department, @category, @serial_number, @status, @location,
-      @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id
+      @manufacturer, @model, @manuf_year, @install_date, @department_id, @category_id,
+      @subcategory_id, @macro_category_id
     )
   `);
 
   const insertTag        = db.prepare('INSERT OR IGNORE INTO equipment_tags(equipment_id, tag_number) VALUES (?, ?)');
   const insertDepRuntime = db.prepare('INSERT OR IGNORE INTO departments(name) VALUES (?)');
   const insertCatRuntime = db.prepare('INSERT OR IGNORE INTO equipment_categories(name) VALUES (?)');
+  const insertSubRuntime = db.prepare('INSERT OR IGNORE INTO equipment_subcategories(name, macro_category_id) VALUES (?, (SELECT id FROM equipment_macro_categories WHERE name = \'Biomedical\'))');
   const findEquipById    = db.prepare('SELECT id FROM equipment WHERE id = ?');
 
   const stats = {
@@ -283,6 +293,31 @@ function importEquipment(db, workbook, opts) {
           if (categoryId) catMap.set(rawCat.toLowerCase(), categoryId);
         }
 
+        // Résolution FK sous-catégorie (miroir de equipment_categories dans equipment_subcategories)
+        let subcategoryId = null;
+        let macroCategoryId = null;
+        const subEntry = subMap.get(rawCat.toLowerCase());
+        if (subEntry) {
+          subcategoryId   = subEntry.id;
+          macroCategoryId = subEntry.macroId;
+        } else {
+          // Ajouter la sous-catégorie à la volée (défaut Biomedical)
+          const result = insertSubRuntime.run(rawCat);
+          if (result.changes === 1) {
+            subcategoryId   = result.lastInsertRowid;
+            const macroRow  = db.prepare("SELECT id FROM equipment_macro_categories WHERE name = 'Biomedical'").get();
+            macroCategoryId = macroRow ? macroRow.id : null;
+            subMap.set(rawCat.toLowerCase(), { id: subcategoryId, macroId: macroCategoryId });
+          } else {
+            const found = db.prepare('SELECT id, macro_category_id FROM equipment_subcategories WHERE LOWER(name) = LOWER(?)').get(rawCat);
+            if (found) {
+              subcategoryId   = found.id;
+              macroCategoryId = found.macro_category_id;
+              subMap.set(rawCat.toLowerCase(), { id: subcategoryId, macroId: macroCategoryId });
+            }
+          }
+        }
+
         const payload = {
           id,
           name: rawName,
@@ -297,6 +332,8 @@ function importEquipment(db, workbook, opts) {
           install_date: installDate,
           department_id: departmentId,
           category_id: categoryId,
+          subcategory_id: subcategoryId,
+          macro_category_id: macroCategoryId,
         };
 
         const existedBefore = !!findEquipById.get(id);

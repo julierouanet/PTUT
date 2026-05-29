@@ -357,36 +357,11 @@ function initTables() {
   const insertFeature = db.prepare(
     'INSERT OR IGNORE INTO features (id, name, description, is_global_active) VALUES (?, ?, ?, ?)'
   );
-  insertFeature.run(
-    'inventory_module',
-    'Inventaire',
-    "Module de gestion de l'inventaire physique des equipements",
-    1
-  );
-  insertFeature.run(
-    'environmental_health_module',
-    'Sante environnementale',
-    "Module de suivi hygiene des mains et tri des dechets (futur)",
-    0
-  );
-  insertFeature.run(
-    'analytics_module',
-    'Analytiques',
-    "Module de rapports et analyses avancees",
-    1
-  );
-  insertFeature.run(
-    'reports_module',
-    'Rapports',
-    "Module de generation de rapports PDF",
-    1
-  );
-  insertFeature.run(
-    'push_notifications_module',
-    'Notifications Push',
-    "Activation des notifications push navigateur",
-    1
-  );
+  insertFeature.run('inventory_module', 'Inventaire', "Module de gestion de l'inventaire physique des equipements", 1);
+  insertFeature.run('environmental_health_module', 'Sante environnementale', "Module de suivi hygiene des mains et tri des dechets (futur)", 0);
+  insertFeature.run('analytics_module', 'Analytiques', "Module de rapports et analyses avancees", 1);
+  insertFeature.run('reports_module', 'Rapports', "Module de generation de rapports PDF", 1);
+  insertFeature.run('push_notifications_module', 'Notifications Push', "Activation des notifications push navigateur", 1);
 
   // ── Paramètres et historique des sauvegardes ───────────────────────────────
   db.exec(`
@@ -414,6 +389,306 @@ function initTables() {
       INSERT INTO backup_settings (id, cron_schedule, is_automated, updated_at)
       VALUES ('default', '0 0 * * *', 0, datetime('now','localtime'))
     `).run();
+  }
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // ── GMAO Phase 2 : Hiérarchie des équipements & Protocoles PM ───────────────
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // ── Table des macro-catégories (Biomedical, Infrastructure, IT) ──────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment_macro_categories (
+      id   INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE
+    );
+  `);
+  // Seed des 3 macro-catégories (idempotent)
+  const insertMacro = db.prepare('INSERT OR IGNORE INTO equipment_macro_categories(name) VALUES (?)');
+  insertMacro.run('Biomedical');
+  insertMacro.run('Infrastructure');
+  insertMacro.run('IT');
+
+  // ── Table des sous-catégories (héritée des ~626 equipment_categories) ────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment_subcategories (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      name              TEXT NOT NULL UNIQUE,
+      macro_category_id INTEGER NOT NULL REFERENCES equipment_macro_categories(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_subcategories_macro ON equipment_subcategories(macro_category_id);
+  `);
+
+  // Migration : peuplement de equipment_subcategories à partir de equipment_categories.
+  // N'insère que les entrées absentes (idempotent via INSERT OR IGNORE).
+  // Le mapping macro-catégorie utilise une heuristique sur le nom de la sous-catégorie.
+  try {
+    const macroIds = db.prepare('SELECT id, name FROM equipment_macro_categories').all()
+      .reduce((acc, r) => { acc[r.name] = r.id; return acc; }, {});
+
+    const bioId   = macroIds['Biomedical']     || 1;
+    const infraId = macroIds['Infrastructure'] || 2;
+    const itId    = macroIds['IT']             || 3;
+
+    // Mots-clés → IT
+    const itKeywords = [
+      'computer', 'server', 'printer', 'network', 'software', 'laptop', 'tablet',
+      'desktop', 'ict', 'information', 'digital', 'router', 'switch', 'ups for',
+      'copier', 'scanner ict', 'photocopier',
+    ];
+    // Mots-clés → Infrastructure
+    const infraKeywords = [
+      'bed ', 'chair', 'table ', 'furniture', 'electrical', 'generator', 'air condition',
+      'elevator', 'plumbing', 'hvac', 'fire', 'infrastructure', 'vehicle', 'refrigerator',
+      'washing', 'laundry', 'sterilization', 'incinerator', 'boiler', 'pump', 'fan ',
+      'lighting', 'curtain', 'door ', 'window ', 'flooring', 'ceiling', 'roof ',
+      'hygiene', 'sanitation', 'waste', 'mattress', 'stretcher', 'trolley',
+    ];
+
+    const insertSub = db.prepare(
+      'INSERT OR IGNORE INTO equipment_subcategories(name, macro_category_id) VALUES (?, ?)'
+    );
+
+    const cats = db.prepare('SELECT id, name FROM equipment_categories').all();
+    for (const cat of cats) {
+      const lower = cat.name.toLowerCase();
+      let macroId = bioId; // Biomédical par défaut
+      if (itKeywords.some(kw => lower.includes(kw))) {
+        macroId = itId;
+      } else if (infraKeywords.some(kw => lower.includes(kw))) {
+        macroId = infraId;
+      }
+      insertSub.run(cat.name, macroId);
+    }
+
+    // Insérer aussi les catégories héritées du seed legacy (pas dans equipment_categories)
+    const legacySeedCats = [
+      { name: 'Biomedical Equipment',       macro: bioId   },
+      { name: 'ICT Equipment',              macro: itId    },
+      { name: 'Electrical Equipment',       macro: infraId },
+      { name: 'Hygiene Materials',          macro: infraId },
+      { name: 'Sterilization and Laundry',  macro: infraId },
+      { name: 'Pharmacy',                   macro: bioId   },
+      { name: 'Informatique',               macro: itId    },
+      { name: 'Imagerie',                   macro: bioId   },
+      { name: 'Chirurgie',                  macro: bioId   },
+      { name: 'Monitoring',                 macro: bioId   },
+      { name: 'Thérapeutique',              macro: bioId   },
+      { name: 'Mobilier',                   macro: infraId },
+      { name: 'Autre',                      macro: bioId   },
+    ];
+    for (const { name, macro } of legacySeedCats) {
+      insertSub.run(name, macro);
+    }
+  } catch (_) {}
+
+  // ── Nouvelles colonnes sur equipment (idempotentes via try/catch) ─────────
+  try { db.exec('ALTER TABLE equipment ADD COLUMN subcategory_id INTEGER REFERENCES equipment_subcategories(id)'); } catch (_) {}
+  try { db.exec('ALTER TABLE equipment ADD COLUMN macro_category_id INTEGER REFERENCES equipment_macro_categories(id)'); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN warranty_end_date TEXT"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN criticality TEXT"); } catch (_) {}
+
+  // ── Rétro-remplissage : subcategory_id + macro_category_id pour l'existant.
+  // Priorité : cherche dans equipment_subcategories un nom = equipment.category.
+  // Idempotent : ne met à jour que les lignes qui n'ont pas encore de subcategory_id.
+  try {
+    db.exec(`
+      UPDATE equipment
+      SET
+        subcategory_id    = (
+          SELECT s.id
+          FROM   equipment_subcategories s
+          WHERE  LOWER(s.name) = LOWER(equipment.category)
+          LIMIT  1
+        ),
+        macro_category_id = (
+          SELECT s.macro_category_id
+          FROM   equipment_subcategories s
+          WHERE  LOWER(s.name) = LOWER(equipment.category)
+          LIMIT  1
+        )
+      WHERE subcategory_id IS NULL
+    `);
+  } catch (_) {}
+
+  // ── Protocoles de maintenance préventive (PM) liés aux sous-catégories ────
+  // Distinct de preventive_maintenance_plans (qui est par équipement) :
+  // pm_protocols = modèles de protocoles par type d'équipement.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS pm_protocols (
+      id                       INTEGER PRIMARY KEY AUTOINCREMENT,
+      subcategory_id           INTEGER NOT NULL REFERENCES equipment_subcategories(id) ON DELETE CASCADE,
+      name                     TEXT NOT NULL,
+      frequency_months         INTEGER NOT NULL,
+      estimated_duration_hours REAL,
+      checklist                TEXT,
+      created_at               TEXT DEFAULT (datetime('now','localtime')),
+      updated_at               TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_pm_protocols_subcategory ON pm_protocols(subcategory_id);
+  `);
+
+  // Seed de protocoles PM pour les équipements biomédicaux courants.
+  // Chaque INSERT utilise une sous-requête : si la sous-catégorie n'existe pas,
+  // NULL déclenche une violation FK et la ligne est ignorée (idempotent).
+  // On vérifie l'existence avec une table de sentinelle _pm_seeded.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS _pm_seeded (
+      marker TEXT PRIMARY KEY
+    );
+  `);
+  // N'insère les protocoles que si la sous-catégorie existe ET que le protocole
+  // n'est pas déjà présent (vérifié par (subcategory_id, name)).
+  // Pas de sentinel : on tente à chaque démarrage mais l'INSERT OR IGNORE garantit l'idempotence.
+  const insertPm = db.prepare(`
+    INSERT OR IGNORE INTO pm_protocols (subcategory_id, name, frequency_months, estimated_duration_hours, checklist)
+    SELECT s.id, ?, ?, ?, ?
+    FROM   equipment_subcategories s
+    WHERE  LOWER(s.name) = LOWER(?)
+      AND  NOT EXISTS (
+        SELECT 1 FROM pm_protocols p2
+        WHERE p2.subcategory_id = s.id AND LOWER(p2.name) = LOWER(?)
+      )
+    LIMIT  1
+  `);
+  {
+
+    const bioProtocols = [
+      {
+        cat: 'Anaesthesia Machine',
+        name: 'Quarterly preventive maintenance',
+        freq: 3, dur: 3.0,
+        checklist: JSON.stringify([
+          'Check gas leaks on all circuits',
+          'Verify O2/N2O/Air calibration',
+          'Test all alarms and safety limits',
+          'Inspect breathing circuits and valves',
+          'Check bellows and APL valve',
+          'Clean and disinfect accessible surfaces',
+          'Verify vaporiser output',
+          'Check emergency O2 flush',
+          'Test battery backup',
+          'Document findings in maintenance log',
+        ]),
+      },
+      {
+        cat: 'Autoclave',
+        name: 'Semi-annual preventive maintenance',
+        freq: 6, dur: 2.5,
+        checklist: JSON.stringify([
+          'Check door gasket and locking mechanism',
+          'Verify pressure gauge calibration',
+          'Test safety valve',
+          'Inspect heating elements',
+          'Check water quality and drain filter',
+          'Run Bowie-Dick test',
+          'Verify cycle time and temperature accuracy',
+          'Clean chamber and trays',
+          'Inspect steam traps and pipework',
+        ]),
+      },
+      {
+        cat: 'Patient Monitor',
+        name: 'Annual preventive maintenance',
+        freq: 12, dur: 2.0,
+        checklist: JSON.stringify([
+          'Calibrate SpO2, NIBP and ECG channels',
+          'Inspect all cables and sensors for damage',
+          'Test all alarms (high/low thresholds)',
+          'Verify battery capacity and replace if < 80%',
+          'Check display brightness and contrast',
+          'Clean all sensors and connectors',
+          'Verify electrical safety (ground test)',
+          'Test nurse call output',
+          'Update firmware if available',
+        ]),
+      },
+      {
+        cat: 'Defibrillator',
+        name: 'Annual preventive maintenance',
+        freq: 12, dur: 2.5,
+        checklist: JSON.stringify([
+          'Verify delivered energy accuracy at 200 J and 360 J',
+          'Test sync mode (cardioversion)',
+          'Check AED pads / manual paddles condition',
+          'Test all alarms and patient leads',
+          'Inspect battery — replace if capacity < 75%',
+          'Test ECG recording/printing',
+          'Check charge time at max energy',
+          'Verify electrical safety compliance',
+          'Document test results with strip printout',
+        ]),
+      },
+      {
+        cat: 'X-Ray Machine',
+        name: 'Semi-annual preventive maintenance',
+        freq: 6, dur: 4.0,
+        checklist: JSON.stringify([
+          'Inspect X-ray tube for signs of wear',
+          'Check collimator alignment and field light',
+          'Verify kVp and mAs accuracy',
+          'Inspect high-voltage cables and connectors',
+          'Check radiation leakage at tube housing',
+          'Test anode heat sensor and thermal protection',
+          'Inspect mechanical movement (arm, column)',
+          'Verify detector calibration (digital systems)',
+          'Check radiation warning indicators',
+          'Perform radiation dose measurement',
+        ]),
+      },
+      {
+        cat: 'Ventilator',
+        name: 'Quarterly preventive maintenance',
+        freq: 3, dur: 3.0,
+        checklist: JSON.stringify([
+          'Check all circuit connections for leaks',
+          'Verify tidal volume accuracy',
+          'Test all alarms (apnoea, high pressure, disconnect)',
+          'Inspect inspiratory/expiratory valves',
+          'Check humidifier operation',
+          'Clean reusable components',
+          'Test battery backup duration',
+          'Verify oxygen sensor calibration',
+          'Check exhalation port and PEEP valve',
+        ]),
+      },
+      {
+        cat: 'Ultrasound',
+        name: 'Annual preventive maintenance',
+        freq: 12, dur: 2.0,
+        checklist: JSON.stringify([
+          'Inspect all transducers for cracks or delamination',
+          'Clean transducer connectors',
+          'Verify image quality with test phantom',
+          'Check all cable routing',
+          'Test all imaging modes (B, M, Doppler)',
+          'Verify electrical safety compliance',
+          'Check and clean ventilation filters',
+          'Test printer/archiving function if equipped',
+        ]),
+      },
+      {
+        cat: 'Centrifuge',
+        name: 'Semi-annual preventive maintenance',
+        freq: 6, dur: 1.5,
+        checklist: JSON.stringify([
+          'Inspect rotor for cracks or corrosion',
+          'Check rotor locking mechanism',
+          'Verify speed accuracy with tachometer',
+          'Check timer accuracy',
+          'Inspect lid and safety lock',
+          'Lubricate moving parts per manufacturer spec',
+          'Check motor brush wear',
+          'Clean chamber and drain',
+          'Verify imbalance detection system',
+        ]),
+      },
+    ];
+
+    for (const p of bioProtocols) {
+      try {
+        insertPm.run(p.name, p.freq, p.dur, p.checklist, p.cat, p.name);
+      } catch (_) {}
+    }
   }
 }
 

@@ -5521,6 +5521,258 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Impossible de charger les détails de l\'incident.'**
   String get issueDetailLoadError;
+
+  /// No description provided for @macroCategoryLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Macro-catégorie'**
+  String get macroCategoryLabel;
+
+  /// No description provided for @macroCategoryBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomédical'**
+  String get macroCategoryBiomedical;
+
+  /// No description provided for @macroCategoryInfrastructure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get macroCategoryInfrastructure;
+
+  /// No description provided for @macroCategoryIT.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informatique (IT)'**
+  String get macroCategoryIT;
+
+  /// No description provided for @subcategoryLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sous-catégorie'**
+  String get subcategoryLabel;
+
+  /// No description provided for @subcategorySelectHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez une sous-catégorie'**
+  String get subcategorySelectHint;
+
+  /// No description provided for @criticalityLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Criticité (Matrice ABC)'**
+  String get criticalityLabel;
+
+  /// No description provided for @criticalityA.
+  ///
+  /// In fr, this message translates to:
+  /// **'A — Critique'**
+  String get criticalityA;
+
+  /// No description provided for @criticalityB.
+  ///
+  /// In fr, this message translates to:
+  /// **'B — Important'**
+  String get criticalityB;
+
+  /// No description provided for @criticalityC.
+  ///
+  /// In fr, this message translates to:
+  /// **'C — Courant'**
+  String get criticalityC;
+
+  /// No description provided for @criticalityTooltipA.
+  ///
+  /// In fr, this message translates to:
+  /// **'Panne = arrêt immédiat des soins. Priorité absolue.'**
+  String get criticalityTooltipA;
+
+  /// No description provided for @criticalityTooltipB.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impact significatif mais solution de repli possible.'**
+  String get criticalityTooltipB;
+
+  /// No description provided for @criticalityTooltipC.
+  ///
+  /// In fr, this message translates to:
+  /// **'Peu d\'impact sur la continuité des soins.'**
+  String get criticalityTooltipC;
+
+  /// No description provided for @warrantyEndDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fin de garantie'**
+  String get warrantyEndDate;
+
+  /// No description provided for @warrantyEndDateHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionner la date de fin de garantie (optionnel)'**
+  String get warrantyEndDateHint;
+
+  /// No description provided for @warrantyExpired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Garantie expirée'**
+  String get warrantyExpired;
+
+  /// No description provided for @warrantyExpiringSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Garantie expirée dans 30 jours'**
+  String get warrantyExpiringSoon;
+
+  /// No description provided for @warrantyValid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sous garantie'**
+  String get warrantyValid;
+
+  /// No description provided for @pmProtocolsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocoles de Maintenance Préventive'**
+  String get pmProtocolsTitle;
+
+  /// No description provided for @pmProtocolsSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Checklists et fréquences par type d\'équipement'**
+  String get pmProtocolsSubtitle;
+
+  /// No description provided for @pmProtocolFrequency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fréquence'**
+  String get pmProtocolFrequency;
+
+  /// No description provided for @pmProtocolFrequencyMonths.
+  ///
+  /// In fr, this message translates to:
+  /// **'{n} mois'**
+  String pmProtocolFrequencyMonths(int n);
+
+  /// No description provided for @pmProtocolDuration.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée estimée'**
+  String get pmProtocolDuration;
+
+  /// No description provided for @pmProtocolDurationHours.
+  ///
+  /// In fr, this message translates to:
+  /// **'{h} h'**
+  String pmProtocolDurationHours(String h);
+
+  /// No description provided for @pmProtocolChecklist.
+  ///
+  /// In fr, this message translates to:
+  /// **'Checklist'**
+  String get pmProtocolChecklist;
+
+  /// No description provided for @pmProtocolChecklistEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune tâche définie'**
+  String get pmProtocolChecklistEmpty;
+
+  /// No description provided for @pmProtocolAdd.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un protocole'**
+  String get pmProtocolAdd;
+
+  /// No description provided for @pmProtocolEdit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier le protocole'**
+  String get pmProtocolEdit;
+
+  /// No description provided for @pmProtocolDelete.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le protocole'**
+  String get pmProtocolDelete;
+
+  /// No description provided for @pmProtocolDeleteConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le protocole \"{name}\" ?'**
+  String pmProtocolDeleteConfirm(String name);
+
+  /// No description provided for @pmProtocolSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocole enregistré'**
+  String get pmProtocolSaved;
+
+  /// No description provided for @pmProtocolDeleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocole supprimé'**
+  String get pmProtocolDeleted;
+
+  /// No description provided for @pmProtocolNameLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom du protocole *'**
+  String get pmProtocolNameLabel;
+
+  /// No description provided for @pmProtocolFrequencyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fréquence (mois) *'**
+  String get pmProtocolFrequencyLabel;
+
+  /// No description provided for @pmProtocolDurationLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée estimée (heures)'**
+  String get pmProtocolDurationLabel;
+
+  /// No description provided for @pmProtocolChecklistLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tâches de la checklist'**
+  String get pmProtocolChecklistLabel;
+
+  /// No description provided for @pmProtocolAddTask.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter une tâche'**
+  String get pmProtocolAddTask;
+
+  /// No description provided for @pmProtocolTaskHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Vérifier la tension secteur'**
+  String get pmProtocolTaskHint;
+
+  /// No description provided for @pmProtocolNoProtocols.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun protocole PM pour ce type d\'équipement'**
+  String get pmProtocolNoProtocols;
+
+  /// No description provided for @equipmentSubcategorySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Classification GMAO'**
+  String get equipmentSubcategorySection;
+
+  /// No description provided for @equipmentWarrantySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Garantie & Criticité'**
+  String get equipmentWarrantySection;
+
+  /// No description provided for @equipmentPmSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocoles PM applicables'**
+  String get equipmentPmSection;
 }
 
 class _AppLocalizationsDelegate

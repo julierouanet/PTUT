@@ -167,9 +167,12 @@ PTUT/
 | `equipment` | TEXT slug (`a-z0-9_-`, max 100) | Équipements médicaux |
 | `equipment_tags` | AUTOINCREMENT | Numéros de tags physiques par équipement (1 équipement → N tags) |
 | `departments` | AUTOINCREMENT | Référentiel départements (~56 entrées en anglais) |
-| `equipment_categories` | AUTOINCREMENT | Référentiel catégories (~626 entrées) |
+| `equipment_categories` | AUTOINCREMENT | Référentiel de noms standards (~626 entrées XLSX) |
+| `equipment_macro_categories` | AUTOINCREMENT | **[NOUVEAU]** 3 macro-catégories : `Biomedical`, `Infrastructure`, `IT` |
+| `equipment_subcategories` | AUTOINCREMENT | **[NOUVEAU]** Sous-catégories (migrées depuis equipment_categories, chacune liée à une macro-catégorie) |
+| `pm_protocols` | AUTOINCREMENT | **[NOUVEAU]** Protocoles de maintenance préventive par type d'équipement (checklist JSON, fréquence en mois) |
 | `maintenance_records` | AUTOINCREMENT | Historique des interventions de maintenance |
-| `preventive_maintenance_plans` | AUTOINCREMENT | Plans de maintenance préventive (fréquence en mois) |
+| `preventive_maintenance_plans` | AUTOINCREMENT | Plans de maintenance préventive par équipement (fréquence en mois) |
 | `locations` | TEXT | Lieux infrastructure (bâtiment + département) — pour incidents sans équipement |
 | `issues` | TEXT | Incidents — vise un **équipement** (`equipment_id`) **OU** un **lieu** (`location_id`) |
 | `inventory` | TEXT | Pièces détachées et consommables médicaux |
@@ -183,6 +186,9 @@ PTUT/
 - **`issue_category` / `assigned_group`** : dérivés automatiquement (`Biomedical` si équipement, `Infrastructure` si lieu)
 - **`user_id`** : UUID Keycloak (ex. `f47ac10b-58cc-4372-a567-0e02b2c3d479`) — jamais un entier
 - **Migrations** : inline dans `database.js` via `PRAGMA table_info` + `ALTER TABLE`, idempotentes au démarrage
+- **`equipment.macro_category_id`** : dérivé automatiquement de `subcategory_id` lors de l'insert/update si non fourni
+- **`equipment.criticality`** : valeurs autorisées `'A'`, `'B'`, `'C'` (Matrice ABC GMAO)
+- **`pm_protocols`** : protocoles par *type* d'équipement (≠ `preventive_maintenance_plans` qui est par équipement individuel)
 
 ### Enums principaux (whitelists serveur)
 

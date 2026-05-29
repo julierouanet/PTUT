@@ -12,6 +12,8 @@ const pushRoutes           = require('./routes/push_notifications');
 const analyticsRoutes      = require('./routes/analytics');
 const featuresRoutes       = require('./routes/features');
 const { router: backupsRoutes, initBackupCron } = require('./routes/backups');
+const categoriesRoutes     = require('./routes/categories');
+const pmProtocolsRoutes    = require('./routes/pm_protocols');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 
@@ -57,6 +59,8 @@ app.use('/api/notifications',  pushRoutes);
 app.use('/api/analytics',      analyticsRoutes);
 app.use('/api/features',       featuresRoutes);
 app.use('/api/admin/backups',  backupsRoutes);
+app.use('/api/categories',     categoriesRoutes);
+app.use('/api/pm-protocols',   pmProtocolsRoutes);
 app.use('/',                   debugRoutes);
 
 const server = app.listen(PORT, () => {

@@ -2929,4 +2929,142 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get issueDetailLoadError =>
       'Impossible de charger les détails de l\'incident.';
+
+  @override
+  String get macroCategoryLabel => 'Macro-catégorie';
+
+  @override
+  String get macroCategoryBiomedical => 'Biomédical';
+
+  @override
+  String get macroCategoryInfrastructure => 'Infrastructure';
+
+  @override
+  String get macroCategoryIT => 'Informatique (IT)';
+
+  @override
+  String get subcategoryLabel => 'Sous-catégorie';
+
+  @override
+  String get subcategorySelectHint => 'Sélectionnez une sous-catégorie';
+
+  @override
+  String get criticalityLabel => 'Criticité (Matrice ABC)';
+
+  @override
+  String get criticalityA => 'A — Critique';
+
+  @override
+  String get criticalityB => 'B — Important';
+
+  @override
+  String get criticalityC => 'C — Courant';
+
+  @override
+  String get criticalityTooltipA =>
+      'Panne = arrêt immédiat des soins. Priorité absolue.';
+
+  @override
+  String get criticalityTooltipB =>
+      'Impact significatif mais solution de repli possible.';
+
+  @override
+  String get criticalityTooltipC =>
+      'Peu d\'impact sur la continuité des soins.';
+
+  @override
+  String get warrantyEndDate => 'Fin de garantie';
+
+  @override
+  String get warrantyEndDateHint =>
+      'Sélectionner la date de fin de garantie (optionnel)';
+
+  @override
+  String get warrantyExpired => 'Garantie expirée';
+
+  @override
+  String get warrantyExpiringSoon => 'Garantie expirée dans 30 jours';
+
+  @override
+  String get warrantyValid => 'Sous garantie';
+
+  @override
+  String get pmProtocolsTitle => 'Protocoles de Maintenance Préventive';
+
+  @override
+  String get pmProtocolsSubtitle =>
+      'Checklists et fréquences par type d\'équipement';
+
+  @override
+  String get pmProtocolFrequency => 'Fréquence';
+
+  @override
+  String pmProtocolFrequencyMonths(int n) {
+    return '$n mois';
+  }
+
+  @override
+  String get pmProtocolDuration => 'Durée estimée';
+
+  @override
+  String pmProtocolDurationHours(String h) {
+    return '$h h';
+  }
+
+  @override
+  String get pmProtocolChecklist => 'Checklist';
+
+  @override
+  String get pmProtocolChecklistEmpty => 'Aucune tâche définie';
+
+  @override
+  String get pmProtocolAdd => 'Ajouter un protocole';
+
+  @override
+  String get pmProtocolEdit => 'Modifier le protocole';
+
+  @override
+  String get pmProtocolDelete => 'Supprimer le protocole';
+
+  @override
+  String pmProtocolDeleteConfirm(String name) {
+    return 'Supprimer le protocole \"$name\" ?';
+  }
+
+  @override
+  String get pmProtocolSaved => 'Protocole enregistré';
+
+  @override
+  String get pmProtocolDeleted => 'Protocole supprimé';
+
+  @override
+  String get pmProtocolNameLabel => 'Nom du protocole *';
+
+  @override
+  String get pmProtocolFrequencyLabel => 'Fréquence (mois) *';
+
+  @override
+  String get pmProtocolDurationLabel => 'Durée estimée (heures)';
+
+  @override
+  String get pmProtocolChecklistLabel => 'Tâches de la checklist';
+
+  @override
+  String get pmProtocolAddTask => 'Ajouter une tâche';
+
+  @override
+  String get pmProtocolTaskHint => 'Ex : Vérifier la tension secteur';
+
+  @override
+  String get pmProtocolNoProtocols =>
+      'Aucun protocole PM pour ce type d\'équipement';
+
+  @override
+  String get equipmentSubcategorySection => 'Classification GMAO';
+
+  @override
+  String get equipmentWarrantySection => 'Garantie & Criticité';
+
+  @override
+  String get equipmentPmSection => 'Protocoles PM applicables';
 }

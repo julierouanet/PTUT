@@ -501,13 +501,31 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 
 | Methode | Route                           | Auth              | Description                                      |
 |---------|---------------------------------|-------------------|--------------------------------------------------|
-| GET     | /api/equipment                  | Auth              | Liste (filtres: department, status, category). Retourne maintenanceHistory + futureMaintenance |
-| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance               |
-| POST    | /api/equipment                  | Admin/Supervisor  | Creer (required: id, name, department, category)  |
-| PUT     | /api/equipment/:id              | Admin/Sup/Tech    | Modifier (COALESCE, partial update)               |
+| GET     | /api/equipment                  | Auth              | Liste (filtres: department, status, category, **macro_category**, **macro_category_id**). Retourne maintenanceHistory + futureMaintenance + **macro_category** + **subcategory_name** |
+| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** (protocoles PM de la sous-catégorie) |
+| POST    | /api/equipment                  | Admin/Supervisor  | Creer (required: id, name, department, category) + optionnel: **subcategory_id**, **warranty_end_date**, **criticality** |
+| PUT     | /api/equipment/:id              | Admin/Sup/Tech    | Modifier (COALESCE, partial update) + nouveaux champs GMAO |
 | DELETE  | /api/equipment/:id              | Admin             | Supprimer (snapshot audit, ?reason=)              |
 | POST    | /api/equipment/:id/maintenance  | Admin/Sup/Tech    | Ajouter enregistrement maintenance                |
 | POST    | /api/equipment/restore          | Admin             | Restaurer equipement supprime                     |
+
+### Catégories & Sous-catégories (`/api/categories`) **[NOUVEAU]**
+
+| Methode | Route                    | Auth  | Description                                                  |
+|---------|--------------------------|-------|--------------------------------------------------------------|
+| GET     | /api/categories/macro    | Auth  | Liste des 3 macro-catégories (Biomedical, Infrastructure, IT) |
+| GET     | /api/categories/sub      | Auth  | Liste sous-catégories (filtre: ?macro_category_id=). Inclut equipment_count |
+| GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + ses protocols PM + equipment_count   |
+
+### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**
+
+| Methode | Route              | Auth  | Description                                                               |
+|---------|--------------------|-------|---------------------------------------------------------------------------|
+| GET     | /api/pm-protocols  | Auth  | Liste (filtres: ?subcategory_id=, ?macro_category_id=). Checklist désérialisée en tableau |
+| GET     | /api/pm-protocols/:id | Auth | Détail avec checklist |
+| POST    | /api/pm-protocols  | Admin | Créer (required: subcategory_id, name, frequency_months ; optionnel: estimated_duration_hours, checklist[]) |
+| PUT     | /api/pm-protocols/:id | Admin | Modifier (COALESCE partiel) |
+| DELETE  | /api/pm-protocols/:id | Admin | Supprimer |
 
 ### Incidents (`/api/issues`)
 

@@ -1,4 +1,4 @@
-/// Equipment status enumeration
+/// Statut d'un équipement médical
 enum EquipmentStatus {
   operational,
   maintenance,
@@ -6,7 +6,7 @@ enum EquipmentStatus {
   toBeDisposal,
   disposed;
 
-  /// Canonical English name (matches the value stored in the DB)
+  /// Valeur canonique anglaise (correspond à la valeur stockée en DB)
   String get displayName {
     switch (this) {
       case EquipmentStatus.operational:
@@ -22,7 +22,7 @@ enum EquipmentStatus {
     }
   }
 
-  /// Localized display name — use this in the UI
+  /// Nom localisé — à utiliser dans l'UI
   String localizedName(dynamic l10n) {
     switch (this) {
       case EquipmentStatus.operational:
@@ -56,7 +56,49 @@ enum EquipmentStatus {
   }
 }
 
-/// Maintenance record model
+/// Criticité selon la matrice ABC (norme GMAO)
+enum EquipmentCriticality {
+  a, // Critique — panne = arrêt immédiat de la production de soins
+  b, // Important — impact significatif mais palliatif possible
+  c; // Courant — peu d'impact sur la continuité des soins
+
+  String get displayName {
+    switch (this) {
+      case EquipmentCriticality.a:
+        return 'A';
+      case EquipmentCriticality.b:
+        return 'B';
+      case EquipmentCriticality.c:
+        return 'C';
+    }
+  }
+
+  String localizedLabel(dynamic l10n) {
+    switch (this) {
+      case EquipmentCriticality.a:
+        return l10n.criticalityA as String;
+      case EquipmentCriticality.b:
+        return l10n.criticalityB as String;
+      case EquipmentCriticality.c:
+        return l10n.criticalityC as String;
+    }
+  }
+
+  static EquipmentCriticality? fromString(String? value) {
+    switch (value?.toUpperCase()) {
+      case 'A':
+        return EquipmentCriticality.a;
+      case 'B':
+        return EquipmentCriticality.b;
+      case 'C':
+        return EquipmentCriticality.c;
+      default:
+        return null;
+    }
+  }
+}
+
+/// Enregistrement de maintenance
 class MaintenanceRecord {
   final String date;
   final String intervention;
@@ -69,7 +111,7 @@ class MaintenanceRecord {
   });
 }
 
-/// Equipment model for hospital equipment management
+/// Modèle principal d'un équipement médical
 class Equipment {
   final String id;
   final String name;
@@ -90,14 +132,28 @@ class Equipment {
   final String? lastPreventiveMaintenance;
   final String? nextPreventiveMaintenance;
 
-  // ── Métadonnées système (lecture seule, fournies par l'API) ────────────
+  // ── GMAO Phase 2 : Hiérarchie & Matrice ABC ───────────────────────────
+  /// ID de la sous-catégorie (table equipment_subcategories)
+  final int? subcategoryId;
+  /// Nom de la sous-catégorie (champ dénormalisé depuis le JOIN API)
+  final String? subcategoryName;
+  /// ID de la macro-catégorie (Biomedical=1, Infrastructure=2, IT=3)
+  final int? macroCategoryId;
+  /// Nom de la macro-catégorie ('Biomedical' | 'Infrastructure' | 'IT')
+  final String? macroCategory;
+  /// Date de fin de garantie (ISO YYYY-MM-DD)
+  final String? warrantyEndDate;
+  /// Criticité selon la matrice ABC
+  final EquipmentCriticality? criticality;
+
+  // ── Métadonnées système (lecture seule) ───────────────────────────────
   final String? createdAt;
   final String? updatedAt;
 
-  // ── Tags d'inventaire (table equipment_tags, relation N↔1) ─────────────
+  // ── Tags d'inventaire (table equipment_tags) ──────────────────────────
   final List<String> tags;
 
-  // ── Maintenance (déjà présent) ─────────────────────────────────────────
+  // ── Maintenance ───────────────────────────────────────────────────────
   final List<MaintenanceRecord> maintenanceHistory;
   final List<MaintenanceRecord> futureMaintenance;
 
@@ -116,6 +172,12 @@ class Equipment {
     this.installDate,
     this.lastPreventiveMaintenance,
     this.nextPreventiveMaintenance,
+    this.subcategoryId,
+    this.subcategoryName,
+    this.macroCategoryId,
+    this.macroCategory,
+    this.warrantyEndDate,
+    this.criticality,
     this.createdAt,
     this.updatedAt,
     this.tags = const [],
@@ -139,7 +201,7 @@ class Equipment {
             ))
         .toList();
 
-    // L'API peut renvoyer manuf_year en INTEGER ou en STRING (cf. SQLite typage faible)
+    // manuf_year peut être INTEGER ou STRING (typage faible SQLite)
     final rawYear = json['manuf_year'];
     final manufYear = rawYear is int
         ? rawYear
@@ -149,6 +211,13 @@ class Equipment {
     final tags = rawTags is List
         ? rawTags.map((t) => t.toString()).toList()
         : <String>[];
+
+    // subcategory_id et macro_category_id peuvent être int ou null
+    final rawSubId = json['subcategory_id'];
+    final subcategoryId = rawSubId is int ? rawSubId : (rawSubId is String ? int.tryParse(rawSubId) : null);
+
+    final rawMacroId = json['macro_category_id'] ?? json['macro_category_id_resolved'];
+    final macroCategoryId = rawMacroId is int ? rawMacroId : (rawMacroId is String ? int.tryParse(rawMacroId) : null);
 
     return Equipment(
       id:                 json['id']                   as String? ?? '',
@@ -165,6 +234,12 @@ class Equipment {
       installDate:        json['install_date']         as String?,
       lastPreventiveMaintenance: json['last_preventive_maintenance'] as String?,
       nextPreventiveMaintenance: json['next_preventive_maintenance'] as String?,
+      subcategoryId:      subcategoryId,
+      subcategoryName:    json['subcategory_name']     as String?,
+      macroCategoryId:    macroCategoryId,
+      macroCategory:      json['macro_category']       as String?,
+      warrantyEndDate:    json['warranty_end_date']    as String?,
+      criticality:        EquipmentCriticality.fromString(json['criticality'] as String?),
       createdAt:          json['created_at']           as String?,
       updatedAt:          json['updated_at']           as String?,
       tags:               tags,
@@ -173,9 +248,26 @@ class Equipment {
     );
   }
 
-  /// Indique si la maintenance préventive est échue ou à effectuer dans les 7
-  /// prochains jours. Retourne null si aucune date n'est planifiée.
-  /// Codomaine : null | 'due' (en retard) | 'soon' (≤ 7 jours) | 'ok'.
+  /// Indique si la garantie est expirée ou expirera dans les 30 prochains jours.
+  /// Retourne null si aucune date de garantie n'est définie.
+  String? get warrantyAlertLevel {
+    final iso = warrantyEndDate;
+    if (iso == null || iso.isEmpty || iso.length < 10) return null;
+    try {
+      final date = DateTime.parse(iso.substring(0, 10));
+      final today = DateTime.now();
+      final today0 = DateTime(today.year, today.month, today.day);
+      final diff = date.difference(today0).inDays;
+      if (diff < 0) return 'expired';
+      if (diff <= 30) return 'expiring_soon';
+      return 'ok';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Niveau d'alerte pour la maintenance préventive.
+  /// Retourne null si aucune date n'est planifiée.
   String? get preventiveMaintenanceAlertLevel {
     final iso = nextPreventiveMaintenance;
     if (iso == null || iso.isEmpty || iso.length < 10) return null;
@@ -192,6 +284,10 @@ class Equipment {
     }
   }
 
+  /// Retourne true si l'équipement appartient à la macro-catégorie donnée.
+  bool hasMacroCategory(String name) =>
+      (macroCategory ?? '').toLowerCase() == name.toLowerCase();
+
   Equipment copyWith({
     String? id,
     String? name,
@@ -207,6 +303,12 @@ class Equipment {
     String? installDate,
     String? lastPreventiveMaintenance,
     String? nextPreventiveMaintenance,
+    int? subcategoryId,
+    String? subcategoryName,
+    int? macroCategoryId,
+    String? macroCategory,
+    String? warrantyEndDate,
+    EquipmentCriticality? criticality,
     String? createdAt,
     String? updatedAt,
     List<String>? tags,
@@ -228,6 +330,12 @@ class Equipment {
       installDate: installDate ?? this.installDate,
       lastPreventiveMaintenance: lastPreventiveMaintenance ?? this.lastPreventiveMaintenance,
       nextPreventiveMaintenance: nextPreventiveMaintenance ?? this.nextPreventiveMaintenance,
+      subcategoryId: subcategoryId ?? this.subcategoryId,
+      subcategoryName: subcategoryName ?? this.subcategoryName,
+      macroCategoryId: macroCategoryId ?? this.macroCategoryId,
+      macroCategory: macroCategory ?? this.macroCategory,
+      warrantyEndDate: warrantyEndDate ?? this.warrantyEndDate,
+      criticality: criticality ?? this.criticality,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,

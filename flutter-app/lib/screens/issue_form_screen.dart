@@ -136,10 +136,11 @@ const Map<String, Map<String, List<String>>> _kInfraCatalog = {
   },
 };
 
-/// Catégories d'équipements biomédicaux (valeurs exactes de equipment.category en DB).
-const List<String> _kBioCategories = [
-  'Biomedical Equipment',
-];
+/// Valeur de macro_category pour les équipements biomédicaux (champ API).
+const String _kBioMacroCategory = 'Biomedical';
+
+/// Valeur de macro_category pour les équipements IT (champ API).
+const String _kItMacroCategory = 'IT';
 
 /// Formulaire de signalement d'incident avec 4 onglets de catégorie.
 class IssueFormScreen extends StatefulWidget {
@@ -222,7 +223,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           .where((e) => e.id == widget.equipmentId)
           .firstOrNull;
       if (eq != null) {
-        if (eq.category.toLowerCase() == 'informatique') {
+        // Utilise macroCategory si disponible, sinon repli sur category text legacy
+        final isIt = eq.macroCategory?.toLowerCase() == _kItMacroCategory.toLowerCase() ||
+            eq.category.toLowerCase() == 'informatique' ||
+            eq.category.toLowerCase() == 'ict equipment';
+        if (isIt) {
           _selectedTab = 2;
           _itEquipment = eq;
         } else {
@@ -261,10 +266,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         .firstOrNull;
   }
 
-  List<Equipment> get _bioEquipmentList => DataService().equipment
-      .where((eq) => _kBioCategories.any(
-            (c) => c.toLowerCase() == eq.category.toLowerCase()))
-      .toList();
+  /// Équipements biomédicaux : filtrés par macro_category='Biomedical' si disponible,
+  /// sinon repli sur la valeur category legacy 'Biomedical Equipment'.
+  List<Equipment> get _bioEquipmentList => DataService().equipment.where((eq) {
+        if (eq.macroCategory != null && eq.macroCategory!.isNotEmpty) {
+          return eq.macroCategory!.toLowerCase() == _kBioMacroCategory.toLowerCase();
+        }
+        return eq.category.toLowerCase() == 'biomedical equipment';
+      }).toList();
 
   // ── Helpers infrastructure ────────────────────────────────────────────────
 
