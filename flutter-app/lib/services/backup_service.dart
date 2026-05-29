@@ -3,10 +3,8 @@ import 'package:flutter/foundation.dart';
 import '../models/backup.dart';
 import 'api_client.dart';
 import 'api_config.dart';
-
-// Téléchargement navigateur (web uniquement)
-// ignore: avoid_web_libraries_in_flutter, deprecated_member_use
-import 'dart:html' as html show AnchorElement, Blob, Url;
+// Import conditionnel : web_download_web.dart sur navigateur, stub sur VM/mobile.
+import '../utils/web_download.dart';
 
 /// Service de gestion des sauvegardes — Singleton ChangeNotifier.
 class BackupService extends ChangeNotifier {
@@ -133,14 +131,12 @@ class BackupService extends ChangeNotifier {
         '${ApiConfig.backupsUrl}/download/${record.id}',
       );
       if (response.statusCode == 200) {
-        // Téléchargement navigateur via dart:html (Flutter Web uniquement)
+        // Téléchargement navigateur via la façade conditionnelle (web uniquement)
         if (kIsWeb) {
-          final blob = html.Blob([response.bodyBytes]);
-          final url = html.Url.createObjectUrlFromBlob(blob);
-          html.AnchorElement(href: url)
-            ..setAttribute('download', record.filename)
-            ..click();
-          html.Url.revokeObjectUrl(url);
+          await triggerWebDownload(
+            response.bodyBytes.toList(),
+            record.filename,
+          );
         }
         return true;
       }

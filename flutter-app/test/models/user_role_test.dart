@@ -51,9 +51,9 @@ void main() {
   });
 
   group('Permission', () {
-    test('has 15 permissions', () {
-      // 14 permissions initiales + manageFeatures (feature flags)
-      expect(Permission.values.length, 15);
+    test('has 16 permissions', () {
+      // 14 permissions initiales + manageFeatures (feature flags) + manageBackups (module sauvegardes)
+      expect(Permission.values.length, 16);
     });
 
     test('displayName is not empty for all permissions', () {
