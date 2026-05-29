@@ -16,20 +16,6 @@ import '../data/mock_data.dart';
 
 enum _AuthMode { login, signup, forgotPassword }
 
-// Comptes récemment utilisés — placeholder statique (future: SharedPreferences)
-class _RecentAccount {
-  final String name;
-  final String role;
-  final IconData icon;
-  const _RecentAccount(this.name, this.role, this.icon);
-}
-
-const _kRecentAccounts = [
-  _RecentAccount('Dr. Kamana J.', 'Médecin', Icons.medical_services_outlined),
-  _RecentAccount('Tech. Mugisha', 'Technicien', Icons.build_outlined),
-  _RecentAccount('Inf. Uwase A.', 'Infirmière', Icons.local_hospital_outlined),
-];
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -257,7 +243,7 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Bannière d'alerte critique — n'apparaît que si un service essentiel est KO
+          // Bannière d'alerte critique — visible en haut quelle que soit la taille d'écran
           AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
             child: _hasCriticalAlert
@@ -265,101 +251,271 @@ class _LoginScreenState extends State<LoginScreen> {
                 : const SizedBox.shrink(key: ValueKey('no-banner')),
           ),
 
-          // Contenu principal
+          // Mise en page responsive : bureau ≥ 800px / mobile < 800px
           Expanded(
-            child: Stack(
-              children: [
-                // Formulaire centré avec scroll
-                Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 72, 24, 48),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 420),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Logo hôpital
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                              boxShadow: [BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.18),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                              )],
-                            ),
-                            child: Image.asset(
-                              'assets/images/logo_hopital.png',
-                              height: 88, width: 88, fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-
-                          Text(l10n.hospitalName,
-                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                          Text(l10n.hospitalSubtitleLong,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                          const SizedBox(height: 40),
-
-                          // Carte principale avec transition fluide entre les modes
-                          Card(
-                            elevation: 2,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            child: Padding(
-                              padding: const EdgeInsets.all(28),
-                              child: AnimatedSwitcher(
-                                duration: const Duration(milliseconds: 220),
-                                child: _mode == _AuthMode.login
-                                    ? _buildLoginForm(l10n)
-                                    : _mode == _AuthMode.signup
-                                        ? _buildSignupForm(l10n)
-                                        : _buildForgotPasswordForm(l10n),
-                              ),
-                            ),
-                          ),
-
-                          // Comptes récemment utilisés — visible uniquement en mode connexion
-                          if (_mode == _AuthMode.login) ...[
-                            const SizedBox(height: 20),
-                            _buildRecentAccounts(l10n),
-                          ],
-
-                          // Raccourcis DEV — jamais inclus dans un build Release
-                          if (kDebugMode && _mode == _AuthMode.login) ...[
-                            const SizedBox(height: 16),
-                            _buildDevShortcuts(),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Bouton langue — coin supérieur droit
-                SafeArea(
-                  child: Align(
-                    alignment: Alignment.topRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: _buildLanguageToggle(),
-                    ),
-                  ),
-                ),
-
-                // Footer statut système temps réel
-                Positioned(
-                  bottom: 12,
-                  left: 0,
-                  right: 0,
-                  child: _buildSystemStatusFooter(l10n),
-                ),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isDesktop = constraints.maxWidth >= 800;
+                return isDesktop
+                    ? _buildDesktopLayout(l10n, constraints)
+                    : _buildMobileLayout(l10n, constraints);
+              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Mise en page bureau (≥ 800px) ─────────────────────────────────────────
+  // Deux colonnes : logo à gauche, formulaire à droite — pas de scroll global.
+
+  Widget _buildDesktopLayout(AppLocalizations l10n, BoxConstraints constraints) {
+    return Stack(
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Panneau gauche : identité visuelle de l'hôpital
+            Expanded(
+              flex: 2,
+              child: _buildDesktopLeftPanel(l10n),
+            ),
+
+            // Panneau droit : formulaire d'authentification
+            Expanded(
+              flex: 3,
+              child: _buildDesktopRightPanel(l10n, constraints),
+            ),
+          ],
+        ),
+
+        // Bouton langue — coin supérieur droit
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: _buildLanguageToggle(),
+            ),
+          ),
+        ),
+
+        // Statut système — coin inférieur droit
+        Positioned(
+          bottom: 12,
+          right: 16,
+          child: _buildSystemStatusFooter(l10n),
+        ),
+      ],
+    );
+  }
+
+  /// Panneau gauche desktop : logo + nom de l'hôpital centré verticalement.
+  Widget _buildDesktopLeftPanel(AppLocalizations l10n) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.07),
+            AppColors.primary.withValues(alpha: 0.02),
+          ],
+        ),
+        border: Border(
+          right: BorderSide(color: AppColors.primary.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildLogoContainer(size: 96, cornerRadius: 24),
+              const SizedBox(height: 28),
+              Text(
+                l10n.hospitalName,
+                style: const TextStyle(
+                  fontSize: 26, fontWeight: FontWeight.bold, color: AppColors.textPrimary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                l10n.hospitalSubtitleLong,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.09),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+                ),
+                child: Text(
+                  'GMAO',
+                  style: TextStyle(
+                    fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Panneau droit desktop : formulaire centré verticalement, scroll uniquement si débordement.
+  Widget _buildDesktopRightPanel(AppLocalizations l10n, BoxConstraints outerConstraints) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(28),
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 220),
+                            child: _buildCurrentForm(l10n),
+                          ),
+                        ),
+                      ),
+
+                      // Raccourcis DEV — compilés uniquement en mode debug
+                      if (kDebugMode && _mode == _AuthMode.login) ...[
+                        const SizedBox(height: 20),
+                        _buildDevShortcuts(),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ── Mise en page mobile (< 800px) ─────────────────────────────────────────
+  // Colonne centrée avec scroll, sans section "comptes récents".
+
+  Widget _buildMobileLayout(AppLocalizations l10n, BoxConstraints constraints) {
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 72, 24, 48),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 120),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo
+                _buildLogoContainer(size: 88, cornerRadius: 20),
+                const SizedBox(height: 24),
+
+                Text(
+                  l10n.hospitalName,
+                  style: const TextStyle(
+                    fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  l10n.hospitalSubtitleLong,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 40),
+
+                Card(
+                  elevation: 2,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(28),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: _buildCurrentForm(l10n),
+                    ),
+                  ),
+                ),
+
+                // Raccourcis DEV — compilés uniquement en mode debug
+                if (kDebugMode && _mode == _AuthMode.login) ...[
+                  const SizedBox(height: 16),
+                  _buildDevShortcuts(),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        // Bouton langue — coin supérieur droit
+        SafeArea(
+          child: Align(
+            alignment: Alignment.topRight,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: _buildLanguageToggle(),
+            ),
+          ),
+        ),
+
+        // Statut système — coin inférieur droit
+        Positioned(
+          bottom: 12,
+          right: 12,
+          child: _buildSystemStatusFooter(l10n),
+        ),
+      ],
+    );
+  }
+
+  // ── Widgets partagés ──────────────────────────────────────────────────────
+
+  /// Formulaire actif (connexion / inscription / réinitialisation).
+  Widget _buildCurrentForm(AppLocalizations l10n) {
+    return _mode == _AuthMode.login
+        ? _buildLoginForm(l10n)
+        : _mode == _AuthMode.signup
+            ? _buildSignupForm(l10n)
+            : _buildForgotPasswordForm(l10n);
+  }
+
+  /// Conteneur du logo avec ombre et bord primaire.
+  Widget _buildLogoContainer({required double size, required double cornerRadius}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(cornerRadius),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Image.asset(
+        'assets/images/logo_hopital.png',
+        height: size, width: size, fit: BoxFit.contain,
       ),
     );
   }
@@ -404,17 +560,13 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Footer statut système discret ─────────────────────────────────────────
+  // ── Footer statut système — coin inférieur droit ───────────────────────────
 
   Widget _buildSystemStatusFooter(AppLocalizations l10n) {
     final isChecking = _health['auth'] == null;
     final isOk       = !_hasAnyAlert && !isChecking;
-    final color      = isChecking
-        ? Colors.grey
-        : (isOk ? AppColors.success : AppColors.error);
-    final icon       = isChecking
-        ? Icons.sync
-        : (isOk ? Icons.check_circle_outline : Icons.error_outline);
+    final color      = isChecking ? Colors.grey : (isOk ? AppColors.success : AppColors.error);
+    final icon       = isChecking ? Icons.sync : (isOk ? Icons.check_circle_outline : Icons.error_outline);
 
     final statusLabel = isChecking
         ? l10n.systemStatusChecking
@@ -427,87 +579,22 @@ class _LoginScreenState extends State<LoginScreen> {
       suffix = '  •  ${l10n.systemStatusLastCheck('$h:$m')}';
     }
 
-    return Center(
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 11, color: color.withValues(alpha: 0.65)),
-          const SizedBox(width: 4),
-          Text(
-            '$statusLabel$suffix',
-            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.65)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Section comptes récemment utilisés (placeholder statique) ─────────────
-
-  Widget _buildRecentAccounts(AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
-          child: Text(
-            l10n.loginRecentSessionsTitle,
-            style: const TextStyle(
-              fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: _kRecentAccounts.map((a) => Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () {
-                  // Placeholder : dans une future version, pré-remplit l'email
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 14,
-                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                        child: Icon(a.icon, size: 14, color: AppColors.primary),
-                      ),
-                      const SizedBox(width: 8),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(a.name,
-                              style: const TextStyle(
-                                fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
-                              )),
-                          Text(a.role,
-                              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )).toList(),
-          ),
+        Icon(icon, size: 11, color: color.withValues(alpha: 0.65)),
+        const SizedBox(width: 4),
+        Text(
+          '$statusLabel$suffix',
+          style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.65)),
         ),
       ],
     );
   }
 
   // ── Bouton de changement de langue ────────────────────────────────────────
+  // Affiche la langue ACTIVE (FR quand l'UI est en français, EN quand en anglais).
+  // Cliquer bascule vers l'autre langue.
 
   Widget _buildLanguageToggle() {
     return ListenableBuilder(
@@ -528,8 +615,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(isFr ? '🇫🇷' : '🇬🇧', style: const TextStyle(fontSize: 16)),
                   const SizedBox(width: 6),
+                  // Affiche le code de la langue courante (FR / EN)
                   Text(
-                    isFr ? 'EN' : 'FR',
+                    isFr ? 'FR' : 'EN',
                     style: TextStyle(
                       fontSize: 13, fontWeight: FontWeight.w600,
                       color: AppColors.primary, letterSpacing: 0.5,
@@ -587,8 +675,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 6),
 
-          // ── Bouton "Mot de passe oublié ?" — fortement mis en évidence ───────
-          // Taille, icône et couleur distinctes pour être visible d'un médecin pressé
+          // ── Bouton "Mot de passe oublié ?" — proéminent pour le personnel médical pressé
           _buildForgotPasswordButton(l10n),
 
           _buildErrorBox(),
@@ -622,7 +709,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  /// Bouton "Mot de passe oublié ?" proéminent — accessible en urgence médicale.
+  /// Bouton "Mot de passe oublié ?" mis en avant — icône + texte gras orange.
   Widget _buildForgotPasswordButton(AppLocalizations l10n) {
     return InkWell(
       onTap: () => _switchMode(_AuthMode.forgotPassword),
@@ -637,10 +724,8 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               l10n.forgotPasswordLink,
               style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: AppColors.warning,
-                letterSpacing: 0.2,
+                fontSize: 15, fontWeight: FontWeight.w700,
+                color: AppColors.warning, letterSpacing: 0.2,
               ),
             ),
           ],
@@ -679,7 +764,6 @@ class _LoginScreenState extends State<LoginScreen> {
         key: const ValueKey('signup'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // En-tête avec lien de retour explicite
           _buildBackToLoginLink(l10n),
           const SizedBox(height: 12),
 
@@ -857,7 +941,6 @@ class _LoginScreenState extends State<LoginScreen> {
         key: const ValueKey('forgot'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // En-tête avec lien de retour explicite
           _buildBackToLoginLink(l10n),
           const SizedBox(height: 12),
 
@@ -920,7 +1003,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Widgets utilitaires ────────────────────────────────────────────────────
 
-  /// Lien "← Retour à la connexion" placé en en-tête des sous-écrans.
+  /// Lien "← Retour à la connexion" placé en en-tête des sous-formulaires.
   Widget _buildBackToLoginLink(AppLocalizations l10n) {
     return InkWell(
       onTap: () => _switchMode(_AuthMode.login),
