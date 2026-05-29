@@ -3040,4 +3040,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get equipmentPmSection => 'Applicable PM Protocols';
+
+  @override
+  String get systemStatusOperational => 'System status: Operational';
+
+  @override
+  String get systemStatusDegraded => 'System status: Degraded';
+
+  @override
+  String get systemStatusChecking => 'Checking…';
+
+  @override
+  String systemStatusLastCheck(String time) {
+    return 'Last check at $time';
+  }
+
+  @override
+  String get systemAlertBannerAuth =>
+      'Authentication service unavailable — sign-in is not possible. Contact your administrator.';
+
+  @override
+  String get systemAlertBannerGeneral =>
+      'System service(s) unavailable — limited functionality.';
+
+  @override
+  String get loginRecentSessionsTitle =>
+      'Recently used accounts on this device';
+
+  @override
+  String get loginBackToLogin => 'Back to sign-in';
+
+  @override
+  String get forgotPasswordHint =>
+      'Enter your email address. You will receive a link to reset your password.';
 }

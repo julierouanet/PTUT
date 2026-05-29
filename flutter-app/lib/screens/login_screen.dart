@@ -14,25 +14,21 @@ import '../providers/locale_provider.dart';
 import '../models/user.dart';
 import '../data/mock_data.dart';
 
-// true si lancé avec --dart-define=DEV_SHORTCUTS=true  OU  en mode debug local
-const bool _showDevShortcuts =
-    bool.fromEnvironment('DEV_SHORTCUTS') || kDebugMode;
-
 enum _AuthMode { login, signup, forgotPassword }
 
-const List<String> _kRequestableRoles = [
-  'supervisor',
-  'technician_biomedical',
-  'technician_it',
-  'technician_infra',
-];
+// Comptes récemment utilisés — placeholder statique (future: SharedPreferences)
+class _RecentAccount {
+  final String name;
+  final String role;
+  final IconData icon;
+  const _RecentAccount(this.name, this.role, this.icon);
+}
 
-const Map<String, String> _kRoleLabels = {
-  'supervisor':            'Superviseur',
-  'technician_biomedical': 'Technicien Biomédical',
-  'technician_it':         'Technicien IT',
-  'technician_infra':      'Technicien Infra',
-};
+const _kRecentAccounts = [
+  _RecentAccount('Dr. Kamana J.', 'Médecin', Icons.medical_services_outlined),
+  _RecentAccount('Tech. Mugisha', 'Technicien', Icons.build_outlined),
+  _RecentAccount('Inf. Uwase A.', 'Infirmière', Icons.local_hospital_outlined),
+];
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -41,7 +37,7 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-/// Small colored button used in the DEV quick-login section.
+/// Bouton compact coloré pour la connexion rapide DEV.
 class _DevLoginButton extends StatelessWidget {
   final String label;
   final IconData icon;
@@ -97,20 +93,25 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordConfirmCtrl = TextEditingController();
   final _phoneCtrl           = TextEditingController();
 
-  _AuthMode _mode              = _AuthMode.login;
-  bool      _obscure           = true;
-  bool      _obscureConfirm    = true;
-  bool      _loading           = false;
+  _AuthMode _mode             = _AuthMode.login;
+  bool      _obscure          = true;
+  bool      _obscureConfirm   = true;
+  bool      _loading          = false;
   String?   _error;
-  bool      _signupSuccess     = false;
-  String?   _selectedDepartment; // sélection dans le dropdown inscription
-  String?   _selectedRole;        // rôle optionnel lors de l'inscription
+  bool      _signupSuccess    = false;
+  String?   _selectedDepartment;
 
-  // ── Santé des services ────────────────────────────────────────────────────
-  // null = en cours de vérification, 'ok' = vert, 'ko' = rouge
+  // ── Santé des services ─────────────────────────────────────────────────────
   final Map<String, String?> _health = {
     'auth': null, 'db': null, 'iam': null, 'mail': null,
   };
+  DateTime? _lastCheckTime;
+
+  bool get _hasCriticalAlert =>
+      _health['auth'] == 'ko' || _health['iam'] == 'ko';
+
+  bool get _hasAnyAlert =>
+      _health.values.any((v) => v == 'ko');
 
   @override
   void initState() {
@@ -126,10 +127,8 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _fetchHealth() async {
     try {
       final responses = await Future.wait([
-        http.get(Uri.parse(ApiConfig.healthAuthUrl))
-            .timeout(const Duration(seconds: 5)),
-        http.get(Uri.parse(ApiConfig.healthDbUrl))
-            .timeout(const Duration(seconds: 5)),
+        http.get(Uri.parse(ApiConfig.healthAuthUrl)).timeout(const Duration(seconds: 5)),
+        http.get(Uri.parse(ApiConfig.healthDbUrl)).timeout(const Duration(seconds: 5)),
       ]);
       if (!mounted) return;
 
@@ -142,6 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _health['db']   = dbBody['status']   as String? ?? 'ko';
         _health['iam']  = checks['keycloak'] as String? ?? 'ko';
         _health['mail'] = checks['brevo']    as String?;
+        _lastCheckTime  = DateTime.now();
       });
     } catch (_) {
       if (!mounted) return;
@@ -150,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _health['db']   = 'ko';
         _health['iam']  = 'ko';
         _health['mail'] = 'ko';
+        _lastCheckTime  = DateTime.now();
       });
     }
   }
@@ -167,15 +168,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _switchMode(_AuthMode mode) {
     setState(() {
-      _mode              = mode;
-      _error             = null;
-      _signupSuccess     = false;
+      _mode               = mode;
+      _error              = null;
+      _signupSuccess      = false;
       _selectedDepartment = null;
-      _selectedRole      = null;
     });
   }
 
-  // ── Connexion ────────────────────────────────────────────────────────────────
+  // ── Connexion ──────────────────────────────────────────────────────────────
 
   Future<void> _quickLogin(User user) async {
     setState(() { _loading = true; _error = null; });
@@ -206,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── Inscription ──────────────────────────────────────────────────────────────
+  // ── Inscription ────────────────────────────────────────────────────────────
 
   Future<void> _submitRegister() async {
     final l10n = AppLocalizations.of(context)!;
@@ -235,7 +235,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── Mot de passe oublié ──────────────────────────────────────────────────────
+  // ── Mot de passe oublié ────────────────────────────────────────────────────
 
   Future<void> _submitForgotPassword() async {
     if (_emailCtrl.text.trim().isEmpty) return;
@@ -243,145 +243,271 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthApiService.instance.forgotPassword(_emailCtrl.text.trim());
     } catch (_) {
-      // Le backend répond toujours 200 ; on traite comme succès côté client
+      // Le backend répond toujours 200 — on traite systématiquement comme succès côté client
     }
     setState(() { _loading = false; _signupSuccess = true; });
   }
 
-  // ── Construction UI ──────────────────────────────────────────────────────────
+  // ── Construction UI principale ─────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
+      body: Column(
         children: [
-          // ── Contenu principal centré ─────────────────────────────────────────
-          Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Logo
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
-                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.18), blurRadius: 20, offset: const Offset(0, 8))],
-                      ),
-                      child: Image.asset(
-                        'assets/images/logo_hopital.png',
-                        height: 88, width: 88, fit: BoxFit.contain,
+          // Bannière d'alerte critique — n'apparaît que si un service essentiel est KO
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: _hasCriticalAlert
+                ? _buildAlertBanner(l10n)
+                : const SizedBox.shrink(key: ValueKey('no-banner')),
+          ),
+
+          // Contenu principal
+          Expanded(
+            child: Stack(
+              children: [
+                // Formulaire centré avec scroll
+                Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 72, 24, 48),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Logo hôpital
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                              boxShadow: [BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.18),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              )],
+                            ),
+                            child: Image.asset(
+                              'assets/images/logo_hopital.png',
+                              height: 88, width: 88, fit: BoxFit.contain,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          Text(l10n.hospitalName,
+                              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                          Text(l10n.hospitalSubtitleLong,
+                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                          const SizedBox(height: 40),
+
+                          // Carte principale avec transition fluide entre les modes
+                          Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            child: Padding(
+                              padding: const EdgeInsets.all(28),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 220),
+                                child: _mode == _AuthMode.login
+                                    ? _buildLoginForm(l10n)
+                                    : _mode == _AuthMode.signup
+                                        ? _buildSignupForm(l10n)
+                                        : _buildForgotPasswordForm(l10n),
+                              ),
+                            ),
+                          ),
+
+                          // Comptes récemment utilisés — visible uniquement en mode connexion
+                          if (_mode == _AuthMode.login) ...[
+                            const SizedBox(height: 20),
+                            _buildRecentAccounts(l10n),
+                          ],
+
+                          // Raccourcis DEV — jamais inclus dans un build Release
+                          if (kDebugMode && _mode == _AuthMode.login) ...[
+                            const SizedBox(height: 16),
+                            _buildDevShortcuts(),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    Text(l10n.hospitalName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    Text(l10n.hospitalSubtitleLong, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                    const SizedBox(height: 40),
-
-                    // Carte principale
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(28),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: _mode == _AuthMode.login
-                              ? _buildLoginForm(l10n)
-                              : _mode == _AuthMode.signup
-                                  ? _buildSignupForm(l10n)
-                                  : _buildForgotPasswordForm(l10n),
-                        ),
-                      ),
-                    ),
-
-                    // DEV shortcuts
-                    if (_showDevShortcuts && _mode == _AuthMode.login) ...[
-                      const SizedBox(height: 24),
-                      _buildDevShortcuts(),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-            ),
-          ),
 
-          // ── Bouton langue — coin supérieur droit ─────────────────────────────
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: _buildLanguageToggle(),
-              ),
-            ),
-          ),
+                // Bouton langue — coin supérieur droit
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: _buildLanguageToggle(),
+                    ),
+                  ),
+                ),
 
-          // ── Indicateurs de santé — coin inférieur droit ───────────────────
-          Positioned(
-            bottom: 12,
-            right: 12,
-            child: _buildHealthIndicators(l10n),
+                // Footer statut système temps réel
+                Positioned(
+                  bottom: 12,
+                  left: 0,
+                  right: 0,
+                  child: _buildSystemStatusFooter(l10n),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ── Indicateurs de statut des services ───────────────────────────────────────
+  // ── Bannière d'alerte service critique ────────────────────────────────────
 
-  Widget _buildHealthIndicators(AppLocalizations l10n) {
-    final services = [
-      ('auth', l10n.healthAuth),
-      ('db',   l10n.healthDb),
-      ('iam',  l10n.healthIam),
-      ('mail', l10n.healthMail),
-    ];
+  Widget _buildAlertBanner(AppLocalizations l10n) {
+    final message = (_health['auth'] == 'ko' || _health['iam'] == 'ko')
+        ? l10n.systemAlertBannerAuth
+        : l10n.systemAlertBannerGeneral;
 
-    Color _dot(String key) {
-      final s = _health[key];
-      if (s == null)   return Colors.grey.shade300;
-      if (s == 'ok')   return AppColors.success;
-      return AppColors.error;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: services.map((s) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 5),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    return SafeArea(
+      bottom: false,
+      key: const ValueKey('banner'),
+      child: Material(
+        color: AppColors.error,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
             children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(color: _dot(s.$1), shape: BoxShape.circle),
+              const Icon(Icons.warning_rounded, color: Colors.white, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-              const SizedBox(height: 2),
-              Text(s.$2, style: const TextStyle(fontSize: 9, color: AppColors.textSecondary)),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
+                onPressed: _fetchHealth,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                tooltip: 'Réessayer',
+              ),
             ],
           ),
-        )).toList(),
+        ),
       ),
     );
   }
 
-  // ── Bouton de changement de langue ───────────────────────────────────────────
+  // ── Footer statut système discret ─────────────────────────────────────────
+
+  Widget _buildSystemStatusFooter(AppLocalizations l10n) {
+    final isChecking = _health['auth'] == null;
+    final isOk       = !_hasAnyAlert && !isChecking;
+    final color      = isChecking
+        ? Colors.grey
+        : (isOk ? AppColors.success : AppColors.error);
+    final icon       = isChecking
+        ? Icons.sync
+        : (isOk ? Icons.check_circle_outline : Icons.error_outline);
+
+    final statusLabel = isChecking
+        ? l10n.systemStatusChecking
+        : (isOk ? l10n.systemStatusOperational : l10n.systemStatusDegraded);
+
+    String suffix = '';
+    if (_lastCheckTime != null) {
+      final h = _lastCheckTime!.hour.toString().padLeft(2, '0');
+      final m = _lastCheckTime!.minute.toString().padLeft(2, '0');
+      suffix = '  •  ${l10n.systemStatusLastCheck('$h:$m')}';
+    }
+
+    return Center(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: color.withValues(alpha: 0.65)),
+          const SizedBox(width: 4),
+          Text(
+            '$statusLabel$suffix',
+            style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.65)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Section comptes récemment utilisés (placeholder statique) ─────────────
+
+  Widget _buildRecentAccounts(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            l10n.loginRecentSessionsTitle,
+            style: const TextStyle(
+              fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: _kRecentAccounts.map((a) => Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {
+                  // Placeholder : dans une future version, pré-remplit l'email
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                        child: Icon(a.icon, size: 14, color: AppColors.primary),
+                      ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(a.name,
+                              style: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+                              )),
+                          Text(a.role,
+                              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Bouton de changement de langue ────────────────────────────────────────
 
   Widget _buildLanguageToggle() {
     return ListenableBuilder(
@@ -393,27 +519,20 @@ class _LoginScreenState extends State<LoginScreen> {
           elevation: 2,
           borderRadius: BorderRadius.circular(20),
           child: InkWell(
-            onTap: () => LocaleProvider().setLocale(
-              Locale(isFr ? 'en' : 'fr'),
-            ),
+            onTap: () => LocaleProvider().setLocale(Locale(isFr ? 'en' : 'fr')),
             borderRadius: BorderRadius.circular(20),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    isFr ? '🇫🇷' : '🇬🇧',
-                    style: const TextStyle(fontSize: 16),
-                  ),
+                  Text(isFr ? '🇫🇷' : '🇬🇧', style: const TextStyle(fontSize: 16)),
                   const SizedBox(width: 6),
                   Text(
                     isFr ? 'EN' : 'FR',
                     style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.primary,
-                      letterSpacing: 0.5,
+                      fontSize: 13, fontWeight: FontWeight.w600,
+                      color: AppColors.primary, letterSpacing: 0.5,
                     ),
                   ),
                 ],
@@ -425,7 +544,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Formulaire de connexion ──────────────────────────────────────────────────
+  // ── Formulaire de connexion ────────────────────────────────────────────────
 
   Widget _buildLoginForm(AppLocalizations l10n) {
     return Form(
@@ -443,7 +562,10 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
-            decoration: InputDecoration(labelText: l10n.loginEmail, prefixIcon: const Icon(Icons.email_outlined)),
+            decoration: InputDecoration(
+              labelText: l10n.loginEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
+            ),
             validator: (v) => (v == null || v.isEmpty) ? l10n.loginEmailRequired : null,
           ),
           const SizedBox(height: 16),
@@ -463,17 +585,11 @@ class _LoginScreenState extends State<LoginScreen> {
             validator: (v) => (v == null || v.isEmpty) ? l10n.loginPasswordRequired : null,
             onFieldSubmitted: (_) => _submitLogin(),
           ),
+          const SizedBox(height: 6),
 
-          // Mot de passe oublié
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: () => _switchMode(_AuthMode.forgotPassword),
-              style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 4)),
-              child: Text(l10n.forgotPasswordLink,
-                  style: const TextStyle(fontSize: 13, color: AppColors.primary)),
-            ),
-          ),
+          // ── Bouton "Mot de passe oublié ?" — fortement mis en évidence ───────
+          // Taille, icône et couleur distinctes pour être visible d'un médecin pressé
+          _buildForgotPasswordButton(l10n),
 
           _buildErrorBox(),
           const SizedBox(height: 8),
@@ -483,9 +599,10 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ElevatedButton(
               onPressed: _loading ? null : _submitLogin,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
               child: _loading
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : Text(l10n.loginSubmit, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -505,7 +622,34 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Formulaire d'inscription ─────────────────────────────────────────────────
+  /// Bouton "Mot de passe oublié ?" proéminent — accessible en urgence médicale.
+  Widget _buildForgotPasswordButton(AppLocalizations l10n) {
+    return InkWell(
+      onTap: () => _switchMode(_AuthMode.forgotPassword),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_reset, size: 18, color: AppColors.warning),
+            const SizedBox(width: 6),
+            Text(
+              l10n.forgotPasswordLink,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.warning,
+                letterSpacing: 0.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Formulaire d'inscription ───────────────────────────────────────────────
 
   Widget _buildSignupForm(AppLocalizations l10n) {
     if (_signupSuccess) {
@@ -521,8 +665,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
           TextButton(
             onPressed: () => _switchMode(_AuthMode.login),
-            child: Text(l10n.registerHaveAccount,
-                style: const TextStyle(color: AppColors.primary)),
+            child: Text(l10n.registerHaveAccount, style: const TextStyle(color: AppColors.primary)),
           ),
         ],
       );
@@ -536,12 +679,16 @@ class _LoginScreenState extends State<LoginScreen> {
         key: const ValueKey('signup'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // En-tête avec lien de retour explicite
+          _buildBackToLoginLink(l10n),
+          const SizedBox(height: 12),
+
           Text(l10n.registerTitle,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
           const SizedBox(height: 20),
 
-          // Prénom + Nom sur la même ligne
+          // Prénom + Nom côte à côte
           Row(children: [
             Expanded(
               child: TextFormField(
@@ -551,7 +698,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   labelText: l10n.registerFirstName,
                   prefixIcon: const Icon(Icons.person_outlined),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? '${l10n.registerFirstName} requis' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? '${l10n.registerFirstName} requis'
+                    : null,
               ),
             ),
             const SizedBox(width: 12),
@@ -560,7 +709,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _lastNameCtrl,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(labelText: l10n.registerLastName),
-                validator: (v) => (v == null || v.trim().isEmpty) ? '${l10n.registerLastName} requis' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? '${l10n.registerLastName} requis'
+                    : null,
               ),
             ),
           ]),
@@ -616,7 +767,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 12),
 
-          // ── Département : dropdown avec la liste des départements ────────────
+          // Département obligatoire — le rôle est attribué par un admin après inscription
           DropdownButtonFormField<String>(
             value: _selectedDepartment,
             isExpanded: true,
@@ -624,8 +775,10 @@ class _LoginScreenState extends State<LoginScreen> {
               labelText: l10n.registerDepartment,
               prefixIcon: const Icon(Icons.apartment_outlined),
             ),
-            hint: Text('Sélectionner un département',
-                style: TextStyle(color: Colors.grey[500], fontSize: 14)),
+            hint: Text(
+              'Sélectionner un département',
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
+            ),
             items: departments
                 .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
                 .toList(),
@@ -644,33 +797,6 @@ class _LoginScreenState extends State<LoginScreen> {
               prefixIcon: const Icon(Icons.phone_outlined),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // ── Rôle optionnel ───────────────────────────────────────────────────
-          DropdownButtonFormField<String>(
-            value: _selectedRole,
-            decoration: InputDecoration(
-              labelText: l10n.roleRequestLabel,
-              prefixIcon: const Icon(Icons.badge_outlined),
-              helperText: 'Optionnel — demande soumise après vérification email',
-              helperMaxLines: 2,
-            ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('Aucun (hospitalStaff par défaut)')),
-              ..._kRequestableRoles.map((r) => DropdownMenuItem(
-                    value: r,
-                    child: Text(_kRoleLabels[r] ?? r),
-                  )),
-            ],
-            onChanged: (v) => setState(() => _selectedRole = v),
-          ),
-          if (_selectedRole != null) ...[
-            const SizedBox(height: 4),
-            Text(
-              'La demande de rôle sera disponible depuis votre profil après activation de votre email.',
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-            ),
-          ],
 
           _buildErrorBox(),
           const SizedBox(height: 16),
@@ -680,9 +806,10 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ElevatedButton(
               onPressed: _loading ? null : _submitRegister,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
               child: _loading
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : Text(l10n.registerSubmit, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -702,7 +829,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Formulaire de mot de passe oublié ────────────────────────────────────────
+  // ── Formulaire de réinitialisation du mot de passe ─────────────────────────
 
   Widget _buildForgotPasswordForm(AppLocalizations l10n) {
     if (_signupSuccess) {
@@ -718,8 +845,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 24),
           TextButton(
             onPressed: () => _switchMode(_AuthMode.login),
-            child: Text(l10n.registerHaveAccount,
-                style: const TextStyle(color: AppColors.primary)),
+            child: Text(l10n.registerHaveAccount, style: const TextStyle(color: AppColors.primary)),
           ),
         ],
       );
@@ -731,12 +857,19 @@ class _LoginScreenState extends State<LoginScreen> {
         key: const ValueKey('forgot'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // En-tête avec lien de retour explicite
+          _buildBackToLoginLink(l10n),
+          const SizedBox(height: 12),
+
+          const Icon(Icons.lock_reset, size: 48, color: AppColors.primary),
+          const SizedBox(height: 8),
+
           Text(l10n.forgotPasswordTitle,
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Text(
-            'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.',
+            l10n.forgotPasswordHint,
             textAlign: TextAlign.center,
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
           ),
@@ -762,9 +895,10 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ElevatedButton(
               onPressed: _loading ? null : _submitForgotPassword,
               style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
               child: _loading
                   ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                   : Text(l10n.forgotPasswordSubmit, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
@@ -784,7 +918,31 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Widgets utilitaires ──────────────────────────────────────────────────────
+  // ── Widgets utilitaires ────────────────────────────────────────────────────
+
+  /// Lien "← Retour à la connexion" placé en en-tête des sous-écrans.
+  Widget _buildBackToLoginLink(AppLocalizations l10n) {
+    return InkWell(
+      onTap: () => _switchMode(_AuthMode.login),
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.arrow_back_ios_new, size: 13, color: AppColors.primary),
+            const SizedBox(width: 4),
+            Text(
+              l10n.loginBackToLogin,
+              style: const TextStyle(
+                fontSize: 13, color: AppColors.primary, fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildErrorBox() {
     if (_error == null) return const SizedBox.shrink();
@@ -793,17 +951,21 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-            color: AppColors.error.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8)),
+          color: AppColors.error.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
         child: Row(children: [
           const Icon(Icons.error_outline, color: AppColors.error, size: 16),
           const SizedBox(width: 8),
-          Expanded(child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
+          Expanded(
+            child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+          ),
         ]),
       ),
     );
   }
 
+  // Bloc DEV — compilé uniquement en mode debug (kDebugMode est une constante de compilation)
   Widget _buildDevShortcuts() {
     return Container(
       decoration: BoxDecoration(
@@ -818,9 +980,13 @@ class _LoginScreenState extends State<LoginScreen> {
           Row(children: [
             Icon(Icons.developer_mode, size: 16, color: Colors.orange.shade700),
             const SizedBox(width: 6),
-            Text('DEV — Connexion rapide',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700,
-                    color: Colors.orange.shade800, letterSpacing: 0.5)),
+            Text(
+              'DEV — Connexion rapide',
+              style: TextStyle(
+                fontSize: 12, fontWeight: FontWeight.w700,
+                color: Colors.orange.shade800, letterSpacing: 0.5,
+              ),
+            ),
           ]),
           const SizedBox(height: 12),
           GridView.count(
@@ -831,14 +997,22 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSpacing: 8,
             childAspectRatio: 3.2,
             children: [
-              _DevLoginButton(label: 'Admin', icon: Icons.admin_panel_settings, color: AppColors.error,
-                  onTap: _loading ? null : () => _quickLogin(mockUsers[0])),
-              _DevLoginButton(label: 'Superviseur', icon: Icons.supervisor_account, color: AppColors.primary,
-                  onTap: _loading ? null : () => _quickLogin(mockUsers[1])),
-              _DevLoginButton(label: 'Technicien', icon: Icons.build, color: AppColors.warning,
-                  onTap: _loading ? null : () => _quickLogin(mockUsers[3])),
-              _DevLoginButton(label: 'Hospitalier', icon: Icons.local_hospital, color: AppColors.success,
-                  onTap: _loading ? null : () => _quickLogin(mockUsers[5])),
+              _DevLoginButton(
+                label: 'Admin', icon: Icons.admin_panel_settings, color: AppColors.error,
+                onTap: _loading ? null : () => _quickLogin(mockUsers[0]),
+              ),
+              _DevLoginButton(
+                label: 'Superviseur', icon: Icons.supervisor_account, color: AppColors.primary,
+                onTap: _loading ? null : () => _quickLogin(mockUsers[1]),
+              ),
+              _DevLoginButton(
+                label: 'Technicien', icon: Icons.build, color: AppColors.warning,
+                onTap: _loading ? null : () => _quickLogin(mockUsers[3]),
+              ),
+              _DevLoginButton(
+                label: 'Hospitalier', icon: Icons.local_hospital, color: AppColors.success,
+                onTap: _loading ? null : () => _quickLogin(mockUsers[5]),
+              ),
             ],
           ),
         ],

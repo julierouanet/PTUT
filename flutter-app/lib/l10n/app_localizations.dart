@@ -5773,6 +5773,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Protocoles PM applicables'**
   String get equipmentPmSection;
+
+  /// No description provided for @systemStatusOperational.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut système : Opérationnel'**
+  String get systemStatusOperational;
+
+  /// No description provided for @systemStatusDegraded.
+  ///
+  /// In fr, this message translates to:
+  /// **'Statut système : Dégradé'**
+  String get systemStatusDegraded;
+
+  /// No description provided for @systemStatusChecking.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérification en cours…'**
+  String get systemStatusChecking;
+
+  /// No description provided for @systemStatusLastCheck.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière vérif. à {time}'**
+  String systemStatusLastCheck(String time);
+
+  /// No description provided for @systemAlertBannerAuth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Service d\'authentification indisponible — connexion impossible. Contactez votre administrateur.'**
+  String get systemAlertBannerAuth;
+
+  /// No description provided for @systemAlertBannerGeneral.
+  ///
+  /// In fr, this message translates to:
+  /// **'Service(s) système indisponible(s) — fonctionnalités limitées.'**
+  String get systemAlertBannerGeneral;
+
+  /// No description provided for @loginRecentSessionsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Comptes récemment utilisés sur ce poste'**
+  String get loginRecentSessionsTitle;
+
+  /// No description provided for @loginBackToLogin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retour à la connexion'**
+  String get loginBackToLogin;
+
+  /// No description provided for @forgotPasswordHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.'**
+  String get forgotPasswordHint;
 }
 
 class _AppLocalizationsDelegate

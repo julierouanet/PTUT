@@ -1122,5 +1122,26 @@
 
   "equipmentSubcategorySection": "CMMS Classification",
   "equipmentWarrantySection": "Warranty & Criticality",
-  "equipmentPmSection": "Applicable PM Protocols"
+  "equipmentPmSection": "Applicable PM Protocols",
+
+  "systemStatusOperational": "System status: Operational",
+  "@systemStatusOperational": {},
+  "systemStatusDegraded": "System status: Degraded",
+  "@systemStatusDegraded": {},
+  "systemStatusChecking": "Checking…",
+  "@systemStatusChecking": {},
+  "systemStatusLastCheck": "Last check at {time}",
+  "@systemStatusLastCheck": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "systemAlertBannerAuth": "Authentication service unavailable — sign-in is not possible. Contact your administrator.",
+  "@systemAlertBannerAuth": {},
+  "systemAlertBannerGeneral": "System service(s) unavailable — limited functionality.",
+  "@systemAlertBannerGeneral": {},
+  "loginRecentSessionsTitle": "Recently used accounts on this device",
+  "@loginRecentSessionsTitle": {},
+  "loginBackToLogin": "Back to sign-in",
+  "@loginBackToLogin": {},
+  "forgotPasswordHint": "Enter your email address. You will receive a link to reset your password.",
+  "@forgotPasswordHint": {}
 }

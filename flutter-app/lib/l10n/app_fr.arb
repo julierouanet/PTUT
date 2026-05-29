@@ -1144,5 +1144,26 @@
 
   "equipmentSubcategorySection": "Classification GMAO",
   "equipmentWarrantySection": "Garantie & Criticité",
-  "equipmentPmSection": "Protocoles PM applicables"
+  "equipmentPmSection": "Protocoles PM applicables",
+
+  "systemStatusOperational": "Statut système : Opérationnel",
+  "@systemStatusOperational": {},
+  "systemStatusDegraded": "Statut système : Dégradé",
+  "@systemStatusDegraded": {},
+  "systemStatusChecking": "Vérification en cours…",
+  "@systemStatusChecking": {},
+  "systemStatusLastCheck": "Dernière vérif. à {time}",
+  "@systemStatusLastCheck": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "systemAlertBannerAuth": "Service d'authentification indisponible — connexion impossible. Contactez votre administrateur.",
+  "@systemAlertBannerAuth": {},
+  "systemAlertBannerGeneral": "Service(s) système indisponible(s) — fonctionnalités limitées.",
+  "@systemAlertBannerGeneral": {},
+  "loginRecentSessionsTitle": "Comptes récemment utilisés sur ce poste",
+  "@loginRecentSessionsTitle": {},
+  "loginBackToLogin": "Retour à la connexion",
+  "@loginBackToLogin": {},
+  "forgotPasswordHint": "Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.",
+  "@forgotPasswordHint": {}
 }

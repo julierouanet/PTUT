@@ -3067,4 +3067,37 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get equipmentPmSection => 'Protocoles PM applicables';
+
+  @override
+  String get systemStatusOperational => 'Statut système : Opérationnel';
+
+  @override
+  String get systemStatusDegraded => 'Statut système : Dégradé';
+
+  @override
+  String get systemStatusChecking => 'Vérification en cours…';
+
+  @override
+  String systemStatusLastCheck(String time) {
+    return 'Dernière vérif. à $time';
+  }
+
+  @override
+  String get systemAlertBannerAuth =>
+      'Service d\'authentification indisponible — connexion impossible. Contactez votre administrateur.';
+
+  @override
+  String get systemAlertBannerGeneral =>
+      'Service(s) système indisponible(s) — fonctionnalités limitées.';
+
+  @override
+  String get loginRecentSessionsTitle =>
+      'Comptes récemment utilisés sur ce poste';
+
+  @override
+  String get loginBackToLogin => 'Retour à la connexion';
+
+  @override
+  String get forgotPasswordHint =>
+      'Entrez votre adresse email. Vous recevrez un lien pour réinitialiser votre mot de passe.';
 }
