@@ -2468,6 +2468,78 @@ abstract class AppLocalizations {
   /// **'Consultez et gérez les stocks de fournitures médicales et consommables.'**
   String get hubInventoryDesc;
 
+  /// No description provided for @hubKpiTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tableau de bord global'**
+  String get hubKpiTitle;
+
+  /// No description provided for @hubKpiSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indicateurs clés en temps réel'**
+  String get hubKpiSubtitle;
+
+  /// No description provided for @hubKpiCriticalUrgentLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents critiques / urgents'**
+  String get hubKpiCriticalUrgentLabel;
+
+  /// No description provided for @hubKpiOpenIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'incidents ouverts'**
+  String get hubKpiOpenIssues;
+
+  /// No description provided for @hubKpiStockAlertsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes de stock'**
+  String get hubKpiStockAlertsLabel;
+
+  /// No description provided for @hubKpiStockAlertsSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'ruptures ou niveaux faibles'**
+  String get hubKpiStockAlertsSubtitle;
+
+  /// No description provided for @hubKpiOutOfServiceLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors service'**
+  String get hubKpiOutOfServiceLabel;
+
+  /// No description provided for @hubKpiOutOfServiceSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'équipements hors service'**
+  String get hubKpiOutOfServiceSubtitle;
+
+  /// No description provided for @hubKpiNoAlert.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune alerte'**
+  String get hubKpiNoAlert;
+
+  /// No description provided for @hubReportUrgentButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler un incident'**
+  String get hubReportUrgentButton;
+
+  /// No description provided for @hubReportUrgentTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler un incident immédiatement'**
+  String get hubReportUrgentTooltip;
+
+  /// No description provided for @hubQuickAccessTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès rapide aux modules'**
+  String get hubQuickAccessTitle;
+
   /// No description provided for @equipStatusOperational.
   ///
   /// In fr, this message translates to:

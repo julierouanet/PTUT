@@ -2,10 +2,16 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/data_service.dart';
 import '../services/api_config.dart';
+import '../models/issue.dart';
+import '../models/inventory_item.dart';
+import '../models/equipment.dart';
+import '../models/user_role.dart';
+import '../widgets/issue_category_selector.dart';
 import 'account_settings_screen.dart';
 
-/// Écran hub — affiché après connexion, permet de choisir un module.
+/// Hub post-connexion — tableau de bord global GMAO avec KPIs croisés et accès rapide.
 class HomeHubScreen extends StatelessWidget {
   final VoidCallback onEquipmentModule;
   final VoidCallback onSettingsModule;
@@ -22,59 +28,98 @@ class HomeHubScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final user = AuthService().currentUser;
-    final size = MediaQuery.of(context).size;
-    final isWide = size.width > 700;
+    final auth = AuthService();
+    final isWide = MediaQuery.of(context).size.width > 700;
 
     return Scaffold(
       backgroundColor: AppColors.background,
+      // FAB d'urgence — déclenche la pré-qualification sans navigation
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => showIssueCategorySelector(context),
+        backgroundColor: AppColors.error,
+        foregroundColor: Colors.white,
+        elevation: 4,
+        icon: const Icon(Icons.report_problem_rounded),
+        label: Text(
+          l10n.hubReportUrgentButton,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+        ),
+        tooltip: l10n.hubReportUrgentTooltip,
+      ),
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, user),
             Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(isWide ? 32 : 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.hubSelectModule,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+              child: ListenableBuilder(
+                listenable: DataService(),
+                builder: (context, _) {
+                  final data = DataService();
+                  final criticalCount    = _countCriticalUrgent(data);
+                  final stockAlertCount  = _countStockAlerts(data);
+                  final outOfServiceCount = _countOutOfService(data);
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.fromLTRB(
+                      isWide ? 32 : 16,
+                      20,
+                      isWide ? 32 : 16,
+                      96, // espace sous le FAB
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      l10n.hubSelectModuleSubtitle,
-                      style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ── Titre du tableau de bord ────────────────────────
+                        Text(
+                          l10n.hubKpiTitle,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          l10n.hubKpiSubtitle,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // ── Tuiles KPI ──────────────────────────────────────
+                        _buildKpiRow(
+                          l10n,
+                          isWide,
+                          criticalCount,
+                          stockAlertCount,
+                          outOfServiceCount,
+                        ),
+                        const SizedBox(height: 28),
+                        // ── Titre accès rapide ──────────────────────────────
+                        Text(
+                          l10n.hubQuickAccessTitle,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // ── Cartes modules ──────────────────────────────────
+                        _buildModuleCards(
+                          context,
+                          l10n,
+                          isWide,
+                          auth,
+                          criticalCount,
+                          stockAlertCount,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
-                    const SizedBox(height: 32),
-                    if (isWide)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: _buildEquipmentCard(l10n)),
-                          const SizedBox(width: 20),
-                          Expanded(child: _buildSettingsCard(l10n)),
-                          const SizedBox(width: 20),
-                          Expanded(child: _buildInventoryCard(l10n)),
-                        ],
-                      )
-                    else
-                      Column(
-                        children: [
-                          _buildEquipmentCard(l10n),
-                          const SizedBox(height: 16),
-                          _buildSettingsCard(l10n),
-                          const SizedBox(height: 16),
-                          _buildInventoryCard(l10n),
-                        ],
-                      ),
-                    const SizedBox(height: 32),
-                  ],
-                ),
+                  );
+                },
               ),
             ),
             _buildVersionFooter(context),
@@ -84,19 +129,162 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVersionFooter(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Text(
-        l10n.appVersionLabel(ApiConfig.appVersion),
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: AppColors.textSecondary.withValues(alpha: 0.55),
-        ),
-        textAlign: TextAlign.center,
+  // ── Calcul des KPIs depuis DataService ────────────────────────────────────
+
+  int _countCriticalUrgent(DataService data) => data.issues.where((i) =>
+    (i.urgency == IssueUrgency.critique || i.urgency == IssueUrgency.urgent) &&
+    i.status != IssueStatus.completed &&
+    i.status != IssueStatus.closed &&
+    i.status != IssueStatus.verified,
+  ).length;
+
+  int _countStockAlerts(DataService data) => data.inventory.where((i) =>
+    i.status == StockStatus.low || i.status == StockStatus.outOfStock,
+  ).length;
+
+  int _countOutOfService(DataService data) => data.equipment.where((e) =>
+    e.status == EquipmentStatus.outOfService,
+  ).length;
+
+  // ── Rangée de tuiles KPI ──────────────────────────────────────────────────
+
+  Widget _buildKpiRow(
+    AppLocalizations l10n,
+    bool isWide,
+    int criticalCount,
+    int stockAlertCount,
+    int outOfServiceCount,
+  ) {
+    final tiles = <_KpiTile>[
+      _KpiTile(
+        label: l10n.hubKpiCriticalUrgentLabel,
+        count: criticalCount,
+        icon: Icons.warning_amber_rounded,
+        color: criticalCount > 0 ? AppColors.error : AppColors.success,
+        subtitle: criticalCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOpenIssues,
+        onTap: onEquipmentModule,
       ),
+      _KpiTile(
+        label: l10n.hubKpiStockAlertsLabel,
+        count: stockAlertCount,
+        icon: Icons.inventory_outlined,
+        color: stockAlertCount > 0 ? AppColors.warning : AppColors.success,
+        subtitle: stockAlertCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiStockAlertsSubtitle,
+        onTap: onInventoryModule,
+      ),
+      _KpiTile(
+        label: l10n.hubKpiOutOfServiceLabel,
+        count: outOfServiceCount,
+        icon: Icons.power_off_outlined,
+        color: outOfServiceCount > 0 ? AppColors.warning : AppColors.success,
+        subtitle: outOfServiceCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOutOfServiceSubtitle,
+        onTap: onEquipmentModule,
+      ),
+    ];
+
+    return Row(
+      children: [
+        for (int i = 0; i < tiles.length; i++) ...[
+          Expanded(child: tiles[i]),
+          if (i < tiles.length - 1) SizedBox(width: isWide ? 16 : 8),
+        ],
+      ],
     );
   }
+
+  // ── Disposition des cartes modules ────────────────────────────────────────
+
+  Widget _buildModuleCards(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isWide,
+    AuthService auth,
+    int criticalCount,
+    int stockAlertCount,
+  ) {
+    // Visibilité des modules selon les permissions RBAC
+    final showSettings  = auth.hasPermission(Permission.manageDepartments) ||
+                          auth.hasPermission(Permission.manageUsers);
+    final showInventory = auth.hasPermission(Permission.viewInventory);
+
+    final cards = <Widget>[
+      _buildEquipmentCard(l10n, criticalCount),
+      if (showSettings)  _buildSettingsCard(l10n),
+      if (showInventory) _buildInventoryCard(l10n, stockAlertCount),
+    ];
+
+    if (cards.isEmpty) return const SizedBox.shrink();
+
+    if (isWide) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (int i = 0; i < cards.length; i++) ...[
+            Expanded(child: cards[i]),
+            if (i < cards.length - 1) const SizedBox(width: 16),
+          ],
+        ],
+      );
+    }
+    return Column(
+      children: [
+        for (int i = 0; i < cards.length; i++) ...[
+          cards[i],
+          if (i < cards.length - 1) const SizedBox(height: 12),
+        ],
+      ],
+    );
+  }
+
+  // ── Cartes modules (badgeCount = alertes à afficher) ──────────────────────
+
+  Widget _buildEquipmentCard(AppLocalizations l10n, int badgeCount) => _HubModuleCard(
+        color: AppColors.primary,
+        lightColor: AppColors.primaryLight,
+        icon: Icons.medical_services_outlined,
+        title: l10n.hubEquipmentTitle,
+        description: l10n.hubEquipmentDesc,
+        badgeCount: badgeCount,
+        pages: [
+          _PageEntry(l10n.navDashboard,     Icons.dashboard_outlined),
+          _PageEntry(l10n.navEquipment,     Icons.inventory_2_outlined),
+          _PageEntry(l10n.navIssueTracking, Icons.troubleshoot_outlined),
+          _PageEntry(l10n.navReportIssue,   Icons.report_problem_outlined),
+          _PageEntry(l10n.navTechnician,    Icons.build_outlined),
+          _PageEntry(l10n.navReports,       Icons.analytics_outlined),
+        ],
+        onTap: onEquipmentModule,
+      );
+
+  Widget _buildSettingsCard(AppLocalizations l10n) => _HubModuleCard(
+        color: AppColors.warning,
+        lightColor: AppColors.warningLight,
+        icon: Icons.settings_outlined,
+        title: l10n.hubSettingsTitle,
+        description: l10n.hubSettingsDesc,
+        badgeCount: 0,
+        pages: [
+          _PageEntry(l10n.navSettings, Icons.tune_outlined),
+          _PageEntry(l10n.navUsers,    Icons.people_outlined),
+          _PageEntry(l10n.navLogs,     Icons.history_outlined),
+        ],
+        onTap: onSettingsModule,
+      );
+
+  Widget _buildInventoryCard(AppLocalizations l10n, int badgeCount) => _HubModuleCard(
+        color: AppColors.success,
+        lightColor: AppColors.successLight,
+        icon: Icons.archive_outlined,
+        title: l10n.hubInventoryTitle,
+        description: l10n.hubInventoryDesc,
+        badgeCount: badgeCount,
+        pages: [
+          _PageEntry(l10n.navInventory, Icons.inventory_outlined),
+        ],
+        onTap: onInventoryModule,
+      );
+
+  // ── En-tête ────────────────────────────────────────────────────────────────
 
   Widget _buildHeader(BuildContext context, dynamic user) {
     final l10n = AppLocalizations.of(context)!;
@@ -202,51 +390,24 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEquipmentCard(AppLocalizations l10n) => _HubModuleCard(
-        color: AppColors.primary,
-        lightColor: AppColors.primaryLight,
-        icon: Icons.medical_services_outlined,
-        title: l10n.hubEquipmentTitle,
-        description: l10n.hubEquipmentDesc,
-        pages: [
-          _PageEntry(l10n.navDashboard,      Icons.dashboard_outlined),
-          _PageEntry(l10n.navEquipment,      Icons.inventory_2_outlined),
-          _PageEntry(l10n.navIssueTracking,  Icons.troubleshoot_outlined),
-          _PageEntry(l10n.navReportIssue,    Icons.report_problem_outlined),
-          _PageEntry(l10n.navTechnician,     Icons.build_outlined),
-          _PageEntry(l10n.navReports,        Icons.analytics_outlined),
-        ],
-        onTap: onEquipmentModule,
-      );
+  // ── Pied de page version ───────────────────────────────────────────────────
 
-  Widget _buildSettingsCard(AppLocalizations l10n) => _HubModuleCard(
-        color: AppColors.warning,
-        lightColor: AppColors.warningLight,
-        icon: Icons.settings_outlined,
-        title: l10n.hubSettingsTitle,
-        description: l10n.hubSettingsDesc,
-        pages: [
-          _PageEntry(l10n.navSettings, Icons.tune_outlined),
-          _PageEntry(l10n.navUsers,    Icons.people_outlined),
-          _PageEntry(l10n.navLogs,     Icons.history_outlined),
-        ],
-        onTap: onSettingsModule,
-      );
-
-  Widget _buildInventoryCard(AppLocalizations l10n) => _HubModuleCard(
-        color: AppColors.success,
-        lightColor: AppColors.successLight,
-        icon: Icons.archive_outlined,
-        title: l10n.hubInventoryTitle,
-        description: l10n.hubInventoryDesc,
-        pages: [
-          _PageEntry(l10n.navInventory, Icons.inventory_outlined),
-        ],
-        onTap: onInventoryModule,
-      );
+  Widget _buildVersionFooter(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Text(
+        l10n.appVersionLabel(ApiConfig.appVersion),
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: AppColors.textSecondary.withValues(alpha: 0.55),
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
 }
 
-// ── Modèle interne ──────────────────────────────────────────────────────────
+// ── Modèle interne pour les chips de pages ─────────────────────────────────
 
 class _PageEntry {
   final String name;
@@ -254,7 +415,103 @@ class _PageEntry {
   const _PageEntry(this.name, this.icon);
 }
 
-// ── Carte de module ─────────────────────────────────────────────────────────
+// ── Tuile KPI ──────────────────────────────────────────────────────────────
+
+class _KpiTile extends StatelessWidget {
+  final String label;
+  final int count;
+  final IconData icon;
+  final Color color;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _KpiTile({
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: color.withValues(alpha: 0.25), width: 1.5),
+      ),
+      color: Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: color, size: 17),
+                  ),
+                  const Spacer(),
+                  if (count > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.textSecondary,
+                  height: 1.3,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Carte de module ────────────────────────────────────────────────────────
 
 class _HubModuleCard extends StatelessWidget {
   final Color color;
@@ -262,6 +519,7 @@ class _HubModuleCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String description;
+  final int badgeCount;
   final List<_PageEntry> pages;
   final VoidCallback onTap;
 
@@ -271,6 +529,7 @@ class _HubModuleCard extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.description,
+    required this.badgeCount,
     required this.pages,
     required this.onTap,
   });
@@ -292,23 +551,53 @@ class _HubModuleCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // En-tête icône
+              // ── En-tête icône + badge ──────────────────────────────────
               Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: lightColor,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: color, size: 28),
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: lightColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(icon, color: color, size: 28),
+                      ),
+                      if (badgeCount > 0)
+                        Positioned(
+                          top: -6,
+                          right: -6,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.error,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.white, width: 1.5),
+                            ),
+                            child: Text(
+                              '$badgeCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const Spacer(),
-                  Icon(Icons.arrow_forward_ios_rounded, color: color.withValues(alpha: 0.6), size: 16),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: color.withValues(alpha: 0.6),
+                    size: 16,
+                  ),
                 ],
               ),
               const SizedBox(height: 18),
-              // Titre
+              // ── Titre ──────────────────────────────────────────────────
               Text(
                 title,
                 style: const TextStyle(
@@ -318,7 +607,7 @@ class _HubModuleCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              // Description
+              // ── Description ────────────────────────────────────────────
               Text(
                 description,
                 style: const TextStyle(
@@ -328,7 +617,7 @@ class _HubModuleCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // Chips des pages
+              // ── Chips des pages disponibles ────────────────────────────
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -363,7 +652,7 @@ class _HubModuleCard extends StatelessWidget {
                     .toList(),
               ),
               const SizedBox(height: 22),
-              // Bouton ouvrir
+              // ── Bouton ouvrir ──────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

@@ -1297,6 +1297,42 @@ class AppLocalizationsFr extends AppLocalizations {
       'Consultez et gérez les stocks de fournitures médicales et consommables.';
 
   @override
+  String get hubKpiTitle => 'Tableau de bord global';
+
+  @override
+  String get hubKpiSubtitle => 'Indicateurs clés en temps réel';
+
+  @override
+  String get hubKpiCriticalUrgentLabel => 'Incidents critiques / urgents';
+
+  @override
+  String get hubKpiOpenIssues => 'incidents ouverts';
+
+  @override
+  String get hubKpiStockAlertsLabel => 'Alertes de stock';
+
+  @override
+  String get hubKpiStockAlertsSubtitle => 'ruptures ou niveaux faibles';
+
+  @override
+  String get hubKpiOutOfServiceLabel => 'Hors service';
+
+  @override
+  String get hubKpiOutOfServiceSubtitle => 'équipements hors service';
+
+  @override
+  String get hubKpiNoAlert => 'Aucune alerte';
+
+  @override
+  String get hubReportUrgentButton => 'Signaler un incident';
+
+  @override
+  String get hubReportUrgentTooltip => 'Signaler un incident immédiatement';
+
+  @override
+  String get hubQuickAccessTitle => 'Accès rapide aux modules';
+
+  @override
   String get equipStatusOperational => 'Opérationnel';
 
   @override

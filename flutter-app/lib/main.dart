@@ -144,6 +144,30 @@ class _AppRoot extends StatefulWidget {
 
 class _AppRootState extends State<_AppRoot> {
   _HubModule? _activeModule;
+  // Écran de démarrage injecté lors de la redirection automatique par rôle
+  ScreenType? _initialScreenType;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyRoleRedirect();
+  }
+
+  /// Redirige les techniciens directement vers le suivi des incidents
+  /// sans passer par le hub — supprime un clic inutile au démarrage.
+  void _applyRoleRedirect() {
+    const techRoles = {
+      UserRole.technician,
+      UserRole.technicianBiomedical,
+      UserRole.technicianIt,
+      UserRole.technicianInfra,
+    };
+    final role = AuthService().primaryRole;
+    if (role != null && techRoles.contains(role)) {
+      _activeModule = _HubModule.equipment;
+      _initialScreenType = ScreenType.issueTracking;
+    }
+  }
 
   static const _equipmentScreens = [
     ScreenType.dashboard,
@@ -182,7 +206,11 @@ class _AppRootState extends State<_AppRoot> {
     }
     return MainScaffold(
       moduleFilter: _filterFor(_activeModule!),
-      onBackToHub: () => setState(() => _activeModule = null),
+      onBackToHub: () => setState(() {
+        _activeModule = null;
+        _initialScreenType = null; // retour au hub : plus de redirection automatique
+      }),
+      initialScreenType: _initialScreenType,
     );
   }
 }
@@ -193,7 +221,8 @@ class _AppRootState extends State<_AppRoot> {
 class MainScaffold extends StatefulWidget {
   final List<ScreenType>? moduleFilter;
   final VoidCallback? onBackToHub;
-  const MainScaffold({super.key, this.moduleFilter, this.onBackToHub});
+  final ScreenType? initialScreenType;
+  const MainScaffold({super.key, this.moduleFilter, this.onBackToHub, this.initialScreenType});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -211,9 +240,19 @@ class _MainScaffoldState extends State<MainScaffold> {
   @override
   void initState() {
     super.initState();
-    // Générer les notifications après le premier rendu (données déjà chargées)
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       NotificationService().generateFromLoadedData();
+      // Appliquer l'écran initial si une redirection par rôle a été demandée
+      final initType = widget.initialScreenType;
+      if (initType != null) {
+        final l10n = AppLocalizations.of(context)!;
+        final items = _navItems(l10n);
+        final idx = items.indexWhere((item) => item.screenType == initType);
+        if (idx != -1 && idx != _currentIndex) {
+          setState(() => _currentIndex = idx);
+        }
+      }
     });
   }
 

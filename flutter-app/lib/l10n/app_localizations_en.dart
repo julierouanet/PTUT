@@ -1287,6 +1287,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'View and manage medical supplies and consumables stock.';
 
   @override
+  String get hubKpiTitle => 'Global Dashboard';
+
+  @override
+  String get hubKpiSubtitle => 'Real-time key indicators';
+
+  @override
+  String get hubKpiCriticalUrgentLabel => 'Critical / urgent incidents';
+
+  @override
+  String get hubKpiOpenIssues => 'open incidents';
+
+  @override
+  String get hubKpiStockAlertsLabel => 'Stock alerts';
+
+  @override
+  String get hubKpiStockAlertsSubtitle => 'out of stock or low levels';
+
+  @override
+  String get hubKpiOutOfServiceLabel => 'Out of service';
+
+  @override
+  String get hubKpiOutOfServiceSubtitle => 'equipment out of service';
+
+  @override
+  String get hubKpiNoAlert => 'No alerts';
+
+  @override
+  String get hubReportUrgentButton => 'Report an incident';
+
+  @override
+  String get hubReportUrgentTooltip => 'Report an incident immediately';
+
+  @override
+  String get hubQuickAccessTitle => 'Quick access to modules';
+
+  @override
   String get equipStatusOperational => 'Operational';
 
   @override
