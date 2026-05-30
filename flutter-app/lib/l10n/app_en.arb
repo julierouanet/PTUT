@@ -15,7 +15,7 @@
   "navInventory": "Inventory",
   "navReports": "Reports",
   "navUsers": "Users",
-  "navSettings": "Settings",
+  "navSettings": "Admin",
   "navLogs": "Activity Logs",
   "navLogsShort": "Logs",
   "navDashboardShort": "Home",
@@ -26,7 +26,7 @@
   "navInventoryShort": "Inventory",
   "navReportsShort": "Reports",
   "navUsersShort": "Users",
-  "navSettingsShort": "Settings",
+  "navSettingsShort": "Admin",
 
   "tooltipBack": "Back",
   "tooltipMenu": "Menu",

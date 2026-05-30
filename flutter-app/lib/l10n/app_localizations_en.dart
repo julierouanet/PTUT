@@ -48,7 +48,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navUsers => 'Users';
 
   @override
-  String get navSettings => 'Settings';
+  String get navSettings => 'Admin';
 
   @override
   String get navLogs => 'Activity Logs';
@@ -81,7 +81,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navUsersShort => 'Users';
 
   @override
-  String get navSettingsShort => 'Settings';
+  String get navSettingsShort => 'Admin';
 
   @override
   String get tooltipBack => 'Back';

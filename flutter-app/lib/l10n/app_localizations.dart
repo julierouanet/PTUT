@@ -179,7 +179,7 @@ abstract class AppLocalizations {
   /// No description provided for @navSettings.
   ///
   /// In fr, this message translates to:
-  /// **'Gestion'**
+  /// **'Admin'**
   String get navSettings;
 
   /// No description provided for @navLogs.
@@ -245,7 +245,7 @@ abstract class AppLocalizations {
   /// No description provided for @navSettingsShort.
   ///
   /// In fr, this message translates to:
-  /// **'Gestion'**
+  /// **'Admin'**
   String get navSettingsShort;
 
   /// No description provided for @tooltipBack.
