@@ -159,6 +159,7 @@ class Issue {
   final IssueStatus status;
   final IssueUrgency urgency;
   final String? assignedTechnician;
+  final String? takenAt;
   final String? diagnosis;
   final String? actions;
   final String? partsReplaced;
@@ -180,6 +181,7 @@ class Issue {
     required this.status,
     this.urgency = IssueUrgency.moyen,
     this.assignedTechnician,
+    this.takenAt,
     this.diagnosis,
     this.actions,
     this.partsReplaced,
@@ -206,6 +208,7 @@ class Issue {
       status:             IssueStatus.fromString(json['status'] as String? ?? ''),
       urgency:            IssueUrgency.fromString(json['urgency'] as String?),
       assignedTechnician: json['assigned_technician']  as String?,
+      takenAt:            json['taken_at']             as String?,
       diagnosis:          json['diagnosis']            as String?,
       actions:            json['actions']              as String?,
       partsReplaced:      json['parts_replaced']       as String?,
@@ -229,6 +232,7 @@ class Issue {
     IssueStatus? status,
     IssueUrgency? urgency,
     String? assignedTechnician,
+    String? takenAt,
     String? diagnosis,
     String? actions,
     String? partsReplaced,
@@ -250,6 +254,7 @@ class Issue {
       status:             status            ?? this.status,
       urgency:            urgency           ?? this.urgency,
       assignedTechnician: assignedTechnician ?? this.assignedTechnician,
+      takenAt:            takenAt           ?? this.takenAt,
       diagnosis:          diagnosis         ?? this.diagnosis,
       actions:            actions           ?? this.actions,
       partsReplaced:      partsReplaced     ?? this.partsReplaced,

@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -9,13 +11,12 @@ import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
-
 import '../models/departments.dart';
 import '../utils/file_picker.dart';
 import '../widgets/urgency_badge.dart';
 
 /// Catalogue infrastructure 3 niveaux : catégorie → sous-catégorie → problèmes.
-/// Valeurs en anglais (reference standard hospitalier), stockées telles quelles en DB.
+/// Valeurs en anglais (référence standard hospitalier), stockées telles quelles en DB.
 const Map<String, Map<String, List<String>>> _kInfraCatalog = {
   'Electrical System': {
     'Lighting': [
@@ -177,9 +178,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
   String? _infraDepartment;
-  final _infraBuildingController  = TextEditingController();
-  final _infraLocationController  = TextEditingController();
-  final _infraTagController       = TextEditingController();
+  final _infraBuildingController = TextEditingController();
+  final _infraLocationController = TextEditingController();
+  final _infraTagController      = TextEditingController();
   String? _infraCategory;
   String? _infraSubcategory;
   String? _infraIssue;
@@ -202,8 +203,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   final List<_PhotoItem> _photos = [];
   static const int _maxPhotos = 5;
   bool _isSubmitting = false;
+  bool _equipmentAvailable = true;
 
-  /// Retourne true si l'utilisateur a commencé à remplir un formulaire.
+  /// Retourne true si l'utilisateur a commencé à remplir un formulaire (tous tabs).
   bool get hasUnsavedData =>
       _bioEquipmentId != null ||
       _infraBuildingController.text.isNotEmpty ||
@@ -213,6 +215,10 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _autreDepartment != null ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
+
+  /// Données saisies dans la section partagée (description + photos) — perdues si on change d'onglet.
+  bool get _hasSharedUnsavedData =>
+      _descriptionController.text.isNotEmpty || _photos.isNotEmpty;
 
   @override
   void initState() {
@@ -242,8 +248,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final l10n = AppLocalizations.of(context)!;
-    if (_bioProblemType.isEmpty) _bioProblemType = l10n.issueFormBreakdown;
-    if (_itProblemType.isEmpty)  _itProblemType  = l10n.issueFormBreakdown;
+    if (_bioProblemType.isEmpty)  _bioProblemType  = l10n.issueFormBreakdown;
+    if (_itProblemType.isEmpty)   _itProblemType   = l10n.issueFormBreakdown;
     if (_autreProblemType.isEmpty) _autreProblemType = l10n.issueFormBreakdown;
   }
 
@@ -307,9 +313,35 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return results;
   }
 
-  // ── Changement d'onglet ───────────────────────────────────────────────────
+  // ── Changement d'onglet avec confirmation si données non sauvegardées ────
 
-  void _switchTab(int tab) {
+  Future<void> _switchTab(int tab) async {
+    if (tab == _selectedTab) return;
+    if (_hasSharedUnsavedData) {
+      final l10n = AppLocalizations.of(context)!;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l10n.issueFormSwitchTabTitle),
+          content: Text(l10n.issueFormSwitchTabMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: Text(
+                l10n.issueFormSwitchTabConfirm,
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true || !mounted) return;
+    }
     setState(() {
       _selectedTab = tab;
       _descriptionController.clear();
@@ -317,6 +349,126 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _urgency = IssueUrgency.moyen;
       _infraIssue = null;
       _infraSearchKey++;
+    });
+  }
+
+  // ── Scanner QR code ───────────────────────────────────────────────────────
+
+  Future<void> _openQrScanner(AppLocalizations l10n) async {
+    // Sur web : dialog de saisie manuelle (pas de caméra native disponible)
+    if (kIsWeb) {
+      await _showQrFallbackDialog(l10n);
+      return;
+    }
+    MobileScannerController? controller;
+    String? scannedCode;
+    try {
+      controller = MobileScannerController();
+      scannedCode = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(children: [
+            const Icon(CupertinoIcons.qrcode_viewfinder, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(l10n.issueFormScanQrTitle),
+          ]),
+          contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+          content: SizedBox(
+            width: 280,
+            height: 280,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: MobileScanner(
+                controller: controller,
+                onDetect: (capture) {
+                  final code = capture.barcodes.firstOrNull?.rawValue;
+                  if (code != null && code.isNotEmpty) {
+                    Navigator.pop(ctx, code);
+                  }
+                },
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller?.dispose();
+    }
+    if (scannedCode != null && mounted) {
+      _processQrCode(scannedCode, l10n);
+    }
+  }
+
+  /// Dialog de saisie manuelle de l'ID équipement (fallback web ou offline).
+  Future<void> _showQrFallbackDialog(AppLocalizations l10n) async {
+    final textCtrl = TextEditingController();
+    String? result;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          const Icon(CupertinoIcons.qrcode_viewfinder, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Flexible(child: Text(l10n.issueFormScanQrFallbackTitle)),
+        ]),
+        content: TextField(
+          controller: textCtrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: l10n.issueFormScanQrFallbackHint,
+            prefixIcon: const Icon(Icons.qr_code, color: AppColors.textSecondary),
+          ),
+          onSubmitted: (v) {
+            result = v.trim();
+            Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              result = textCtrl.text.trim();
+              Navigator.pop(ctx);
+            },
+            child: Text(l10n.issueFormScanQrFallbackConfirm),
+          ),
+        ],
+      ),
+    );
+    textCtrl.dispose();
+    if (result != null && result!.isNotEmpty && mounted) {
+      _processQrCode(result!, l10n);
+    }
+  }
+
+  /// Recherche l'équipement par ID ou SN et met à jour le champ biomédical.
+  void _processQrCode(String code, AppLocalizations l10n) {
+    final trimmed = code.trim();
+    final eq = DataService().equipment.where((e) =>
+        e.id == trimmed ||
+        e.serialNumber.toLowerCase() == trimmed.toLowerCase()
+    ).firstOrNull;
+    if (eq == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.issueFormScanQrNotFound),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    setState(() {
+      _bioEquipmentId    = eq.id;
+      _bioEquipmentError = false;
+      _bioAutocompleteKey++; // force le reset de l'Autocomplete
     });
   }
 
@@ -328,7 +480,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     final l10n = AppLocalizations.of(context)!;
     setState(() {
       _itSearching = true;
-      _itTagError = null;
+      _itTagError  = null;
       _itEquipment = null;
     });
     try {
@@ -342,7 +494,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _itTagError = e.toString();
+        _itTagError  = e.toString();
         _itSearching = false;
       });
     }
@@ -368,6 +520,187 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   void _removePhoto(int index) => setState(() => _photos.removeAt(index));
+
+  /// Ouvre la photo en plein écran avec zoom interactif.
+  void _openPhotoPreview(_PhotoItem photo) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              decoration: const BoxDecoration(color: Colors.black),
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: InteractiveViewer(
+                  minScale: 0.8,
+                  maxScale: 5.0,
+                  child: Image.memory(
+                    photo.bytes,
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(Icons.broken_image, color: Colors.white54, size: 64),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.close, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 12,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    photo.name,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── SLA et modale de succès post-soumission ───────────────────────────────
+
+  String _slaLabel(AppLocalizations l10n) => switch (_urgency) {
+    IssueUrgency.critique => l10n.issueFormSla2h,
+    IssueUrgency.urgent   => l10n.issueFormSla12h,
+    IssueUrgency.moyen    => l10n.issueFormSla48h,
+    IssueUrgency.faible   => l10n.issueFormSla1week,
+  };
+
+  Future<void> _showSuccessDialog(String ticketId, AppLocalizations l10n) async {
+    final sla = _slaLabel(l10n);
+    final displayId = ticketId.startsWith('issue-')
+        ? ticketId.substring('issue-'.length)
+        : ticketId;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              l10n.issueFormSuccessTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    const Icon(Icons.confirmation_number, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Text(
+                        l10n.issueFormSuccessTicketId(displayId),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
+                  ]),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  Row(children: [
+                    const Icon(Icons.schedule, color: AppColors.warning, size: 18),
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.issueFormSuccessSlaLabel,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          Text(
+                            sla,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(l10n.issueFormSuccessClose),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ── Types de problème (partagés bio + IT + Autre) ─────────────────────────
 
@@ -398,20 +731,22 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
     final currentUser = AuthService().currentUser;
     final commons = {
-      'description':    _descriptionController.text.trim(),
-      'reporter':       currentUser?.fullName ?? 'Inconnu',
-      'reporter_id':    currentUser?.id ?? '',
-      'reporter_email': currentUser?.email ?? '',
-      'urgency':        _urgency.displayName,
+      'description':         _descriptionController.text.trim(),
+      'reporter':            currentUser?.fullName ?? 'Inconnu',
+      'reporter_id':         currentUser?.id ?? '',
+      'reporter_email':      currentUser?.email ?? '',
+      'urgency':             _urgency.displayName,
+      'equipment_available': _equipmentAvailable,
     };
 
+    final String ticketId = 'issue-${DateTime.now().millisecondsSinceEpoch}';
     final Map<String, dynamic> issueData;
 
     switch (_selectedTab) {
       case 0: // Biomédical
         final eq = _selectedBioEquipment!;
         issueData = {
-          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'id':             ticketId,
           'equipment_id':   eq.id,
           'equipment_name': eq.name,
           'department':     eq.department,
@@ -423,7 +758,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       case 1: // Infrastructure
         final infraTag = _infraTagController.text.trim();
         issueData = {
-          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'id':             ticketId,
           'location_text':  '${_infraBuildingController.text.trim()} — ${_infraLocationController.text.trim()}',
           if (infraTag.isNotEmpty) 'location_tag': infraTag,
           'department':     _infraDepartment!,
@@ -435,7 +770,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       case 2: // IT
         final eq = _itEquipment!;
         issueData = {
-          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'id':             ticketId,
           'equipment_id':   eq.id,
           'equipment_name': eq.name,
           'department':     eq.department,
@@ -446,7 +781,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         };
       default: // Autre
         issueData = {
-          'id':             'issue-${DateTime.now().millisecondsSinceEpoch}',
+          'id':             ticketId,
           'department':     _autreDepartment!,
           'type':           _autreProblemType,
           'issue_category': 'Autre',
@@ -460,17 +795,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.check_circle, color: Colors.white),
-          const SizedBox(width: 12),
-          Text(_photos.isNotEmpty
-              ? l10n.issueFormSuccessWithPhotos(_photos.length)
-              : l10n.issueFormSuccess),
-        ]),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ));
+      // Modale de succès avec ticket ID et SLA (remplace le SnackBar)
+      await _showSuccessDialog(ticketId, l10n);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -582,6 +908,10 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                         );
                       }).toList(),
                     ),
+                    const SizedBox(height: 16),
+
+                    // Disponibilité pour intervention (partagée — nouveau champ GMAO)
+                    _buildEquipmentAvailableSwitch(l10n),
                     const SizedBox(height: 24),
 
                     // Description (partagée)
@@ -728,74 +1058,84 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return [
       Text(l10n.issueFormEquipment, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
-      Autocomplete<Equipment>(
-        key: ValueKey(_bioAutocompleteKey),
-        displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
-        optionsBuilder: (TextEditingValue value) {
-          final query = value.text.toLowerCase().trim();
-          if (query.isEmpty) return const Iterable<Equipment>.empty();
-          return _bioEquipmentList.where((eq) =>
-              eq.name.toLowerCase().contains(query) ||
-              eq.serialNumber.toLowerCase().contains(query));
-        },
-        onSelected: (eq) {
-          setState(() {
-            _bioEquipmentId = eq.id;
-            _bioEquipmentError = false;
-          });
-        },
-        fieldViewBuilder: (context, textController, focusNode, onSubmitted) {
-          return TextField(
-            controller: textController,
-            focusNode: focusNode,
-            onSubmitted: (_) => onSubmitted(),
-            decoration: InputDecoration(
-              hintText: l10n.issueFormSelectEquipment,
-              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-              suffixIcon: _bioEquipmentId != null
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        textController.clear();
-                        setState(() {
-                          _bioEquipmentId = null;
-                          _bioEquipmentError = false;
-                        });
+      // Champ de recherche + bouton scanner QR côte à côte
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Autocomplete<Equipment>(
+              key: ValueKey(_bioAutocompleteKey),
+              displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
+              optionsBuilder: (TextEditingValue value) {
+                final query = value.text.toLowerCase().trim();
+                if (query.isEmpty) return const Iterable<Equipment>.empty();
+                return _bioEquipmentList.where((eq) =>
+                    eq.name.toLowerCase().contains(query) ||
+                    eq.serialNumber.toLowerCase().contains(query));
+              },
+              onSelected: (eq) {
+                setState(() {
+                  _bioEquipmentId    = eq.id;
+                  _bioEquipmentError = false;
+                });
+              },
+              fieldViewBuilder: (context, textController, focusNode, onSubmitted) {
+                return TextField(
+                  controller: textController,
+                  focusNode: focusNode,
+                  onSubmitted: (_) => onSubmitted(),
+                  decoration: InputDecoration(
+                    hintText: l10n.issueFormSelectEquipment,
+                    prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+                    suffixIcon: _bioEquipmentId != null
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              textController.clear();
+                              setState(() {
+                                _bioEquipmentId    = null;
+                                _bioEquipmentError = false;
+                              });
+                            },
+                          )
+                        : null,
+                    errorText: _bioEquipmentError ? l10n.issueFormEquipmentRequired : null,
+                  ),
+                );
+              },
+              optionsViewBuilder: (context, onSelected, options) => Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 4,
+                  borderRadius: BorderRadius.circular(8),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final eq = options.elementAt(index);
+                        return ListTile(
+                          dense: true,
+                          leading: const Icon(Icons.medical_services_outlined, size: 20),
+                          title: Text(eq.name, style: const TextStyle(fontSize: 14)),
+                          subtitle: Text(
+                            'SN: ${eq.serialNumber} • ${eq.department}',
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          onTap: () => onSelected(eq),
+                        );
                       },
-                    )
-                  : null,
-              errorText: _bioEquipmentError ? l10n.issueFormEquipmentRequired : null,
-            ),
-          );
-        },
-        optionsViewBuilder: (context, onSelected, options) => Align(
-          alignment: Alignment.topLeft,
-          child: Material(
-            elevation: 4,
-            borderRadius: BorderRadius.circular(8),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 250),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final eq = options.elementAt(index);
-                  return ListTile(
-                    dense: true,
-                    leading: const Icon(Icons.medical_services_outlined, size: 20),
-                    title: Text(eq.name, style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(
-                      'SN: ${eq.serialNumber} • ${eq.department}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                     ),
-                    onTap: () => onSelected(eq),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          _buildQrScanButton(l10n),
+        ],
       ),
       if (_selectedBioEquipment != null) ...[
         const SizedBox(height: 12),
@@ -805,7 +1145,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _bioProblemType,
+        initialValue: _bioProblemType,
         items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         onChanged: (v) => setState(() => _bioProblemType = v!),
       ),
@@ -832,7 +1172,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _infraDepartment,
+        initialValue: _infraDepartment,
         hint: Text(l10n.issueFormSelectDepartment),
         items: Department.values
             .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
@@ -931,7 +1271,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormProblemCategory, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _infraCategory,
+        initialValue: _infraCategory,
         hint: Text(l10n.issueFormSelectProblemCategory),
         items: _kInfraCatalog.keys
             .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
@@ -949,7 +1289,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormProblemSubcategory, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _infraSubcategory,
+        initialValue: _infraSubcategory,
         hint: Text(l10n.issueFormSelectProblemSubcategory),
         items: _infraSubcategories
             .map((s) => DropdownMenuItem(value: s, child: Text(s)))
@@ -966,7 +1306,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormSpecificIssue, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _infraIssue,
+        initialValue: _infraIssue,
         hint: Text(l10n.issueFormSelectSpecificIssue),
         items: [
           ..._infraIssues
@@ -1042,7 +1382,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _itProblemType,
+        initialValue: _itProblemType,
         items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         onChanged: (v) => setState(() => _itProblemType = v!),
       ),
@@ -1057,7 +1397,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _autreDepartment,
+        initialValue: _autreDepartment,
         hint: Text(l10n.issueFormSelectDepartment),
         items: Department.values
             .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
@@ -1069,7 +1409,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
-        value: _autreProblemType,
+        initialValue: _autreProblemType,
         items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
         onChanged: (v) => setState(() => _autreProblemType = v!),
       ),
@@ -1151,29 +1491,52 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
+  /// Miniature photo cliquable — clic = aperçu plein écran.
   Widget _buildPhotoThumbnail(_PhotoItem photo, int index) {
     return Stack(children: [
-      Container(
-        width: 100,
-        height: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(11),
-          child: Image.memory(
-            photo.bytes,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, _) => Container(
-              color: AppColors.background,
-              child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
+      GestureDetector(
+        onTap: () => _openPhotoPreview(photo),
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(11),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(
+                  photo.bytes,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, _) => Container(
+                    color: AppColors.background,
+                    child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
+                  ),
+                ),
+                // Indicateur visuel zoom
+                Positioned(
+                  bottom: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.black45,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Icon(Icons.zoom_in, color: Colors.white, size: 12),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
       ),
       Positioned(
-        top: 4, right: 4,
+        top: 4,
+        right: 4,
         child: GestureDetector(
           onTap: () => _removePhoto(index),
           child: Container(
@@ -1206,6 +1569,60 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 style: const TextStyle(
                     color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Switch indiquant si l'équipement peut être mis hors tension pour l'intervention.
+  Widget _buildEquipmentAvailableSwitch(AppLocalizations l10n) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      decoration: BoxDecoration(
+        color: _equipmentAvailable ? AppColors.successLight : AppColors.errorLight,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: (_equipmentAvailable ? AppColors.success : AppColors.error)
+              .withValues(alpha: 0.4),
+        ),
+      ),
+      child: SwitchListTile(
+        value: _equipmentAvailable,
+        onChanged: (v) => setState(() => _equipmentAvailable = v),
+        title: Text(
+          l10n.issueFormEquipmentAvailableLabel,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+        ),
+        subtitle: Text(
+          l10n.issueFormEquipmentAvailableHint,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        activeThumbColor: AppColors.success,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  /// Bouton icône QR code placé à côté du champ de recherche d'équipement.
+  Widget _buildQrScanButton(AppLocalizations l10n) {
+    return Tooltip(
+      message: l10n.issueFormScanQrTooltip,
+      child: InkWell(
+        onTap: () => _openQrScanner(l10n),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: AppColors.primaryLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.primary),
+          ),
+          child: const Icon(
+            CupertinoIcons.qrcode_viewfinder,
+            color: AppColors.primary,
+            size: 24,
+          ),
         ),
       ),
     );

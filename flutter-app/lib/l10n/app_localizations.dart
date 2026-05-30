@@ -6085,6 +6085,894 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Trier par'**
   String get equipmentSortBy;
+
+  /// No description provided for @equipDetailTabInfo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations'**
+  String get equipDetailTabInfo;
+
+  /// No description provided for @equipDetailTabMaintenance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance'**
+  String get equipDetailTabMaintenance;
+
+  /// No description provided for @equipDetailTabIncidents.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents'**
+  String get equipDetailTabIncidents;
+
+  /// No description provided for @equipDetailTabDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents'**
+  String get equipDetailTabDocuments;
+
+  /// No description provided for @equipDetailCriticalBanner.
+  ///
+  /// In fr, this message translates to:
+  /// **'ALERTE — Équipement critique hors service. Contactez immédiatement l\'équipe technique.'**
+  String get equipDetailCriticalBanner;
+
+  /// No description provided for @equipDetailQrCode.
+  ///
+  /// In fr, this message translates to:
+  /// **'QR Code'**
+  String get equipDetailQrCode;
+
+  /// No description provided for @equipDetailQrCodeTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identifiant de l\'équipement'**
+  String get equipDetailQrCodeTitle;
+
+  /// No description provided for @equipDetailQrCodeSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copiez ou partagez l\'ID pour lier cet équipement à un incident'**
+  String get equipDetailQrCodeSubtitle;
+
+  /// No description provided for @equipDetailQrCodeCopy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Copier l\'ID'**
+  String get equipDetailQrCodeCopy;
+
+  /// No description provided for @equipDetailQrCodeCopied.
+  ///
+  /// In fr, this message translates to:
+  /// **'ID copié !'**
+  String get equipDetailQrCodeCopied;
+
+  /// No description provided for @equipDetailKpiSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indicateurs de performance'**
+  String get equipDetailKpiSection;
+
+  /// No description provided for @equipDetailMttr.
+  ///
+  /// In fr, this message translates to:
+  /// **'MTTR (Temps Moyen de Réparation)'**
+  String get equipDetailMttr;
+
+  /// No description provided for @equipDetailMttrValue.
+  ///
+  /// In fr, this message translates to:
+  /// **'{n} jour(s)'**
+  String equipDetailMttrValue(int n);
+
+  /// No description provided for @equipDetailMttrNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données insuffisantes'**
+  String get equipDetailMttrNoData;
+
+  /// No description provided for @equipDetailTotalRepairs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réparations enregistrées'**
+  String get equipDetailTotalRepairs;
+
+  /// No description provided for @equipDetailCreatePm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Créer une intervention PM'**
+  String get equipDetailCreatePm;
+
+  /// No description provided for @equipDetailStaffReportButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler une panne'**
+  String get equipDetailStaffReportButton;
+
+  /// No description provided for @equipDetailStaffContactSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contact équipe technique'**
+  String get equipDetailStaffContactSection;
+
+  /// No description provided for @equipDetailStaffContactBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipe biomédicale'**
+  String get equipDetailStaffContactBiomedical;
+
+  /// No description provided for @equipDetailStaffContactIt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Service IT'**
+  String get equipDetailStaffContactIt;
+
+  /// No description provided for @equipDetailStaffContactInfra.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipe infrastructure'**
+  String get equipDetailStaffContactInfra;
+
+  /// No description provided for @equipDetailStaffContactGeneric.
+  ///
+  /// In fr, this message translates to:
+  /// **'Service technique'**
+  String get equipDetailStaffContactGeneric;
+
+  /// No description provided for @equipDetailStaffActiveIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents en cours sur cet équipement'**
+  String get equipDetailStaffActiveIssues;
+
+  /// No description provided for @equipDetailStaffNoActiveIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident en cours'**
+  String get equipDetailStaffNoActiveIssues;
+
+  /// No description provided for @equipDetailNoDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun document disponible'**
+  String get equipDetailNoDocuments;
+
+  /// No description provided for @equipDetailDocumentsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les manuels d\'utilisation, fiches techniques et procédures PM seront affichés ici.'**
+  String get equipDetailDocumentsHint;
+
+  /// No description provided for @equipDetailDeleteConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer l\'équipement'**
+  String get equipDetailDeleteConfirmTitle;
+
+  /// No description provided for @equipDetailDeleteConfirmBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action est irréversible. Tapez le nom exact de l\'équipement pour confirmer :'**
+  String get equipDetailDeleteConfirmBody;
+
+  /// No description provided for @equipDetailDeleteConfirmLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom de l\'équipement'**
+  String get equipDetailDeleteConfirmLabel;
+
+  /// No description provided for @equipDetailDeleteConfirmHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tapez exactement : {name}'**
+  String equipDetailDeleteConfirmHint(String name);
+
+  /// No description provided for @equipDetailDeleteConfirmMismatch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le nom ne correspond pas'**
+  String get equipDetailDeleteConfirmMismatch;
+
+  /// No description provided for @equipDetailDeleteConfirmButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer définitivement'**
+  String get equipDetailDeleteConfirmButton;
+
+  /// No description provided for @equipDetailDeleteReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison (optionnel)'**
+  String get equipDetailDeleteReasonLabel;
+
+  /// No description provided for @equipDetailDeleteReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Hors service définitif, remplacé…'**
+  String get equipDetailDeleteReasonHint;
+
+  /// No description provided for @equipDetailMaintenanceCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} intervention(s)'**
+  String equipDetailMaintenanceCount(int count);
+
+  /// No description provided for @issueFormSwitchTabTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer de catégorie ?'**
+  String get issueFormSwitchTabTitle;
+
+  /// No description provided for @issueFormSwitchTabMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les données saisies (description, photos) seront effacées si vous changez d\'onglet. Continuer ?'**
+  String get issueFormSwitchTabMessage;
+
+  /// No description provided for @issueFormSwitchTabConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer'**
+  String get issueFormSwitchTabConfirm;
+
+  /// No description provided for @issueFormScanQrTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scanner le QR code de l\'équipement'**
+  String get issueFormScanQrTooltip;
+
+  /// No description provided for @issueFormScanQrTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scanner le QR code'**
+  String get issueFormScanQrTitle;
+
+  /// No description provided for @issueFormScanQrFallbackTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisir l\'identifiant'**
+  String get issueFormScanQrFallbackTitle;
+
+  /// No description provided for @issueFormScanQrFallbackHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'ID ou numéro de série de l\'équipement'**
+  String get issueFormScanQrFallbackHint;
+
+  /// No description provided for @issueFormScanQrFallbackConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider'**
+  String get issueFormScanQrFallbackConfirm;
+
+  /// No description provided for @issueFormScanQrNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement trouvé pour cet identifiant'**
+  String get issueFormScanQrNotFound;
+
+  /// No description provided for @issueFormEquipmentAvailableLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Disponible pour intervention immédiate'**
+  String get issueFormEquipmentAvailableLabel;
+
+  /// No description provided for @issueFormEquipmentAvailableHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'équipement peut être mis hors tension pour la réparation'**
+  String get issueFormEquipmentAvailableHint;
+
+  /// No description provided for @issueFormSuccessTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalement soumis avec succès'**
+  String get issueFormSuccessTitle;
+
+  /// No description provided for @issueFormSuccessTicketId.
+  ///
+  /// In fr, this message translates to:
+  /// **'N° de ticket : {id}'**
+  String issueFormSuccessTicketId(String id);
+
+  /// No description provided for @issueFormSuccessSlaLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Délai cible (SLA)'**
+  String get issueFormSuccessSlaLabel;
+
+  /// No description provided for @issueFormSla2h.
+  ///
+  /// In fr, this message translates to:
+  /// **'2 heures — urgence critique'**
+  String get issueFormSla2h;
+
+  /// No description provided for @issueFormSla12h.
+  ///
+  /// In fr, this message translates to:
+  /// **'12 heures — urgent'**
+  String get issueFormSla12h;
+
+  /// No description provided for @issueFormSla48h.
+  ///
+  /// In fr, this message translates to:
+  /// **'48 heures — priorité moyenne'**
+  String get issueFormSla48h;
+
+  /// No description provided for @issueFormSla1week.
+  ///
+  /// In fr, this message translates to:
+  /// **'1 semaine — faible priorité'**
+  String get issueFormSla1week;
+
+  /// No description provided for @issueFormSuccessClose.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fermer'**
+  String get issueFormSuccessClose;
+
+  /// No description provided for @issuesSearchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher incident, équipement, déclarant…'**
+  String get issuesSearchHint;
+
+  /// No description provided for @issuesFilterPeriod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Période'**
+  String get issuesFilterPeriod;
+
+  /// No description provided for @issuesFilterPeriodAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous'**
+  String get issuesFilterPeriodAll;
+
+  /// No description provided for @issuesFilterPeriodLast7.
+  ///
+  /// In fr, this message translates to:
+  /// **'7 derniers jours'**
+  String get issuesFilterPeriodLast7;
+
+  /// No description provided for @issuesFilterPeriodLast30.
+  ///
+  /// In fr, this message translates to:
+  /// **'30 derniers jours'**
+  String get issuesFilterPeriodLast30;
+
+  /// No description provided for @issuesFilterUrgency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Urgence'**
+  String get issuesFilterUrgency;
+
+  /// No description provided for @issuesFilterGroup.
+  ///
+  /// In fr, this message translates to:
+  /// **'Groupe'**
+  String get issuesFilterGroup;
+
+  /// No description provided for @issuesFilterGroupBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomédical'**
+  String get issuesFilterGroupBiomedical;
+
+  /// No description provided for @issuesFilterGroupIT.
+  ///
+  /// In fr, this message translates to:
+  /// **'IT'**
+  String get issuesFilterGroupIT;
+
+  /// No description provided for @issuesFilterGroupInfra.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get issuesFilterGroupInfra;
+
+  /// No description provided for @issuesViewSeeAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir tout'**
+  String get issuesViewSeeAll;
+
+  /// No description provided for @issuesClearFilter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Effacer le filtre'**
+  String get issuesClearFilter;
+
+  /// No description provided for @issuesViewList.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste'**
+  String get issuesViewList;
+
+  /// No description provided for @issuesViewKanban.
+  ///
+  /// In fr, this message translates to:
+  /// **'Kanban'**
+  String get issuesViewKanban;
+
+  /// No description provided for @issuesExportCsv.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exporter CSV'**
+  String get issuesExportCsv;
+
+  /// No description provided for @issuesCsvWebOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Export CSV disponible sur navigateur web uniquement'**
+  String get issuesCsvWebOnly;
+
+  /// No description provided for @issuesKanbanColTodo.
+  ///
+  /// In fr, this message translates to:
+  /// **'À faire'**
+  String get issuesKanbanColTodo;
+
+  /// No description provided for @issuesKanbanColInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours'**
+  String get issuesKanbanColInProgress;
+
+  /// No description provided for @issuesKanbanColWaiting.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente'**
+  String get issuesKanbanColWaiting;
+
+  /// No description provided for @issuesKanbanColDone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Terminé'**
+  String get issuesKanbanColDone;
+
+  /// No description provided for @issuesKanbanEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident'**
+  String get issuesKanbanEmpty;
+
+  /// No description provided for @issuesActiveFilterMyIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes incidents uniquement'**
+  String get issuesActiveFilterMyIssues;
+
+  /// No description provided for @issuesActiveFilterDeptIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon département uniquement'**
+  String get issuesActiveFilterDeptIssues;
+
+  /// No description provided for @issuesActiveFilterLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtre actif :'**
+  String get issuesActiveFilterLabel;
+
+  /// No description provided for @issueDetailHandledBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pris en charge par {technician} le {date}'**
+  String issueDetailHandledBy(String technician, String date);
+
+  /// No description provided for @issueDetailNotHandledYet.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente d\'attribution à un technicien'**
+  String get issueDetailNotHandledYet;
+
+  /// No description provided for @issueDetailReassignButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réassigner'**
+  String get issueDetailReassignButton;
+
+  /// No description provided for @issueDetailReassignTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réassigner l\'incident'**
+  String get issueDetailReassignTitle;
+
+  /// No description provided for @issueDetailReassignGroupLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Groupe technique'**
+  String get issueDetailReassignGroupLabel;
+
+  /// No description provided for @issueDetailReassignReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif (obligatoire)'**
+  String get issueDetailReassignReasonLabel;
+
+  /// No description provided for @issueDetailReassignReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Expliquez la raison de la réassignation…'**
+  String get issueDetailReassignReasonHint;
+
+  /// No description provided for @issueDetailReassignReasonMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le motif doit contenir au moins 5 caractères'**
+  String get issueDetailReassignReasonMinLength;
+
+  /// No description provided for @issueDetailReassignSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident réassigné avec succès'**
+  String get issueDetailReassignSuccess;
+
+  /// No description provided for @issueDetailReassignError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la réassignation : {error}'**
+  String issueDetailReassignError(String error);
+
+  /// No description provided for @issueDetailAddCommentButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un commentaire'**
+  String get issueDetailAddCommentButton;
+
+  /// No description provided for @issueDetailCommentTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un commentaire'**
+  String get issueDetailCommentTitle;
+
+  /// No description provided for @issueDetailCommentHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisissez votre commentaire…'**
+  String get issueDetailCommentHint;
+
+  /// No description provided for @issueDetailCommentMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le commentaire doit contenir au moins 5 caractères'**
+  String get issueDetailCommentMinLength;
+
+  /// No description provided for @issueDetailCommentSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer'**
+  String get issueDetailCommentSubmit;
+
+  /// No description provided for @issueDetailCommentSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaire ajouté à l\'historique'**
+  String get issueDetailCommentSuccess;
+
+  /// No description provided for @issueDetailCommentError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur : {error}'**
+  String issueDetailCommentError(String error);
+
+  /// No description provided for @issueDetailSectionDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents & Pièces jointes'**
+  String get issueDetailSectionDocuments;
+
+  /// No description provided for @issueDetailAddDocument.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un fichier'**
+  String get issueDetailAddDocument;
+
+  /// No description provided for @issueDetailNoDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun document attaché à cet incident'**
+  String get issueDetailNoDocuments;
+
+  /// No description provided for @issueDetailDocumentsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapports PDF, bons de commande, photos supplémentaires…'**
+  String get issueDetailDocumentsHint;
+
+  /// No description provided for @issueDetailPanelNoSelection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un incident dans la liste pour voir ses détails'**
+  String get issueDetailPanelNoSelection;
+
+  /// No description provided for @issueDetailClosePanel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fermer le panneau'**
+  String get issueDetailClosePanel;
+
+  /// No description provided for @techMarkResolvedTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez d\'abord le statut « Réparé » pour clore l\'incident'**
+  String get techMarkResolvedTooltip;
+
+  /// No description provided for @techPartsFromInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pièces remplacées (inventaire)'**
+  String get techPartsFromInventory;
+
+  /// No description provided for @techPartsSearchHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher un article d\'inventaire...'**
+  String get techPartsSearchHint;
+
+  /// No description provided for @techPartsNoResults.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun article trouvé'**
+  String get techPartsNoResults;
+
+  /// No description provided for @techPartsStockLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stock : {n} {unit}'**
+  String techPartsStockLabel(int n, String unit);
+
+  /// No description provided for @techPartsNoneSelected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune pièce sélectionnée'**
+  String get techPartsNoneSelected;
+
+  /// No description provided for @techPartsOutOfStock.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rupture de stock'**
+  String get techPartsOutOfStock;
+
+  /// No description provided for @techTakenAtLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prise en charge le {date}'**
+  String techTakenAtLabel(String date);
+
+  /// No description provided for @reportsPeriodLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Période d\'analyse'**
+  String get reportsPeriodLabel;
+
+  /// No description provided for @reportsPeriodLast7.
+  ///
+  /// In fr, this message translates to:
+  /// **'7 jours'**
+  String get reportsPeriodLast7;
+
+  /// No description provided for @reportsPeriodLast30.
+  ///
+  /// In fr, this message translates to:
+  /// **'30 jours'**
+  String get reportsPeriodLast30;
+
+  /// No description provided for @reportsPeriodLast90.
+  ///
+  /// In fr, this message translates to:
+  /// **'90 jours'**
+  String get reportsPeriodLast90;
+
+  /// No description provided for @reportsPeriodYearToDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Année en cours'**
+  String get reportsPeriodYearToDate;
+
+  /// No description provided for @reportsPeriodCustom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnalisée'**
+  String get reportsPeriodCustom;
+
+  /// No description provided for @reportsKpiSectionTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indicateurs GMAO (KPIs)'**
+  String get reportsKpiSectionTitle;
+
+  /// No description provided for @reportsMttr.
+  ///
+  /// In fr, this message translates to:
+  /// **'Délai moyen d\'intervention'**
+  String get reportsMttr;
+
+  /// No description provided for @reportsMttrNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données insuffisantes'**
+  String get reportsMttrNoData;
+
+  /// No description provided for @reportsMttrHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Temps moyen entre signalement et prise en charge (incidents clôturés)'**
+  String get reportsMttrHint;
+
+  /// No description provided for @reportsMttrDays.
+  ///
+  /// In fr, this message translates to:
+  /// **'{n} jour(s)'**
+  String reportsMttrDays(String n);
+
+  /// No description provided for @reportsPmCompliance.
+  ///
+  /// In fr, this message translates to:
+  /// **'Conformité PM'**
+  String get reportsPmCompliance;
+
+  /// No description provided for @reportsPmComplianceHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'% des équipements dont la PM n\'est pas en retard'**
+  String get reportsPmComplianceHint;
+
+  /// No description provided for @reportsPmTotal.
+  ///
+  /// In fr, this message translates to:
+  /// **'{n} équipement(s) avec PM planifiée'**
+  String reportsPmTotal(int n);
+
+  /// No description provided for @reportsPmNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun plan PM configuré'**
+  String get reportsPmNoData;
+
+  /// No description provided for @reportsTopDepts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Départements les plus impactés'**
+  String get reportsTopDepts;
+
+  /// No description provided for @reportsTopDeptsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Par nombre d\'incidents sur la période'**
+  String get reportsTopDeptsHint;
+
+  /// No description provided for @reportsTopDeptsEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident sur la période sélectionnée'**
+  String get reportsTopDeptsEmpty;
+
+  /// No description provided for @reportsExportCsv.
+  ///
+  /// In fr, this message translates to:
+  /// **'Export CSV'**
+  String get reportsExportCsv;
+
+  /// No description provided for @reportsExportCsvSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fichier CSV téléchargé'**
+  String get reportsExportCsvSuccess;
+
+  /// No description provided for @reportsExportCsvWebOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Export CSV disponible sur navigateur web uniquement'**
+  String get reportsExportCsvWebOnly;
+
+  /// No description provided for @reportsIssuesInPeriod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents (période)'**
+  String get reportsIssuesInPeriod;
+
+  /// No description provided for @reportsResolutionRate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taux de résolution'**
+  String get reportsResolutionRate;
+
+  /// No description provided for @analyticsIssueKpiSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Métriques incidents'**
+  String get analyticsIssueKpiSection;
+
+  /// No description provided for @analyticsEquipmentSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'État des équipements'**
+  String get analyticsEquipmentSection;
+
+  /// No description provided for @analyticsChartsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Graphiques de tendance'**
+  String get analyticsChartsSection;
+
+  /// No description provided for @analyticsChartsPeriodNote.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fenêtre glissante — 13 semaines (indépendant du filtre)'**
+  String get analyticsChartsPeriodNote;
+
+  /// No description provided for @analyticsIncidentTrend.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalements vs Résolus — 13 semaines'**
+  String get analyticsIncidentTrend;
+
+  /// No description provided for @analyticsCreatedSeries.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalés'**
+  String get analyticsCreatedSeries;
+
+  /// No description provided for @analyticsResolvedSeries.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolus'**
+  String get analyticsResolvedSeries;
+
+  /// No description provided for @analyticsResolutionRateLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taux de résolution'**
+  String get analyticsResolutionRateLabel;
+
+  /// No description provided for @analyticsOpenIssuesLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents ouverts'**
+  String get analyticsOpenIssuesLabel;
+
+  /// No description provided for @analyticsGroupBarTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents par groupe technique'**
+  String get analyticsGroupBarTitle;
+
+  /// No description provided for @analyticsGroupBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomédical'**
+  String get analyticsGroupBiomedical;
+
+  /// No description provided for @analyticsGroupIT.
+  ///
+  /// In fr, this message translates to:
+  /// **'IT'**
+  String get analyticsGroupIT;
+
+  /// No description provided for @analyticsGroupInfra.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get analyticsGroupInfra;
+
+  /// No description provided for @analyticsGroupOther.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre'**
+  String get analyticsGroupOther;
+
+  /// No description provided for @analyticsRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get analyticsRetry;
+
+  /// No description provided for @analyticsNoChartData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de charger les données pour les graphiques'**
+  String get analyticsNoChartData;
 }
 
 class _AppLocalizationsDelegate

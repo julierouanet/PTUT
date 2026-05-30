@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../l10n/app_localizations.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
+import '../models/user_role.dart';
+import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
@@ -10,16 +13,22 @@ import 'equipment_detail_screen.dart';
 
 /// Page complète de détail d'un incident — standard GMAO.
 ///
-/// Paramètre : [issueId] (String). Les données sont chargées via
-/// GET /api/issues/:id (enrichi avec équipement, audit trail, maintenance).
+/// [issueId]       : identifiant de l'incident à charger.
+/// [onNavigate]    : callback navigation vers l'écran technicien (index 4).
+/// [isPanel]       : si true, pas de Scaffold — utilisé en mode Split View desktop.
+/// [onClosePanel]  : callback pour fermer le panneau (mode panel uniquement).
 class IssueDetailScreen extends StatefulWidget {
   final String issueId;
   final Function(int, {String? issueId})? onNavigate;
+  final bool isPanel;
+  final VoidCallback? onClosePanel;
 
   const IssueDetailScreen({
     super.key,
     required this.issueId,
     this.onNavigate,
+    this.isPanel = false,
+    this.onClosePanel,
   });
 
   @override
@@ -27,14 +36,40 @@ class IssueDetailScreen extends StatefulWidget {
 }
 
 class _IssueDetailScreenState extends State<IssueDetailScreen> {
+  // ── Services ──────────────────────────────────────────────────────────────
+  final AuthService _authService = AuthService();
+
+  // ── État ──────────────────────────────────────────────────────────────────
   IssueDetail? _detail;
   bool _loading = true;
   String? _error;
+  bool _submitting = false;
+
+  // ── RBAC ──────────────────────────────────────────────────────────────────
+
+  bool get _isPrivileged {
+    final roles = _authService.currentRoles;
+    return roles.contains(UserRole.supervisor) || roles.contains(UserRole.admin);
+  }
+
+  bool get _isHospitalStaff =>
+      _authService.currentRoles.contains(UserRole.hospitalStaff);
+
+  // ── Cycle de vie ──────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void didUpdateWidget(IssueDetailScreen old) {
+    super.didUpdateWidget(old);
+    if (old.issueId != widget.issueId) {
+      setState(() { _loading = true; _error = null; _detail = null; });
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -46,12 +81,51 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     }
   }
 
-  // ── UI ──────────────────────────────────────────────────────────────────────
+  // ── Formatage de dates ─────────────────────────────────────────────────────
+
+  static String _fmtDateTime(String raw) {
+    try {
+      return DateFormat('dd/MM/yyyy HH:mm').format(DateTime.parse(raw).toLocal());
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  static String _fmtDate(String raw) {
+    try {
+      return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  // ── Recherche date de prise en charge ─────────────────────────────────────
+
+  String? _findAssignmentDate(List<IssueAuditEntry> log) {
+    for (final entry in log) {
+      final details   = entry.parsedDetails;
+      final newStatus = details?['new_status'] as String?;
+      if (newStatus == 'In Progress' || newStatus == 'Assigned') {
+        return _fmtDate(entry.timestamp);
+      }
+      if (entry.action.contains('in_progress') || entry.action.contains('assigned')) {
+        return _fmtDate(entry.timestamp);
+      }
+    }
+    return null;
+  }
+
+  // ── Build principal ────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    return widget.isPanel ? _buildPanelContent(context, l10n) : _buildScaffold(l10n);
+  }
 
+  // ── Mode Scaffold (navigation standard) ───────────────────────────────────
+
+  Widget _buildScaffold(AppLocalizations l10n) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -81,13 +155,62 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
   }
 
+  // ── Mode Panel (split view desktop) ───────────────────────────────────────
+
+  Widget _buildPanelContent(BuildContext context, AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // En-tête du panneau
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(children: [
+            if (_detail != null) ...[
+              Expanded(
+                child: Text(
+                  l10n.issuesIncidentId(_detail!.issue.id),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              IssueStatusBadge(status: _detail!.issue.status.displayName),
+              const SizedBox(width: 8),
+              UrgencyBadge(urgency: _detail!.issue.urgency),
+            ] else
+              const Expanded(child: SizedBox()),
+            const SizedBox(width: 8),
+            if (widget.onClosePanel != null)
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                tooltip: l10n.issueDetailClosePanel,
+                onPressed: widget.onClosePanel,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              ),
+          ]),
+        ),
+        // Corps
+        Expanded(child: _buildBody(l10n)),
+        // Barre d'action basse
+        if (_detail != null) _buildBottomBar(l10n),
+      ],
+    );
+  }
+
+  // ── Corps commun ──────────────────────────────────────────────────────────
+
   Widget _buildBody(AppLocalizations l10n) {
     if (_loading) {
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const CircularProgressIndicator(),
           const SizedBox(height: 16),
-          Text(l10n.issueDetailLoading, style: const TextStyle(color: AppColors.textSecondary)),
+          Text(l10n.issueDetailLoading,
+              style: const TextStyle(color: AppColors.textSecondary)),
         ]),
       );
     }
@@ -96,10 +219,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.error_outline, color: AppColors.error, size: 48),
           const SizedBox(height: 16),
-          Text(l10n.issueDetailLoadError, style: const TextStyle(color: AppColors.error)),
+          Text(l10n.issueDetailLoadError,
+              style: const TextStyle(color: AppColors.error)),
           const SizedBox(height: 8),
           TextButton.icon(
-            onPressed: () { setState(() { _loading = true; _error = null; }); _load(); },
+            onPressed: () {
+              setState(() { _loading = true; _error = null; });
+              _load();
+            },
             icon: const Icon(Icons.refresh),
             label: const Text('Réessayer'),
           ),
@@ -107,20 +234,28 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       );
     }
 
-    final detail = _detail!;
+    final detail  = _detail!;
     final isMobile = MediaQuery.of(context).size.width < 600;
-    final padding = EdgeInsets.all(isMobile ? 12 : 20);
 
     return RefreshIndicator(
-      onRefresh: () async { setState(() { _loading = true; _error = null; }); await _load(); },
+      onRefresh: () async {
+        setState(() { _loading = true; _error = null; });
+        await _load();
+      },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: padding,
+        padding: EdgeInsets.all(isMobile ? 12 : 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _buildHandledByBanner(l10n, detail),
+            const SizedBox(height: 12),
             _buildHeaderCard(l10n, detail),
             const SizedBox(height: 12),
+            if (_isPrivileged) ...[
+              _buildSupervisorActions(l10n, detail),
+              const SizedBox(height: 12),
+            ],
             _buildContextCard(l10n, detail),
             const SizedBox(height: 12),
             _buildFailureCard(l10n, detail.issue),
@@ -132,11 +267,303 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             ],
             const SizedBox(height: 12),
             _buildTimelineCard(l10n, detail.auditLog),
+            const SizedBox(height: 12),
+            _buildDocumentsCard(l10n),
             const SizedBox(height: 80),
           ],
         ),
       ),
     );
+  }
+
+  // ── Bannière "Pris en charge" ──────────────────────────────────────────────
+
+  Widget _buildHandledByBanner(AppLocalizations l10n, IssueDetail detail) {
+    final issue = detail.issue;
+    final hasTech = issue.assignedTechnician != null &&
+        issue.assignedTechnician!.isNotEmpty;
+    final isHandled = hasTech ||
+        issue.status == IssueStatus.inProgress ||
+        issue.status == IssueStatus.assigned ||
+        issue.status == IssueStatus.waitingMaterials ||
+        issue.status == IssueStatus.completed ||
+        issue.status == IssueStatus.verified ||
+        issue.status == IssueStatus.closed;
+
+    final Color bgColor;
+    final Color borderColor;
+    final Color iconColor;
+    final IconData icon;
+
+    if (!isHandled) {
+      bgColor      = AppColors.warning.withValues(alpha: 0.08);
+      borderColor  = AppColors.warning.withValues(alpha: 0.3);
+      iconColor    = AppColors.warning;
+      icon         = Icons.hourglass_top_rounded;
+    } else if (_isHospitalStaff) {
+      // Mise en valeur renforcée pour le personnel médical
+      bgColor      = AppColors.success.withValues(alpha: 0.12);
+      borderColor  = AppColors.success.withValues(alpha: 0.5);
+      iconColor    = AppColors.success;
+      icon         = Icons.shield_outlined;
+    } else {
+      bgColor      = AppColors.primaryLight;
+      borderColor  = AppColors.primary.withValues(alpha: 0.3);
+      iconColor    = AppColors.primary;
+      icon         = Icons.engineering_outlined;
+    }
+
+    final String text;
+    if (!isHandled) {
+      text = l10n.issueDetailNotHandledYet;
+    } else {
+      final techName   = issue.assignedTechnician ?? '—';
+      final assignDate =
+          _findAssignmentDate(detail.auditLog) ?? _fmtDate(issue.createdAt);
+      text = l10n.issueDetailHandledBy(techName, assignDate);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: borderColor,
+          width: _isHospitalStaff && isHandled ? 1.5 : 1,
+        ),
+      ),
+      child: Row(children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: iconColor,
+              fontWeight: _isHospitalStaff ? FontWeight.w600 : FontWeight.w500,
+              fontSize: _isHospitalStaff ? 14 : 13,
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  // ── Actions rapides superviseur / admin ───────────────────────────────────
+
+  Widget _buildSupervisorActions(AppLocalizations l10n, IssueDetail detail) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 6,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _submitting ? null : () => _showReassignDialog(l10n, detail),
+          icon: const Icon(Icons.swap_horiz, size: 16),
+          label: Text(l10n.issueDetailReassignButton),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: _submitting ? null : () => _showCommentDialog(l10n),
+          icon: const Icon(Icons.comment_outlined, size: 16),
+          label: Text(l10n.issueDetailAddCommentButton),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.textSecondary,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Dialogue réassignation ─────────────────────────────────────────────────
+
+  void _showReassignDialog(AppLocalizations l10n, IssueDetail detail) {
+    String? selectedGroup = detail.issue.assignedGroup;
+    final reasonCtrl      = TextEditingController();
+    final formKey         = GlobalKey<FormState>();
+    const groups          = ['Biomédical', 'IT', 'Infrastructure'];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.issueDetailReassignTitle),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.issueDetailReassignGroupLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedGroup,
+                    decoration: InputDecoration(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                      isDense: true,
+                    ),
+                    items: groups
+                        .map((g) => DropdownMenuItem(value: g, child: Text(g)))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedGroup = v),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(l10n.issueDetailReassignReasonLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: reasonCtrl,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      hintText: l10n.issueDetailReassignReasonHint,
+                      contentPadding: const EdgeInsets.all(12),
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().length < 5)
+                            ? l10n.issueDetailReassignReasonMinLength
+                            : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                if (selectedGroup == null) return;
+                Navigator.pop(ctx);
+                await _doReassign(
+                    l10n, selectedGroup!, reasonCtrl.text.trim());
+              },
+              icon: const Icon(Icons.check, size: 16),
+              label: Text(l10n.commonSave),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doReassign(
+      AppLocalizations l10n, String group, String reason) async {
+    setState(() => _submitting = true);
+    try {
+      await DbApiService.instance
+          .reassignIssue(widget.issueId, group, reason);
+      setState(() { _loading = true; _error = null; });
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueDetailReassignSuccess),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueDetailReassignError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  // ── Dialogue commentaire ───────────────────────────────────────────────────
+
+  void _showCommentDialog(AppLocalizations l10n) {
+    final commentCtrl = TextEditingController();
+    final formKey     = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.issueDetailCommentTitle),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: commentCtrl,
+            maxLines: 4,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: l10n.issueDetailCommentHint,
+              contentPadding: const EdgeInsets.all(12),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            validator: (v) =>
+                (v == null || v.trim().length < 5)
+                    ? l10n.issueDetailCommentMinLength
+                    : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              Navigator.pop(ctx);
+              await _doAddComment(l10n, commentCtrl.text.trim());
+            },
+            icon: const Icon(Icons.send, size: 16),
+            label: Text(l10n.issueDetailCommentSubmit),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _doAddComment(AppLocalizations l10n, String comment) async {
+    setState(() => _submitting = true);
+    try {
+      await DbApiService.instance
+          .updateIssue(widget.issueId, {'notes': comment});
+      setState(() { _loading = true; _error = null; });
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueDetailCommentSuccess),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueDetailCommentError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
   }
 
   // ── Carte En-tête ──────────────────────────────────────────────────────────
@@ -151,12 +578,18 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           UrgencyBadge(urgency: issue.urgency),
         ]),
         const SizedBox(height: 16),
-        _InfoRow(label: l10n.issueDetailReporter,   value: issue.reporter),
+        _InfoRow(label: l10n.issueDetailReporter, value: issue.reporter),
         if (issue.reporterEmail != null && issue.reporterEmail!.isNotEmpty)
-          _InfoRow(label: l10n.commonEmail,           value: issue.reporterEmail!),
-        _InfoRow(label: l10n.issueDetailReportDate,  value: issue.createdAt),
+          _InfoRow(label: l10n.commonEmail, value: issue.reporterEmail!),
+        _InfoRow(
+          label: l10n.issueDetailReportDate,
+          value: _fmtDateTime(issue.createdAt),
+        ),
         if (detail.updatedAt != null && detail.updatedAt!.isNotEmpty)
-          _InfoRow(label: l10n.issueDetailUpdatedAt, value: detail.updatedAt!),
+          _InfoRow(
+            label: l10n.issueDetailUpdatedAt,
+            value: _fmtDateTime(detail.updatedAt!),
+          ),
       ]),
     );
   }
@@ -172,14 +605,15 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       title: l10n.issueDetailSectionContext,
       icon: Icons.info_outline,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        // Équipement lié avec bouton de navigation
+        // Lien équipement
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 5),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             SizedBox(
               width: 160,
               child: Text(l10n.issuesEquipment,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
             ),
             Expanded(
               child: issue.equipmentId != null
@@ -205,7 +639,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                           ),
                         ),
                         const SizedBox(width: 4),
-                        const Icon(Icons.open_in_new, size: 14, color: AppColors.primary),
+                        const Icon(Icons.open_in_new,
+                            size: 14, color: AppColors.primary),
                       ]),
                     )
                   : Text(
@@ -216,12 +651,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           ]),
         ),
         if (issue.issueCategory != null)
-          _InfoRow(label: l10n.issueDetailCategory, value: issue.issueCategory!),
+          _InfoRow(
+              label: l10n.issueDetailCategory, value: issue.issueCategory!),
         if (issue.assignedGroup != null)
-          _InfoRow(label: l10n.issueDetailGroup,    value: issue.assignedGroup!),
-        _InfoRow(label: l10n.commonDepartment,       value: issue.department),
+          _InfoRow(label: l10n.issueDetailGroup, value: issue.assignedGroup!),
+        _InfoRow(label: l10n.commonDepartment, value: issue.department),
         if (equipment != null && equipment['location'] != null)
-          _InfoRow(label: l10n.issueDetailLocation,
+          _InfoRow(
+              label: l10n.issueDetailLocation,
               value: equipment['location'] as String),
       ]),
     );
@@ -238,7 +675,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         _InfoRow(label: l10n.issueDetailTypeLabel, value: issue.type),
         const SizedBox(height: 8),
         Text(l10n.issuesDescription,
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            style: const TextStyle(
+                color: AppColors.textSecondary, fontSize: 13)),
         const SizedBox(height: 6),
         Container(
           width: double.infinity,
@@ -248,10 +686,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.border),
           ),
-          child: Text(
-            issue.description,
-            style: const TextStyle(fontSize: 14, height: 1.5),
-          ),
+          child: Text(issue.description,
+              style: const TextStyle(fontSize: 14, height: 1.5)),
         ),
       ]),
     );
@@ -260,7 +696,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   // ── Carte Intervention ─────────────────────────────────────────────────────
 
   Widget _buildInterventionCard(AppLocalizations l10n, Issue issue) {
-    final hasTech    = issue.assignedTechnician != null && issue.assignedTechnician!.isNotEmpty;
+    final hasTech    = issue.assignedTechnician != null &&
+        issue.assignedTechnician!.isNotEmpty;
     final hasDiag    = issue.diagnosis    != null && issue.diagnosis!.isNotEmpty;
     final hasActions = issue.actions      != null && issue.actions!.isNotEmpty;
     final hasParts   = issue.partsReplaced != null && issue.partsReplaced!.isNotEmpty;
@@ -272,24 +709,37 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       iconColor: AppColors.warning,
       child: hasAny
           ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (hasTech)   _InfoRow(label: l10n.issueDetailAssignedTech, value: issue.assignedTechnician!),
+              if (hasTech)
+                _InfoRow(
+                    label: l10n.issueDetailAssignedTech,
+                    value: issue.assignedTechnician!),
               if (hasDiag) ...[
-                _LargeInfoBlock(label: l10n.issueDetailRootCause, value: issue.diagnosis!),
+                _LargeInfoBlock(
+                    label: l10n.issueDetailRootCause,
+                    value: issue.diagnosis!),
                 const SizedBox(height: 8),
               ],
               if (hasActions) ...[
-                _LargeInfoBlock(label: l10n.issueDetailCorrectiveActions, value: issue.actions!),
+                _LargeInfoBlock(
+                    label: l10n.issueDetailCorrectiveActions,
+                    value: issue.actions!),
                 const SizedBox(height: 8),
               ],
-              if (hasParts)   _InfoRow(label: l10n.issueDetailPartsUsed, value: issue.partsReplaced!),
+              if (hasParts)
+                _InfoRow(
+                    label: l10n.issueDetailPartsUsed,
+                    value: issue.partsReplaced!),
             ])
           : Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(children: [
-                const Icon(Icons.hourglass_empty, color: AppColors.textMuted, size: 18),
+                const Icon(Icons.hourglass_empty,
+                    color: AppColors.textMuted, size: 18),
                 const SizedBox(width: 8),
                 Text(l10n.issueDetailNoIntervention,
-                    style: const TextStyle(color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontStyle: FontStyle.italic)),
               ]),
             ),
     );
@@ -310,28 +760,35 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         children: past
             .map((r) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 6),
-                  child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 5),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(r.intervention,
-                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
-                        const SizedBox(height: 2),
-                        Text('${r.date} — ${r.technician}',
-                            style: const TextStyle(
-                                color: AppColors.textSecondary, fontSize: 12)),
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(top: 5),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(r.intervention,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w500,
+                                        fontSize: 13)),
+                                const SizedBox(height: 2),
+                                Text('${r.date} — ${r.technician}',
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12)),
+                              ]),
+                        ),
                       ]),
-                    ),
-                  ]),
                 ))
             .toList(),
       ),
@@ -352,18 +809,71 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               const SizedBox(width: 8),
               Text(l10n.issueDetailNoHistory,
                   style: const TextStyle(
-                      color: AppColors.textSecondary, fontStyle: FontStyle.italic)),
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic)),
             ])
           : Column(
-              children: List.generate(log.length, (i) {
-                final entry = log[i];
-                final isLast = i == log.length - 1;
-                return _TimelineEntry(
-                  entry:  entry,
-                  isLast: isLast,
-                );
-              }),
+              children: List.generate(
+                log.length,
+                (i) => _TimelineEntry(
+                  entry: log[i],
+                  isLast: i == log.length - 1,
+                  formatTimestamp: _fmtDateTime,
+                ),
+              ),
             ),
+    );
+  }
+
+  // ── Carte Documents & Pièces jointes ──────────────────────────────────────
+
+  Widget _buildDocumentsCard(AppLocalizations l10n) {
+    return _SectionCard(
+      title: l10n.issueDetailSectionDocuments,
+      icon: Icons.attach_file,
+      iconColor: AppColors.textSecondary,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(children: [
+            const Icon(Icons.insert_drive_file_outlined,
+                color: AppColors.textMuted, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(l10n.issueDetailNoDocuments,
+                        style: const TextStyle(
+                            color: AppColors.textSecondary, fontSize: 13)),
+                    const SizedBox(height: 2),
+                    Text(l10n.issueDetailDocumentsHint,
+                        style: const TextStyle(
+                            color: AppColors.textMuted, fontSize: 12)),
+                  ]),
+            ),
+          ]),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Fonctionnalité à venir — import de fichier'),
+              behavior: SnackBarBehavior.floating,
+            ));
+          },
+          icon: const Icon(Icons.upload_file, size: 16),
+          label: Text(l10n.issueDetailAddDocument),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+      ]),
     );
   }
 
@@ -377,11 +887,15 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           width: double.infinity,
           child: ElevatedButton.icon(
             onPressed: () {
-              if (widget.onNavigate != null) {
-                Navigator.pop(context);
-                widget.onNavigate!(4, issueId: widget.issueId);
+              if (widget.isPanel) {
+                widget.onNavigate?.call(4, issueId: widget.issueId);
               } else {
-                Navigator.pop(context);
+                if (widget.onNavigate != null) {
+                  Navigator.pop(context);
+                  widget.onNavigate!(4, issueId: widget.issueId);
+                } else {
+                  Navigator.pop(context);
+                }
               }
             },
             icon: const Icon(Icons.build, size: 18),
@@ -421,7 +935,8 @@ class _SectionCard extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        child:
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           if (title != null) ...[
             Row(children: [
               if (icon != null) ...[
@@ -460,11 +975,13 @@ class _InfoRow extends StatelessWidget {
         SizedBox(
           width: 160,
           child: Text(label,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13)),
         ),
         Expanded(
           child: Text(value,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w500, fontSize: 13)),
         ),
       ]),
     );
@@ -481,7 +998,8 @@ class _LargeInfoBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(label,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          style: const TextStyle(
+              color: AppColors.textSecondary, fontSize: 13)),
       const SizedBox(height: 6),
       Container(
         width: double.infinity,
@@ -491,7 +1009,8 @@ class _LargeInfoBlock extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.border),
         ),
-        child: Text(value, style: const TextStyle(fontSize: 13, height: 1.5)),
+        child: Text(value,
+            style: const TextStyle(fontSize: 13, height: 1.5)),
       ),
     ]);
   }
@@ -500,8 +1019,13 @@ class _LargeInfoBlock extends StatelessWidget {
 class _TimelineEntry extends StatelessWidget {
   final IssueAuditEntry entry;
   final bool isLast;
+  final String Function(String) formatTimestamp;
 
-  const _TimelineEntry({required this.entry, required this.isLast});
+  const _TimelineEntry({
+    required this.entry,
+    required this.isLast,
+    required this.formatTimestamp,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -534,34 +1058,38 @@ class _TimelineEntry extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                entry.actionLabel,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                  color: color,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                '${entry.userName} · ${entry.userRole}',
-                style: const TextStyle(
-                    fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                entry.timestamp,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.textMuted),
-              ),
-              if (entry.parsedDetails != null &&
-                  (entry.parsedDetails!['new_status'] != null ||
-                      entry.parsedDetails!['new_group'] != null)) ...[
-                const SizedBox(height: 4),
-                _buildDetailChips(entry.parsedDetails!),
-              ],
-            ]),
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.actionLabel,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: color,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${entry.userName} · ${entry.userRole}',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 2),
+                  // Timestamp avec heure exacte
+                  Text(
+                    formatTimestamp(entry.timestamp),
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.textMuted),
+                  ),
+                  if (entry.parsedDetails != null &&
+                      (entry.parsedDetails!['new_status'] != null ||
+                          entry.parsedDetails!['new_group'] != null)) ...[
+                    const SizedBox(height: 4),
+                    _buildDetailChips(entry.parsedDetails!),
+                  ],
+                ]),
           ),
         ),
       ]),
@@ -592,19 +1120,25 @@ class _TimelineEntry extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(label,
-          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w500)),
+          style: TextStyle(
+              fontSize: 11,
+              color: color,
+              fontWeight: FontWeight.w500)),
     );
   }
 
   Color _actionColor(String action) {
-    if (action == 'create_issue') { return AppColors.error; }
+    if (action == 'create_issue') return AppColors.error;
     if (action.contains('status_completed') ||
         action.contains('status_verified') ||
-        action.contains('status_closed')) { return AppColors.success; }
+        action.contains('status_closed')) {
+      return AppColors.success;
+    }
     if (action.contains('status_in_progress') ||
-        action.contains('status_assigned')) { return AppColors.warning; }
-    if (action == 'reassign_issue') { return AppColors.primary; }
+        action.contains('status_assigned')) {
+      return AppColors.warning;
+    }
+    if (action == 'reassign_issue') return AppColors.primary;
     return AppColors.textSecondary;
   }
 }
-

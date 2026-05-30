@@ -3209,4 +3209,489 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get equipmentSortBy => 'Sort by';
+
+  @override
+  String get equipDetailTabInfo => 'Information';
+
+  @override
+  String get equipDetailTabMaintenance => 'Maintenance';
+
+  @override
+  String get equipDetailTabIncidents => 'Incidents';
+
+  @override
+  String get equipDetailTabDocuments => 'Documents';
+
+  @override
+  String get equipDetailCriticalBanner =>
+      'ALERT — Critical equipment out of service. Contact the technical team immediately.';
+
+  @override
+  String get equipDetailQrCode => 'QR Code';
+
+  @override
+  String get equipDetailQrCodeTitle => 'Equipment Identifier';
+
+  @override
+  String get equipDetailQrCodeSubtitle =>
+      'Copy or share the ID to link this equipment to an incident';
+
+  @override
+  String get equipDetailQrCodeCopy => 'Copy ID';
+
+  @override
+  String get equipDetailQrCodeCopied => 'ID copied!';
+
+  @override
+  String get equipDetailKpiSection => 'Performance indicators';
+
+  @override
+  String get equipDetailMttr => 'MTTR (Mean Time To Repair)';
+
+  @override
+  String equipDetailMttrValue(int n) {
+    return '$n day(s)';
+  }
+
+  @override
+  String get equipDetailMttrNoData => 'Insufficient data';
+
+  @override
+  String get equipDetailTotalRepairs => 'Recorded repairs';
+
+  @override
+  String get equipDetailCreatePm => 'Create PM intervention';
+
+  @override
+  String get equipDetailStaffReportButton => 'Report a breakdown';
+
+  @override
+  String get equipDetailStaffContactSection => 'Technical team contact';
+
+  @override
+  String get equipDetailStaffContactBiomedical => 'Biomedical team';
+
+  @override
+  String get equipDetailStaffContactIt => 'IT department';
+
+  @override
+  String get equipDetailStaffContactInfra => 'Infrastructure team';
+
+  @override
+  String get equipDetailStaffContactGeneric => 'Technical department';
+
+  @override
+  String get equipDetailStaffActiveIssues =>
+      'Active incidents on this equipment';
+
+  @override
+  String get equipDetailStaffNoActiveIssues => 'No active incidents';
+
+  @override
+  String get equipDetailNoDocuments => 'No documents available';
+
+  @override
+  String get equipDetailDocumentsHint =>
+      'User manuals, technical datasheets and PM procedures will be displayed here.';
+
+  @override
+  String get equipDetailDeleteConfirmTitle => 'Delete equipment';
+
+  @override
+  String get equipDetailDeleteConfirmBody =>
+      'This action is irreversible. Type the exact equipment name to confirm:';
+
+  @override
+  String get equipDetailDeleteConfirmLabel => 'Equipment name';
+
+  @override
+  String equipDetailDeleteConfirmHint(String name) {
+    return 'Type exactly: $name';
+  }
+
+  @override
+  String get equipDetailDeleteConfirmMismatch => 'Name does not match';
+
+  @override
+  String get equipDetailDeleteConfirmButton => 'Permanently delete';
+
+  @override
+  String get equipDetailDeleteReasonLabel => 'Reason (optional)';
+
+  @override
+  String get equipDetailDeleteReasonHint =>
+      'E.g. Permanently out of service, replaced…';
+
+  @override
+  String equipDetailMaintenanceCount(int count) {
+    return '$count intervention(s)';
+  }
+
+  @override
+  String get issueFormSwitchTabTitle => 'Change category?';
+
+  @override
+  String get issueFormSwitchTabMessage =>
+      'Entered data (description, photos) will be erased if you switch tabs. Continue?';
+
+  @override
+  String get issueFormSwitchTabConfirm => 'Switch';
+
+  @override
+  String get issueFormScanQrTooltip => 'Scan equipment QR code';
+
+  @override
+  String get issueFormScanQrTitle => 'Scan QR Code';
+
+  @override
+  String get issueFormScanQrFallbackTitle => 'Enter equipment ID';
+
+  @override
+  String get issueFormScanQrFallbackHint => 'Equipment ID or serial number';
+
+  @override
+  String get issueFormScanQrFallbackConfirm => 'Confirm';
+
+  @override
+  String get issueFormScanQrNotFound =>
+      'No equipment found for this identifier';
+
+  @override
+  String get issueFormEquipmentAvailableLabel =>
+      'Available for immediate intervention';
+
+  @override
+  String get issueFormEquipmentAvailableHint =>
+      'Equipment can be powered off for repair';
+
+  @override
+  String get issueFormSuccessTitle => 'Report submitted successfully';
+
+  @override
+  String issueFormSuccessTicketId(String id) {
+    return 'Ticket #: $id';
+  }
+
+  @override
+  String get issueFormSuccessSlaLabel => 'Target deadline (SLA)';
+
+  @override
+  String get issueFormSla2h => '2 hours — critical priority';
+
+  @override
+  String get issueFormSla12h => '12 hours — urgent';
+
+  @override
+  String get issueFormSla48h => '48 hours — medium priority';
+
+  @override
+  String get issueFormSla1week => '1 week — low priority';
+
+  @override
+  String get issueFormSuccessClose => 'Close';
+
+  @override
+  String get issuesSearchHint => 'Search by incident, equipment, reporter…';
+
+  @override
+  String get issuesFilterPeriod => 'Period';
+
+  @override
+  String get issuesFilterPeriodAll => 'All';
+
+  @override
+  String get issuesFilterPeriodLast7 => 'Last 7 days';
+
+  @override
+  String get issuesFilterPeriodLast30 => 'Last 30 days';
+
+  @override
+  String get issuesFilterUrgency => 'Urgency';
+
+  @override
+  String get issuesFilterGroup => 'Group';
+
+  @override
+  String get issuesFilterGroupBiomedical => 'Biomedical';
+
+  @override
+  String get issuesFilterGroupIT => 'IT';
+
+  @override
+  String get issuesFilterGroupInfra => 'Infrastructure';
+
+  @override
+  String get issuesViewSeeAll => 'See all';
+
+  @override
+  String get issuesClearFilter => 'Clear filter';
+
+  @override
+  String get issuesViewList => 'List';
+
+  @override
+  String get issuesViewKanban => 'Kanban';
+
+  @override
+  String get issuesExportCsv => 'Export CSV';
+
+  @override
+  String get issuesCsvWebOnly => 'CSV export available on web browser only';
+
+  @override
+  String get issuesKanbanColTodo => 'To do';
+
+  @override
+  String get issuesKanbanColInProgress => 'In progress';
+
+  @override
+  String get issuesKanbanColWaiting => 'Waiting';
+
+  @override
+  String get issuesKanbanColDone => 'Done';
+
+  @override
+  String get issuesKanbanEmpty => 'No issues';
+
+  @override
+  String get issuesActiveFilterMyIssues => 'My issues only';
+
+  @override
+  String get issuesActiveFilterDeptIssues => 'My department only';
+
+  @override
+  String get issuesActiveFilterLabel => 'Active filter:';
+
+  @override
+  String issueDetailHandledBy(String technician, String date) {
+    return 'Handled by $technician on $date';
+  }
+
+  @override
+  String get issueDetailNotHandledYet => 'Pending assignment to a technician';
+
+  @override
+  String get issueDetailReassignButton => 'Reassign';
+
+  @override
+  String get issueDetailReassignTitle => 'Reassign issue';
+
+  @override
+  String get issueDetailReassignGroupLabel => 'Technical group';
+
+  @override
+  String get issueDetailReassignReasonLabel => 'Reason (required)';
+
+  @override
+  String get issueDetailReassignReasonHint =>
+      'Explain the reason for reassigning…';
+
+  @override
+  String get issueDetailReassignReasonMinLength =>
+      'Reason must be at least 5 characters';
+
+  @override
+  String get issueDetailReassignSuccess => 'Issue reassigned successfully';
+
+  @override
+  String issueDetailReassignError(String error) {
+    return 'Error during reassignment: $error';
+  }
+
+  @override
+  String get issueDetailAddCommentButton => 'Add a comment';
+
+  @override
+  String get issueDetailCommentTitle => 'Add a comment';
+
+  @override
+  String get issueDetailCommentHint => 'Enter your comment…';
+
+  @override
+  String get issueDetailCommentMinLength =>
+      'Comment must be at least 5 characters';
+
+  @override
+  String get issueDetailCommentSubmit => 'Send';
+
+  @override
+  String get issueDetailCommentSuccess => 'Comment added to history';
+
+  @override
+  String issueDetailCommentError(String error) {
+    return 'Error: $error';
+  }
+
+  @override
+  String get issueDetailSectionDocuments => 'Documents & Attachments';
+
+  @override
+  String get issueDetailAddDocument => 'Add a file';
+
+  @override
+  String get issueDetailNoDocuments => 'No documents attached to this issue';
+
+  @override
+  String get issueDetailDocumentsHint =>
+      'PDF reports, purchase orders, additional photos…';
+
+  @override
+  String get issueDetailPanelNoSelection =>
+      'Select an issue from the list to see its details';
+
+  @override
+  String get issueDetailClosePanel => 'Close panel';
+
+  @override
+  String get techMarkResolvedTooltip =>
+      'Select the \"Repaired\" status first to close the issue';
+
+  @override
+  String get techPartsFromInventory => 'Parts replaced (inventory)';
+
+  @override
+  String get techPartsSearchHint => 'Search for an inventory item...';
+
+  @override
+  String get techPartsNoResults => 'No items found';
+
+  @override
+  String techPartsStockLabel(int n, String unit) {
+    return 'Stock: $n $unit';
+  }
+
+  @override
+  String get techPartsNoneSelected => 'No parts selected';
+
+  @override
+  String get techPartsOutOfStock => 'Out of stock';
+
+  @override
+  String techTakenAtLabel(String date) {
+    return 'Taken over on $date';
+  }
+
+  @override
+  String get reportsPeriodLabel => 'Analysis period';
+
+  @override
+  String get reportsPeriodLast7 => '7 days';
+
+  @override
+  String get reportsPeriodLast30 => '30 days';
+
+  @override
+  String get reportsPeriodLast90 => '90 days';
+
+  @override
+  String get reportsPeriodYearToDate => 'Year to date';
+
+  @override
+  String get reportsPeriodCustom => 'Custom';
+
+  @override
+  String get reportsKpiSectionTitle => 'CMMS KPIs';
+
+  @override
+  String get reportsMttr => 'Mean Response Time';
+
+  @override
+  String get reportsMttrNoData => 'Insufficient data';
+
+  @override
+  String get reportsMttrHint =>
+      'Mean time from report to first intervention (closed issues)';
+
+  @override
+  String reportsMttrDays(String n) {
+    return '$n day(s)';
+  }
+
+  @override
+  String get reportsPmCompliance => 'PM Compliance';
+
+  @override
+  String get reportsPmComplianceHint => '% of equipment with PM not overdue';
+
+  @override
+  String reportsPmTotal(int n) {
+    return '$n equipment with scheduled PM';
+  }
+
+  @override
+  String get reportsPmNoData => 'No PM plan configured';
+
+  @override
+  String get reportsTopDepts => 'Most impacted departments';
+
+  @override
+  String get reportsTopDeptsHint => 'By number of incidents in the period';
+
+  @override
+  String get reportsTopDeptsEmpty => 'No incidents in the selected period';
+
+  @override
+  String get reportsExportCsv => 'Export CSV';
+
+  @override
+  String get reportsExportCsvSuccess => 'CSV file downloaded';
+
+  @override
+  String get reportsExportCsvWebOnly =>
+      'CSV export available on web browser only';
+
+  @override
+  String get reportsIssuesInPeriod => 'Issues (period)';
+
+  @override
+  String get reportsResolutionRate => 'Resolution rate';
+
+  @override
+  String get analyticsIssueKpiSection => 'Incident metrics';
+
+  @override
+  String get analyticsEquipmentSection => 'Equipment status';
+
+  @override
+  String get analyticsChartsSection => 'Trend charts';
+
+  @override
+  String get analyticsChartsPeriodNote =>
+      'Rolling window — 13 weeks (independent of period filter)';
+
+  @override
+  String get analyticsIncidentTrend => 'Reported vs Resolved — 13 weeks';
+
+  @override
+  String get analyticsCreatedSeries => 'Reported';
+
+  @override
+  String get analyticsResolvedSeries => 'Resolved';
+
+  @override
+  String get analyticsResolutionRateLabel => 'Resolution rate';
+
+  @override
+  String get analyticsOpenIssuesLabel => 'Open issues';
+
+  @override
+  String get analyticsGroupBarTitle => 'Issues by technical group';
+
+  @override
+  String get analyticsGroupBiomedical => 'Biomedical';
+
+  @override
+  String get analyticsGroupIT => 'IT';
+
+  @override
+  String get analyticsGroupInfra => 'Infrastructure';
+
+  @override
+  String get analyticsGroupOther => 'Other';
+
+  @override
+  String get analyticsRetry => 'Retry';
+
+  @override
+  String get analyticsNoChartData => 'Unable to load chart data';
 }
