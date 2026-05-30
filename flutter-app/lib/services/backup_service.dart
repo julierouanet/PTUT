@@ -17,6 +17,7 @@ class BackupService extends ChangeNotifier {
   bool _isLoading = false;
   bool _isTriggering = false;
   bool _isSavingSettings = false;
+  bool _isRestoring = false;
   String? _lastError;
 
   BackupSettings? get settings        => _settings;
@@ -24,6 +25,7 @@ class BackupService extends ChangeNotifier {
   bool get isLoading                  => _isLoading;
   bool get isTriggering               => _isTriggering;
   bool get isSavingSettings          => _isSavingSettings;
+  bool get isRestoring                => _isRestoring;
   String? get lastError               => _lastError;
 
   // ── Chargement ────────────────────────────────────────────────────────────
@@ -147,6 +149,38 @@ class BackupService extends ChangeNotifier {
       _lastError = e.toString();
       notifyListeners();
       return false;
+    }
+  }
+
+  // ── Restauration ──────────────────────────────────────────────────────────
+
+  /// Restaure la base de données depuis une sauvegarde. Retourne true si succès.
+  Future<bool> restoreBackup(BackupRecord record) async {
+    _isRestoring = true;
+    _lastError = null;
+    notifyListeners();
+
+    try {
+      final response = await ApiClient.post(
+        '${ApiConfig.backupsUrl}/restore/${record.id}',
+        {},
+      );
+      if (response.statusCode == 200) {
+        await loadBackupInfos();
+        return true;
+      }
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      _lastError = body['error'] as String? ?? 'Erreur ${response.statusCode}';
+      notifyListeners();
+      return false;
+    } catch (e) {
+      debugPrint('BackupService: erreur restauration ($e)');
+      _lastError = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isRestoring = false;
+      notifyListeners();
     }
   }
 

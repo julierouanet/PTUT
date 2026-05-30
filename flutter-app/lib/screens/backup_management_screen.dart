@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/backup.dart';
+import '../models/user_role.dart';
+import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 import '../theme/app_theme.dart';
 
-/// Écran de gestion des sauvegardes — accessible uniquement aux admins (permission manageBackups).
+/// Écran de gestion des sauvegardes.
+/// Garde RBAC inviolable : seul UserRole.admin peut accéder au contenu.
 class BackupManagementScreen extends StatefulWidget {
   const BackupManagementScreen({super.key});
 
@@ -21,14 +24,13 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
 
   // Libellés → expressions cron
   static const Map<String, String> _scheduleOptions = {
-    '0 0 * * *':   'daily',   // Tous les jours à minuit
-    '0 0 * * 0':   'weekly',  // Chaque semaine le dimanche
+    '0 0 * * *': 'daily',  // Tous les jours à minuit
+    '0 0 * * 0': 'weekly', // Chaque semaine le dimanche
   };
 
   @override
   void initState() {
     super.initState();
-    // Charger les données au premier rendu
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _service.loadBackupInfos();
       _syncLocalState();
@@ -49,9 +51,8 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
   void _syncLocalState() {
     if (_service.settings != null) {
       setState(() {
-        _autoEnabled       = _service.settings!.isAutomated;
-        _selectedSchedule  = _service.settings!.cronSchedule;
-        // Si l'expression cron n'est pas dans notre liste, on prend la première option
+        _autoEnabled      = _service.settings!.isAutomated;
+        _selectedSchedule = _service.settings!.cronSchedule;
         if (!_scheduleOptions.containsKey(_selectedSchedule)) {
           _selectedSchedule = _scheduleOptions.keys.first;
         }
@@ -103,11 +104,191 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
     ));
   }
 
+  /// Affiche la modale de confirmation par frappe avant restauration.
+  Future<void> _showRestoreConfirmation(BackupRecord record) async {
+    final l10n      = AppLocalizations.of(context)!;
+    final confirmCtrl = TextEditingController();
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) {
+          final typed   = confirmCtrl.text.trim();
+          final canConfirm = typed == l10n.backupRestoreConfirmWord
+                          && !_service.isRestoring;
+          return Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // ── En-tête rouge ─────────────────────────────────────────
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.08),
+                      borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12)),
+                      border: Border(
+                        bottom: BorderSide(
+                            color: AppColors.error.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: AppColors.error, size: 26),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          l10n.backupRestoreDialogTitle,
+                          style: const TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.error),
+                        ),
+                      ),
+                      IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close)),
+                    ]),
+                  ),
+
+                  // ── Corps ─────────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Avertissement
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                                color:
+                                    AppColors.error.withValues(alpha: 0.35)),
+                          ),
+                          child: Text(
+                            l10n.backupRestoreDialogWarning(record.createdAt),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.error.withValues(alpha: 0.9)),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        // Instruction de frappe
+                        Text(
+                          l10n.backupRestoreTypeInstruction,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary),
+                        ),
+                        const SizedBox(height: 8),
+                        TextField(
+                          controller: confirmCtrl,
+                          autofocus: true,
+                          textCapitalization: TextCapitalization.characters,
+                          decoration: InputDecoration(
+                            hintText: l10n.backupRestoreConfirmWord,
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                  color: canConfirm
+                                      ? AppColors.error
+                                      : AppColors.textSecondary,
+                                  width: 2),
+                            ),
+                          ),
+                          onChanged: (_) => setDialog(() {}),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+
+                  // ── Boutons ───────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                    child: Row(children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(l10n.commonCancel),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: canConfirm
+                              ? () async {
+                                  Navigator.pop(ctx);
+                                  await _restoreBackup(record);
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor:
+                                AppColors.error.withValues(alpha: 0.3),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8)),
+                          ),
+                          child: _service.isRestoring
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      color: Colors.white, strokeWidth: 2))
+                              : Text(l10n.backupRestoreConfirmButton,
+                                  style: const TextStyle(fontSize: 13)),
+                        ),
+                      ),
+                    ]),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+    confirmCtrl.dispose();
+  }
+
+  Future<void> _restoreBackup(BackupRecord record) async {
+    final l10n = AppLocalizations.of(context)!;
+    final ok = await _service.restoreBackup(record);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok
+          ? l10n.backupRestoreSuccess
+          : l10n.backupRestoreError(_service.lastError ?? '')),
+      backgroundColor: ok ? AppColors.success : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
   // ── Build ─────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final l10n     = AppLocalizations.of(context)!;
+    final l10n = AppLocalizations.of(context)!;
+
+    // ── Garde RBAC inviolable ─────────────────────────────────────────────
+    // Seul UserRole.admin est autorisé, indépendamment des permissions.
+    // Défense en profondeur : même si manageBackups était accordé par erreur
+    // à un rôle non-admin via la configuration, cet écran reste inaccessible.
+    final user = AuthService().currentUser;
+    if (user == null || !user.hasRole(UserRole.admin)) {
+      return _buildAccessDenied(l10n);
+    }
+
     final isMobile = MediaQuery.of(context).size.width < 600;
 
     return ListenableBuilder(
@@ -121,7 +302,8 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                 const CircularProgressIndicator(),
                 const SizedBox(height: 16),
                 Text(l10n.backupLoading,
-                    style: const TextStyle(color: AppColors.textSecondary)),
+                    style:
+                        const TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           );
@@ -132,10 +314,12 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                const Icon(Icons.error_outline,
+                    size: 64, color: AppColors.error),
                 const SizedBox(height: 16),
                 Text(l10n.backupLoadError,
-                    style: const TextStyle(color: AppColors.textSecondary)),
+                    style:
+                        const TextStyle(color: AppColors.textSecondary)),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: _service.loadBackupInfos,
@@ -156,7 +340,7 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
               _buildHeader(l10n, isMobile),
               const SizedBox(height: 20),
 
-              // ── Bandeau d'alerte critique ─────────────────────────────────
+              // ── Bandeau d'alerte critique stockage externe ────────────────
               _buildCriticalAlert(l10n),
               const SizedBox(height: 20),
 
@@ -175,7 +359,6 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                   : Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Colonne gauche
                         Expanded(
                           child: Column(
                             children: [
@@ -186,7 +369,6 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                           ),
                         ),
                         const SizedBox(width: 20),
-                        // Colonne droite
                         Expanded(child: _buildAutomationCard(l10n)),
                       ],
                     ),
@@ -203,6 +385,54 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
   }
 
   // ── Widgets ───────────────────────────────────────────────────────────────
+
+  /// Écran "Accès Refusé" — affiché si l'utilisateur n'est pas admin.
+  Widget _buildAccessDenied(AppLocalizations l10n) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: AppColors.error.withValues(alpha: 0.3), width: 2),
+              ),
+              child: const Icon(Icons.lock_outlined,
+                  size: 64, color: AppColors.error),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              l10n.backupAccessDeniedTitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.error),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              l10n.backupAccessDeniedMessage,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 14, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.backupAccessDeniedSub,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildHeader(AppLocalizations l10n, bool isMobile) {
     return Row(
@@ -281,11 +511,13 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
 
   /// Carte montrant le statut de la dernière sauvegarde.
   Widget _buildLastBackupCard(AppLocalizations l10n) {
-    final last = _service.history.isNotEmpty ? _service.history.first : null;
+    final last =
+        _service.history.isNotEmpty ? _service.history.first : null;
 
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -301,7 +533,9 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                           : Icons.error_outline),
                   color: last == null
                       ? AppColors.textSecondary
-                      : (last.isSuccess ? AppColors.success : AppColors.error),
+                      : (last.isSuccess
+                          ? AppColors.success
+                          : AppColors.error),
                   size: 22,
                 ),
                 const SizedBox(width: 10),
@@ -317,20 +551,21 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
             const SizedBox(height: 16),
             if (last == null)
               Text(l10n.backupNoLastBackup,
-                  style: const TextStyle(color: AppColors.textSecondary))
+                  style: const TextStyle(
+                      color: AppColors.textSecondary))
             else ...[
               _infoRow(l10n.backupDate, last.createdAt),
               const SizedBox(height: 8),
-              _infoRow(
-                  l10n.backupSize, last.fileSize ?? '—'),
+              _infoRow(l10n.backupSize, last.fileSize ?? '—'),
               const SizedBox(height: 8),
               _infoRow(
                 l10n.backupStatusLabel,
                 last.isSuccess
                     ? l10n.backupStatusSuccess
                     : l10n.backupStatusError,
-                valueColor:
-                    last.isSuccess ? AppColors.success : AppColors.error,
+                valueColor: last.isSuccess
+                    ? AppColors.success
+                    : AppColors.error,
               ),
               const SizedBox(height: 8),
               _infoRow(
@@ -350,7 +585,8 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
   Widget _buildTriggerCard(AppLocalizations l10n) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -388,10 +624,12 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
   }
 
   /// Carte de configuration de l'automatisation.
+  /// Affiche un avertissement rouge si le toggle est désactivé.
   Widget _buildAutomationCard(AppLocalizations l10n) {
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -418,16 +656,50 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
               children: [
                 Expanded(
                   child: Text(l10n.backupEnableAuto,
-                      style: const TextStyle(color: AppColors.textPrimary)),
+                      style: const TextStyle(
+                          color: AppColors.textPrimary)),
                 ),
                 Switch(
                   value: _autoEnabled,
                   activeThumbColor: AppColors.success,
-                  activeTrackColor: AppColors.success.withValues(alpha: 0.4),
+                  activeTrackColor:
+                      AppColors.success.withValues(alpha: 0.4),
                   onChanged: (v) => setState(() => _autoEnabled = v),
                 ),
               ],
             ),
+
+            // Avertissement de sécurité si le toggle est désactivé
+            if (!_autoEnabled) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.4)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.shield_outlined,
+                        color: AppColors.error, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.backupAutoDisableWarning,
+                        style: TextStyle(
+                            fontSize: 12,
+                            color:
+                                AppColors.error.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             if (_autoEnabled) ...[
               const SizedBox(height: 14),
@@ -441,8 +713,8 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                 value: _selectedSchedule,
                 decoration: InputDecoration(
                   isDense: true,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 10),
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8)),
                 ),
@@ -465,7 +737,8 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _service.isSavingSettings ? null : _saveSettings,
+                onPressed:
+                    _service.isSavingSettings ? null : _saveSettings,
                 icon: _service.isSavingSettings
                     ? const SizedBox(
                         width: 16,
@@ -488,7 +761,7 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
     );
   }
 
-  /// Tableau de l'historique des sauvegardes.
+  /// Tableau de l'historique des sauvegardes avec boutons Télécharger + Restaurer.
   Widget _buildHistorySection(AppLocalizations l10n) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,21 +787,23 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
               padding: const EdgeInsets.all(32),
               child: Center(
                 child: Text(l10n.backupNoHistory,
-                    style: const TextStyle(color: AppColors.textSecondary)),
+                    style: const TextStyle(
+                        color: AppColors.textSecondary)),
               ),
             ),
           )
         else
           Card(
             elevation: 1,
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: DataTable(
-                  headingRowColor: WidgetStateProperty.all(AppColors.background),
+                  headingRowColor:
+                      WidgetStateProperty.all(AppColors.background),
                   columns: [
                     DataColumn(
                         label: Text(l10n.backupColDate,
@@ -571,14 +846,44 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
                       DataCell(_statusBadge(l10n, record)),
                       DataCell(
                         record.isSuccess
-                            ? TextButton.icon(
-                                onPressed: () => _downloadBackup(record),
-                                icon: const Icon(Icons.download_outlined,
-                                    size: 16),
-                                label: Text(l10n.backupDownload,
-                                    style: const TextStyle(fontSize: 13)),
-                                style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.primary),
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  // Bouton télécharger
+                                  TextButton.icon(
+                                    onPressed: () =>
+                                        _downloadBackup(record),
+                                    icon: const Icon(
+                                        Icons.download_outlined,
+                                        size: 16),
+                                    label: Text(l10n.backupDownload,
+                                        style: const TextStyle(
+                                            fontSize: 13)),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            AppColors.primary),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  // Bouton restaurer — action destructrice
+                                  TextButton.icon(
+                                    onPressed: _service.isRestoring
+                                        ? null
+                                        : () => _showRestoreConfirmation(
+                                            record),
+                                    icon: const Icon(
+                                        Icons.restore_outlined,
+                                        size: 16),
+                                    label: Text(
+                                        _service.isRestoring
+                                            ? l10n.backupRestoring
+                                            : l10n.backupRestoreButton,
+                                        style: const TextStyle(
+                                            fontSize: 13)),
+                                    style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            AppColors.error),
+                                  ),
+                                ],
                               )
                             : const SizedBox.shrink(),
                       ),
@@ -612,8 +917,9 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
               style: TextStyle(
                   fontSize: 13,
                   color: valueColor ?? AppColors.textPrimary,
-                  fontWeight:
-                      valueColor != null ? FontWeight.w600 : FontWeight.normal)),
+                  fontWeight: valueColor != null
+                      ? FontWeight.w600
+                      : FontWeight.normal)),
         ),
       ],
     );

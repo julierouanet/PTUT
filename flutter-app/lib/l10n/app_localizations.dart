@@ -5438,6 +5438,84 @@ abstract class AppLocalizations {
   /// **'Action'**
   String get backupColAction;
 
+  /// No description provided for @backupAccessDeniedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès Refusé — Espace Système'**
+  String get backupAccessDeniedTitle;
+
+  /// No description provided for @backupAccessDeniedMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet espace est réservé aux administrateurs ICT du système.'**
+  String get backupAccessDeniedMessage;
+
+  /// No description provided for @backupAccessDeniedSub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contactez le service informatique si vous pensez que c\'est une erreur.'**
+  String get backupAccessDeniedSub;
+
+  /// No description provided for @backupAutoDisableWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Attention : La base de données de l\'hôpital n\'est plus protégée par les sauvegardes automatiques. Réactivez cette option dès que possible.'**
+  String get backupAutoDisableWarning;
+
+  /// No description provided for @backupRestoreButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restaurer'**
+  String get backupRestoreButton;
+
+  /// No description provided for @backupRestoreDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la restauration'**
+  String get backupRestoreDialogTitle;
+
+  /// No description provided for @backupRestoreDialogWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette opération va écraser toutes les données de production actuelles et les remplacer par la sauvegarde du {date}. Cette action est irréversible.'**
+  String backupRestoreDialogWarning(String date);
+
+  /// No description provided for @backupRestoreTypeInstruction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pour confirmer, tapez RESTAURER dans le champ ci-dessous :'**
+  String get backupRestoreTypeInstruction;
+
+  /// No description provided for @backupRestoreConfirmWord.
+  ///
+  /// In fr, this message translates to:
+  /// **'RESTAURER'**
+  String get backupRestoreConfirmWord;
+
+  /// No description provided for @backupRestoreConfirmButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la restauration'**
+  String get backupRestoreConfirmButton;
+
+  /// No description provided for @backupRestoreSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restauration effectuée avec succès'**
+  String get backupRestoreSuccess;
+
+  /// No description provided for @backupRestoreError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la restauration : {error}'**
+  String backupRestoreError(String error);
+
+  /// No description provided for @backupRestoring.
+  ///
+  /// In fr, this message translates to:
+  /// **'Restauration en cours...'**
+  String get backupRestoring;
+
   /// No description provided for @issueDetailTitle.
   ///
   /// In fr, this message translates to:

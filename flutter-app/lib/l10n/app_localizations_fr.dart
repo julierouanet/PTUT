@@ -2888,6 +2888,53 @@ class AppLocalizationsFr extends AppLocalizations {
   String get backupColAction => 'Action';
 
   @override
+  String get backupAccessDeniedTitle => 'Accès Refusé — Espace Système';
+
+  @override
+  String get backupAccessDeniedMessage =>
+      'Cet espace est réservé aux administrateurs ICT du système.';
+
+  @override
+  String get backupAccessDeniedSub =>
+      'Contactez le service informatique si vous pensez que c\'est une erreur.';
+
+  @override
+  String get backupAutoDisableWarning =>
+      'Attention : La base de données de l\'hôpital n\'est plus protégée par les sauvegardes automatiques. Réactivez cette option dès que possible.';
+
+  @override
+  String get backupRestoreButton => 'Restaurer';
+
+  @override
+  String get backupRestoreDialogTitle => 'Confirmer la restauration';
+
+  @override
+  String backupRestoreDialogWarning(String date) {
+    return 'Cette opération va écraser toutes les données de production actuelles et les remplacer par la sauvegarde du $date. Cette action est irréversible.';
+  }
+
+  @override
+  String get backupRestoreTypeInstruction =>
+      'Pour confirmer, tapez RESTAURER dans le champ ci-dessous :';
+
+  @override
+  String get backupRestoreConfirmWord => 'RESTAURER';
+
+  @override
+  String get backupRestoreConfirmButton => 'Confirmer la restauration';
+
+  @override
+  String get backupRestoreSuccess => 'Restauration effectuée avec succès';
+
+  @override
+  String backupRestoreError(String error) {
+    return 'Erreur lors de la restauration : $error';
+  }
+
+  @override
+  String get backupRestoring => 'Restauration en cours...';
+
+  @override
   String get issueDetailTitle => 'Détail de l\'Incident';
 
   @override

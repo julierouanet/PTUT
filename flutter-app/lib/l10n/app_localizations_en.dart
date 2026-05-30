@@ -2865,6 +2865,53 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupColAction => 'Action';
 
   @override
+  String get backupAccessDeniedTitle => 'Access Denied — System Area';
+
+  @override
+  String get backupAccessDeniedMessage =>
+      'This area is reserved for ICT system administrators.';
+
+  @override
+  String get backupAccessDeniedSub =>
+      'Contact IT support if you believe this is an error.';
+
+  @override
+  String get backupAutoDisableWarning =>
+      'Warning: The hospital database is no longer protected by automatic backups. Please re-enable this option as soon as possible.';
+
+  @override
+  String get backupRestoreButton => 'Restore';
+
+  @override
+  String get backupRestoreDialogTitle => 'Confirm database restoration';
+
+  @override
+  String backupRestoreDialogWarning(String date) {
+    return 'This operation will overwrite all current production data and replace it with the backup from $date. This action is irreversible.';
+  }
+
+  @override
+  String get backupRestoreTypeInstruction =>
+      'To confirm, type RESTORE in the field below:';
+
+  @override
+  String get backupRestoreConfirmWord => 'RESTORE';
+
+  @override
+  String get backupRestoreConfirmButton => 'Confirm restoration';
+
+  @override
+  String get backupRestoreSuccess => 'Restoration completed successfully';
+
+  @override
+  String backupRestoreError(String error) {
+    return 'Restoration error: $error';
+  }
+
+  @override
+  String get backupRestoring => 'Restoration in progress...';
+
+  @override
   String get issueDetailTitle => 'Issue Detail';
 
   @override
