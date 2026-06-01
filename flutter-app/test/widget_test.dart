@@ -21,8 +21,18 @@ void _suppressOverflow(WidgetTester tester) {
 }
 
 /// From the hub, opens the Equipment module (Dashboard, Equipment, etc.)
+///
+/// • Admin / supervisor / tech : tap the "Open Equipment" button in the module card.
+/// • hospitalStaff : the hub shows a simplified view without the module card;
+///   tap the OutlinedButton ("My active issues") which also calls onEquipmentModule.
 Future<void> _enterEquipmentModule(WidgetTester tester) async {
-  await tester.tap(find.text('Open Equipment'));
+  final openEquipFinder = find.text('Open Equipment');
+  if (openEquipFinder.evaluate().isNotEmpty) {
+    await tester.tap(openEquipFinder);
+  } else {
+    // Mode hospitalStaff : seul OutlinedButton du hub simplifié → module équipement
+    await tester.tap(find.byType(OutlinedButton).first);
+  }
   await tester.pump();
 }
 
