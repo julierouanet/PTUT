@@ -1500,5 +1500,30 @@
   "hubTechPmOverdueLabel": "PM en retard",
   "hubTechPmSoonLabel": "PM imminente (< 7 j)",
 
-  "hubKpiLastRefreshLabel": "Données actualisées"
+  "hubKpiLastRefreshLabel": "Données actualisées",
+
+  "equipmentViewGrid": "Vue grille",
+  "equipmentViewList": "Vue liste",
+  "equipmentColumnLastPm": "Dernière PM / Intervention",
+  "equipmentFilterMyUnit": "Mon unité / Ma salle",
+  "equipmentFilterUnit": "Unité / Salle",
+  "equipmentScanQrTooltip": "Rechercher par QR code",
+  "equipmentScanQrTitle": "Rechercher par QR",
+  "equipmentScanQrManualTitle": "Saisir l'identifiant manuellement",
+  "equipmentScanQrManualHint": "ID ou numéro de série de l'équipement",
+  "equipmentScanQrNotFound": "Aucun équipement trouvé pour cet identifiant",
+  "equipmentCsvShared": "Fichier CSV prêt à partager",
+  "equipmentCsvShareError": "Erreur lors du partage du CSV",
+
+  "issueFormStep1Label": "Étape 1 / 2 — Catégorie & Équipement",
+  "issueFormStep2Label": "Étape 2 / 2 — Description & Photos",
+  "issueFormScanBlock": "Signaler par QR Code",
+  "issueFormScanBlockTooltip": "Mode ultra-rapide : scanner → urgence Critique → 2 champs à remplir",
+  "issueFormScanBlockUrgencySet": "Urgence mise à Critique — complétez la description",
+  "issueFormUnlistedEquipment": "Équipement non répertorié",
+  "issueFormUnlistedEquipmentNameLabel": "Nom de l'équipement",
+  "issueFormUnlistedEquipmentHint": "Ex : Respirateur salle 3, Moniteur lit 12...",
+  "issueFormUnlistedEquipmentRequired": "Veuillez saisir le nom de l'équipement",
+  "issueFormUnlistedWarning": "Le technicien devra identifier cet équipement sur site.",
+  "issueFormPhotoGuide": "Conseil : photographiez l'écran d'erreur, l'étiquette de l'équipement ou la zone défaillante."
 }

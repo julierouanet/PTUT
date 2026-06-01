@@ -3928,4 +3928,81 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get hubKpiLastRefreshLabel => 'Données actualisées';
+
+  @override
+  String get equipmentViewGrid => 'Vue grille';
+
+  @override
+  String get equipmentViewList => 'Vue liste';
+
+  @override
+  String get equipmentColumnLastPm => 'Dernière PM / Intervention';
+
+  @override
+  String get equipmentFilterMyUnit => 'Mon unité / Ma salle';
+
+  @override
+  String get equipmentFilterUnit => 'Unité / Salle';
+
+  @override
+  String get equipmentScanQrTooltip => 'Rechercher par QR code';
+
+  @override
+  String get equipmentScanQrTitle => 'Rechercher par QR';
+
+  @override
+  String get equipmentScanQrManualTitle => 'Saisir l\'identifiant manuellement';
+
+  @override
+  String get equipmentScanQrManualHint =>
+      'ID ou numéro de série de l\'équipement';
+
+  @override
+  String get equipmentScanQrNotFound =>
+      'Aucun équipement trouvé pour cet identifiant';
+
+  @override
+  String get equipmentCsvShared => 'Fichier CSV prêt à partager';
+
+  @override
+  String get equipmentCsvShareError => 'Erreur lors du partage du CSV';
+
+  @override
+  String get issueFormStep1Label => 'Étape 1 / 2 — Catégorie & Équipement';
+
+  @override
+  String get issueFormStep2Label => 'Étape 2 / 2 — Description & Photos';
+
+  @override
+  String get issueFormScanBlock => 'Signaler par QR Code';
+
+  @override
+  String get issueFormScanBlockTooltip =>
+      'Mode ultra-rapide : scanner → urgence Critique → 2 champs à remplir';
+
+  @override
+  String get issueFormScanBlockUrgencySet =>
+      'Urgence mise à Critique — complétez la description';
+
+  @override
+  String get issueFormUnlistedEquipment => 'Équipement non répertorié';
+
+  @override
+  String get issueFormUnlistedEquipmentNameLabel => 'Nom de l\'équipement';
+
+  @override
+  String get issueFormUnlistedEquipmentHint =>
+      'Ex : Respirateur salle 3, Moniteur lit 12...';
+
+  @override
+  String get issueFormUnlistedEquipmentRequired =>
+      'Veuillez saisir le nom de l\'équipement';
+
+  @override
+  String get issueFormUnlistedWarning =>
+      'Le technicien devra identifier cet équipement sur site.';
+
+  @override
+  String get issueFormPhotoGuide =>
+      'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.';
 }

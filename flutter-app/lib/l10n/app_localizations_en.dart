@@ -3891,4 +3891,80 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hubKpiLastRefreshLabel => 'Data updated';
+
+  @override
+  String get equipmentViewGrid => 'Grid view';
+
+  @override
+  String get equipmentViewList => 'List view';
+
+  @override
+  String get equipmentColumnLastPm => 'Last PM / Intervention';
+
+  @override
+  String get equipmentFilterMyUnit => 'My unit / Room';
+
+  @override
+  String get equipmentFilterUnit => 'Unit / Room';
+
+  @override
+  String get equipmentScanQrTooltip => 'Search by QR code';
+
+  @override
+  String get equipmentScanQrTitle => 'Search by QR';
+
+  @override
+  String get equipmentScanQrManualTitle => 'Enter identifier manually';
+
+  @override
+  String get equipmentScanQrManualHint => 'Equipment ID or serial number';
+
+  @override
+  String get equipmentScanQrNotFound =>
+      'No equipment found for this identifier';
+
+  @override
+  String get equipmentCsvShared => 'CSV file ready to share';
+
+  @override
+  String get equipmentCsvShareError => 'Error while sharing CSV';
+
+  @override
+  String get issueFormStep1Label => 'Step 1 / 2 — Category & Equipment';
+
+  @override
+  String get issueFormStep2Label => 'Step 2 / 2 — Description & Photos';
+
+  @override
+  String get issueFormScanBlock => 'Report by QR Code';
+
+  @override
+  String get issueFormScanBlockTooltip =>
+      'Ultra-fast mode: scan → Critical urgency → 2 fields to fill';
+
+  @override
+  String get issueFormScanBlockUrgencySet =>
+      'Urgency set to Critical — complete the description';
+
+  @override
+  String get issueFormUnlistedEquipment => 'Unlisted equipment';
+
+  @override
+  String get issueFormUnlistedEquipmentNameLabel => 'Equipment name';
+
+  @override
+  String get issueFormUnlistedEquipmentHint =>
+      'E.g.: Ventilator room 3, Monitor bed 12...';
+
+  @override
+  String get issueFormUnlistedEquipmentRequired =>
+      'Please enter the equipment name';
+
+  @override
+  String get issueFormUnlistedWarning =>
+      'The technician will need to identify this equipment on site.';
+
+  @override
+  String get issueFormPhotoGuide =>
+      'Tip: take a photo of the error screen, the equipment label, or the defective area.';
 }

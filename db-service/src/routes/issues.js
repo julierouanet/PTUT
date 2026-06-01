@@ -121,13 +121,14 @@ router.post('/', verifyToken, (req, res) => {
     issue_category: reqCategory, assigned_group: reqGroup,
   } = req.body;
 
-  const hasEquipment  = equipment_id && equipment_name;
-  const hasLocation   = !!location_id;
+  const hasEquipment     = equipment_id && equipment_name;
+  const hasEquipmentName = !equipment_id && !!equipment_name; // nom seul (équipement non répertorié)
+  const hasLocation      = !!location_id;
   const hasLocText    = !!(location_text && location_text.trim());
   const isAutre       = reqCategory === 'Autre';
   const isInfra       = reqCategory === 'Infrastructure';
 
-  if (!id || (!hasEquipment && !hasLocation && !hasLocText && !isAutre && !isInfra) || !department || !type || !description || !reporter) {
+  if (!id || (!hasEquipment && !hasEquipmentName && !hasLocation && !hasLocText && !isAutre && !isInfra) || !department || !type || !description || !reporter) {
     return res.status(400).json({ error: 'Champs requis manquants' });
   }
 

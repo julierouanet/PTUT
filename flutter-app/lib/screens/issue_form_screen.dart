@@ -137,20 +137,18 @@ const Map<String, Map<String, List<String>>> _kInfraCatalog = {
   },
 };
 
-/// Valeur de macro_category pour les équipements biomédicaux (champ API).
 const String _kBioMacroCategory = 'Biomedical';
+const String _kItMacroCategory  = 'IT';
 
-/// Valeur de macro_category pour les équipements IT (champ API).
-const String _kItMacroCategory = 'IT';
-
-/// Formulaire de signalement d'incident avec 4 onglets de catégorie.
+/// Formulaire de signalement d'incident en 2 étapes.
+/// Étape 1 : catégorie, équipement, urgence.
+/// Étape 2 : description, photos.
 class IssueFormScreen extends StatefulWidget {
   final String? equipmentId;
   final VoidCallback? onCancel;
   /// Onglet pré-sélectionné : 0=Biomédical 1=Infrastructure 2=IT 3=Autre.
   final int initialTab;
-  // categoryFilter conservé pour rétrocompatibilité (ignoré)
-  final List<String>? categoryFilter;
+  final List<String>? categoryFilter; // conservé pour rétrocompatibilité
 
   const IssueFormScreen({
     super.key,
@@ -165,7 +163,15 @@ class IssueFormScreen extends StatefulWidget {
 }
 
 class IssueFormScreenState extends State<IssueFormScreen> {
-  final _formKey = GlobalKey<FormState>();
+  // ── Clés de formulaire par étape ──────────────────────────────────────────
+  final _formKey1 = GlobalKey<FormState>(); // étape 1 : catégorie + équipement
+  final _formKey2 = GlobalKey<FormState>(); // étape 2 : description + photos
+
+  // ── Stepper ───────────────────────────────────────────────────────────────
+  int _currentStep = 0; // 0 = étape 1, 1 = étape 2
+
+  // ── Mode Scan & Block ─────────────────────────────────────────────────────
+  bool _scanBlockMode = false;
 
   // ── Onglet actif ──────────────────────────────────────────────────────────
   int _selectedTab = 0; // 0=Biomédical 1=Infrastructure 2=IT 3=Autre
@@ -175,12 +181,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   int _bioAutocompleteKey = 0;
   bool _bioEquipmentError = false;
   String _bioProblemType = '';
+  bool _bioUnlisted = false;
+  final _bioUnlistedNameController = TextEditingController();
 
   // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
   String? _infraDepartment;
-  final _infraBuildingController = TextEditingController();
-  final _infraLocationController = TextEditingController();
-  final _infraTagController      = TextEditingController();
+  final _infraBuildingController   = TextEditingController();
+  final _infraLocationController   = TextEditingController();
+  final _infraTagController        = TextEditingController();
   String? _infraCategory;
   String? _infraSubcategory;
   String? _infraIssue;
@@ -192,6 +200,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   bool _itSearching = false;
   String? _itTagError;
   String _itProblemType = '';
+  bool _itUnlisted = false;
+  final _itUnlistedNameController = TextEditingController();
 
   // ── Tab 3 : Autre ─────────────────────────────────────────────────────────
   String? _autreDepartment;
@@ -205,18 +215,20 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   bool _isSubmitting = false;
   bool _equipmentAvailable = true;
 
-  /// Retourne true si l'utilisateur a commencé à remplir un formulaire (tous tabs).
   bool get hasUnsavedData =>
       _bioEquipmentId != null ||
+      _bioUnlisted ||
+      _bioUnlistedNameController.text.isNotEmpty ||
       _infraBuildingController.text.isNotEmpty ||
       _infraLocationController.text.isNotEmpty ||
       _itEquipment != null ||
+      _itUnlisted ||
+      _itUnlistedNameController.text.isNotEmpty ||
       _tagController.text.isNotEmpty ||
       _autreDepartment != null ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
 
-  /// Données saisies dans la section partagée (description + photos) — perdues si on change d'onglet.
   bool get _hasSharedUnsavedData =>
       _descriptionController.text.isNotEmpty || _photos.isNotEmpty;
 
@@ -229,7 +241,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           .where((e) => e.id == widget.equipmentId)
           .firstOrNull;
       if (eq != null) {
-        // Utilise macroCategory si disponible, sinon repli sur category text legacy
         final isIt = eq.macroCategory?.toLowerCase() == _kItMacroCategory.toLowerCase() ||
             eq.category.toLowerCase() == 'informatique' ||
             eq.category.toLowerCase() == 'ict equipment';
@@ -237,7 +248,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           _selectedTab = 2;
           _itEquipment = eq;
         } else {
-          _selectedTab = 0;
+          _selectedTab    = 0;
           _bioEquipmentId = eq.id;
         }
       }
@@ -248,8 +259,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final l10n = AppLocalizations.of(context)!;
-    if (_bioProblemType.isEmpty)  _bioProblemType  = l10n.issueFormBreakdown;
-    if (_itProblemType.isEmpty)   _itProblemType   = l10n.issueFormBreakdown;
+    if (_bioProblemType.isEmpty)   _bioProblemType   = l10n.issueFormBreakdown;
+    if (_itProblemType.isEmpty)    _itProblemType    = l10n.issueFormBreakdown;
     if (_autreProblemType.isEmpty) _autreProblemType = l10n.issueFormBreakdown;
   }
 
@@ -260,6 +271,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     _infraBuildingController.dispose();
     _infraLocationController.dispose();
     _infraTagController.dispose();
+    _bioUnlistedNameController.dispose();
+    _itUnlistedNameController.dispose();
     super.dispose();
   }
 
@@ -272,8 +285,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         .firstOrNull;
   }
 
-  /// Équipements biomédicaux : filtrés par macro_category='Biomedical' si disponible,
-  /// sinon repli sur la valeur category legacy 'Biomedical Equipment'.
   List<Equipment> get _bioEquipmentList => DataService().equipment.where((eq) {
         if (eq.macroCategory != null && eq.macroCategory!.isNotEmpty) {
           return eq.macroCategory!.toLowerCase() == _kBioMacroCategory.toLowerCase();
@@ -302,9 +313,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
               sub.key.toLowerCase().contains(q) ||
               cat.key.toLowerCase().contains(q)) {
             results.add(_InfraSearchResult(
-              category: cat.key,
-              subcategory: sub.key,
-              issue: issue,
+              category: cat.key, subcategory: sub.key, issue: issue,
             ));
           }
         }
@@ -313,7 +322,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return results;
   }
 
-  // ── Changement d'onglet avec confirmation si données non sauvegardées ────
+  // ── Changement d'onglet avec confirmation ─────────────────────────────────
 
   Future<void> _switchTab(int tab) async {
     if (tab == _selectedTab) return;
@@ -332,10 +341,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: Text(
-                l10n.issueFormSwitchTabConfirm,
-                style: const TextStyle(color: Colors.white),
-              ),
+              child: Text(l10n.issueFormSwitchTabConfirm,
+                  style: const TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -346,16 +353,38 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _selectedTab = tab;
       _descriptionController.clear();
       _photos.clear();
-      _urgency = IssueUrgency.moyen;
-      _infraIssue = null;
+      _urgency           = IssueUrgency.moyen;
+      _infraIssue        = null;
       _infraSearchKey++;
+      _bioUnlisted       = false;
+      _bioUnlistedNameController.clear();
+      _itUnlisted        = false;
+      _itUnlistedNameController.clear();
+      _scanBlockMode     = false;
+      _currentStep       = 0;
     });
   }
 
-  // ── Scanner QR code ───────────────────────────────────────────────────────
+  // ── Navigation entre les étapes ───────────────────────────────────────────
+
+  void _goToStep2() {
+    bool extraValid = true;
+    if (_selectedTab == 0) {
+      if (!_bioUnlisted && _bioEquipmentId == null) {
+        setState(() => _bioEquipmentError = true);
+        extraValid = false;
+      }
+    }
+    if (_selectedTab == 2 && !_itUnlisted && _itEquipment == null) {
+      extraValid = false;
+    }
+    if (!_formKey1.currentState!.validate() || !extraValid) return;
+    setState(() => _currentStep = 1);
+  }
+
+  // ── Scanner QR classique ──────────────────────────────────────────────────
 
   Future<void> _openQrScanner(AppLocalizations l10n) async {
-    // Sur web : dialog de saisie manuelle (pas de caméra native disponible)
     if (kIsWeb) {
       await _showQrFallbackDialog(l10n);
       return;
@@ -374,17 +403,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           ]),
           contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
           content: SizedBox(
-            width: 280,
-            height: 280,
+            width: 280, height: 280,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: MobileScanner(
                 controller: controller,
                 onDetect: (capture) {
                   final code = capture.barcodes.firstOrNull?.rawValue;
-                  if (code != null && code.isNotEmpty) {
-                    Navigator.pop(ctx, code);
-                  }
+                  if (code != null && code.isNotEmpty) Navigator.pop(ctx, code);
                 },
               ),
             ),
@@ -400,12 +426,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     } finally {
       controller?.dispose();
     }
-    if (scannedCode != null && mounted) {
-      _processQrCode(scannedCode, l10n);
-    }
+    if (scannedCode != null && mounted) _processQrCode(scannedCode, l10n);
   }
 
-  /// Dialog de saisie manuelle de l'ID équipement (fallback web ou offline).
   Future<void> _showQrFallbackDialog(AppLocalizations l10n) async {
     final textCtrl = TextEditingController();
     String? result;
@@ -445,12 +468,10 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
     );
     textCtrl.dispose();
-    if (result != null && result!.isNotEmpty && mounted) {
-      _processQrCode(result!, l10n);
-    }
+    if (result != null && result!.isNotEmpty && mounted) _processQrCode(result!, l10n);
   }
 
-  /// Recherche l'équipement par ID ou SN et met à jour le champ biomédical.
+  /// Pré-remplit le champ biomédical à partir d'un code QR scanné (mode normal).
   void _processQrCode(String code, AppLocalizations l10n) {
     final trimmed = code.trim();
     final eq = DataService().equipment.where((e) =>
@@ -468,8 +489,133 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     setState(() {
       _bioEquipmentId    = eq.id;
       _bioEquipmentError = false;
-      _bioAutocompleteKey++; // force le reset de l'Autocomplete
+      _bioAutocompleteKey++;
     });
+  }
+
+  // ── Scanner QR mode Scan & Block ──────────────────────────────────────────
+
+  Future<void> _openScanBlockQr(AppLocalizations l10n) async {
+    if (kIsWeb) {
+      await _showScanBlockFallbackDialog(l10n);
+      return;
+    }
+    MobileScannerController? controller;
+    String? scannedCode;
+    try {
+      controller = MobileScannerController();
+      scannedCode = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Row(children: [
+            const Icon(CupertinoIcons.qrcode_viewfinder, color: AppColors.error),
+            const SizedBox(width: 8),
+            Flexible(child: Text(l10n.issueFormScanBlock)),
+          ]),
+          contentPadding: const EdgeInsets.fromLTRB(12, 16, 12, 0),
+          content: SizedBox(
+            width: 280, height: 280,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: MobileScanner(
+                controller: controller,
+                onDetect: (capture) {
+                  final code = capture.barcodes.firstOrNull?.rawValue;
+                  if (code != null && code.isNotEmpty) Navigator.pop(ctx, code);
+                },
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      controller?.dispose();
+    }
+    if (scannedCode != null && mounted) _processScanBlock(scannedCode, l10n);
+  }
+
+  Future<void> _showScanBlockFallbackDialog(AppLocalizations l10n) async {
+    final textCtrl = TextEditingController();
+    String? result;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          const Icon(CupertinoIcons.qrcode_viewfinder, color: AppColors.error),
+          const SizedBox(width: 8),
+          Flexible(child: Text(l10n.issueFormScanBlock)),
+        ]),
+        content: TextField(
+          controller: textCtrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: l10n.issueFormScanQrFallbackHint,
+            prefixIcon: const Icon(Icons.qr_code, color: AppColors.textSecondary),
+          ),
+          onSubmitted: (v) {
+            result = v.trim();
+            Navigator.pop(ctx);
+          },
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () { result = textCtrl.text.trim(); Navigator.pop(ctx); },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('OK', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    textCtrl.dispose();
+    if (result != null && result!.isNotEmpty && mounted) _processScanBlock(result!, l10n);
+  }
+
+  /// Scan & Block : scanner → urgence Critique → sauter à l'étape 2.
+  void _processScanBlock(String code, AppLocalizations l10n) {
+    final trimmed = code.trim();
+    final eq = DataService().equipment.where((e) =>
+        e.id == trimmed || e.serialNumber.toLowerCase() == trimmed.toLowerCase()
+    ).firstOrNull;
+    if (eq == null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.issueFormScanQrNotFound),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    final isIt = eq.macroCategory?.toLowerCase() == _kItMacroCategory.toLowerCase() ||
+        eq.category.toLowerCase() == 'informatique' ||
+        eq.category.toLowerCase() == 'ict equipment';
+    setState(() {
+      if (isIt) {
+        _selectedTab  = 2;
+        _itEquipment  = eq;
+        _itUnlisted   = false;
+      } else {
+        _selectedTab       = 0;
+        _bioEquipmentId    = eq.id;
+        _bioEquipmentError = false;
+        _bioAutocompleteKey++;
+        _bioUnlisted = false;
+      }
+      _urgency       = IssueUrgency.critique;
+      _scanBlockMode = true;
+      _currentStep   = 1; // sauter directement à la description
+    });
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.issueFormScanBlockUrgencySet),
+      backgroundColor: AppColors.critical,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 3),
+    ));
   }
 
   // ── Recherche IT par tag ──────────────────────────────────────────────────
@@ -478,11 +624,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     final tag = _tagController.text.trim();
     if (tag.isEmpty) return;
     final l10n = AppLocalizations.of(context)!;
-    setState(() {
-      _itSearching = true;
-      _itTagError  = null;
-      _itEquipment = null;
-    });
+    setState(() { _itSearching = true; _itTagError = null; _itEquipment = null; });
     try {
       final found = await DbApiService.instance.getEquipmentByTagNumber(tag);
       if (!mounted) return;
@@ -493,10 +635,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _itTagError  = e.toString();
-        _itSearching = false;
-      });
+      setState(() { _itTagError = e.toString(); _itSearching = false; });
     }
   }
 
@@ -513,15 +652,12 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       return;
     }
     pickImageFile((String fileName, Uint8List bytes) {
-      setState(() {
-        _photos.add(_PhotoItem(name: fileName, bytes: bytes));
-      });
+      setState(() => _photos.add(_PhotoItem(name: fileName, bytes: bytes)));
     });
   }
 
   void _removePhoto(int index) => setState(() => _photos.removeAt(index));
 
-  /// Ouvre la photo en plein écran avec zoom interactif.
   void _openPhotoPreview(_PhotoItem photo) {
     showDialog(
       context: context,
@@ -533,9 +669,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           children: [
             Container(
               decoration: const BoxDecoration(color: Colors.black),
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(ctx).size.height * 0.85,
-              ),
+              constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.85),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: InteractiveViewer(
@@ -552,35 +686,23 @@ class IssueFormScreenState extends State<IssueFormScreen> {
               ),
             ),
             Positioned(
-              top: 8,
-              right: 8,
+              top: 8, right: 8,
               child: GestureDetector(
                 onTap: () => Navigator.pop(ctx),
                 child: Container(
-                  decoration: const BoxDecoration(
-                    color: Colors.black54,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
                   padding: const EdgeInsets.all(8),
                   child: const Icon(Icons.close, color: Colors.white, size: 22),
                 ),
               ),
             ),
             Positioned(
-              bottom: 12,
-              left: 0,
-              right: 0,
+              bottom: 12, left: 0, right: 0,
               child: Center(
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    photo.name,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
+                  decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(20)),
+                  child: Text(photo.name, style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ),
               ),
             ),
@@ -590,7 +712,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  // ── SLA et modale de succès post-soumission ───────────────────────────────
+  // ── SLA et modale de succès ───────────────────────────────────────────────
 
   String _slaLabel(AppLocalizations l10n) => switch (_urgency) {
     IssueUrgency.critique => l10n.issueFormSla2h,
@@ -600,10 +722,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   };
 
   Future<void> _showSuccessDialog(String ticketId, AppLocalizations l10n) async {
-    final sla = _slaLabel(l10n);
+    final sla       = _slaLabel(l10n);
     final displayId = ticketId.startsWith('issue-')
-        ? ticketId.substring('issue-'.length)
-        : ticketId;
+        ? ticketId.substring('issue-'.length) : ticketId;
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -614,20 +735,16 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              width: 72,
-              height: 72,
+              width: 72, height: 72,
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
             ),
             const SizedBox(height: 16),
-            Text(
-              l10n.issueFormSuccessTitle,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
+            Text(l10n.issueFormSuccessTitle,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center),
             const SizedBox(height: 20),
             Container(
               width: double.infinity,
@@ -637,49 +754,28 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    const Icon(Icons.confirmation_number, color: AppColors.primary, size: 18),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        l10n.issueFormSuccessTicketId(displayId),
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                      ),
-                    ),
-                  ]),
-                  const SizedBox(height: 12),
-                  const Divider(height: 1),
-                  const SizedBox(height: 12),
-                  Row(children: [
-                    const Icon(Icons.schedule, color: AppColors.warning, size: 18),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l10n.issueFormSuccessSlaLabel,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          Text(
-                            sla,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ]),
-                ],
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  const Icon(Icons.confirmation_number, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(child: Text(l10n.issueFormSuccessTicketId(displayId),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                ]),
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 12),
+                Row(children: [
+                  const Icon(Icons.schedule, color: AppColors.warning, size: 18),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text(l10n.issueFormSuccessSlaLabel,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                      Text(sla, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    ]),
+                  ),
+                ]),
+              ]),
             ),
           ],
         ),
@@ -690,9 +786,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
               onPressed: () => Navigator.pop(ctx),
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: Text(l10n.issueFormSuccessClose),
             ),
@@ -702,15 +796,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     );
   }
 
-  // ── Types de problème (partagés bio + IT + Autre) ─────────────────────────
+  // ── Types de problème ─────────────────────────────────────────────────────
 
   List<String> _problemTypes(AppLocalizations l10n) => [
-    l10n.issueFormBreakdown,
-    l10n.issueFormMalfunction,
-    l10n.issueFormWear,
-    l10n.issueFormAbnormalNoise,
-    l10n.issueFormLeak,
-    l10n.issueFormOther,
+    l10n.issueFormBreakdown, l10n.issueFormMalfunction, l10n.issueFormWear,
+    l10n.issueFormAbnormalNoise, l10n.issueFormLeak, l10n.issueFormOther,
   ];
 
   // ── Soumission du formulaire ───────────────────────────────────────────────
@@ -719,19 +809,21 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     if (_isSubmitting) return;
     final l10n = AppLocalizations.of(context)!;
 
-    // Validation spécifique par tab
+    // Validation étape 2
     bool extraValid = true;
-    if (_selectedTab == 0 && _bioEquipmentId == null) {
-      setState(() => _bioEquipmentError = true);
+    if (_selectedTab == 0 && !_bioUnlisted && _bioEquipmentId == null) {
       extraValid = false;
     }
-    if (_selectedTab == 2 && _itEquipment == null) extraValid = false;
-
-    if (!_formKey.currentState!.validate() || !extraValid) return;
+    if (_selectedTab == 2 && !_itUnlisted && _itEquipment == null) {
+      extraValid = false;
+    }
+    if (!_formKey2.currentState!.validate() || !extraValid) return;
 
     final currentUser = AuthService().currentUser;
+    final String descRaw = _descriptionController.text.trim();
+
     final commons = {
-      'description':         _descriptionController.text.trim(),
+      'description':         descRaw,
       'reporter':            currentUser?.fullName ?? 'Inconnu',
       'reporter_id':         currentUser?.id ?? '',
       'reporter_email':      currentUser?.email ?? '',
@@ -744,41 +836,70 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
     switch (_selectedTab) {
       case 0: // Biomédical
-        final eq = _selectedBioEquipment!;
-        issueData = {
-          'id':             ticketId,
-          'equipment_id':   eq.id,
-          'equipment_name': eq.name,
-          'department':     eq.department,
-          'type':           _bioProblemType,
-          'issue_category': 'Biomédical',
-          'assigned_group': 'Biomédical',
-          ...commons,
-        };
+        if (_bioUnlisted) {
+          final name = _bioUnlistedNameController.text.trim();
+          issueData = {
+            'id':             ticketId,
+            'equipment_name': name,
+            'department':     currentUser?.department ?? 'Non spécifié',
+            'type':           _bioProblemType,
+            'issue_category': 'Biomédical',
+            'assigned_group': 'Biomédical',
+            ...commons,
+            // Le préfixe permet au technicien d'identifier l'équipement sur site
+            'description': '[NON RÉPERTORIÉ: $name] — $descRaw',
+          };
+        } else {
+          final eq = _selectedBioEquipment!;
+          issueData = {
+            'id':             ticketId,
+            'equipment_id':   eq.id,
+            'equipment_name': eq.name,
+            'department':     eq.department,
+            'type':           _bioProblemType,
+            'issue_category': 'Biomédical',
+            'assigned_group': 'Biomédical',
+            ...commons,
+          };
+        }
       case 1: // Infrastructure
         final infraTag = _infraTagController.text.trim();
         issueData = {
-          'id':             ticketId,
-          'location_text':  '${_infraBuildingController.text.trim()} — ${_infraLocationController.text.trim()}',
+          'id':            ticketId,
+          'location_text': '${_infraBuildingController.text.trim()} — ${_infraLocationController.text.trim()}',
           if (infraTag.isNotEmpty) 'location_tag': infraTag,
-          'department':     _infraDepartment!,
-          'type':           '$_infraCategory / $_infraSubcategory / $_infraIssue',
+          'department':    _infraDepartment!,
+          'type':          '$_infraCategory / $_infraSubcategory / $_infraIssue',
           'issue_category': 'Infrastructure',
           'assigned_group': 'Infrastructure',
           ...commons,
         };
       case 2: // IT
-        final eq = _itEquipment!;
-        issueData = {
-          'id':             ticketId,
-          'equipment_id':   eq.id,
-          'equipment_name': eq.name,
-          'department':     eq.department,
-          'type':           _itProblemType,
-          'issue_category': 'IT',
-          'assigned_group': 'IT',
-          ...commons,
-        };
+        if (_itUnlisted) {
+          final name = _itUnlistedNameController.text.trim();
+          issueData = {
+            'id':             ticketId,
+            'equipment_name': name,
+            'department':     currentUser?.department ?? 'Non spécifié',
+            'type':           _itProblemType,
+            'issue_category': 'IT',
+            'assigned_group': 'IT',
+            ...commons,
+            'description': '[NON RÉPERTORIÉ: $name] — $descRaw',
+          };
+        } else {
+          final eq = _itEquipment!;
+          issueData = {
+            'id':             ticketId,
+            'equipment_id':   eq.id,
+            'equipment_name': eq.name,
+            'department':     eq.department,
+            'type':           _itProblemType,
+            'issue_category': 'IT',
+            'assigned_group': 'IT',
+            ...commons,
+          };
+        }
       default: // Autre
         issueData = {
           'id':             ticketId,
@@ -795,7 +916,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
-      // Modale de succès avec ticket ID et SLA (remplace le SnackBar)
       await _showSuccessDialog(ticketId, l10n);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -822,198 +942,330 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   }
 
   // ══════════════════════════════════════════════════════════════════════════
-  // BUILD
+  // BUILD PRINCIPAL
   // ══════════════════════════════════════════════════════════════════════════
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Text(
-            l10n.issueFormTitle,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
-            ),
-          ),
+          // ── Bouton Scan & Block ─────────────────────────────────────────
+          _buildScanBlockButton(l10n),
+          const SizedBox(height: 20),
+
+          // ── En-tête ─────────────────────────────────────────────────────
+          Text(l10n.issueFormTitle,
+              style: const TextStyle(
+                  fontSize: 28, fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary)),
           const SizedBox(height: 4),
-          Text(
-            l10n.issueFormSubtitle,
-            style: const TextStyle(color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 24),
+          Text(l10n.issueFormSubtitle,
+              style: const TextStyle(color: AppColors.textSecondary)),
+          const SizedBox(height: 20),
 
-          // ── 4 boutons onglets ───────────────────────────────────────────
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _buildTabButton(0, CupertinoIcons.heart_circle,    l10n.issueCategoryBiomedical,     AppColors.primary,       l10n),
-              _buildTabButton(1, CupertinoIcons.building_2_fill, l10n.issueCategoryInfrastructure, AppColors.warning,       l10n),
-              _buildTabButton(2, CupertinoIcons.device_desktop,  l10n.issueCategoryIT,             AppColors.textSecondary, l10n),
-              _buildTabButton(3, CupertinoIcons.question_circle, l10n.issueCategoryOther,          AppColors.textMuted,     l10n),
-            ],
-          ),
-          const SizedBox(height: 24),
+          // ── Indicateur d'étapes ─────────────────────────────────────────
+          _buildStepIndicator(l10n),
+          const SizedBox(height: 20),
 
-          // ── Formulaire dynamique ────────────────────────────────────────
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Sous-formulaire selon l'onglet
-                    if (_selectedTab == 0) ..._buildBiomedicalForm(l10n),
-                    if (_selectedTab == 1) ..._buildInfrastructureForm(l10n),
-                    if (_selectedTab == 2) ..._buildITForm(l10n),
-                    if (_selectedTab == 3) ..._buildAutreForm(l10n),
-
-                    const SizedBox(height: 24),
-
-                    // Urgence (partagée)
-                    Text(l10n.issueUrgencyLabel, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 8,
-                      children: IssueUrgency.values.map((u) {
-                        final selected = _urgency == u;
-                        return GestureDetector(
-                          onTap: () => setState(() => _urgency = u),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 150),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? _urgencyColor(u).withValues(alpha: 0.15)
-                                  : AppColors.background,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: selected ? _urgencyColor(u) : AppColors.border,
-                                width: selected ? 2 : 1,
-                              ),
-                            ),
-                            child: UrgencyBadge(urgency: u, isCompact: true),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Disponibilité pour intervention (partagée — nouveau champ GMAO)
-                    _buildEquipmentAvailableSwitch(l10n),
-                    const SizedBox(height: 24),
-
-                    // Description (partagée)
-                    Text(l10n.issueFormDescription, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: _descriptionController,
-                      maxLines: 4,
-                      decoration: InputDecoration(hintText: l10n.issueFormDescriptionHint),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return l10n.issueFormDescriptionRequired;
-                        }
-                        if (value.length < 10) return l10n.issueFormDescriptionMinLength;
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Photos (partagées)
-                    Text(l10n.issueFormPhotos, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.issueFormPhotosHint(_maxPhotos),
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        ..._photos.asMap().entries.map((e) =>
-                            _buildPhotoThumbnail(e.value, e.key)),
-                        if (_photos.length < _maxPhotos) _buildAddPhotoButton(l10n),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Reporter (partagé — auto-rempli)
-                    Text(l10n.issueFormYourName, style: const TextStyle(fontWeight: FontWeight.w500)),
-                    const SizedBox(height: 8),
-                    _buildReporterInfo(),
-                    const SizedBox(height: 32),
-
-                    // Boutons Annuler / Soumettre
-                    Row(
-                      children: [
-                        if (widget.onCancel != null) ...[
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              onPressed: widget.onCancel,
-                              icon: const Icon(Icons.close, color: AppColors.error),
-                              label: Text(l10n.commonCancel,
-                                  style: const TextStyle(color: AppColors.error)),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.error),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                        ],
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: _isSubmitting ? null : _submitForm,
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            child: _isSubmitting
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white),
-                                  )
-                                : Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const Icon(Icons.send),
-                                      const SizedBox(width: 8),
-                                      Text(_photos.isNotEmpty
-                                          ? l10n.issueFormSubmitWithPhotos(_photos.length)
-                                          : l10n.issueFormSubmit),
-                                    ],
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          // ── Carte de l'étape courante ────────────────────────────────────
+          if (_currentStep == 0) _buildStep1Card(l10n),
+          if (_currentStep == 1) _buildStep2Card(l10n),
         ],
       ),
     );
   }
 
-  // ── Bouton onglet ─────────────────────────────────────────────────────────
+  // ── Bouton rouge Scan & Block ─────────────────────────────────────────────
 
-  Widget _buildTabButton(int index, IconData icon, String label, Color color, AppLocalizations l10n) {
+  Widget _buildScanBlockButton(AppLocalizations l10n) {
+    return Tooltip(
+      message: l10n.issueFormScanBlockTooltip,
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () => _openScanBlockQr(l10n),
+          icon: const Icon(CupertinoIcons.qrcode_viewfinder, size: 22),
+          label: Text(l10n.issueFormScanBlock),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.error,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Indicateur 2 étapes ───────────────────────────────────────────────────
+
+  Widget _buildStepIndicator(AppLocalizations l10n) {
+    return Column(
+      children: [
+        Row(children: [
+          _stepCircle(1, _currentStep >= 0),
+          Expanded(
+            child: Container(
+              height: 2,
+              color: _currentStep >= 1 ? AppColors.primary : AppColors.border,
+            ),
+          ),
+          _stepCircle(2, _currentStep >= 1),
+        ]),
+        const SizedBox(height: 6),
+        Row(children: [
+          Expanded(
+            child: Text(
+              l10n.issueFormStep1Label,
+              style: TextStyle(
+                fontSize: 11,
+                color: _currentStep == 0 ? AppColors.primary : AppColors.textMuted,
+                fontWeight: _currentStep == 0 ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              l10n.issueFormStep2Label,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                fontSize: 11,
+                color: _currentStep == 1 ? AppColors.primary : AppColors.textMuted,
+                fontWeight: _currentStep == 1 ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        ]),
+      ],
+    );
+  }
+
+  Widget _stepCircle(int n, bool active) {
+    return Container(
+      width: 34, height: 34,
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary : AppColors.background,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: active ? AppColors.primary : AppColors.border, width: 2,
+        ),
+      ),
+      child: Center(
+        child: Text('$n', style: TextStyle(
+          color: active ? Colors.white : AppColors.textSecondary,
+          fontWeight: FontWeight.bold, fontSize: 14,
+        )),
+      ),
+    );
+  }
+
+  // ── Carte étape 1 : Catégorie + Équipement + Urgence ─────────────────────
+
+  Widget _buildStep1Card(AppLocalizations l10n) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey1,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Onglets de catégorie
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: [
+                  _buildTabButton(0, CupertinoIcons.heart_circle,    l10n.issueCategoryBiomedical,     AppColors.primary,       l10n),
+                  _buildTabButton(1, CupertinoIcons.building_2_fill, l10n.issueCategoryInfrastructure, AppColors.warning,       l10n),
+                  _buildTabButton(2, CupertinoIcons.device_desktop,  l10n.issueCategoryIT,             AppColors.textSecondary, l10n),
+                  _buildTabButton(3, CupertinoIcons.question_circle, l10n.issueCategoryOther,          AppColors.textMuted,     l10n),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Sous-formulaire selon l'onglet
+              if (_selectedTab == 0) ..._buildBiomedicalForm(l10n),
+              if (_selectedTab == 1) ..._buildInfrastructureForm(l10n),
+              if (_selectedTab == 2) ..._buildITForm(l10n),
+              if (_selectedTab == 3) ..._buildAutreForm(l10n),
+
+              const SizedBox(height: 24),
+
+              // Urgence (visible dès l'étape 1)
+              Text(l10n.issueUrgencyLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+              const SizedBox(height: 8),
+              _buildUrgencySelector(),
+              const SizedBox(height: 16),
+
+              // Disponibilité pour intervention
+              _buildEquipmentAvailableSwitch(l10n),
+              const SizedBox(height: 24),
+
+              // Bouton Suivant
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _goToStep2,
+                  icon: const Icon(Icons.arrow_forward),
+                  label: Text(l10n.commonNext),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Carte étape 2 : Description + Photos ─────────────────────────────────
+
+  Widget _buildStep2Card(AppLocalizations l10n) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Description
+              Text(l10n.issueFormDescription,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _descriptionController,
+                maxLines: 4,
+                decoration: InputDecoration(hintText: l10n.issueFormDescriptionHint),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return l10n.issueFormDescriptionRequired;
+                  }
+                  // Mode Scan & Block : description courte acceptée (1 char min)
+                  if (!_scanBlockMode && value.trim().length < 10) {
+                    return l10n.issueFormDescriptionMinLength;
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 24),
+
+              // Photos
+              Text(l10n.issueFormPhotos,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+
+              // Guide visuel photo
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.tips_and_updates_outlined,
+                      color: AppColors.primary, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(l10n.issueFormPhotoGuide,
+                        style: const TextStyle(
+                            fontSize: 13, color: AppColors.textSecondary)),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 10),
+
+              Text(l10n.issueFormPhotosHint(_maxPhotos),
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+              const SizedBox(height: 12),
+
+              Wrap(
+                spacing: 12, runSpacing: 12,
+                children: [
+                  ..._photos.asMap().entries.map(
+                      (e) => _buildPhotoThumbnail(e.value, e.key)),
+                  if (_photos.length < _maxPhotos) _buildAddPhotoButton(l10n),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Reporter (auto-rempli)
+              Text(l10n.issueFormYourName,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+              const SizedBox(height: 8),
+              _buildReporterInfo(),
+              const SizedBox(height: 32),
+
+              // Boutons Retour / Annuler / Soumettre
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => setState(() => _currentStep = 0),
+                    icon: const Icon(Icons.arrow_back),
+                    label: Text(l10n.commonBack),
+                    style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14)),
+                  ),
+                ),
+                if (widget.onCancel != null) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: widget.onCancel,
+                      icon: const Icon(Icons.close, color: AppColors.error),
+                      label: Text(l10n.commonCancel,
+                          style: const TextStyle(color: AppColors.error)),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: AppColors.error),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submitForm,
+                    style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14)),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20, height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white))
+                        : Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.send),
+                            const SizedBox(width: 8),
+                            Text(_photos.isNotEmpty
+                                ? l10n.issueFormSubmitWithPhotos(_photos.length)
+                                : l10n.issueFormSubmit),
+                          ]),
+                  ),
+                ),
+              ]),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Bouton onglet catégorie ───────────────────────────────────────────────
+
+  Widget _buildTabButton(int index, IconData icon, String label,
+      Color color, AppLocalizations l10n) {
     final selected = _selectedTab == index;
     return GestureDetector(
       onTap: () => _switchTab(index),
@@ -1028,22 +1280,45 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             width: selected ? 2 : 1,
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: selected ? color : AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                color: selected ? color : AppColors.textSecondary,
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 18, color: selected ? color : AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(
+            fontSize: 13,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
+            color: selected ? color : AppColors.textSecondary,
+          )),
+        ]),
+      ),
+    );
+  }
+
+  // ── Sélecteur d'urgence ───────────────────────────────────────────────────
+
+  Widget _buildUrgencySelector() {
+    return Wrap(
+      spacing: 10, runSpacing: 8,
+      children: IssueUrgency.values.map((u) {
+        final selected = _urgency == u;
+        return GestureDetector(
+          onTap: () => setState(() => _urgency = u),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? _urgencyColor(u).withValues(alpha: 0.15)
+                  : AppColors.background,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected ? _urgencyColor(u) : AppColors.border,
+                width: selected ? 2 : 1,
               ),
             ),
-          ],
-        ),
-      ),
+            child: UrgencyBadge(urgency: u, isCompact: true),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -1056,97 +1331,152 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   List<Widget> _buildBiomedicalForm(AppLocalizations l10n) {
     final problemTypes = _problemTypes(l10n);
     return [
-      Text(l10n.issueFormEquipment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormEquipment,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
-      // Champ de recherche + bouton scanner QR côte à côte
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Autocomplete<Equipment>(
-              key: ValueKey(_bioAutocompleteKey),
-              displayStringForOption: (eq) => '${eq.name} - SN: ${eq.serialNumber}',
-              optionsBuilder: (TextEditingValue value) {
-                final query = value.text.toLowerCase().trim();
-                if (query.isEmpty) return const Iterable<Equipment>.empty();
-                return _bioEquipmentList.where((eq) =>
-                    eq.name.toLowerCase().contains(query) ||
-                    eq.serialNumber.toLowerCase().contains(query));
-              },
-              onSelected: (eq) {
-                setState(() {
-                  _bioEquipmentId    = eq.id;
-                  _bioEquipmentError = false;
-                });
-              },
-              fieldViewBuilder: (context, textController, focusNode, onSubmitted) {
-                return TextField(
-                  controller: textController,
-                  focusNode: focusNode,
-                  onSubmitted: (_) => onSubmitted(),
+
+      // Champ de recherche OU nom libre selon le mode
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(
+          child: _bioUnlisted
+              ? TextFormField(
+                  controller: _bioUnlistedNameController,
                   decoration: InputDecoration(
-                    hintText: l10n.issueFormSelectEquipment,
-                    prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
-                    suffixIcon: _bioEquipmentId != null
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              textController.clear();
-                              setState(() {
-                                _bioEquipmentId    = null;
-                                _bioEquipmentError = false;
-                              });
-                            },
-                          )
-                        : null,
-                    errorText: _bioEquipmentError ? l10n.issueFormEquipmentRequired : null,
+                    labelText: l10n.issueFormUnlistedEquipmentNameLabel,
+                    hintText: l10n.issueFormUnlistedEquipmentHint,
+                    prefixIcon: const Icon(Icons.help_outline,
+                        color: AppColors.warning),
                   ),
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) => Align(
-                alignment: Alignment.topLeft,
-                child: Material(
-                  elevation: 4,
-                  borderRadius: BorderRadius.circular(8),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 250),
-                    child: ListView.builder(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      itemCount: options.length,
-                      itemBuilder: (context, index) {
-                        final eq = options.elementAt(index);
-                        return ListTile(
-                          dense: true,
-                          leading: const Icon(Icons.medical_services_outlined, size: 20),
-                          title: Text(eq.name, style: const TextStyle(fontSize: 14)),
-                          subtitle: Text(
-                            'SN: ${eq.serialNumber} • ${eq.department}',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                          ),
-                          onTap: () => onSelected(eq),
-                        );
-                      },
+                  validator: (v) =>
+                      (_bioUnlisted && (v == null || v.trim().isEmpty))
+                          ? l10n.issueFormUnlistedEquipmentRequired
+                          : null,
+                )
+              : Autocomplete<Equipment>(
+                  key: ValueKey(_bioAutocompleteKey),
+                  displayStringForOption: (eq) =>
+                      '${eq.name} - SN: ${eq.serialNumber}',
+                  optionsBuilder: (TextEditingValue value) {
+                    final query = value.text.toLowerCase().trim();
+                    if (query.isEmpty) {
+                      return const Iterable<Equipment>.empty();
+                    }
+                    return _bioEquipmentList.where((eq) =>
+                        eq.name.toLowerCase().contains(query) ||
+                        eq.serialNumber.toLowerCase().contains(query));
+                  },
+                  onSelected: (eq) {
+                    setState(() {
+                      _bioEquipmentId    = eq.id;
+                      _bioEquipmentError = false;
+                    });
+                  },
+                  fieldViewBuilder:
+                      (context, textController, focusNode, onSubmitted) {
+                    return TextField(
+                      controller: textController,
+                      focusNode: focusNode,
+                      onSubmitted: (_) => onSubmitted(),
+                      decoration: InputDecoration(
+                        hintText: l10n.issueFormSelectEquipment,
+                        prefixIcon: const Icon(Icons.search,
+                            color: AppColors.textSecondary),
+                        suffixIcon: _bioEquipmentId != null
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  textController.clear();
+                                  setState(() {
+                                    _bioEquipmentId    = null;
+                                    _bioEquipmentError = false;
+                                  });
+                                },
+                              )
+                            : null,
+                        errorText: _bioEquipmentError
+                            ? l10n.issueFormEquipmentRequired
+                            : null,
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) => Align(
+                    alignment: Alignment.topLeft,
+                    child: Material(
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(8),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 250),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final eq = options.elementAt(index);
+                            return ListTile(
+                              dense: true,
+                              leading: const Icon(
+                                  Icons.medical_services_outlined, size: 20),
+                              title: Text(eq.name,
+                                  style: const TextStyle(fontSize: 14)),
+                              subtitle: Text(
+                                'SN: ${eq.serialNumber} • ${eq.department}',
+                                style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary),
+                              ),
+                              onTap: () => onSelected(eq),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
+        ),
+        if (!_bioUnlisted) ...[
           const SizedBox(width: 8),
           _buildQrScanButton(l10n),
         ],
-      ),
-      if (_selectedBioEquipment != null) ...[
+      ]),
+
+      // Aperçu équipement sélectionné
+      if (!_bioUnlisted && _selectedBioEquipment != null) ...[
         const SizedBox(height: 12),
         _buildEquipmentAutoFill(_selectedBioEquipment!, l10n),
       ],
+
+      // Avertissement mode non répertorié
+      if (_bioUnlisted) ...[
+        const SizedBox(height: 8),
+        _buildUnlistedWarning(l10n),
+      ],
+
+      // Toggle "Équipement non répertorié"
+      const SizedBox(height: 10),
+      _buildUnlistedToggle(
+        unlisted: _bioUnlisted,
+        label: l10n.issueFormUnlistedEquipment,
+        onToggle: () => setState(() {
+          _bioUnlisted = !_bioUnlisted;
+          if (_bioUnlisted) {
+            _bioEquipmentId    = null;
+            _bioEquipmentError = false;
+            _bioAutocompleteKey++;
+          } else {
+            _bioUnlistedNameController.clear();
+          }
+        }),
+      ),
+
       const SizedBox(height: 20),
-      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormProblemType,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _bioProblemType,
-        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        items: problemTypes
+            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+            .toList(),
         onChanged: (v) => setState(() => _bioProblemType = v!),
       ),
     ];
@@ -1156,65 +1486,77 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   List<Widget> _buildInfrastructureForm(AppLocalizations l10n) {
     return [
-      // Numéro de tag (optionnel)
-      Text(l10n.issueFormInfraTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormInfraTagNumber,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       TextFormField(
         controller: _infraTagController,
         decoration: InputDecoration(
           hintText: l10n.issueFormInfraTagHint,
-          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
+          prefixIcon:
+              const Icon(Icons.tag, color: AppColors.textSecondary),
         ),
       ),
       const SizedBox(height: 16),
 
-      // Département
-      Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.commonDepartment,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _infraDepartment,
         hint: Text(l10n.issueFormSelectDepartment),
         items: Department.values
-            .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
+            .map((d) =>
+                DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
             .toList(),
         onChanged: (v) => setState(() => _infraDepartment = v),
-        validator: (_) => _infraDepartment == null ? l10n.issueFormDepartmentRequired : null,
+        validator: (_) => _infraDepartment == null
+            ? l10n.issueFormDepartmentRequired
+            : null,
       ),
       const SizedBox(height: 16),
 
-      // Bâtiment — texte libre
-      Text(l10n.issueFormBuilding, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormBuilding,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       TextFormField(
         controller: _infraBuildingController,
         decoration: InputDecoration(
           hintText: l10n.issueFormBuildingHint,
-          prefixIcon: const Icon(CupertinoIcons.building_2_fill, color: AppColors.textSecondary),
+          prefixIcon: const Icon(CupertinoIcons.building_2_fill,
+              color: AppColors.textSecondary),
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? l10n.issueFormBuildingRequired : null,
+        validator: (v) => (v == null || v.trim().isEmpty)
+            ? l10n.issueFormBuildingRequired
+            : null,
       ),
       const SizedBox(height: 16),
 
-      // Localisation — texte libre
-      Text(l10n.issueFormSourceLocation, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormSourceLocation,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       TextFormField(
         controller: _infraLocationController,
         decoration: InputDecoration(
           hintText: l10n.issueFormLocationHint,
-          prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.textSecondary),
+          prefixIcon: const Icon(Icons.location_on_outlined,
+              color: AppColors.textSecondary),
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? l10n.issueFormLocationRequired2 : null,
+        validator: (v) => (v == null || v.trim().isEmpty)
+            ? l10n.issueFormLocationRequired2
+            : null,
       ),
       const SizedBox(height: 16),
 
-      // Recherche rapide
-      Text(l10n.issueFormQuickSearch, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormQuickSearch,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       Autocomplete<_InfraSearchResult>(
         key: ValueKey(_infraSearchKey),
-        displayStringForOption: (r) => '${r.category} / ${r.subcategory} — ${r.issue}',
-        optionsBuilder: (TextEditingValue value) => _searchInfraCatalog(value.text),
+        displayStringForOption: (r) =>
+            '${r.category} / ${r.subcategory} — ${r.issue}',
+        optionsBuilder: (TextEditingValue value) =>
+            _searchInfraCatalog(value.text),
         onSelected: (result) {
           setState(() {
             _infraCategory    = result.category;
@@ -1230,7 +1572,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             onSubmitted: (_) => onSubmitted(),
             decoration: InputDecoration(
               hintText: l10n.issueFormQuickSearchHint,
-              prefixIcon: const Icon(Icons.search, color: AppColors.textSecondary),
+              prefixIcon:
+                  const Icon(Icons.search, color: AppColors.textSecondary),
             ),
           );
         },
@@ -1249,12 +1592,13 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                   final r = options.elementAt(index);
                   return ListTile(
                     dense: true,
-                    leading: const Icon(Icons.build_outlined, size: 18, color: AppColors.warning),
-                    title: Text(r.issue, style: const TextStyle(fontSize: 14)),
-                    subtitle: Text(
-                      '${r.category} › ${r.subcategory}',
-                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
+                    leading: const Icon(Icons.build_outlined,
+                        size: 18, color: AppColors.warning),
+                    title: Text(r.issue,
+                        style: const TextStyle(fontSize: 14)),
+                    subtitle: Text('${r.category} › ${r.subcategory}',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary)),
                     onTap: () => onSelected(r),
                   );
                 },
@@ -1267,8 +1611,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       const Divider(height: 1),
       const SizedBox(height: 16),
 
-      // Catégorie
-      Text(l10n.issueFormProblemCategory, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormProblemCategory,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _infraCategory,
@@ -1281,12 +1625,13 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           _infraSubcategory = null;
           _infraIssue       = null;
         }),
-        validator: (_) => _infraCategory == null ? l10n.issueFormCategoryRequired : null,
+        validator: (_) =>
+            _infraCategory == null ? l10n.issueFormCategoryRequired : null,
       ),
       const SizedBox(height: 16),
 
-      // Sous-catégorie
-      Text(l10n.issueFormProblemSubcategory, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormProblemSubcategory,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _infraSubcategory,
@@ -1294,27 +1639,28 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         items: _infraSubcategories
             .map((s) => DropdownMenuItem(value: s, child: Text(s)))
             .toList(),
-        onChanged: (v) => setState(() {
-          _infraSubcategory = v;
-          _infraIssue       = null;
-        }),
-        validator: (_) => _infraSubcategory == null ? l10n.issueFormSubcategoryRequired : null,
+        onChanged: (v) =>
+            setState(() { _infraSubcategory = v; _infraIssue = null; }),
+        validator: (_) => _infraSubcategory == null
+            ? l10n.issueFormSubcategoryRequired
+            : null,
       ),
       const SizedBox(height: 16),
 
-      // Problème spécifique
-      Text(l10n.issueFormSpecificIssue, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormSpecificIssue,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _infraIssue,
         hint: Text(l10n.issueFormSelectSpecificIssue),
         items: [
-          ..._infraIssues
-              .map((issue) => DropdownMenuItem(value: issue, child: Text(issue))),
+          ..._infraIssues.map(
+              (issue) => DropdownMenuItem(value: issue, child: Text(issue))),
           DropdownMenuItem(value: 'Other', child: Text(l10n.issueFormOther)),
         ],
         onChanged: (v) => setState(() => _infraIssue = v),
-        validator: (_) => _infraIssue == null ? l10n.issueFormIssueRequired : null,
+        validator: (_) =>
+            _infraIssue == null ? l10n.issueFormIssueRequired : null,
       ),
     ];
   }
@@ -1324,66 +1670,121 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   List<Widget> _buildITForm(AppLocalizations l10n) {
     final problemTypes = _problemTypes(l10n);
     return [
-      Text(l10n.issueFormTagNumber, style: const TextStyle(fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      TextFormField(
-        controller: _tagController,
-        decoration: InputDecoration(
-          hintText: l10n.issueFormTagNumberHint,
-          prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
-          suffixIcon: IconButton(
-            icon: const Icon(Icons.search),
-            tooltip: l10n.issueFormSearchEquipmentByTag,
-            onPressed: _itSearching ? null : _searchByTagNumber,
+      // Mode répertorié : recherche par tag
+      if (!_itUnlisted) ...[
+        Text(l10n.issueFormTagNumber,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _tagController,
+          decoration: InputDecoration(
+            hintText: l10n.issueFormTagNumberHint,
+            prefixIcon:
+                const Icon(Icons.tag, color: AppColors.textSecondary),
+            suffixIcon: IconButton(
+              icon: const Icon(Icons.search),
+              tooltip: l10n.issueFormSearchEquipmentByTag,
+              onPressed: _itSearching ? null : _searchByTagNumber,
+            ),
           ),
+          onFieldSubmitted: (_) => _searchByTagNumber(),
+          validator: (_) {
+            if (_itUnlisted) return null;
+            if (_itEquipment == null && !_itSearching) {
+              return l10n.issueFormTagRequired;
+            }
+            return null;
+          },
         ),
-        onFieldSubmitted: (_) => _searchByTagNumber(),
-        validator: (_) {
-          if (_itEquipment == null && !_itSearching) {
-            return l10n.issueFormTagRequired;
-          }
-          return null;
-        },
-      ),
-      if (_itSearching) ...[
-        const SizedBox(height: 8),
-        Row(children: [
-          const SizedBox(width: 4),
-          const SizedBox(
-            width: 16, height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 12),
-          Text(l10n.issueFormTagSearching,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-        ]),
-      ],
-      if (_itTagError != null) ...[
-        const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: AppColors.errorLight,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-          ),
-          child: Row(children: [
-            const Icon(Icons.error_outline, color: AppColors.error, size: 18),
-            const SizedBox(width: 10),
-            Expanded(child: Text(_itTagError!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
+        if (_itSearching) ...[
+          const SizedBox(height: 8),
+          Row(children: [
+            const SizedBox(width: 4),
+            const SizedBox(
+              width: 16, height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Text(l10n.issueFormTagSearching,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13)),
           ]),
+        ],
+        if (_itTagError != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.errorLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.3)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.error_outline,
+                  color: AppColors.error, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(_itTagError!,
+                    style: const TextStyle(
+                        color: AppColors.error, fontSize: 13)),
+              ),
+            ]),
+          ),
+        ],
+        if (_itEquipment != null) ...[
+          const SizedBox(height: 12),
+          _buildEquipmentAutoFill(_itEquipment!, l10n),
+        ],
+      ],
+
+      // Mode non répertorié : nom libre
+      if (_itUnlisted) ...[
+        Text(l10n.issueFormUnlistedEquipmentNameLabel,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _itUnlistedNameController,
+          decoration: InputDecoration(
+            hintText: l10n.issueFormUnlistedEquipmentHint,
+            prefixIcon: const Icon(Icons.help_outline,
+                color: AppColors.warning),
+          ),
+          validator: (v) =>
+              (_itUnlisted && (v == null || v.trim().isEmpty))
+                  ? l10n.issueFormUnlistedEquipmentRequired
+                  : null,
         ),
+        const SizedBox(height: 8),
+        _buildUnlistedWarning(l10n),
       ],
-      if (_itEquipment != null) ...[
-        const SizedBox(height: 12),
-        _buildEquipmentAutoFill(_itEquipment!, l10n),
-      ],
+
+      // Toggle non répertorié IT
+      const SizedBox(height: 10),
+      _buildUnlistedToggle(
+        unlisted: _itUnlisted,
+        label: l10n.issueFormUnlistedEquipment,
+        onToggle: () => setState(() {
+          _itUnlisted = !_itUnlisted;
+          if (_itUnlisted) {
+            _itEquipment = null;
+            _itTagError  = null;
+            _tagController.clear();
+          } else {
+            _itUnlistedNameController.clear();
+          }
+        }),
+      ),
+
       const SizedBox(height: 20),
-      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormProblemType,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _itProblemType,
-        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        items: problemTypes
+            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+            .toList(),
         onChanged: (v) => setState(() => _itProblemType = v!),
       ),
     ];
@@ -1394,23 +1795,30 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   List<Widget> _buildAutreForm(AppLocalizations l10n) {
     final problemTypes = _problemTypes(l10n);
     return [
-      Text(l10n.commonDepartment, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.commonDepartment,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _autreDepartment,
         hint: Text(l10n.issueFormSelectDepartment),
         items: Department.values
-            .map((d) => DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
+            .map((d) =>
+                DropdownMenuItem(value: d.displayName, child: Text(d.displayName)))
             .toList(),
         onChanged: (v) => setState(() => _autreDepartment = v),
-        validator: (_) => _autreDepartment == null ? l10n.issueFormDepartmentRequired : null,
+        validator: (_) => _autreDepartment == null
+            ? l10n.issueFormDepartmentRequired
+            : null,
       ),
       const SizedBox(height: 20),
-      Text(l10n.issueFormProblemType, style: const TextStyle(fontWeight: FontWeight.w500)),
+      Text(l10n.issueFormProblemType,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       DropdownButtonFormField<String>(
         initialValue: _autreProblemType,
-        items: problemTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+        items: problemTypes
+            .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+            .toList(),
         onChanged: (v) => setState(() => _autreProblemType = v!),
       ),
     ];
@@ -1419,6 +1827,51 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   // ══════════════════════════════════════════════════════════════════════════
   // WIDGETS PARTAGÉS
   // ══════════════════════════════════════════════════════════════════════════
+
+  /// Bandeau d'avertissement pour un équipement non répertorié.
+  Widget _buildUnlistedWarning(AppLocalizations l10n) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Row(children: [
+        const Icon(Icons.warning_amber, color: AppColors.warning, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(l10n.issueFormUnlistedWarning,
+              style: const TextStyle(
+                  fontSize: 12, color: AppColors.textSecondary)),
+        ),
+      ]),
+    );
+  }
+
+  /// Case à cocher "Équipement non répertorié".
+  Widget _buildUnlistedToggle({
+    required bool unlisted,
+    required String label,
+    required VoidCallback onToggle,
+  }) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(
+          unlisted ? Icons.check_box : Icons.check_box_outline_blank,
+          size: 18,
+          color: unlisted ? AppColors.warning : AppColors.textMuted,
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: TextStyle(
+          fontSize: 13,
+          color: unlisted ? AppColors.warning : AppColors.textSecondary,
+          fontWeight: unlisted ? FontWeight.w600 : FontWeight.normal,
+        )),
+      ]),
+    );
+  }
 
   Widget _buildEquipmentAutoFill(Equipment eq, AppLocalizations l10n) {
     return Container(
@@ -1431,23 +1884,16 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         const Icon(Icons.info_outline, color: AppColors.primary),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                eq.name,
-                style: const TextStyle(fontWeight: FontWeight.w500),
-              ),
-              Text(
-                '${eq.department} • ${eq.location}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-              ),
-              Text(
-                l10n.issueFormAutoFilled,
-                style: const TextStyle(fontSize: 11, color: AppColors.primary),
-              ),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(eq.name,
+                style: const TextStyle(fontWeight: FontWeight.w500)),
+            Text('${eq.department} • ${eq.location}',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textSecondary)),
+            Text(l10n.issueFormAutoFilled,
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.primary)),
+          ]),
         ),
       ]),
     );
@@ -1470,78 +1916,71 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                user?.fullName ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              if (user?.email != null)
-                Text(user!.email,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              if (user?.department != null && user!.department.isNotEmpty)
-                Text(user.department,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            ],
-          ),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(user?.fullName ?? '',
+                style: const TextStyle(
+                    fontWeight: FontWeight.w600, fontSize: 14)),
+            if (user?.email != null)
+              Text(user!.email,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+            if (user?.department != null && user!.department.isNotEmpty)
+              Text(user.department,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondary)),
+          ]),
         ),
         const Icon(Icons.verified_user, color: AppColors.success, size: 18),
       ]),
     );
   }
 
-  /// Miniature photo cliquable — clic = aperçu plein écran.
   Widget _buildPhotoThumbnail(_PhotoItem photo, int index) {
     return Stack(children: [
       GestureDetector(
         onTap: () => _openPhotoPreview(photo),
         child: Container(
-          width: 100,
-          height: 100,
+          width: 100, height: 100,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppColors.border),
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(11),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.memory(
-                  photo.bytes,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, _) => Container(
-                    color: AppColors.background,
-                    child: const Icon(Icons.broken_image, color: AppColors.textSecondary),
-                  ),
+            child: Stack(fit: StackFit.expand, children: [
+              Image.memory(
+                photo.bytes,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, _) => Container(
+                  color: AppColors.background,
+                  child: const Icon(Icons.broken_image,
+                      color: AppColors.textSecondary),
                 ),
-                // Indicateur visuel zoom
-                Positioned(
-                  bottom: 4,
-                  right: 4,
-                  child: Container(
-                    padding: const EdgeInsets.all(3),
-                    decoration: BoxDecoration(
-                      color: Colors.black45,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: const Icon(Icons.zoom_in, color: Colors.white, size: 12),
+              ),
+              Positioned(
+                bottom: 4, right: 4,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(4),
                   ),
+                  child: const Icon(Icons.zoom_in,
+                      color: Colors.white, size: 12),
                 ),
-              ],
-            ),
+              ),
+            ]),
           ),
         ),
       ),
       Positioned(
-        top: 4,
-        right: 4,
+        top: 4, right: 4,
         child: GestureDetector(
           onTap: () => _removePhoto(index),
           child: Container(
             padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+            decoration: const BoxDecoration(
+                color: AppColors.error, shape: BoxShape.circle),
             child: const Icon(Icons.close, color: Colors.white, size: 14),
           ),
         ),
@@ -1553,33 +1992,32 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return GestureDetector(
       onTap: _pickPhoto,
       child: Container(
-        width: 100,
-        height: 100,
+        width: 100, height: 100,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.primary, width: 2),
           color: AppColors.primaryLight,
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
-            const SizedBox(height: 4),
-            Text(l10n.issueFormAddPhoto,
-                style: const TextStyle(
-                    color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
-          ],
-        ),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.add_a_photo, color: AppColors.primary, size: 28),
+          const SizedBox(height: 4),
+          Text(l10n.issueFormAddPhoto,
+              style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500)),
+        ]),
       ),
     );
   }
 
-  /// Switch indiquant si l'équipement peut être mis hors tension pour l'intervention.
   Widget _buildEquipmentAvailableSwitch(AppLocalizations l10n) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: _equipmentAvailable ? AppColors.successLight : AppColors.errorLight,
+        color: _equipmentAvailable
+            ? AppColors.successLight
+            : AppColors.errorLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: (_equipmentAvailable ? AppColors.success : AppColors.error)
@@ -1589,22 +2027,19 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       child: SwitchListTile(
         value: _equipmentAvailable,
         onChanged: (v) => setState(() => _equipmentAvailable = v),
-        title: Text(
-          l10n.issueFormEquipmentAvailableLabel,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
-        ),
-        subtitle: Text(
-          l10n.issueFormEquipmentAvailableHint,
-          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-        ),
+        title: Text(l10n.issueFormEquipmentAvailableLabel,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+        subtitle: Text(l10n.issueFormEquipmentAvailableHint,
+            style: const TextStyle(
+                fontSize: 12, color: AppColors.textSecondary)),
         activeThumbColor: AppColors.success,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
-  /// Bouton icône QR code placé à côté du champ de recherche d'équipement.
   Widget _buildQrScanButton(AppLocalizations l10n) {
     return Tooltip(
       message: l10n.issueFormScanQrTooltip,
@@ -1618,11 +2053,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AppColors.primary),
           ),
-          child: const Icon(
-            CupertinoIcons.qrcode_viewfinder,
-            color: AppColors.primary,
-            size: 24,
-          ),
+          child: const Icon(CupertinoIcons.qrcode_viewfinder,
+              color: AppColors.primary, size: 24),
         ),
       ),
     );

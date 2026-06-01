@@ -7321,6 +7321,144 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Données actualisées'**
   String get hubKpiLastRefreshLabel;
+
+  /// No description provided for @equipmentViewGrid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vue grille'**
+  String get equipmentViewGrid;
+
+  /// No description provided for @equipmentViewList.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vue liste'**
+  String get equipmentViewList;
+
+  /// No description provided for @equipmentColumnLastPm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière PM / Intervention'**
+  String get equipmentColumnLastPm;
+
+  /// No description provided for @equipmentFilterMyUnit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon unité / Ma salle'**
+  String get equipmentFilterMyUnit;
+
+  /// No description provided for @equipmentFilterUnit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Unité / Salle'**
+  String get equipmentFilterUnit;
+
+  /// No description provided for @equipmentScanQrTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher par QR code'**
+  String get equipmentScanQrTooltip;
+
+  /// No description provided for @equipmentScanQrTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rechercher par QR'**
+  String get equipmentScanQrTitle;
+
+  /// No description provided for @equipmentScanQrManualTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisir l\'identifiant manuellement'**
+  String get equipmentScanQrManualTitle;
+
+  /// No description provided for @equipmentScanQrManualHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'ID ou numéro de série de l\'équipement'**
+  String get equipmentScanQrManualHint;
+
+  /// No description provided for @equipmentScanQrNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement trouvé pour cet identifiant'**
+  String get equipmentScanQrNotFound;
+
+  /// No description provided for @equipmentCsvShared.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fichier CSV prêt à partager'**
+  String get equipmentCsvShared;
+
+  /// No description provided for @equipmentCsvShareError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du partage du CSV'**
+  String get equipmentCsvShareError;
+
+  /// No description provided for @issueFormStep1Label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étape 1 / 2 — Catégorie & Équipement'**
+  String get issueFormStep1Label;
+
+  /// No description provided for @issueFormStep2Label.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étape 2 / 2 — Description & Photos'**
+  String get issueFormStep2Label;
+
+  /// No description provided for @issueFormScanBlock.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler par QR Code'**
+  String get issueFormScanBlock;
+
+  /// No description provided for @issueFormScanBlockTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode ultra-rapide : scanner → urgence Critique → 2 champs à remplir'**
+  String get issueFormScanBlockTooltip;
+
+  /// No description provided for @issueFormScanBlockUrgencySet.
+  ///
+  /// In fr, this message translates to:
+  /// **'Urgence mise à Critique — complétez la description'**
+  String get issueFormScanBlockUrgencySet;
+
+  /// No description provided for @issueFormUnlistedEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement non répertorié'**
+  String get issueFormUnlistedEquipment;
+
+  /// No description provided for @issueFormUnlistedEquipmentNameLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom de l\'équipement'**
+  String get issueFormUnlistedEquipmentNameLabel;
+
+  /// No description provided for @issueFormUnlistedEquipmentHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Respirateur salle 3, Moniteur lit 12...'**
+  String get issueFormUnlistedEquipmentHint;
+
+  /// No description provided for @issueFormUnlistedEquipmentRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez saisir le nom de l\'équipement'**
+  String get issueFormUnlistedEquipmentRequired;
+
+  /// No description provided for @issueFormUnlistedWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le technicien devra identifier cet équipement sur site.'**
+  String get issueFormUnlistedWarning;
+
+  /// No description provided for @issueFormPhotoGuide.
+  ///
+  /// In fr, this message translates to:
+  /// **'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.'**
+  String get issueFormPhotoGuide;
 }
 
 class _AppLocalizationsDelegate

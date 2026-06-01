@@ -4,6 +4,7 @@ import '../models/user_role.dart';
 import '../data/mock_data.dart';
 import 'auth_api_service.dart';
 import 'data_service.dart';
+import 'equipment_filter_state.dart';
 import 'feature_service.dart';
 import 'push_notification_web_service.dart';
 
@@ -172,6 +173,7 @@ class AuthService extends ChangeNotifier {
     await AuthApiService.instance.logout();
     _currentUser = null;
     FeatureService().clear();
+    EquipmentFilterState().reset();
     notifyListeners();
   }
 
@@ -179,6 +181,7 @@ class AuthService extends ChangeNotifier {
   void logout() {
     _currentUser = null;
     FeatureService().clear();
+    EquipmentFilterState().reset();
     notifyListeners();
   }
 
