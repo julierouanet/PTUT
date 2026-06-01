@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -11,6 +12,7 @@ import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
+import 'equipment_list_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigate;
@@ -22,6 +24,8 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   DateTime _lastRefresh = DateTime.now();
+  bool _isRefreshing = false;
+  Timer? _refreshTimer;
 
   // Statuts "ouverts" : non terminés, non clôturés
   static const _openStatuses = {
@@ -33,16 +37,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
     IssueStatus.redirected,
   };
 
-  // Déclenche un rechargement API puis met à jour le timestamp de fraîcheur
+  @override
+  void initState() {
+    super.initState();
+    // Auto-refresh silencieux toutes les 5 minutes
+    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
+    if (!mounted) return;
+    setState(() => _isRefreshing = true);
     await Future.wait([
       DataService().reloadEquipment(),
       DataService().reloadIssues(),
     ]);
-    if (mounted) setState(() => _lastRefresh = DateTime.now());
+    if (mounted) {
+      setState(() {
+        _isRefreshing = false;
+        _lastRefresh = DateTime.now();
+      });
+    }
   }
 
-  // Libellé de fraîcheur selon l'ancienneté de _lastRefresh
   String _freshnessLabel(AppLocalizations l10n) {
     final diff = DateTime.now().difference(_lastRefresh);
     if (diff.inSeconds < 60) return l10n.dashboardRefreshedJustNow;
@@ -50,6 +72,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final h = _lastRefresh.hour.toString().padLeft(2, '0');
     final m = _lastRefresh.minute.toString().padLeft(2, '0');
     return l10n.dashboardRefreshedAt('$h:$m');
+  }
+
+  // Retourne la macroCategory filtrée pour les rôles techniciens spécialisés.
+  // Null = pas de filtre (admin, superviseur, staff, technician générique).
+  static String? _macroCategoryForRole(UserRole? role) => switch (role) {
+    UserRole.technicianBiomedical => 'Biomedical',
+    UserRole.technicianIt         => 'IT',
+    UserRole.technicianInfra      => 'Infrastructure',
+    _                             => null,
+  };
+
+  // Navigation vers EquipmentListScreen avec filtres pré-appliqués depuis une StatCard.
+  void _navigateToEquipList({EquipmentStatus? status, bool pmOverdue = false}) {
+    final macroCategory = _macroCategoryForRole(AuthService().primaryRole);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EquipmentListScreen(
+          onNavigate: (int idx, {String? equipmentId}) => widget.onNavigate(idx),
+          initialStatus: status,
+          initialPmOverdue: pmOverdue,
+          initialMacroCategory: macroCategory,
+        ),
+      ),
+    );
   }
 
   @override
@@ -64,30 +111,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildContent(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final auth = AuthService();
-
-    // Rôle principal : détermine la vue affichée
     final role = auth.primaryRole;
-    final isStaffOnly = role == UserRole.hospitalStaff;
-    final isTechOrMore = role == UserRole.technicianBiomedical ||
-        role == UserRole.technicianIt ||
-        role == UserRole.technicianInfra ||
-        role == UserRole.technician ||
-        role == UserRole.supervisor ||
-        role == UserRole.admin;
 
-    // ── KPIs équipements ────────────────────────────────────────────────────
+    // ── Scope technicien ────────────────────────────────────────────────────
+    // Filtre macroCategory pour les techniciens spécialisés (null = tous)
+    final techMacroCategory = _macroCategoryForRole(role);
     final allEquip = DataService().equipment;
-    final total        = allEquip.length;
-    final operational  = allEquip.where((e) => e.status == EquipmentStatus.operational).length;
-    final maintenance  = allEquip.where((e) => e.status == EquipmentStatus.maintenance).length;
-    final outOfService = allEquip.where((e) => e.status == EquipmentStatus.outOfService).length;
+    final scopedEquip = techMacroCategory != null
+        ? allEquip.where((e) => e.hasMacroCategory(techMacroCategory)).toList()
+        : allEquip;
 
-    // PM en retard : preventiveMaintenanceAlertLevel == 'due' signifie nextPreventiveMaintenance < aujourd'hui
-    final pmOverdue = allEquip.where((e) => e.preventiveMaintenanceAlertLevel == 'due').length;
+    // ── KPIs sur le périmètre scopé ─────────────────────────────────────────
+    final total        = scopedEquip.length;
+    final operational  = scopedEquip.where((e) => e.status == EquipmentStatus.operational).length;
+    final maintenance  = scopedEquip.where((e) => e.status == EquipmentStatus.maintenance).length;
+    final outOfService = scopedEquip.where((e) => e.status == EquipmentStatus.outOfService).length;
+    final pmOverdue    = scopedEquip.where((e) => e.preventiveMaintenanceAlertLevel == 'due').length;
 
     // ── Incidents prioritaires ──────────────────────────────────────────────
-    // Tri : urgence décroissante (critique=3 > urgent=2 > moyen=1 > faible=0),
-    // puis date décroissante (plus récent en premier si urgences égales)
     final openIssues = DataService().issues.where((i) => _openStatuses.contains(i.status)).toList();
     openIssues.sort((a, b) {
       final byUrgency = b.urgency.index.compareTo(a.urgency.index);
@@ -97,26 +138,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final priorityIssues = openIssues.take(4).toList();
 
     // ── Alertes urgentes ────────────────────────────────────────────────────
-    // 1. Équipements hors service
     final criticalEquipment = allEquip.where((e) => e.status == EquipmentStatus.outOfService).toList();
-
-    // 2. Incidents critiques ou urgents ouverts depuis plus de 24h
     final now = DateTime.now();
     final criticalIssueAlerts = DataService().issues.where((i) {
       if (i.urgency != IssueUrgency.critique && i.urgency != IssueUrgency.urgent) return false;
       if (!_openStatuses.contains(i.status)) return false;
       final dt = DateTime.tryParse(i.createdAt);
-      if (dt == null) return false;
-      return now.difference(dt).inHours >= 24;
+      return dt != null && now.difference(dt).inHours >= 24;
     }).toList();
 
-    // ── Métriques opérationnelles (technicien/superviseur/admin) ────────────
-    // Équipements critiques (criticité A) hors service
-    final criticalOos = allEquip
-        .where((e) => e.status == EquipmentStatus.outOfService && e.criticality == EquipmentCriticality.a)
-        .toList();
+    // Incidents critiques/urgents ouverts (pour la météo staff)
+    final criticalOpenCount = DataService().issues.where((i) {
+      if (i.urgency != IssueUrgency.critique && i.urgency != IssueUrgency.urgent) return false;
+      return _openStatuses.contains(i.status);
+    }).length;
 
-    // Groupe technique de l'utilisateur connecté (pour filtrer le backlog)
+    // ── Groupe tech et backlog ──────────────────────────────────────────────
     String? techGroup;
     final user = auth.currentUser;
     if (user != null) {
@@ -129,247 +166,685 @@ class _DashboardScreenState extends State<DashboardScreen> {
       }
     }
 
-    // Backlog : incidents actifs filtrés par groupe si technicien spécialisé,
-    // sinon tous les incidents actifs (superviseur/admin)
-    final backlog = DataService().issues.where((i) {
+    final myBacklogIssues = DataService().issues.where((i) {
       if (!_openStatuses.contains(i.status)) return false;
       if (techGroup != null && i.assignedGroup != null) {
         return i.assignedGroup!.toLowerCase() == techGroup.toLowerCase();
       }
-      return true;
+      return techGroup == null;
+    }).toList();
+    final backlog = myBacklogIssues.length;
+
+    // PM à faire (due ou imminente <7j) dans le périmètre scopé
+    final pmMyDue = scopedEquip.where((e) {
+      final lvl = e.preventiveMaintenanceAlertLevel;
+      return lvl == 'due' || lvl == 'soon';
     }).length;
+
+    // Équipements criticité A hors service dans le périmètre scopé
+    final criticalOos = scopedEquip
+        .where((e) => e.status == EquipmentStatus.outOfService && e.criticality == EquipmentCriticality.a)
+        .toList();
 
     // ── Breakpoints layout ──────────────────────────────────────────────────
     final screenWidth = MediaQuery.of(context).size.width;
-    final isMobile    = screenWidth < 600;
-    final isDesktop   = screenWidth >= 800;
+    final isMobile  = screenWidth < 600;
+    final isDesktop = screenWidth >= 800;
+
+    // ── Routing par rôle ────────────────────────────────────────────────────
+    final isTechRole = role == UserRole.technicianBiomedical ||
+        role == UserRole.technicianIt ||
+        role == UserRole.technicianInfra ||
+        role == UserRole.technician;
+    final isStaffRole = role == UserRole.hospitalStaff;
+
+    Widget body;
+    if (isStaffRole) {
+      body = _buildStaffView(l10n, isMobile, criticalEquipment.length, criticalOpenCount);
+    } else if (isTechRole) {
+      body = _buildTechView(
+        l10n: l10n,
+        isMobile: isMobile,
+        isDesktop: isDesktop,
+        total: total,
+        operational: operational,
+        maintenance: maintenance,
+        outOfService: outOfService,
+        pmOverdue: pmOverdue,
+        backlog: backlog,
+        pmMyDue: pmMyDue,
+        techMacroCategory: techMacroCategory,
+        topBacklogIssues: myBacklogIssues.take(3).toList(),
+        priorityIssues: priorityIssues,
+        criticalOos: criticalOos,
+      );
+    } else {
+      body = _buildAdminView(
+        l10n: l10n,
+        isMobile: isMobile,
+        isDesktop: isDesktop,
+        total: total,
+        operational: operational,
+        maintenance: maintenance,
+        outOfService: outOfService,
+        pmOverdue: pmOverdue,
+        backlog: backlog,
+        criticalOos: criticalOos,
+        priorityIssues: priorityIssues,
+        criticalEquipment: criticalEquipment,
+        criticalIssueAlerts: criticalIssueAlerts,
+        techGroup: techGroup,
+      );
+    }
+
+    // Indicateur de refresh en cours : barre fine de 2px en position absolue
+    return Stack(
+      children: [
+        body,
+        if (_isRefreshing)
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: LinearProgressIndicator(
+              minHeight: 2,
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Vue Personnel Soignant (hospitalStaff) ─────────────────────────────────
+  // Uniquement : widget "Météo de l'hôpital" + bouton "Signaler un incident"
+
+  Widget _buildStaffView(
+    AppLocalizations l10n,
+    bool isMobile,
+    int oosCount,
+    int criticalCount,
+  ) {
+    final hasAlert = oosCount > 0 || criticalCount > 0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── En-tête + indicateur de fraîcheur ─────────────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.dashboardTitle,
-                      style: TextStyle(
-                        fontSize: isMobile ? 20 : 28,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      l10n.dashboardSubtitle,
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
+          // En-tête
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(
+              l10n.dashboardTitle,
+              style: TextStyle(
+                fontSize: isMobile ? 20 : 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary,
               ),
-              // Bouton actualiser + timestamp discret
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 20),
-                    color: AppColors.textSecondary,
-                    tooltip: l10n.dashboardRefreshTooltip,
-                    onPressed: _refresh,
-                  ),
-                  Text(
-                    _freshnessLabel(l10n),
-                    style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ── Boutons d'action rapide ────────────────────────────────────
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              ElevatedButton.icon(
-                onPressed: () => widget.onNavigate(1),
-                icon: const Icon(Icons.inventory_2, size: 18),
-                label: Text(l10n.dashboardViewEquipment),
-              ),
-              ElevatedButton.icon(
-                onPressed: () => showIssueCategorySelector(context),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning),
-                icon: const Icon(Icons.report_problem_outlined, size: 18),
-                label: Text(l10n.dashboardReportProblem),
-              ),
-              // Bouton "Voir les incidents" : masqué pour le simple personnel hospitalier
-              if (!isStaffOnly)
-                ElevatedButton.icon(
-                  onPressed: () => widget.onNavigate(2),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
-                  icon: const Icon(Icons.list_alt, size: 18),
-                  label: Text(l10n.dashboardViewIssues),
-                ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          // ── StatCards (5ème carte = PM en retard) ─────────────────────
-          if (isMobile) ...[
-            Row(children: [
-              Expanded(child: _buildStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(l10n.dashboardOperational, '$operational', Icons.check_circle_outline, AppColors.success)),
-            ]),
-            const SizedBox(height: 12),
-            Row(children: [
-              Expanded(child: _buildStatCard(l10n.dashboardMaintenance, '$maintenance', Icons.build_outlined, AppColors.warning)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(l10n.dashboardOutOfService, '$outOfService', Icons.cancel_outlined, AppColors.error)),
-            ]),
-            const SizedBox(height: 12),
-            // PM en retard : pleine largeur en mobile, couleur rouge si non nul
-            _buildStatCard(
-              l10n.dashboardPmOverdue,
-              '$pmOverdue',
-              Icons.event_busy_outlined,
-              pmOverdue > 0 ? AppColors.error : AppColors.textSecondary,
             ),
-          ] else
-            Row(children: [
-              Expanded(child: _buildStatCard(l10n.dashboardTotal, '$total', Icons.inventory_2_outlined, AppColors.primary)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(l10n.dashboardOperational, '$operational', Icons.check_circle_outline, AppColors.success)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(l10n.dashboardMaintenance, '$maintenance', Icons.build_outlined, AppColors.warning)),
-              const SizedBox(width: 12),
-              Expanded(child: _buildStatCard(l10n.dashboardOutOfService, '$outOfService', Icons.cancel_outlined, AppColors.error)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildStatCard(
-                  l10n.dashboardPmOverdue,
-                  '$pmOverdue',
-                  Icons.event_busy_outlined,
-                  pmOverdue > 0 ? AppColors.error : AppColors.textSecondary,
-                ),
-              ),
-            ]),
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 20),
+              color: AppColors.textSecondary,
+              tooltip: l10n.dashboardRefreshTooltip,
+              onPressed: _refresh,
+            ),
+          ]),
+          Text(
+            _freshnessLabel(l10n),
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
           const SizedBox(height: 24),
 
-          // ── Barre de progression statut équipements ────────────────────
+          // Widget Météo de l'hôpital
           Card(
+            elevation: 0,
+            color: hasAlert
+                ? AppColors.error.withValues(alpha: 0.05)
+                : AppColors.success.withValues(alpha: 0.05),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: hasAlert
+                    ? AppColors.error.withValues(alpha: 0.3)
+                    : AppColors.success.withValues(alpha: 0.3),
+              ),
+            ),
             child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+              padding: const EdgeInsets.all(20),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Icon(
+                    hasAlert ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+                    color: hasAlert ? AppColors.error : AppColors.success,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 8),
                   Text(
-                    l10n.dashboardEquipmentStatus,
+                    l10n.dashboardWeatherTitle,
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  LabeledProgressBar(label: l10n.dashboardOperationalStatus, current: operational, total: total, color: AppColors.success),
-                  const SizedBox(height: 12),
-                  LabeledProgressBar(label: l10n.dashboardInMaintenance, current: maintenance, total: total, color: AppColors.warning),
-                  const SizedBox(height: 12),
-                  LabeledProgressBar(label: l10n.dashboardOutOfServiceStatus, current: outOfService, total: total, color: AppColors.error),
-                ],
-              ),
+                ]),
+                const SizedBox(height: 16),
+                if (!hasAlert)
+                  Text(
+                    l10n.dashboardWeatherAllGood,
+                    style: const TextStyle(color: AppColors.success, fontSize: 15),
+                  ),
+                if (criticalCount > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      const Icon(Icons.report_problem_outlined, size: 18, color: AppColors.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          l10n.dashboardWeatherCriticalCount(criticalCount),
+                          style: const TextStyle(color: AppColors.error, fontSize: 15),
+                        ),
+                      ),
+                    ]),
+                  ),
+                if (oosCount > 0)
+                  Row(children: [
+                    const Icon(Icons.cancel_outlined, size: 18, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.dashboardWeatherOosCount(oosCount),
+                        style: const TextStyle(color: AppColors.error, fontSize: 15),
+                      ),
+                    ),
+                  ]),
+              ]),
             ),
           ),
           const SizedBox(height: 24),
 
-          // ── Indicateurs opérationnels — visible uniquement pour les techniciens,
-          //    superviseurs et admins ──────────────────────────────────────
-          if (isTechOrMore) ...[
-            _buildTechMetrics(l10n, backlog, criticalOos.length, techGroup),
-            const SizedBox(height: 24),
-          ],
-
-          // ── Section principale : incidents prioritaires + alertes + panel
-          if (isDesktop)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Colonne gauche : incidents prioritaires (plus large)
-                Expanded(
-                  flex: 2,
-                  child: _buildPriorityIssues(l10n, priorityIssues),
+          // Bouton massif "Signaler un incident"
+          SizedBox(
+            width: double.infinity,
+            height: 54,
+            child: ElevatedButton.icon(
+              onPressed: () => showIssueCategorySelector(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 24),
-                // Colonne centrale : alertes urgentes
-                Expanded(
-                  flex: 2,
-                  child: _buildUrgentAlerts(l10n, criticalEquipment, criticalIssueAlerts),
-                ),
-                // Colonne droite : panel équipements critiques (technicien/admin/superviseur uniquement)
-                if (isTechOrMore) ...[
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 1,
-                    child: _buildCriticalPanel(l10n, criticalOos),
-                  ),
-                ],
-              ],
-            )
-          else
-            Column(
-              children: [
-                _buildPriorityIssues(l10n, priorityIssues),
-                const SizedBox(height: 24),
-                _buildUrgentAlerts(l10n, criticalEquipment, criticalIssueAlerts),
-                if (isTechOrMore) ...[
-                  const SizedBox(height: 24),
-                  _buildCriticalPanel(l10n, criticalOos),
-                ],
-              ],
+              ),
+              icon: const Icon(Icons.report_problem_outlined, size: 22),
+              label: Text(
+                l10n.dashboardWeatherReportBtn,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
+          ),
         ],
       ),
     );
   }
 
-  // ── Widget helpers ──────────────────────────────────────────────────────────
+  // ── Vue Technicien ─────────────────────────────────────────────────────────
+  // KPIs scopés par périmètre + Mes tâches du jour + incidents prioritaires
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+  Widget _buildTechView({
+    required AppLocalizations l10n,
+    required bool isMobile,
+    required bool isDesktop,
+    required int total,
+    required int operational,
+    required int maintenance,
+    required int outOfService,
+    required int pmOverdue,
+    required int backlog,
+    required int pmMyDue,
+    required String? techMacroCategory,
+    required List<Issue> topBacklogIssues,
+    required List<Issue> priorityIssues,
+    required List<Equipment> criticalOos,
+  }) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // En-tête avec scope
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                l10n.dashboardTitle,
+                style: TextStyle(
+                  fontSize: isMobile ? 20 : 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                techMacroCategory != null
+                    ? l10n.dashboardScopedTo(techMacroCategory)
+                    : l10n.dashboardSubtitle,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+            ]),
+          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 20),
+              color: AppColors.textSecondary,
+              tooltip: l10n.dashboardRefreshTooltip,
+              onPressed: _refresh,
             ),
-            child: Icon(icon, color: color, size: 20),
+            Text(
+              _freshnessLabel(l10n),
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ]),
+        ]),
+        const SizedBox(height: 16),
+
+        // Bouton signaler
+        ElevatedButton.icon(
+          onPressed: () => showIssueCategorySelector(context),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning),
+          icon: const Icon(Icons.report_problem_outlined, size: 18),
+          label: Text(l10n.dashboardReportProblem),
+        ),
+        const SizedBox(height: 24),
+
+        // StatCards scopées et interactives
+        _buildStatCards(l10n, isMobile, total, operational, maintenance, outOfService, pmOverdue),
+        const SizedBox(height: 24),
+
+        // Mes tâches du jour
+        _buildMyTasksSection(l10n, backlog, pmMyDue, topBacklogIssues),
+        const SizedBox(height: 24),
+
+        // Incidents prioritaires + panel critique (desktop = côte à côte)
+        if (isDesktop)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(flex: 2, child: _buildPriorityIssues(l10n, priorityIssues)),
+            if (criticalOos.isNotEmpty) ...[
+              const SizedBox(width: 24),
+              Expanded(flex: 1, child: _buildCriticalPanel(l10n, criticalOos)),
+            ],
+          ])
+        else
+          Column(children: [
+            _buildPriorityIssues(l10n, priorityIssues),
+            if (criticalOos.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              _buildCriticalPanel(l10n, criticalOos),
+            ],
+          ]),
+      ]),
+    );
+  }
+
+  // ── Vue Admin / Superviseur ────────────────────────────────────────────────
+  // Vue globale complète : toutes les sections, KPIs non filtrés
+
+  Widget _buildAdminView({
+    required AppLocalizations l10n,
+    required bool isMobile,
+    required bool isDesktop,
+    required int total,
+    required int operational,
+    required int maintenance,
+    required int outOfService,
+    required int pmOverdue,
+    required int backlog,
+    required List<Equipment> criticalOos,
+    required List<Issue> priorityIssues,
+    required List<Equipment> criticalEquipment,
+    required List<Issue> criticalIssueAlerts,
+    required String? techGroup,
+  }) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // En-tête + indicateur de fraîcheur
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                l10n.dashboardTitle,
+                style: TextStyle(
+                  fontSize: isMobile ? 20 : 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(l10n.dashboardSubtitle, style: const TextStyle(color: AppColors.textSecondary)),
+            ]),
+          ),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 20),
+              color: AppColors.textSecondary,
+              tooltip: l10n.dashboardRefreshTooltip,
+              onPressed: _refresh,
+            ),
+            Text(
+              _freshnessLabel(l10n),
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ]),
+        ]),
+        const SizedBox(height: 16),
+
+        // Boutons d'action rapide
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ElevatedButton.icon(
+              onPressed: () => widget.onNavigate(1),
+              icon: const Icon(Icons.inventory_2, size: 18),
+              label: Text(l10n.dashboardViewEquipment),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => showIssueCategorySelector(context),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning),
+              icon: const Icon(Icons.report_problem_outlined, size: 18),
+              label: Text(l10n.dashboardReportProblem),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => widget.onNavigate(2),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+              icon: const Icon(Icons.list_alt, size: 18),
+              label: Text(l10n.dashboardViewIssues),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // StatCards interactives (scope global pour admin)
+        _buildStatCards(l10n, isMobile, total, operational, maintenance, outOfService, pmOverdue),
+        const SizedBox(height: 24),
+
+        // Barre de progression statut équipements
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(
+                l10n.dashboardEquipmentStatus,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 16),
+              LabeledProgressBar(
+                  label: l10n.dashboardOperationalStatus,
+                  current: operational,
+                  total: total,
+                  color: AppColors.success),
+              const SizedBox(height: 12),
+              LabeledProgressBar(
+                  label: l10n.dashboardInMaintenance,
+                  current: maintenance,
+                  total: total,
+                  color: AppColors.warning),
+              const SizedBox(height: 12),
+              LabeledProgressBar(
+                  label: l10n.dashboardOutOfServiceStatus,
+                  current: outOfService,
+                  total: total,
+                  color: AppColors.error),
+            ]),
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        // Indicateurs opérationnels (backlog global + critiques HS)
+        _buildTechMetrics(l10n, backlog, criticalOos.length, techGroup),
+        const SizedBox(height: 24),
+
+        // Incidents + alertes + panel critique (desktop = 3 colonnes)
+        if (isDesktop)
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(flex: 2, child: _buildPriorityIssues(l10n, priorityIssues)),
+            const SizedBox(width: 24),
+            Expanded(flex: 2, child: _buildUrgentAlerts(l10n, criticalEquipment, criticalIssueAlerts)),
+            const SizedBox(width: 24),
+            Expanded(flex: 1, child: _buildCriticalPanel(l10n, criticalOos)),
+          ])
+        else
+          Column(children: [
+            _buildPriorityIssues(l10n, priorityIssues),
+            const SizedBox(height: 24),
+            _buildUrgentAlerts(l10n, criticalEquipment, criticalIssueAlerts),
+            const SizedBox(height: 24),
+            _buildCriticalPanel(l10n, criticalOos),
+          ]),
+      ]),
+    );
+  }
+
+  // ── Grille de StatCards interactive (partagée tech + admin) ───────────────
+
+  Widget _buildStatCards(
+    AppLocalizations l10n,
+    bool isMobile,
+    int total,
+    int operational,
+    int maintenance,
+    int outOfService,
+    int pmOverdue,
+  ) {
+    if (isMobile) {
+      return Column(children: [
+        Row(children: [
+          Expanded(
+            child: _buildStatCard(
+              l10n.dashboardTotal, '$total',
+              Icons.inventory_2_outlined, AppColors.primary,
+              onTap: () => _navigateToEquipList(),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(value, style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
-              Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            child: _buildStatCard(
+              l10n.dashboardOperational, '$operational',
+              Icons.check_circle_outline, AppColors.success,
+              onTap: () => _navigateToEquipList(status: EquipmentStatus.operational),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: _buildStatCard(
+              l10n.dashboardMaintenance, '$maintenance',
+              Icons.build_outlined, AppColors.warning,
+              onTap: () => _navigateToEquipList(status: EquipmentStatus.maintenance),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatCard(
+              l10n.dashboardOutOfService, '$outOfService',
+              Icons.cancel_outlined, AppColors.error,
+              onTap: () => _navigateToEquipList(status: EquipmentStatus.outOfService),
+            ),
+          ),
+        ]),
+        const SizedBox(height: 12),
+        // PM en retard : pleine largeur en mobile, couleur rouge si non nul
+        _buildStatCard(
+          l10n.dashboardPmOverdue, '$pmOverdue',
+          Icons.event_busy_outlined,
+          pmOverdue > 0 ? AppColors.error : AppColors.textSecondary,
+          onTap: pmOverdue > 0 ? () => _navigateToEquipList(pmOverdue: true) : null,
+        ),
+      ]);
+    }
+
+    return Row(children: [
+      Expanded(
+        child: _buildStatCard(
+          l10n.dashboardTotal, '$total',
+          Icons.inventory_2_outlined, AppColors.primary,
+          onTap: () => _navigateToEquipList(),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _buildStatCard(
+          l10n.dashboardOperational, '$operational',
+          Icons.check_circle_outline, AppColors.success,
+          onTap: () => _navigateToEquipList(status: EquipmentStatus.operational),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _buildStatCard(
+          l10n.dashboardMaintenance, '$maintenance',
+          Icons.build_outlined, AppColors.warning,
+          onTap: () => _navigateToEquipList(status: EquipmentStatus.maintenance),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _buildStatCard(
+          l10n.dashboardOutOfService, '$outOfService',
+          Icons.cancel_outlined, AppColors.error,
+          onTap: () => _navigateToEquipList(status: EquipmentStatus.outOfService),
+        ),
+      ),
+      const SizedBox(width: 12),
+      Expanded(
+        child: _buildStatCard(
+          l10n.dashboardPmOverdue, '$pmOverdue',
+          Icons.event_busy_outlined,
+          pmOverdue > 0 ? AppColors.error : AppColors.textSecondary,
+          onTap: pmOverdue > 0 ? () => _navigateToEquipList(pmOverdue: true) : null,
+        ),
+      ),
+    ]);
+  }
+
+  // ── Widget "Mes tâches du jour" (vue technicien) ───────────────────────────
+
+  Widget _buildMyTasksSection(
+    AppLocalizations l10n,
+    int backlog,
+    int pmMyDue,
+    List<Issue> topIssues,
+  ) {
+    final hasWork = backlog > 0 || pmMyDue > 0;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Icon(Icons.assignment_outlined, size: 18, color: AppColors.primary),
+            const SizedBox(width: 8),
+            Text(
+              l10n.dashboardMyTasksTitle,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          if (!hasWork)
+            Text(
+              l10n.dashboardMyTasksNoTasks,
+              style: const TextStyle(color: AppColors.textSecondary),
+            )
+          else ...[
+            Row(children: [
+              if (backlog > 0)
+                Expanded(
+                  child: _buildMetricTile(
+                    label: l10n.dashboardTechBacklogLabel,
+                    value: '$backlog',
+                    icon: Icons.inbox_outlined,
+                    color: AppColors.warning,
+                  ),
+                ),
+              if (backlog > 0 && pmMyDue > 0) const SizedBox(width: 12),
+              if (pmMyDue > 0)
+                Expanded(
+                  child: _buildMetricTile(
+                    label: l10n.dashboardMyTasksPmDue,
+                    value: '$pmMyDue',
+                    icon: Icons.event_busy_outlined,
+                    color: AppColors.error,
+                  ),
+                ),
             ]),
+            if (topIssues.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Divider(),
+              ...topIssues.map((issue) => _buildIssueRow(l10n, issue)),
+            ],
+          ],
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => widget.onNavigate(2),
+              child: Text(l10n.dashboardMyTasksViewIssues),
+            ),
           ),
         ]),
       ),
     );
   }
 
-  // Section incidents prioritaires :
-  // Tri par urgence décroissante (critique > urgent > moyen > faible),
-  // puis par date décroissante à urgence égale.
+  // ── Widget helpers ──────────────────────────────────────────────────────────
+
+  // Stat card avec support onTap (InkWell + flèche discrète si tappable)
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return Card(
+      clipBehavior: onTap != null ? Clip.hardEdge : Clip.none,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(value,
+                    style: TextStyle(color: color, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(title,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+              ]),
+            ),
+            if (onTap != null)
+              Icon(Icons.arrow_forward_ios, size: 12, color: AppColors.textMuted),
+          ]),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPriorityIssues(AppLocalizations l10n, List<Issue> issues) {
     return Card(
       child: Padding(
@@ -429,9 +904,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Section alertes urgentes :
-  // - Équipements hors service (tous)
-  // - Incidents urgents/critiques ouverts depuis plus de 24 heures
   Widget _buildUrgentAlerts(
     AppLocalizations l10n,
     List<Equipment> criticalEquipment,
@@ -463,13 +935,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (!hasAlerts)
             Text(l10n.dashboardNoAlerts, style: const TextStyle(color: AppColors.textSecondary))
           else ...[
-            // Équipements hors service
             ...criticalEquipment.map((eq) => AlertCard(
                   title: l10n.dashboardCriticalFailure,
                   message: '${eq.name} — ${eq.department}',
                   severity: AlertSeverity.critical,
                 )),
-            // Incidents critiques/urgents >24h
             ...criticalIssues.map((issue) => AlertCard(
                   title: l10n.dashboardCriticalIssue24h,
                   message: '${issue.displayName} — ${issue.urgency.localizedName(l10n)}',
@@ -481,7 +951,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Indicateurs opérationnels pour techniciens, superviseurs et admins
+  // Indicateurs opérationnels globaux (admin/superviseur)
   Widget _buildTechMetrics(
     AppLocalizations l10n,
     int backlog,
@@ -512,7 +982,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 value: '$backlog',
                 icon: Icons.inbox_outlined,
                 color: backlog > 0 ? AppColors.warning : AppColors.success,
-                // Affiche le groupe si l'utilisateur est un technicien spécialisé
                 subtitle: techGroup,
               ),
             ),
@@ -550,13 +1019,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(value, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+            Text(value,
+                style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
+            Text(label,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
             if (subtitle != null)
-              Text(
-                subtitle,
-                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
-              ),
+              Text(subtitle,
+                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500)),
           ]),
         ),
       ]),
@@ -619,13 +1088,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(
                           eq.name,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                          style: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w500),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           eq.department,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),

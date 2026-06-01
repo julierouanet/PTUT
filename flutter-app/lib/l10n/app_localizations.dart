@@ -260,12 +260,6 @@ abstract class AppLocalizations {
   /// **'Menu'**
   String get tooltipMenu;
 
-  /// No description provided for @tooltipMobilePreview.
-  ///
-  /// In fr, this message translates to:
-  /// **'Aperçu mobile'**
-  String get tooltipMobilePreview;
-
   /// No description provided for @tooltipAccountSettings.
   ///
   /// In fr, this message translates to:
@@ -5951,7 +5945,7 @@ abstract class AppLocalizations {
   /// No description provided for @systemAlertBannerAuth.
   ///
   /// In fr, this message translates to:
-  /// **'Service d\'authentification indisponible — connexion impossible. Contactez votre administrateur.'**
+  /// **'Service d\'authentification indisponible. Veuillez contacter l\'administrateur IT.'**
   String get systemAlertBannerAuth;
 
   /// No description provided for @systemAlertBannerGeneral.
@@ -6067,6 +6061,66 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun équipement critique hors service'**
   String get dashboardSidePanelEmpty;
+
+  /// No description provided for @dashboardWeatherTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Météo de l\'hôpital'**
+  String get dashboardWeatherTitle;
+
+  /// No description provided for @dashboardWeatherAllGood.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout est opérationnel — aucune alerte en cours'**
+  String get dashboardWeatherAllGood;
+
+  /// No description provided for @dashboardWeatherCriticalCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s) critique(s) ou urgent(s) en cours'**
+  String dashboardWeatherCriticalCount(int count);
+
+  /// No description provided for @dashboardWeatherOosCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} équipement(s) hors service'**
+  String dashboardWeatherOosCount(int count);
+
+  /// No description provided for @dashboardWeatherReportBtn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler un incident'**
+  String get dashboardWeatherReportBtn;
+
+  /// No description provided for @dashboardMyTasksTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes tâches du jour'**
+  String get dashboardMyTasksTitle;
+
+  /// No description provided for @dashboardMyTasksNoTasks.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune tâche en cours'**
+  String get dashboardMyTasksNoTasks;
+
+  /// No description provided for @dashboardMyTasksPmDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM à faire / imminentes'**
+  String get dashboardMyTasksPmDue;
+
+  /// No description provided for @dashboardMyTasksViewIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir mes interventions'**
+  String get dashboardMyTasksViewIssues;
+
+  /// No description provided for @dashboardScopedTo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Périmètre : {scope}'**
+  String dashboardScopedTo(String scope);
 
   /// No description provided for @equipmentExportCsv.
   ///
@@ -7051,6 +7105,222 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Impossible de charger les données pour les graphiques'**
   String get analyticsNoChartData;
+
+  /// No description provided for @healthStatusOk.
+  ///
+  /// In fr, this message translates to:
+  /// **'Opérationnel'**
+  String get healthStatusOk;
+
+  /// No description provided for @healthStatusKo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indisponible'**
+  String get healthStatusKo;
+
+  /// No description provided for @healthTooltipTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'État des services'**
+  String get healthTooltipTitle;
+
+  /// No description provided for @healthTooltipLastCheck.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière vérif. : {time}'**
+  String healthTooltipLastCheck(String time);
+
+  /// No description provided for @healthTooltipNoCheck.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérification en cours…'**
+  String get healthTooltipNoCheck;
+
+  /// No description provided for @accessRequestLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demander un accès'**
+  String get accessRequestLink;
+
+  /// No description provided for @accessRequestTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande d\'accès au système'**
+  String get accessRequestTitle;
+
+  /// No description provided for @accessRequestSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Remplissez ce formulaire. Un administrateur traitera votre demande et créera votre compte.'**
+  String get accessRequestSubtitle;
+
+  /// No description provided for @accessRequestFirstName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prénom *'**
+  String get accessRequestFirstName;
+
+  /// No description provided for @accessRequestLastName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom *'**
+  String get accessRequestLastName;
+
+  /// No description provided for @accessRequestEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email professionnel *'**
+  String get accessRequestEmail;
+
+  /// No description provided for @accessRequestDepartment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Département souhaité (optionnel)'**
+  String get accessRequestDepartment;
+
+  /// No description provided for @accessRequestRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle souhaité (optionnel)'**
+  String get accessRequestRole;
+
+  /// No description provided for @accessRequestRoleHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : Infirmier, Médecin, Technicien…'**
+  String get accessRequestRoleHint;
+
+  /// No description provided for @accessRequestSubmit.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer la demande'**
+  String get accessRequestSubmit;
+
+  /// No description provided for @accessRequestSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande envoyée ! Un administrateur vous contactera pour créer votre compte.'**
+  String get accessRequestSuccess;
+
+  /// No description provided for @accessRequestError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.'**
+  String get accessRequestError;
+
+  /// No description provided for @emergencyContactTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Urgence ou compte bloqué ?'**
+  String get emergencyContactTitle;
+
+  /// No description provided for @emergencyContactInfo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Admin IT : nzephmd@gmail.com  •  +250 788 823 228'**
+  String get emergencyContactInfo;
+
+  /// No description provided for @hubStaffTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Que souhaitez-vous faire ?'**
+  String get hubStaffTitle;
+
+  /// No description provided for @hubStaffReportButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaler une panne'**
+  String get hubStaffReportButton;
+
+  /// No description provided for @hubStaffActiveIssuesButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes incidents actifs'**
+  String get hubStaffActiveIssuesButton;
+
+  /// No description provided for @hubStaffActiveIssuesCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s) en cours'**
+  String hubStaffActiveIssuesCount(int count);
+
+  /// No description provided for @hubStaffNoActiveIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident actif pour le moment'**
+  String get hubStaffNoActiveIssues;
+
+  /// No description provided for @hubTechWorkplanTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon plan de travail du jour'**
+  String get hubTechWorkplanTitle;
+
+  /// No description provided for @hubTechWorkplanSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tâches planifiées et interventions assignées'**
+  String get hubTechWorkplanSubtitle;
+
+  /// No description provided for @hubTechPmSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenances préventives (PM)'**
+  String get hubTechPmSection;
+
+  /// No description provided for @hubTechAssignedSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes interventions assignées'**
+  String get hubTechAssignedSection;
+
+  /// No description provided for @hubTechPendingPartsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'En attente de pièces'**
+  String get hubTechPendingPartsSection;
+
+  /// No description provided for @hubTechNoPm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune PM en retard ou imminente'**
+  String get hubTechNoPm;
+
+  /// No description provided for @hubTechNoAssigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune intervention assignée en cours'**
+  String get hubTechNoAssigned;
+
+  /// No description provided for @hubTechNoPendingParts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune pièce en attente'**
+  String get hubTechNoPendingParts;
+
+  /// No description provided for @hubTechViewAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir tout'**
+  String get hubTechViewAll;
+
+  /// No description provided for @hubTechPmOverdueLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM en retard'**
+  String get hubTechPmOverdueLabel;
+
+  /// No description provided for @hubTechPmSoonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'PM imminente (< 7 j)'**
+  String get hubTechPmSoonLabel;
+
+  /// No description provided for @hubKpiLastRefreshLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données actualisées'**
+  String get hubKpiLastRefreshLabel;
 }
 
 class _AppLocalizationsDelegate

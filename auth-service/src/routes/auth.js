@@ -158,4 +158,33 @@ router.post('/forgot-password', (req, res) => {
   })();
 });
 
+// ── POST /api/auth/access-request ─────────────────────────────────────────────
+// Endpoint public : enregistre une demande d'accès soumise depuis l'écran de connexion.
+// Aucune authentification requise — la demande est stockée en DB pour traitement admin.
+router.post('/access-request', (req, res) => {
+  const { first_name, last_name, email, department, role } = req.body;
+
+  if (!first_name || !last_name || !email) {
+    return res.status(400).json({ error: 'Champs requis : first_name, last_name, email' });
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+    return res.status(400).json({ error: 'Adresse email invalide' });
+  }
+
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO access_requests (first_name, last_name, email, department, role)
+     VALUES (?, ?, ?, ?, ?)`
+  ).run(
+    String(first_name).trim(),
+    String(last_name).trim(),
+    String(email).trim().toLowerCase(),
+    department ? String(department).trim() : null,
+    role       ? String(role).trim()       : null,
+  );
+
+  console.log(`[AUTH] Demande d'accès enregistrée : ${String(email).trim().toLowerCase()}`);
+  res.status(201).json({ message: 'Demande enregistrée. Un administrateur vous contactera.' });
+});
+
 module.exports = router;

@@ -30,7 +30,6 @@
 
   "tooltipBack": "Retour",
   "tooltipMenu": "Menu",
-  "tooltipMobilePreview": "Aperçu mobile",
   "tooltipAccountSettings": "Parametres du compte",
   "tooltipNotifications": "Notifications",
 
@@ -1185,7 +1184,7 @@
   "@systemStatusLastCheck": {
     "placeholders": { "time": { "type": "String" } }
   },
-  "systemAlertBannerAuth": "Service d'authentification indisponible — connexion impossible. Contactez votre administrateur.",
+  "systemAlertBannerAuth": "Service d'authentification indisponible. Veuillez contacter l'administrateur IT.",
   "@systemAlertBannerAuth": {},
   "systemAlertBannerGeneral": "Service(s) système indisponible(s) — fonctionnalités limitées.",
   "@systemAlertBannerGeneral": {},
@@ -1214,6 +1213,22 @@
   "dashboardSidePanelTitle": "Hors service critiques",
   "dashboardSidePanelSubtitle": "Équipements hors service avec criticité A",
   "dashboardSidePanelEmpty": "Aucun équipement critique hors service",
+
+  "dashboardWeatherTitle": "Météo de l'hôpital",
+  "dashboardWeatherAllGood": "Tout est opérationnel — aucune alerte en cours",
+  "dashboardWeatherCriticalCount": "{count} incident(s) critique(s) ou urgent(s) en cours",
+  "@dashboardWeatherCriticalCount": { "placeholders": { "count": { "type": "int" } } },
+  "dashboardWeatherOosCount": "{count} équipement(s) hors service",
+  "@dashboardWeatherOosCount": { "placeholders": { "count": { "type": "int" } } },
+  "dashboardWeatherReportBtn": "Signaler un incident",
+
+  "dashboardMyTasksTitle": "Mes tâches du jour",
+  "dashboardMyTasksNoTasks": "Aucune tâche en cours",
+  "dashboardMyTasksPmDue": "PM à faire / imminentes",
+  "dashboardMyTasksViewIssues": "Voir mes interventions",
+
+  "dashboardScopedTo": "Périmètre : {scope}",
+  "@dashboardScopedTo": { "placeholders": { "scope": { "type": "String" } } },
 
   "equipmentExportCsv": "Exporter CSV",
   "equipmentExportCsvTooltip": "Télécharger la liste filtrée en CSV",
@@ -1421,5 +1436,69 @@
   "analyticsRetry": "Réessayer",
   "@analyticsRetry": {},
   "analyticsNoChartData": "Impossible de charger les données pour les graphiques",
-  "@analyticsNoChartData": {}
+  "@analyticsNoChartData": {},
+
+  "healthStatusOk": "Opérationnel",
+  "@healthStatusOk": {},
+  "healthStatusKo": "Indisponible",
+  "@healthStatusKo": {},
+  "healthTooltipTitle": "État des services",
+  "@healthTooltipTitle": {},
+  "healthTooltipLastCheck": "Dernière vérif. : {time}",
+  "@healthTooltipLastCheck": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "healthTooltipNoCheck": "Vérification en cours…",
+  "@healthTooltipNoCheck": {},
+
+  "accessRequestLink": "Demander un accès",
+  "@accessRequestLink": {},
+  "accessRequestTitle": "Demande d'accès au système",
+  "@accessRequestTitle": {},
+  "accessRequestSubtitle": "Remplissez ce formulaire. Un administrateur traitera votre demande et créera votre compte.",
+  "@accessRequestSubtitle": {},
+  "accessRequestFirstName": "Prénom *",
+  "@accessRequestFirstName": {},
+  "accessRequestLastName": "Nom *",
+  "@accessRequestLastName": {},
+  "accessRequestEmail": "Email professionnel *",
+  "@accessRequestEmail": {},
+  "accessRequestDepartment": "Département souhaité (optionnel)",
+  "@accessRequestDepartment": {},
+  "accessRequestRole": "Rôle souhaité (optionnel)",
+  "@accessRequestRole": {},
+  "accessRequestRoleHint": "Ex : Infirmier, Médecin, Technicien…",
+  "@accessRequestRoleHint": {},
+  "accessRequestSubmit": "Envoyer la demande",
+  "@accessRequestSubmit": {},
+  "accessRequestSuccess": "Demande envoyée ! Un administrateur vous contactera pour créer votre compte.",
+  "@accessRequestSuccess": {},
+  "accessRequestError": "Erreur lors de l'envoi. Réessayez ou contactez directement l'administrateur IT.",
+  "@accessRequestError": {},
+
+  "emergencyContactTitle": "Urgence ou compte bloqué ?",
+  "@emergencyContactTitle": {},
+  "emergencyContactInfo": "Admin IT : nzephmd@gmail.com  •  +250 788 823 228",
+  "@emergencyContactInfo": {},
+
+  "hubStaffTitle": "Que souhaitez-vous faire ?",
+  "hubStaffReportButton": "Signaler une panne",
+  "hubStaffActiveIssuesButton": "Mes incidents actifs",
+  "hubStaffActiveIssuesCount": "{count} incident(s) en cours",
+  "@hubStaffActiveIssuesCount": { "placeholders": { "count": { "type": "int" } } },
+  "hubStaffNoActiveIssues": "Aucun incident actif pour le moment",
+
+  "hubTechWorkplanTitle": "Mon plan de travail du jour",
+  "hubTechWorkplanSubtitle": "Tâches planifiées et interventions assignées",
+  "hubTechPmSection": "Maintenances préventives (PM)",
+  "hubTechAssignedSection": "Mes interventions assignées",
+  "hubTechPendingPartsSection": "En attente de pièces",
+  "hubTechNoPm": "Aucune PM en retard ou imminente",
+  "hubTechNoAssigned": "Aucune intervention assignée en cours",
+  "hubTechNoPendingParts": "Aucune pièce en attente",
+  "hubTechViewAll": "Voir tout",
+  "hubTechPmOverdueLabel": "PM en retard",
+  "hubTechPmSoonLabel": "PM imminente (< 7 j)",
+
+  "hubKpiLastRefreshLabel": "Données actualisées"
 }

@@ -273,6 +273,30 @@ class AuthApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  // ── Demande d'accès (non authentifiée) ───────────────────────────────────────
+
+  /// Soumet une demande d'accès depuis l'écran de connexion.
+  /// Endpoint public — aucun token requis.
+  Future<void> accessRequest({
+    required String firstName,
+    required String lastName,
+    required String email,
+    String? department,
+    String? role,
+  }) async {
+    final response = await ApiClient.postPublic(ApiConfig.accessRequestUrl, {
+      'first_name': firstName,
+      'last_name':  lastName,
+      'email':      email,
+      if (department != null && department.isNotEmpty) 'department': department,
+      if (role != null && role.isNotEmpty) 'role': role,
+    });
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur lors de l\'envoi de la demande');
+    }
+  }
+
   // ── Mot de passe oublié ────────────────────────────────────────────────────────
 
   /// Déclenche l'envoi d'un email de réinitialisation via Keycloak.

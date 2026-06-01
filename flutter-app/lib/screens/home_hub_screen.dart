@@ -11,7 +11,12 @@ import '../models/user_role.dart';
 import '../widgets/issue_category_selector.dart';
 import 'account_settings_screen.dart';
 
-/// Hub post-connexion — tableau de bord global GMAO avec KPIs croisés et accès rapide.
+/// Hub post-connexion — tableau de bord personnalisé selon le rôle (RBAC).
+///
+/// • hospitalStaff  → vue ultra-simplifiée : gros bouton "Signaler" + incidents actifs
+/// • technician*    → plan de travail du jour (PM dues, interventions assignées, pièces en attente)
+/// • supervisor     → KPIs + accès modules Équipement & Inventaire
+/// • admin          → KPIs + accès aux 3 modules complets
 class HomeHubScreen extends StatelessWidget {
   final VoidCallback onEquipmentModule;
   final VoidCallback onSettingsModule;
@@ -24,6 +29,97 @@ class HomeHubScreen extends StatelessWidget {
     required this.onInventoryModule,
   });
 
+  // ── Helpers de classification des rôles ──────────────────────────────────
+
+  bool _isHospitalStaff(AuthService auth) {
+    final roles = auth.currentRoles;
+    // Personnel soignant pur : hospitalStaff sans rôle technique ou admin
+    return roles.contains(UserRole.hospitalStaff) &&
+        !roles.any((r) => r == UserRole.admin ||
+            r == UserRole.supervisor ||
+            r == UserRole.technician ||
+            r == UserRole.technicianBiomedical ||
+            r == UserRole.technicianIt ||
+            r == UserRole.technicianInfra);
+  }
+
+  bool _isTechnician(AuthService auth) {
+    final roles = auth.currentRoles;
+    return roles.any((r) =>
+        r == UserRole.technician ||
+        r == UserRole.technicianBiomedical ||
+        r == UserRole.technicianIt ||
+        r == UserRole.technicianInfra);
+  }
+
+  // ── Calcul des KPIs depuis DataService ────────────────────────────────────
+
+  int _countCriticalUrgent(DataService data) => data.issues.where((i) =>
+      (i.urgency == IssueUrgency.critique || i.urgency == IssueUrgency.urgent) &&
+      i.status != IssueStatus.completed &&
+      i.status != IssueStatus.closed &&
+      i.status != IssueStatus.verified).length;
+
+  int _countStockAlerts(DataService data) => data.inventory.where((i) =>
+      i.status == StockStatus.low || i.status == StockStatus.outOfStock).length;
+
+  int _countOutOfService(DataService data) => data.equipment.where((e) =>
+      e.status == EquipmentStatus.outOfService).length;
+
+  // ── Données pour la vue technicien ───────────────────────────────────────
+
+  List<Equipment> _pmDueOrOverdue(DataService data) {
+    final today = DateTime.now();
+    final threshold = today.add(const Duration(days: 7));
+    return data.equipment.where((e) {
+      final iso = e.nextPreventiveMaintenance;
+      if (iso == null || iso.length < 10) return false;
+      try {
+        final date = DateTime.parse(iso.substring(0, 10));
+        return !date.isAfter(threshold);
+      } catch (_) {
+        return false;
+      }
+    }).toList()
+      ..sort((a, b) {
+        final da = DateTime.tryParse(a.nextPreventiveMaintenance!.substring(0, 10)) ?? DateTime(9999);
+        final db = DateTime.tryParse(b.nextPreventiveMaintenance!.substring(0, 10)) ?? DateTime(9999);
+        return da.compareTo(db);
+      });
+  }
+
+  List<Issue> _myAssignedIssues(DataService data, AuthService auth) {
+    final me = auth.currentUser;
+    if (me == null) return [];
+    return data.issues.where((i) =>
+        (i.assignedTechnician == me.id || i.assignedTechnician == me.name) &&
+        i.status != IssueStatus.completed &&
+        i.status != IssueStatus.closed &&
+        i.status != IssueStatus.verified).toList();
+  }
+
+  List<Issue> _pendingParts(DataService data, AuthService auth) {
+    final me = auth.currentUser;
+    if (me == null) return [];
+    return data.issues.where((i) =>
+        i.status == IssueStatus.waitingMaterials &&
+        (i.assignedTechnician == me.id || i.assignedTechnician == me.name)).toList();
+  }
+
+  List<Issue> _myActiveIssues(DataService data, AuthService auth) {
+    final me = auth.currentUser;
+    if (me == null) return [];
+    return data.issues.where((i) =>
+        (i.reporterId == me.id ||
+            i.reporter == me.name ||
+            i.reporter == '${me.firstName} ${me.lastName}'.trim()) &&
+        i.status != IssueStatus.completed &&
+        i.status != IssueStatus.closed &&
+        i.status != IssueStatus.verified).toList();
+  }
+
+  // ── Build principal ───────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -33,7 +129,6 @@ class HomeHubScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      // FAB d'urgence — déclenche la pré-qualification sans navigation
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showIssueCategorySelector(context),
         backgroundColor: AppColors.error,
@@ -55,70 +150,13 @@ class HomeHubScreen extends StatelessWidget {
                 listenable: DataService(),
                 builder: (context, _) {
                   final data = DataService();
-                  final criticalCount    = _countCriticalUrgent(data);
-                  final stockAlertCount  = _countStockAlerts(data);
-                  final outOfServiceCount = _countOutOfService(data);
-
-                  return SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(
-                      isWide ? 32 : 16,
-                      20,
-                      isWide ? 32 : 16,
-                      96, // espace sous le FAB
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // ── Titre du tableau de bord ────────────────────────
-                        Text(
-                          l10n.hubKpiTitle,
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          l10n.hubKpiSubtitle,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        // ── Tuiles KPI ──────────────────────────────────────
-                        _buildKpiRow(
-                          l10n,
-                          isWide,
-                          criticalCount,
-                          stockAlertCount,
-                          outOfServiceCount,
-                        ),
-                        const SizedBox(height: 28),
-                        // ── Titre accès rapide ──────────────────────────────
-                        Text(
-                          l10n.hubQuickAccessTitle,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // ── Cartes modules ──────────────────────────────────
-                        _buildModuleCards(
-                          context,
-                          l10n,
-                          isWide,
-                          auth,
-                          criticalCount,
-                          stockAlertCount,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
-                  );
+                  if (_isHospitalStaff(auth)) {
+                    return _buildStaffView(context, l10n, isWide, data, auth);
+                  } else if (_isTechnician(auth)) {
+                    return _buildTechWorkplan(context, l10n, isWide, data, auth);
+                  } else {
+                    return _buildManagerView(context, l10n, isWide, data, auth);
+                  }
                 },
               ),
             ),
@@ -129,22 +167,647 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  // ── Calcul des KPIs depuis DataService ────────────────────────────────────
+  // ── Vue Personnel soignant ────────────────────────────────────────────────
 
-  int _countCriticalUrgent(DataService data) => data.issues.where((i) =>
-    (i.urgency == IssueUrgency.critique || i.urgency == IssueUrgency.urgent) &&
-    i.status != IssueStatus.completed &&
-    i.status != IssueStatus.closed &&
-    i.status != IssueStatus.verified,
-  ).length;
+  Widget _buildStaffView(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isWide,
+    DataService data,
+    AuthService auth,
+  ) {
+    final activeIssues = _myActiveIssues(data, auth);
 
-  int _countStockAlerts(DataService data) => data.inventory.where((i) =>
-    i.status == StockStatus.low || i.status == StockStatus.outOfStock,
-  ).length;
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isWide ? 48 : 24,
+        32,
+        isWide ? 48 : 24,
+        96,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            l10n.hubStaffTitle,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 32),
 
-  int _countOutOfService(DataService data) => data.equipment.where((e) =>
-    e.status == EquipmentStatus.outOfService,
-  ).length;
+          // ── Gros bouton principal "Signaler une panne" ──────────────────
+          SizedBox(
+            height: isWide ? 90 : 80,
+            child: ElevatedButton.icon(
+              onPressed: () => showIssueCategorySelector(context),
+              icon: const Icon(Icons.report_problem_rounded, size: 32),
+              label: Text(
+                l10n.hubStaffReportButton,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // ── Accès "Mes incidents actifs" ────────────────────────────────
+          OutlinedButton.icon(
+            onPressed: onEquipmentModule,
+            icon: const Icon(Icons.troubleshoot_outlined),
+            label: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.hubStaffActiveIssuesButton,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (activeIssues.isNotEmpty)
+                  Text(
+                    l10n.hubStaffActiveIssuesCount(activeIssues.length),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.warning,
+                    ),
+                  )
+                else
+                  Text(
+                    l10n.hubStaffNoActiveIssues,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+              ],
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primary,
+              side: const BorderSide(color: AppColors.primary, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+            ),
+          ),
+
+          if (activeIssues.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            ...activeIssues.take(3).map((issue) => _buildStaffIssueChip(l10n, issue)),
+            if (activeIssues.length > 3) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: onEquipmentModule,
+                child: Text(
+                  '+ ${activeIssues.length - 3} ${l10n.issuesAndMore(activeIssues.length - 3)}',
+                  style: const TextStyle(color: AppColors.primary),
+                ),
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStaffIssueChip(AppLocalizations l10n, Issue issue) {
+    final color = _urgencyColor(issue.urgency);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.circle, color: color, size: 10),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                issue.equipmentName ?? issue.id,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                issue.status.displayName,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Vue Technicien : Plan de travail du jour ──────────────────────────────
+
+  Widget _buildTechWorkplan(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isWide,
+    DataService data,
+    AuthService auth,
+  ) {
+    final pmDue      = _pmDueOrOverdue(data);
+    final assigned   = _myAssignedIssues(data, auth);
+    final waitParts  = _pendingParts(data, auth);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isWide ? 32 : 16,
+        20,
+        isWide ? 32 : 16,
+        96,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── En-tête plan de travail ─────────────────────────────────────
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.assignment_outlined,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.hubTechWorkplanTitle,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      l10n.hubTechWorkplanSubtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // ── Section PM dues ─────────────────────────────────────────────
+          _buildWorkplanSection(
+            context: context,
+            l10n: l10n,
+            icon: Icons.build_circle_outlined,
+            color: AppColors.warning,
+            title: l10n.hubTechPmSection,
+            count: pmDue.length,
+            onViewAll: onEquipmentModule,
+            emptyLabel: l10n.hubTechNoPm,
+            children: pmDue.take(3).map((eq) => _buildPmTile(l10n, eq)).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Section interventions assignées ─────────────────────────────
+          _buildWorkplanSection(
+            context: context,
+            l10n: l10n,
+            icon: Icons.engineering_outlined,
+            color: AppColors.primary,
+            title: l10n.hubTechAssignedSection,
+            count: assigned.length,
+            onViewAll: onEquipmentModule,
+            emptyLabel: l10n.hubTechNoAssigned,
+            children: assigned.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.primary)).toList(),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Section pièces en attente ───────────────────────────────────
+          _buildWorkplanSection(
+            context: context,
+            l10n: l10n,
+            icon: Icons.inventory_2_outlined,
+            color: AppColors.error,
+            title: l10n.hubTechPendingPartsSection,
+            count: waitParts.length,
+            onViewAll: onEquipmentModule,
+            emptyLabel: l10n.hubTechNoPendingParts,
+            children: waitParts.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.error)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkplanSection({
+    required BuildContext context,
+    required AppLocalizations l10n,
+    required IconData icon,
+    required Color color,
+    required String title,
+    required int count,
+    required VoidCallback onViewAll,
+    required String emptyLabel,
+    required List<Widget> children,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── En-tête section ─────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 16),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                if (count > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  TextButton(
+                    onPressed: onViewAll,
+                    style: TextButton.styleFrom(
+                      foregroundColor: color,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      l10n.hubTechViewAll,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.border),
+
+          // ── Contenu ─────────────────────────────────────────────────────
+          if (children.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_outline,
+                      color: AppColors.success, size: 16),
+                  const SizedBox(width: 8),
+                  Text(
+                    emptyLabel,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPmTile(AppLocalizations l10n, Equipment equipment) {
+    final iso   = equipment.nextPreventiveMaintenance ?? '';
+    final today = DateTime.now();
+    DateTime? pmDate;
+    try {
+      if (iso.length >= 10) pmDate = DateTime.parse(iso.substring(0, 10));
+    } catch (_) {}
+
+    final isOverdue = pmDate != null && pmDate.isBefore(today);
+    final color     = isOverdue ? AppColors.error : AppColors.warning;
+    final tag       = isOverdue ? l10n.hubTechPmOverdueLabel : l10n.hubTechPmSoonLabel;
+
+    return InkWell(
+      onTap: onEquipmentModule,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.build_outlined, color: color, size: 16),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    equipment.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (equipment.department.isNotEmpty)
+                    Text(
+                      equipment.department,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                tag,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIssueTile(AppLocalizations l10n, Issue issue, Color color) {
+    return InkWell(
+      onTap: onEquipmentModule,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.troubleshoot_outlined, color: color, size: 16),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    issue.equipmentName ?? issue.id,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (issue.description.isNotEmpty)
+                    Text(
+                      issue.description,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: _urgencyColor(issue.urgency).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                issue.urgency.displayName,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: _urgencyColor(issue.urgency),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Vue Superviseur / Admin ───────────────────────────────────────────────
+
+  Widget _buildManagerView(
+    BuildContext context,
+    AppLocalizations l10n,
+    bool isWide,
+    DataService data,
+    AuthService auth,
+  ) {
+    final criticalCount    = _countCriticalUrgent(data);
+    final stockAlertCount  = _countStockAlerts(data);
+    final outOfServiceCount = _countOutOfService(data);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isWide ? 32 : 16,
+        20,
+        isWide ? 32 : 16,
+        96,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Titre + fraîcheur des données ───────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.hubKpiTitle,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.hubKpiSubtitle,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _buildFreshnessChip(l10n, data),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // ── Tuiles KPI ──────────────────────────────────────────────────
+          _buildKpiRow(
+            l10n,
+            isWide,
+            criticalCount,
+            stockAlertCount,
+            outOfServiceCount,
+          ),
+          const SizedBox(height: 28),
+
+          // ── Titre accès rapide ──────────────────────────────────────────
+          Text(
+            l10n.hubQuickAccessTitle,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ── Cartes modules ──────────────────────────────────────────────
+          _buildModuleCards(
+            context,
+            l10n,
+            isWide,
+            auth,
+            criticalCount,
+            stockAlertCount,
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+
+  // ── Indicateur de fraîcheur des données ──────────────────────────────────
+
+  Widget _buildFreshnessChip(AppLocalizations l10n, DataService data) {
+    final lastRefresh = data.lastRefresh;
+    if (lastRefresh == null) return const SizedBox.shrink();
+
+    final now     = DateTime.now();
+    final diff    = now.difference(lastRefresh);
+    final String label;
+
+    if (diff.inMinutes < 1) {
+      label = l10n.dashboardRefreshedJustNow;
+    } else if (diff.inMinutes < 60) {
+      label = l10n.dashboardRefreshedAgo(diff.inMinutes);
+    } else {
+      final h = diff.inHours;
+      final m = diff.inMinutes.remainder(60);
+      final timeStr = '${h}h${m.toString().padLeft(2, '0')}';
+      label = l10n.dashboardRefreshedAt(timeStr);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.sync_rounded, size: 13, color: AppColors.success),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppColors.success,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ── Rangée de tuiles KPI ──────────────────────────────────────────────────
 
@@ -202,15 +865,14 @@ class HomeHubScreen extends StatelessWidget {
     int criticalCount,
     int stockAlertCount,
   ) {
-    // Visibilité des modules selon les permissions RBAC
-    final showSettings  = auth.hasPermission(Permission.manageDepartments) ||
-                          auth.hasPermission(Permission.manageUsers);
+    final showSettings = auth.hasPermission(Permission.manageDepartments) ||
+        auth.hasPermission(Permission.manageUsers);
     final showInventory = auth.hasPermission(Permission.viewInventory);
 
     final cards = <Widget>[
       _buildEquipmentCard(l10n, criticalCount),
-      if (showSettings)  _buildSettingsCard(l10n),
       if (showInventory) _buildInventoryCard(l10n, stockAlertCount),
+      if (showSettings)  _buildSettingsCard(l10n),
     ];
 
     if (cards.isEmpty) return const SizedBox.shrink();
@@ -236,9 +898,10 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  // ── Cartes modules (badgeCount = alertes à afficher) ──────────────────────
+  // ── Cartes modules ────────────────────────────────────────────────────────
 
-  Widget _buildEquipmentCard(AppLocalizations l10n, int badgeCount) => _HubModuleCard(
+  Widget _buildEquipmentCard(AppLocalizations l10n, int badgeCount) =>
+      _HubModuleCard(
         color: AppColors.primary,
         lightColor: AppColors.primaryLight,
         icon: Icons.medical_services_outlined,
@@ -271,7 +934,8 @@ class HomeHubScreen extends StatelessWidget {
         onTap: onSettingsModule,
       );
 
-  Widget _buildInventoryCard(AppLocalizations l10n, int badgeCount) => _HubModuleCard(
+  Widget _buildInventoryCard(AppLocalizations l10n, int badgeCount) =>
+      _HubModuleCard(
         color: AppColors.success,
         lightColor: AppColors.successLight,
         icon: Icons.archive_outlined,
@@ -335,13 +999,15 @@ class HomeHubScreen extends StatelessWidget {
                 ),
                 Text(
                   '$greeting, $firstName',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary),
                 ),
               ],
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
+            icon: const Icon(Icons.manage_accounts_outlined,
+                color: AppColors.textSecondary),
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AccountSettingsScreen()),
@@ -369,7 +1035,8 @@ class HomeHubScreen extends StatelessWidget {
                         child: Text(dl10n.commonCancel),
                       ),
                       ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.error),
                         onPressed: () => Navigator.pop(ctx, true),
                         child: Text(dl10n.logout),
                       ),
@@ -404,6 +1071,19 @@ class HomeHubScreen extends StatelessWidget {
         textAlign: TextAlign.center,
       ),
     );
+  }
+
+  // ── Utilitaire couleur urgence ─────────────────────────────────────────────
+
+  Color _urgencyColor(IssueUrgency urgency) {
+    switch (urgency) {
+      case IssueUrgency.critique:
+        return AppColors.error;
+      case IssueUrgency.urgent:
+        return AppColors.warning;
+      default:
+        return AppColors.primary;
+    }
   }
 }
 
@@ -465,7 +1145,8 @@ class _KpiTile extends StatelessWidget {
                   const Spacer(),
                   if (count > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 3),
                       decoration: BoxDecoration(
                         color: color,
                         borderRadius: BorderRadius.circular(10),
@@ -551,7 +1232,6 @@ class _HubModuleCard extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── En-tête icône + badge ──────────────────────────────────
               Row(
                 children: [
                   Stack(
@@ -570,11 +1250,13 @@ class _HubModuleCard extends StatelessWidget {
                           top: -6,
                           right: -6,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.error,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.white, width: 1.5),
+                              border:
+                                  Border.all(color: Colors.white, width: 1.5),
                             ),
                             child: Text(
                               '$badgeCount',
@@ -597,7 +1279,6 @@ class _HubModuleCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 18),
-              // ── Titre ──────────────────────────────────────────────────
               Text(
                 title,
                 style: const TextStyle(
@@ -607,7 +1288,6 @@ class _HubModuleCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              // ── Description ────────────────────────────────────────────
               Text(
                 description,
                 style: const TextStyle(
@@ -617,14 +1297,14 @@ class _HubModuleCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 20),
-              // ── Chips des pages disponibles ────────────────────────────
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: pages
                     .map(
                       (p) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(
                           color: lightColor,
                           borderRadius: BorderRadius.circular(20),
@@ -652,7 +1332,6 @@ class _HubModuleCard extends StatelessWidget {
                     .toList(),
               ),
               const SizedBox(height: 22),
-              // ── Bouton ouvrir ──────────────────────────────────────────
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -669,7 +1348,8 @@ class _HubModuleCard extends StatelessWidget {
                   child: Builder(
                     builder: (ctx) => Text(
                       AppLocalizations.of(ctx)!.hubOpenModule(title),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 14),
                     ),
                   ),
                 ),

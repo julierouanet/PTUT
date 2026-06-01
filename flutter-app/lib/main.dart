@@ -396,13 +396,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
-  void _showPhonePreview(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => const _PhonePreviewDialog(),
-    );
-  }
-
   void _navigateByScreenType(int targetIndex, {String? equipmentId, String? issueId}) {
     final l10n = AppLocalizations.of(context)!;
     final navItems = _navItems(l10n);
@@ -524,12 +517,6 @@ class _MainScaffoldState extends State<MainScaffold> {
             ),
           ),
           const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.smartphone_outlined, color: AppColors.textSecondary),
-            onPressed: () => _showPhonePreview(context),
-            tooltip: l10n.tooltipMobilePreview,
-          ),
-          const SizedBox(width: 4),
           IconButton(
             icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
@@ -884,130 +871,6 @@ class _MainScaffoldState extends State<MainScaffold> {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen()));
             },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhonePreviewDialog extends StatelessWidget {
-  const _PhonePreviewDialog();
-
-  @override
-  Widget build(BuildContext context) {
-    const phoneW = 390.0;
-    const phoneH = 844.0;
-    final screen = MediaQuery.of(context).size;
-    final scale = ((screen.height - 200) / phoneH).clamp(0.3, 0.75);
-
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // En-tête
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.smartphone, color: Colors.white70, size: 20),
-                const SizedBox(width: 8),
-                const Text(
-                  'Aperçu mobile',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-              ],
-            ),
-          ),
-          // Cadre téléphone
-          Container(
-            width: phoneW * scale + 20,
-            height: phoneH * scale + 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFF1C1C1E),
-              borderRadius: BorderRadius.circular(40),
-              border: Border.all(color: const Color(0xFF3A3A3C), width: 3),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.6), blurRadius: 30, offset: const Offset(0, 12)),
-              ],
-            ),
-            child: Column(
-              children: [
-                const SizedBox(height: 14),
-                // Encoché / haut-parleur
-                Container(
-                  width: 80 * scale,
-                  height: 5 * scale,
-                  decoration: BoxDecoration(color: const Color(0xFF3A3A3C), borderRadius: BorderRadius.circular(3)),
-                ),
-                const SizedBox(height: 8),
-                // Écran
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: SizedBox(
-                      width: phoneW * scale,
-                      height: phoneH * scale,
-                      child: ClipRect(
-                        child: OverflowBox(
-                          maxWidth: phoneW,
-                          maxHeight: phoneH,
-                          alignment: Alignment.topLeft,
-                          child: Transform.scale(
-                            scale: scale,
-                            alignment: Alignment.topLeft,
-                            child: SizedBox(
-                              width: phoneW,
-                              height: phoneH,
-                              child: MediaQuery(
-                                data: const MediaQueryData(
-                                  size: Size(phoneW, phoneH),
-                                  padding: EdgeInsets.only(top: 44, bottom: 34),
-                                  viewPadding: EdgeInsets.only(top: 44, bottom: 34),
-                                ),
-                                child: ListenableBuilder(
-                                  listenable: AuthService(),
-                                  builder: (ctx, _) {
-                                    if (!AuthService().isLoggedIn) return const LoginScreen();
-                                    return ListenableBuilder(
-                                      listenable: DataService(),
-                                      builder: (ctx, _) {
-                                        if (DataService().isLoading) return const _LoadingScreen();
-                                        return const MainScaffold();
-                                      },
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Indicateur d'accueil
-                Container(
-                  width: 100 * scale,
-                  height: 4,
-                  decoration: BoxDecoration(color: const Color(0xFF3A3A3C), borderRadius: BorderRadius.circular(2)),
-                ),
-                const SizedBox(height: 10),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            '390 × 844 px  ·  ${(scale * 100).round()}%',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
           ),
         ],
       ),

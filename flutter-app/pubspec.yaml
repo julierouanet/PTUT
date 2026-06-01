@@ -14,9 +14,9 @@ dependencies:
     sdk: flutter
   intl: any
 
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^1.0.9
   http: ^1.2.0
-  shared_preferences: ^2.3.0
+  shared_preferences: ^2.5.5
   flutter_secure_storage: ^9.2.4
   local_auth: ^2.3.0
   table_calendar: ^3.1.2

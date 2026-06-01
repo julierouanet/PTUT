@@ -26,7 +26,18 @@ enum _SortCol { name, status, department, installDate }
 class EquipmentListScreen extends StatefulWidget {
   final Function(int, {String? equipmentId}) onNavigate;
 
-  const EquipmentListScreen({super.key, required this.onNavigate});
+  // Filtres pré-appliqués depuis le dashboard (optionnels)
+  final EquipmentStatus? initialStatus;
+  final bool initialPmOverdue;
+  final String? initialMacroCategory;
+
+  const EquipmentListScreen({
+    super.key,
+    required this.onNavigate,
+    this.initialStatus,
+    this.initialPmOverdue = false,
+    this.initialMacroCategory,
+  });
 
   @override
   State<EquipmentListScreen> createState() => _EquipmentListScreenState();
@@ -39,6 +50,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   String _statusFilter     = 'Tous';
   String _categoryFilter   = 'Tous';
 
+  // ── Filtre macroCategory (pré-appliqué depuis le dashboard) ───────────
+  String? _macroCategoryFilter;
+
   // ── Filtres PM (techniciens/superviseurs) ──────────────────────────────
   bool _filterPmOverdue = false;
   bool _filterPmSoon    = false;
@@ -48,6 +62,16 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   bool _sortAsc = true;
 
   final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialStatus != null) {
+      _statusFilter = widget.initialStatus!.displayName;
+    }
+    _filterPmOverdue      = widget.initialPmOverdue;
+    _macroCategoryFilter  = widget.initialMacroCategory;
+  }
 
   // ── RBAC ───────────────────────────────────────────────────────────────
 
@@ -93,7 +117,11 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                   (_filterPmSoon    && level == 'soon');
       }
 
-      return matchSearch && matchDept && matchStatus && matchCat && matchPm;
+      // Filtre macroCategory (pré-appliqué depuis le dashboard, effaçable via chip)
+      final matchMacro = _macroCategoryFilter == null ||
+          (eq.macroCategory?.toLowerCase() == _macroCategoryFilter!.toLowerCase());
+
+      return matchSearch && matchDept && matchStatus && matchCat && matchPm && matchMacro;
     }).toList();
 
     // Tri
@@ -273,6 +301,19 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             _departmentFilter = v ? myDept : l10n.commonAll;
           }),
         ),
+
+        // Filtre macroCategory actif (pré-appliqué depuis le dashboard, effaçable)
+        if (_macroCategoryFilter != null)
+          FilterChip(
+            label: Text(_macroCategoryFilter!),
+            avatar: const Icon(Icons.category_outlined, size: 16),
+            selected: true,
+            selectedColor: AppColors.primary.withValues(alpha: 0.15),
+            checkmarkColor: AppColors.primary,
+            deleteIcon: const Icon(Icons.close, size: 14),
+            onDeleted: () => setState(() => _macroCategoryFilter = null),
+            onSelected: (_) {},
+          ),
 
         // Filtres PM (réservés aux techniciens/superviseurs)
         if (_showTechnicalView) ...[

@@ -7,14 +7,14 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/auth_api_service.dart';
 import '../services/api_config.dart';
-import '../services/config_service.dart';
 import '../services/data_service.dart';
 import '../services/notification_service.dart';
 import '../providers/locale_provider.dart';
 import '../models/user.dart';
 import '../data/mock_data.dart';
 
-enum _AuthMode { login, signup, forgotPassword }
+// signup supprimé — accès uniquement via demande validée par un admin
+enum _AuthMode { login, forgotPassword }
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -73,19 +73,11 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   final _formKey      = GlobalKey<FormState>();
 
-  // Contrôleurs spécifiques à l'inscription
-  final _firstNameCtrl       = TextEditingController();
-  final _lastNameCtrl        = TextEditingController();
-  final _passwordConfirmCtrl = TextEditingController();
-  final _phoneCtrl           = TextEditingController();
-
-  _AuthMode _mode             = _AuthMode.login;
-  bool      _obscure          = true;
-  bool      _obscureConfirm   = true;
-  bool      _loading          = false;
+  _AuthMode _mode          = _AuthMode.login;
+  bool      _obscure       = true;
+  bool      _loading       = false;
   String?   _error;
-  bool      _signupSuccess    = false;
-  String?   _selectedDepartment;
+  bool      _requestSuccess = false;
 
   // ── Santé des services ─────────────────────────────────────────────────────
   final Map<String, String?> _health = {
@@ -95,9 +87,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool get _hasCriticalAlert =>
       _health['auth'] == 'ko' || _health['iam'] == 'ko';
-
-  bool get _hasAnyAlert =>
-      _health.values.any((v) => v == 'ko');
 
   @override
   void initState() {
@@ -145,19 +134,14 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
-    _firstNameCtrl.dispose();
-    _lastNameCtrl.dispose();
-    _passwordConfirmCtrl.dispose();
-    _phoneCtrl.dispose();
     super.dispose();
   }
 
   void _switchMode(_AuthMode mode) {
     setState(() {
-      _mode               = mode;
-      _error              = null;
-      _signupSuccess      = false;
-      _selectedDepartment = null;
+      _mode           = mode;
+      _error          = null;
+      _requestSuccess = false;
     });
   }
 
@@ -192,35 +176,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // ── Inscription ────────────────────────────────────────────────────────────
-
-  Future<void> _submitRegister() async {
-    final l10n = AppLocalizations.of(context)!;
-    if (!_formKey.currentState!.validate()) return;
-    if (_passwordCtrl.text != _passwordConfirmCtrl.text) {
-      setState(() => _error = l10n.registerPasswordMismatch);
-      return;
-    }
-    setState(() { _loading = true; _error = null; });
-
-    try {
-      await AuthApiService.instance.register(
-        firstName:  _firstNameCtrl.text.trim(),
-        lastName:   _lastNameCtrl.text.trim(),
-        email:      _emailCtrl.text.trim(),
-        password:   _passwordCtrl.text,
-        department: _selectedDepartment ?? '',
-        phone:      _phoneCtrl.text.trim(),
-      );
-      setState(() { _loading = false; _signupSuccess = true; });
-    } catch (e) {
-      setState(() {
-        _loading = false;
-        _error   = e.toString().replaceFirst('Exception: ', '');
-      });
-    }
-  }
-
   // ── Mot de passe oublié ────────────────────────────────────────────────────
 
   Future<void> _submitForgotPassword() async {
@@ -229,9 +184,39 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await AuthApiService.instance.forgotPassword(_emailCtrl.text.trim());
     } catch (_) {
-      // Le backend répond toujours 200 — on traite systématiquement comme succès côté client
+      // Le backend répond toujours 200 — succès systématique côté client
     }
-    setState(() { _loading = false; _signupSuccess = true; });
+    setState(() { _loading = false; _requestSuccess = true; });
+  }
+
+  // ── Dialogue / bottom-sheet : Demande d'accès ─────────────────────────────
+
+  void _showAccessRequestSheet(BuildContext context) {
+    final isDesktop = MediaQuery.sizeOf(context).width >= 800;
+    if (isDesktop) {
+      showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
+            child: const _AccessRequestContent(),
+          ),
+        ),
+      );
+    } else {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+          child: const _AccessRequestContent(),
+        ),
+      );
+    }
   }
 
   // ── Construction UI principale ─────────────────────────────────────────────
@@ -268,7 +253,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ── Mise en page bureau (≥ 800px) ─────────────────────────────────────────
-  // Deux colonnes : logo à gauche, formulaire à droite — pas de scroll global.
 
   Widget _buildDesktopLayout(AppLocalizations l10n, BoxConstraints constraints) {
     return Stack(
@@ -301,11 +285,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        // Statut système — coin inférieur droit
+        // Indicateur de santé des services — coin inférieur droit
         Positioned(
-          bottom: 12,
+          bottom: 14,
           right: 16,
-          child: _buildSystemStatusFooter(l10n),
+          child: _buildHealthDot(l10n),
         ),
       ],
     );
@@ -398,7 +382,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
 
-                      // Raccourcis DEV — compilés uniquement en mode debug
+                      // Raccourcis DEV — compilés uniquement en mode debug (absents en release)
                       if (kDebugMode && _mode == _AuthMode.login) ...[
                         const SizedBox(height: 20),
                         _buildDevShortcuts(),
@@ -415,7 +399,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ── Mise en page mobile (< 800px) ─────────────────────────────────────────
-  // Colonne centrée avec scroll, sans section "comptes récents".
 
   Widget _buildMobileLayout(AppLocalizations l10n, BoxConstraints constraints) {
     return Stack(
@@ -455,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-                // Raccourcis DEV — compilés uniquement en mode debug
+                // Raccourcis DEV — compilés uniquement en mode debug (absents en release)
                 if (kDebugMode && _mode == _AuthMode.login) ...[
                   const SizedBox(height: 16),
                   _buildDevShortcuts(),
@@ -476,11 +459,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
 
-        // Statut système — coin inférieur droit
+        // Indicateur de santé des services — coin inférieur droit
         Positioned(
           bottom: 12,
           right: 12,
-          child: _buildSystemStatusFooter(l10n),
+          child: _buildHealthDot(l10n),
         ),
       ],
     );
@@ -488,13 +471,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ── Widgets partagés ──────────────────────────────────────────────────────
 
-  /// Formulaire actif (connexion / inscription / réinitialisation).
+  /// Formulaire actif (connexion / réinitialisation mot de passe).
   Widget _buildCurrentForm(AppLocalizations l10n) {
     return _mode == _AuthMode.login
         ? _buildLoginForm(l10n)
-        : _mode == _AuthMode.signup
-            ? _buildSignupForm(l10n)
-            : _buildForgotPasswordForm(l10n);
+        : _buildForgotPasswordForm(l10n);
   }
 
   /// Conteneur du logo avec ombre et bord primaire.
@@ -560,41 +541,76 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Footer statut système — coin inférieur droit ───────────────────────────
+  // ── Indicateur de santé discret — point coloré avec tooltip ───────────────
 
-  Widget _buildSystemStatusFooter(AppLocalizations l10n) {
+  Widget _buildHealthDot(AppLocalizations l10n) {
     final isChecking = _health['auth'] == null;
-    final isOk       = !_hasAnyAlert && !isChecking;
-    final color      = isChecking ? Colors.grey : (isOk ? AppColors.success : AppColors.error);
-    final icon       = isChecking ? Icons.sync : (isOk ? Icons.check_circle_outline : Icons.error_outline);
+    final hasCritical = _health['auth'] == 'ko' || _health['iam'] == 'ko';
+    final hasDegraded = _health.values.any((v) => v == 'ko');
 
-    final statusLabel = isChecking
-        ? l10n.systemStatusChecking
-        : (isOk ? l10n.systemStatusOperational : l10n.systemStatusDegraded);
-
-    String suffix = '';
-    if (_lastCheckTime != null) {
-      final h = _lastCheckTime!.hour.toString().padLeft(2, '0');
-      final m = _lastCheckTime!.minute.toString().padLeft(2, '0');
-      suffix = '  •  ${l10n.systemStatusLastCheck('$h:$m')}';
+    final Color dotColor;
+    if (isChecking) {
+      dotColor = Colors.grey.shade400;
+    } else if (hasCritical) {
+      dotColor = AppColors.error;
+    } else if (hasDegraded) {
+      dotColor = AppColors.warning;
+    } else {
+      dotColor = AppColors.success;
     }
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 11, color: color.withValues(alpha: 0.65)),
-        const SizedBox(width: 4),
-        Text(
-          '$statusLabel$suffix',
-          style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.65)),
+    // Construire le message multi-ligne du tooltip
+    final buffer = StringBuffer(l10n.healthTooltipTitle);
+    if (isChecking) {
+      buffer.write('\n${l10n.healthTooltipNoCheck}');
+    } else {
+      final services = <String, String?>{
+        l10n.healthAuth: _health['auth'],
+        l10n.healthDb:   _health['db'],
+        l10n.healthIam:  _health['iam'],
+      };
+      for (final entry in services.entries) {
+        final bullet = entry.value == 'ok' ? '●' : '○';
+        final status = entry.value == 'ok'
+            ? l10n.healthStatusOk
+            : entry.value == 'ko'
+                ? l10n.healthStatusKo
+                : '…';
+        buffer.write('\n$bullet ${entry.key} : $status');
+      }
+      if (_lastCheckTime != null) {
+        final h = _lastCheckTime!.hour.toString().padLeft(2, '0');
+        final m = _lastCheckTime!.minute.toString().padLeft(2, '0');
+        buffer.write('\n${l10n.healthTooltipLastCheck('$h:$m')}');
+      }
+    }
+
+    return Tooltip(
+      message: buffer.toString(),
+      preferBelow: false,
+      waitDuration: const Duration(milliseconds: 300),
+      child: GestureDetector(
+        onTap: _fetchHealth,
+        child: Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(
+            color: dotColor,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: dotColor.withValues(alpha: 0.45),
+                blurRadius: 5,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
         ),
-      ],
+      ),
     );
   }
 
   // ── Bouton de changement de langue ────────────────────────────────────────
-  // Affiche la langue ACTIVE (FR quand l'UI est en français, EN quand en anglais).
-  // Cliquer bascule vers l'autre langue.
 
   Widget _buildLanguageToggle() {
     return ListenableBuilder(
@@ -615,7 +631,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Text(isFr ? '🇫🇷' : '🇬🇧', style: const TextStyle(fontSize: 16)),
                   const SizedBox(width: 6),
-                  // Affiche le code de la langue courante (FR / EN)
                   Text(
                     isFr ? 'FR' : 'EN',
                     style: TextStyle(
@@ -675,8 +690,11 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 6),
 
-          // ── Bouton "Mot de passe oublié ?" — proéminent pour le personnel médical pressé
+          // Bouton "Mot de passe oublié ?" — proéminent pour le personnel médical pressé
           _buildForgotPasswordButton(l10n),
+
+          // Contact urgence — aide le personnel de nuit en cas de compte bloqué
+          _buildEmergencyContact(l10n),
 
           _buildErrorBox(),
           const SizedBox(height: 8),
@@ -697,11 +715,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 16),
 
+          // Lien "Demande d'accès" — remplace le signup auto-déclaratif
           Center(
             child: TextButton(
-              onPressed: () => _switchMode(_AuthMode.signup),
-              child: Text(l10n.registerNoAccount,
-                  style: const TextStyle(color: AppColors.primary, fontSize: 13)),
+              onPressed: () => _showAccessRequestSheet(context),
+              child: Text(
+                l10n.accessRequestLink,
+                style: const TextStyle(color: AppColors.primary, fontSize: 13),
+              ),
             ),
           ),
         ],
@@ -734,181 +755,44 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ── Formulaire d'inscription ───────────────────────────────────────────────
-
-  Widget _buildSignupForm(AppLocalizations l10n) {
-    if (_signupSuccess) {
-      return Column(
-        key: const ValueKey('signup_success'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.mark_email_read_outlined, size: 64, color: AppColors.success),
-          const SizedBox(height: 16),
-          Text(l10n.registerSuccess,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.5)),
-          const SizedBox(height: 24),
-          TextButton(
-            onPressed: () => _switchMode(_AuthMode.login),
-            child: Text(l10n.registerHaveAccount, style: const TextStyle(color: AppColors.primary)),
-          ),
-        ],
-      );
-    }
-
-    final departments = ConfigService().departmentNames;
-
-    return Form(
-      key: _formKey,
-      child: Column(
-        key: const ValueKey('signup'),
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildBackToLoginLink(l10n),
-          const SizedBox(height: 12),
-
-          Text(l10n.registerTitle,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-              textAlign: TextAlign.center),
-          const SizedBox(height: 20),
-
-          // Prénom + Nom côte à côte
-          Row(children: [
+  /// Bandeau de contact d'urgence — visible sous "Mot de passe oublié ?" pour le personnel de nuit.
+  Widget _buildEmergencyContact(AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.blue.shade200),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.support_agent, size: 15, color: Colors.blue.shade700),
+            const SizedBox(width: 8),
             Expanded(
-              child: TextFormField(
-                controller: _firstNameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: l10n.registerFirstName,
-                  prefixIcon: const Icon(Icons.person_outlined),
-                ),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? '${l10n.registerFirstName} requis'
-                    : null,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.emergencyContactTitle,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.blue.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    l10n.emergencyContactInfo,
+                    style: TextStyle(fontSize: 11, color: Colors.blue.shade700),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: TextFormField(
-                controller: _lastNameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(labelText: l10n.registerLastName),
-                validator: (v) => (v == null || v.trim().isEmpty)
-                    ? '${l10n.registerLastName} requis'
-                    : null,
-              ),
-            ),
-          ]),
-          const SizedBox(height: 12),
-
-          TextFormField(
-            controller: _emailCtrl,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: l10n.loginEmail,
-              prefixIcon: const Icon(Icons.email_outlined),
-            ),
-            validator: (v) => (v == null || v.isEmpty) ? l10n.loginEmailRequired : null,
-          ),
-          const SizedBox(height: 12),
-
-          TextFormField(
-            controller: _passwordCtrl,
-            obscureText: _obscure,
-            decoration: InputDecoration(
-              labelText: l10n.loginPassword,
-              prefixIcon: const Icon(Icons.lock_outlined),
-              helperText: l10n.registerPasswordMinLength,
-              suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return l10n.loginPasswordRequired;
-              if (v.length < 8) return l10n.registerPasswordMinLength;
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-
-          TextFormField(
-            controller: _passwordConfirmCtrl,
-            obscureText: _obscureConfirm,
-            decoration: InputDecoration(
-              labelText: l10n.registerPasswordConfirm,
-              prefixIcon: const Icon(Icons.lock_outlined),
-              suffixIcon: IconButton(
-                icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
-                onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
-              ),
-            ),
-            validator: (v) {
-              if (v == null || v.isEmpty) return l10n.loginPasswordRequired;
-              if (v != _passwordCtrl.text) return l10n.registerPasswordMismatch;
-              return null;
-            },
-          ),
-          const SizedBox(height: 12),
-
-          // Département obligatoire — le rôle est attribué par un admin après inscription
-          DropdownButtonFormField<String>(
-            value: _selectedDepartment,
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: l10n.registerDepartment,
-              prefixIcon: const Icon(Icons.apartment_outlined),
-            ),
-            hint: Text(
-              'Sélectionner un département',
-              style: TextStyle(color: Colors.grey[500], fontSize: 14),
-            ),
-            items: departments
-                .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
-                .toList(),
-            onChanged: (v) => setState(() => _selectedDepartment = v),
-            validator: (_) => _selectedDepartment == null
-                ? '${l10n.registerDepartment} requis'
-                : null,
-          ),
-          const SizedBox(height: 12),
-
-          TextFormField(
-            controller: _phoneCtrl,
-            keyboardType: TextInputType.phone,
-            decoration: InputDecoration(
-              labelText: l10n.registerPhone,
-              prefixIcon: const Icon(Icons.phone_outlined),
-            ),
-          ),
-
-          _buildErrorBox(),
-          const SizedBox(height: 16),
-
-          SizedBox(
-            height: 48,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _submitRegister,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: _loading
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : Text(l10n.registerSubmit, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Center(
-            child: TextButton(
-              onPressed: () => _switchMode(_AuthMode.login),
-              child: Text(l10n.registerHaveAccount,
-                  style: const TextStyle(color: AppColors.primary, fontSize: 13)),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -916,7 +800,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // ── Formulaire de réinitialisation du mot de passe ─────────────────────────
 
   Widget _buildForgotPasswordForm(AppLocalizations l10n) {
-    if (_signupSuccess) {
+    if (_requestSuccess) {
       return Column(
         key: const ValueKey('forgot_success'),
         mainAxisSize: MainAxisSize.min,
@@ -1048,7 +932,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Bloc DEV — compilé uniquement en mode debug (kDebugMode est une constante de compilation)
+  // Bloc DEV — compilé uniquement en kDebugMode (constante de compilation = false en release)
   Widget _buildDevShortcuts() {
     return Container(
       decoration: BoxDecoration(
@@ -1098,6 +982,237 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Widget Demande d'accès ────────────────────────────────────────────────────
+// Contenu partagé entre la dialog desktop et le bottom-sheet mobile.
+
+class _AccessRequestContent extends StatefulWidget {
+  const _AccessRequestContent();
+
+  @override
+  State<_AccessRequestContent> createState() => _AccessRequestContentState();
+}
+
+class _AccessRequestContentState extends State<_AccessRequestContent> {
+  final _formKey   = GlobalKey<FormState>();
+  final _firstCtrl = TextEditingController();
+  final _lastCtrl  = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _deptCtrl  = TextEditingController();
+  final _roleCtrl  = TextEditingController();
+
+  bool    _loading = false;
+  bool    _success = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _firstCtrl.dispose();
+    _lastCtrl.dispose();
+    _emailCtrl.dispose();
+    _deptCtrl.dispose();
+    _roleCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context)!;
+    setState(() { _loading = true; _error = null; });
+    try {
+      await AuthApiService.instance.accessRequest(
+        firstName:  _firstCtrl.text.trim(),
+        lastName:   _lastCtrl.text.trim(),
+        email:      _emailCtrl.text.trim(),
+        department: _deptCtrl.text.trim(),
+        role:       _roleCtrl.text.trim(),
+      );
+      setState(() { _loading = false; _success = true; });
+    } catch (e) {
+      setState(() {
+        _loading = false;
+        _error   = l10n.accessRequestError;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: _success ? _buildSuccess(l10n) : _buildForm(l10n),
+    );
+  }
+
+  Widget _buildSuccess(AppLocalizations l10n) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        const Icon(Icons.check_circle_outline, size: 64, color: AppColors.success),
+        const SizedBox(height: 16),
+        Text(
+          l10n.accessRequestSuccess,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.5),
+        ),
+        const SizedBox(height: 24),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(l10n.commonClose),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForm(AppLocalizations l10n) {
+    return Form(
+      key: _formKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.badge_outlined, size: 22, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.accessRequestTitle,
+                  style: const TextStyle(
+                    fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            l10n.accessRequestSubtitle,
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+          ),
+          const SizedBox(height: 20),
+
+          // Prénom + Nom côte à côte
+          Row(children: [
+            Expanded(
+              child: TextFormField(
+                controller: _firstCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: l10n.accessRequestFirstName,
+                  prefixIcon: const Icon(Icons.person_outlined),
+                ),
+                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.loginEmailRequired.replaceAll('Email', l10n.commonName) : null,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _lastCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(labelText: l10n.accessRequestLastName),
+                validator: (v) => (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              labelText: l10n.accessRequestEmail,
+              prefixIcon: const Icon(Icons.email_outlined),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return l10n.loginEmailRequired;
+              if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(v.trim())) {
+                return l10n.loginEmailRequired;
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: _deptCtrl,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: l10n.accessRequestDepartment,
+              prefixIcon: const Icon(Icons.apartment_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: _roleCtrl,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: InputDecoration(
+              labelText: l10n.accessRequestRole,
+              hintText: l10n.accessRequestRoleHint,
+              prefixIcon: const Icon(Icons.work_outline),
+            ),
+          ),
+
+          // Boîte d'erreur
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.error.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(children: [
+                const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(_error!, style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                ),
+              ]),
+            ),
+          ],
+
+          const SizedBox(height: 20),
+
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              onPressed: _loading ? null : _submit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: _loading
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(l10n.accessRequestSubmit, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+            ),
+          ),
+          const SizedBox(height: 8),
         ],
       ),
     );

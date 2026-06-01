@@ -90,9 +90,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tooltipMenu => 'Menu';
 
   @override
-  String get tooltipMobilePreview => 'Aperçu mobile';
-
-  @override
   String get tooltipAccountSettings => 'Parametres du compte';
 
   @override
@@ -3167,7 +3164,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get systemAlertBannerAuth =>
-      'Service d\'authentification indisponible — connexion impossible. Contactez votre administrateur.';
+      'Service d\'authentification indisponible. Veuillez contacter l\'administrateur IT.';
 
   @override
   String get systemAlertBannerGeneral =>
@@ -3234,6 +3231,43 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get dashboardSidePanelEmpty =>
       'Aucun équipement critique hors service';
+
+  @override
+  String get dashboardWeatherTitle => 'Météo de l\'hôpital';
+
+  @override
+  String get dashboardWeatherAllGood =>
+      'Tout est opérationnel — aucune alerte en cours';
+
+  @override
+  String dashboardWeatherCriticalCount(int count) {
+    return '$count incident(s) critique(s) ou urgent(s) en cours';
+  }
+
+  @override
+  String dashboardWeatherOosCount(int count) {
+    return '$count équipement(s) hors service';
+  }
+
+  @override
+  String get dashboardWeatherReportBtn => 'Signaler un incident';
+
+  @override
+  String get dashboardMyTasksTitle => 'Mes tâches du jour';
+
+  @override
+  String get dashboardMyTasksNoTasks => 'Aucune tâche en cours';
+
+  @override
+  String get dashboardMyTasksPmDue => 'PM à faire / imminentes';
+
+  @override
+  String get dashboardMyTasksViewIssues => 'Voir mes interventions';
+
+  @override
+  String dashboardScopedTo(String scope) {
+    return 'Périmètre : $scope';
+  }
 
   @override
   String get equipmentExportCsv => 'Exporter CSV';
@@ -3777,4 +3811,121 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get analyticsNoChartData =>
       'Impossible de charger les données pour les graphiques';
+
+  @override
+  String get healthStatusOk => 'Opérationnel';
+
+  @override
+  String get healthStatusKo => 'Indisponible';
+
+  @override
+  String get healthTooltipTitle => 'État des services';
+
+  @override
+  String healthTooltipLastCheck(String time) {
+    return 'Dernière vérif. : $time';
+  }
+
+  @override
+  String get healthTooltipNoCheck => 'Vérification en cours…';
+
+  @override
+  String get accessRequestLink => 'Demander un accès';
+
+  @override
+  String get accessRequestTitle => 'Demande d\'accès au système';
+
+  @override
+  String get accessRequestSubtitle =>
+      'Remplissez ce formulaire. Un administrateur traitera votre demande et créera votre compte.';
+
+  @override
+  String get accessRequestFirstName => 'Prénom *';
+
+  @override
+  String get accessRequestLastName => 'Nom *';
+
+  @override
+  String get accessRequestEmail => 'Email professionnel *';
+
+  @override
+  String get accessRequestDepartment => 'Département souhaité (optionnel)';
+
+  @override
+  String get accessRequestRole => 'Rôle souhaité (optionnel)';
+
+  @override
+  String get accessRequestRoleHint => 'Ex : Infirmier, Médecin, Technicien…';
+
+  @override
+  String get accessRequestSubmit => 'Envoyer la demande';
+
+  @override
+  String get accessRequestSuccess =>
+      'Demande envoyée ! Un administrateur vous contactera pour créer votre compte.';
+
+  @override
+  String get accessRequestError =>
+      'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.';
+
+  @override
+  String get emergencyContactTitle => 'Urgence ou compte bloqué ?';
+
+  @override
+  String get emergencyContactInfo =>
+      'Admin IT : nzephmd@gmail.com  •  +250 788 823 228';
+
+  @override
+  String get hubStaffTitle => 'Que souhaitez-vous faire ?';
+
+  @override
+  String get hubStaffReportButton => 'Signaler une panne';
+
+  @override
+  String get hubStaffActiveIssuesButton => 'Mes incidents actifs';
+
+  @override
+  String hubStaffActiveIssuesCount(int count) {
+    return '$count incident(s) en cours';
+  }
+
+  @override
+  String get hubStaffNoActiveIssues => 'Aucun incident actif pour le moment';
+
+  @override
+  String get hubTechWorkplanTitle => 'Mon plan de travail du jour';
+
+  @override
+  String get hubTechWorkplanSubtitle =>
+      'Tâches planifiées et interventions assignées';
+
+  @override
+  String get hubTechPmSection => 'Maintenances préventives (PM)';
+
+  @override
+  String get hubTechAssignedSection => 'Mes interventions assignées';
+
+  @override
+  String get hubTechPendingPartsSection => 'En attente de pièces';
+
+  @override
+  String get hubTechNoPm => 'Aucune PM en retard ou imminente';
+
+  @override
+  String get hubTechNoAssigned => 'Aucune intervention assignée en cours';
+
+  @override
+  String get hubTechNoPendingParts => 'Aucune pièce en attente';
+
+  @override
+  String get hubTechViewAll => 'Voir tout';
+
+  @override
+  String get hubTechPmOverdueLabel => 'PM en retard';
+
+  @override
+  String get hubTechPmSoonLabel => 'PM imminente (< 7 j)';
+
+  @override
+  String get hubKpiLastRefreshLabel => 'Données actualisées';
 }

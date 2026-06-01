@@ -30,7 +30,6 @@
 
   "tooltipBack": "Back",
   "tooltipMenu": "Menu",
-  "tooltipMobilePreview": "Mobile preview",
   "tooltipAccountSettings": "Account settings",
   "tooltipNotifications": "Notifications",
 
@@ -1163,7 +1162,7 @@
   "@systemStatusLastCheck": {
     "placeholders": { "time": { "type": "String" } }
   },
-  "systemAlertBannerAuth": "Authentication service unavailable — sign-in is not possible. Contact your administrator.",
+  "systemAlertBannerAuth": "Authentication service unavailable. Please contact your IT administrator.",
   "@systemAlertBannerAuth": {},
   "systemAlertBannerGeneral": "System service(s) unavailable — limited functionality.",
   "@systemAlertBannerGeneral": {},
@@ -1192,6 +1191,22 @@
   "dashboardSidePanelTitle": "Critical out of service",
   "dashboardSidePanelSubtitle": "Equipment out of service with criticality A",
   "dashboardSidePanelEmpty": "No critical equipment out of service",
+
+  "dashboardWeatherTitle": "Hospital Status",
+  "dashboardWeatherAllGood": "All clear — no current alerts",
+  "dashboardWeatherCriticalCount": "{count} critical or urgent issue(s) in progress",
+  "@dashboardWeatherCriticalCount": { "placeholders": { "count": { "type": "int" } } },
+  "dashboardWeatherOosCount": "{count} equipment out of service",
+  "@dashboardWeatherOosCount": { "placeholders": { "count": { "type": "int" } } },
+  "dashboardWeatherReportBtn": "Report an incident",
+
+  "dashboardMyTasksTitle": "My tasks today",
+  "dashboardMyTasksNoTasks": "No pending tasks",
+  "dashboardMyTasksPmDue": "PM due / upcoming",
+  "dashboardMyTasksViewIssues": "View my interventions",
+
+  "dashboardScopedTo": "Scope: {scope}",
+  "@dashboardScopedTo": { "placeholders": { "scope": { "type": "String" } } },
 
   "equipmentExportCsv": "Export CSV",
   "equipmentExportCsvTooltip": "Download filtered list as CSV",
@@ -1399,5 +1414,69 @@
   "analyticsRetry": "Retry",
   "@analyticsRetry": {},
   "analyticsNoChartData": "Unable to load chart data",
-  "@analyticsNoChartData": {}
+  "@analyticsNoChartData": {},
+
+  "healthStatusOk": "Operational",
+  "@healthStatusOk": {},
+  "healthStatusKo": "Unavailable",
+  "@healthStatusKo": {},
+  "healthTooltipTitle": "Service status",
+  "@healthTooltipTitle": {},
+  "healthTooltipLastCheck": "Last check: {time}",
+  "@healthTooltipLastCheck": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "healthTooltipNoCheck": "Checking…",
+  "@healthTooltipNoCheck": {},
+
+  "accessRequestLink": "Request access",
+  "@accessRequestLink": {},
+  "accessRequestTitle": "System access request",
+  "@accessRequestTitle": {},
+  "accessRequestSubtitle": "Fill in this form. An administrator will process your request and create your account.",
+  "@accessRequestSubtitle": {},
+  "accessRequestFirstName": "First name *",
+  "@accessRequestFirstName": {},
+  "accessRequestLastName": "Last name *",
+  "@accessRequestLastName": {},
+  "accessRequestEmail": "Work email *",
+  "@accessRequestEmail": {},
+  "accessRequestDepartment": "Requested department (optional)",
+  "@accessRequestDepartment": {},
+  "accessRequestRole": "Requested role (optional)",
+  "@accessRequestRole": {},
+  "accessRequestRoleHint": "E.g.: Nurse, Doctor, Technician…",
+  "@accessRequestRoleHint": {},
+  "accessRequestSubmit": "Send request",
+  "@accessRequestSubmit": {},
+  "accessRequestSuccess": "Request sent! An administrator will contact you to create your account.",
+  "@accessRequestSuccess": {},
+  "accessRequestError": "Error while sending. Try again or contact the IT admin directly.",
+  "@accessRequestError": {},
+
+  "emergencyContactTitle": "Emergency or locked account?",
+  "@emergencyContactTitle": {},
+  "emergencyContactInfo": "IT admin: nzephmd@gmail.com  •  +250 788 823 228",
+  "@emergencyContactInfo": {},
+
+  "hubStaffTitle": "What would you like to do?",
+  "hubStaffReportButton": "Report a breakdown",
+  "hubStaffActiveIssuesButton": "My active incidents",
+  "hubStaffActiveIssuesCount": "{count} active incident(s)",
+  "@hubStaffActiveIssuesCount": { "placeholders": { "count": { "type": "int" } } },
+  "hubStaffNoActiveIssues": "No active incidents at the moment",
+
+  "hubTechWorkplanTitle": "My workplan for today",
+  "hubTechWorkplanSubtitle": "Planned tasks and assigned interventions",
+  "hubTechPmSection": "Preventive maintenance (PM)",
+  "hubTechAssignedSection": "My assigned interventions",
+  "hubTechPendingPartsSection": "Pending parts",
+  "hubTechNoPm": "No overdue or upcoming PM",
+  "hubTechNoAssigned": "No assigned intervention in progress",
+  "hubTechNoPendingParts": "No parts pending",
+  "hubTechViewAll": "View all",
+  "hubTechPmOverdueLabel": "PM overdue",
+  "hubTechPmSoonLabel": "PM soon (< 7 d)",
+
+  "hubKpiLastRefreshLabel": "Data updated"
 }

@@ -33,7 +33,7 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 
 **Responsabilités après migration Keycloak :**
 - **Keycloak** : émission/validation JWT (RS256 asymétrique), stockage users/mots de passe/rôles, endpoint token (Direct Grant), JWKS
-- **auth-service** : proxy Admin API Keycloak (`/api/users`, `/api/roles`), `GET /api/auth/me`, gestion `department_change_requests` et `role_permissions` SQLite
+- **auth-service** : proxy Admin API Keycloak (`/api/users`, `/api/roles`), `GET /api/auth/me`, gestion `department_change_requests`, `role_permissions`, `access_requests` SQLite
 - **db-service** : validation JWT via JWKS Keycloak (jwks-rsa), CRUD équipements/incidents/inventaire
 
 ## Domaines et ports
@@ -123,6 +123,17 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 > - Logout : suppression locale des tokens (tokens Keycloak expirent en 15 min)
 
 ### Authentification (`/api/auth`)
+
+#### POST /api/auth/access-request *(public, sans authentification)*
+- **Body** : `{ "first_name", "last_name", "email", "department?", "role?" }`
+- Enregistre une demande d'accès en DB (table `access_requests`, statut `pending`) pour traitement admin.
+- Aucun token requis — soumis depuis l'écran de connexion Flutter.
+- **Reponse 201** : `{ "message": "Demande enregistrée. Un administrateur vous contactera." }`
+- **Erreurs** : 400 si champs requis manquants ou email invalide.
+
+#### POST /api/auth/register *(public)*
+- Création de compte auto-déclaratif via Admin API Keycloak (hospitalStaff + VERIFY_EMAIL).
+- **Note** : le lien "S'inscrire" a été remplacé côté Flutter par "Demander un accès" (voir ci-dessus). Cet endpoint reste opérationnel pour usage admin direct.
 
 #### GET /api/auth/me
 - **Header** : `Authorization: Bearer {token Keycloak RS256}`

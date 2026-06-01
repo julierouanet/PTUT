@@ -115,6 +115,7 @@ class ApiConfig {
   static String get rolesUrl          => '$authBaseUrl/api/roles';
   static String get registerUrl       => '$authBaseUrl/api/auth/register';
   static String get forgotPasswordUrl => '$authBaseUrl/api/auth/forgot-password';
+  static String get accessRequestUrl  => '$authBaseUrl/api/auth/access-request';
   static String get roleRequestsUrl   => '$authBaseUrl/api/users/role-requests';
 
   // ── DB endpoints ──────────────────────────────────────────────────────────────

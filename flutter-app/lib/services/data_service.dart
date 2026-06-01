@@ -43,6 +43,10 @@ class DataService extends ChangeNotifier {
   bool isLoading = false;
   bool isLoaded  = false;
 
+  /// Horodatage du dernier chargement complet réussi (null avant le 1er chargement).
+  DateTime? _lastRefresh;
+  DateTime? get lastRefresh => _lastRefresh;
+
   /// Permet aux écrans de déclencher un rebuild après mutation locale.
   void notify() => notifyListeners();
 
@@ -61,8 +65,9 @@ class DataService extends ChangeNotifier {
     await _loadDeptRequests();
     await FeatureService().loadFeatures();
 
-    isLoading = false;
-    isLoaded  = true;
+    isLoading    = false;
+    isLoaded     = true;
+    _lastRefresh = DateTime.now();
     notifyListeners();
   }
 

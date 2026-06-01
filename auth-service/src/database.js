@@ -128,6 +128,22 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_role_req_status ON role_change_requests(status);
   `);
 
+  // access_requests : demandes d'accès depuis l'écran de connexion (non authentifié)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS access_requests (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name TEXT NOT NULL,
+      last_name  TEXT NOT NULL,
+      email      TEXT NOT NULL,
+      department TEXT,
+      role       TEXT,
+      status     TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_access_req_status ON access_requests(status);
+    CREATE INDEX IF NOT EXISTS idx_access_req_email  ON access_requests(email);
+  `);
+
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
   const defaultPerms = {
