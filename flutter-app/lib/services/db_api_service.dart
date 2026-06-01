@@ -151,6 +151,15 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  Future<void> escalateIssue(String id, String escalationStatus, String comment) async {
+    final url = '${ApiConfig.issuesUrl}/$id/escalate';
+    final response = await ApiClient.patch(url, {
+      'escalation_status': escalationStatus,
+      'escalation_comment': comment,
+    });
+    _checkStatus(response, url);
+  }
+
   // ── INVENTAIRE ─────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getInventory({

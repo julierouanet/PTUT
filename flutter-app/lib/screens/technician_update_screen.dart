@@ -63,7 +63,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   // ── Onglet "Mes interventions" ──────────────────────────────────────────────
   String? _selectedIssueId;
-  String  _repairStatus       = 'Diagnostic en cours';
   String  _interventionSearch = '';
   String  _legacyPartsText    = ''; // pièces sauvegardées en texte libre
 
@@ -74,6 +73,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   bool _isSaving      = false;
   bool _isReassigning = false;
+  bool _isEscalating  = false;
 
   // ── Chronomètre d'intervention ───────────────────────────────────────────────
   Timer?    _timer;
@@ -86,15 +86,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // ── Onglet "Agenda" ─────────────────────────────────────────────────────────
   DateTime _focusedDay  = DateTime.now();
   DateTime _selectedDay = DateTime.now();
-
-  // ── Statuts internes (clés FR côté API) ──────────────────────────────────────
-  final List<String> _repairStatuses = [
-    'Diagnostic en cours',
-    'Pièces commandées',
-    'Réparation en cours',
-    'Test en cours',
-    'Réparé',
-  ];
 
   // ── Getters de données ────────────────────────────────────────────────────────
 
@@ -121,6 +112,20 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     }).toList();
     list.sort((a, b) => _urgencyOrder(b.urgency) - _urgencyOrder(a.urgency));
     return list;
+  }
+
+  /// Incidents disponibles regroupés par département (tri urgence interne).
+  Map<String, List<Issue>> get _availableIssuesByDept {
+    final result = <String, List<Issue>>{};
+    for (final issue in _availableIssues) {
+      final dept = issue.department.isNotEmpty ? issue.department : 'Autre';
+      result.putIfAbsent(dept, () => []).add(issue);
+    }
+    // Trie les clés par département, puis chaque groupe par urgence décroissante
+    final sorted = Map.fromEntries(
+      result.entries.toList()..sort((a, b) => a.key.compareTo(b.key)),
+    );
+    return sorted;
   }
 
   int _urgencyOrder(IssueUrgency u) {
@@ -161,6 +166,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     ).toList();
   }
 
+  InventoryItem? _inventoryItemFor(String itemId) =>
+      DataService().inventory.where((it) => it.id == itemId).firstOrNull;
+
   // ── Init / Dispose ──────────────────────────────────────────────────────────
 
   @override
@@ -200,7 +208,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _legacyPartsText          = issue.partsReplaced ?? '';
       }
     });
-    // Démarre le chrono si l'incident est déjà en cours
+    // Reprend le chrono depuis taken_at persisté en DB
     if (issue != null && issue.status == IssueStatus.inProgress) {
       final takenAt = issue.takenAt != null ? DateTime.tryParse(issue.takenAt!) : null;
       _startTimer(takenAt ?? DateTime.now());
@@ -252,16 +260,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     return structured;
   }
 
-  String _getRepairStatusDisplay(String status, AppLocalizations l10n) {
-    switch (status) {
-      case 'Diagnostic en cours': return l10n.techDiagnosisInProgress;
-      case 'Pièces commandées':   return l10n.techPartsOrdered;
-      case 'Réparation en cours': return l10n.techRepairInProgress;
-      case 'Test en cours':       return l10n.techTestInProgress;
-      case 'Réparé':              return l10n.techRepaired;
-      default:                    return status;
-    }
-  }
+  List<Map<String, dynamic>> _buildPartsConsumed() => _selectedParts
+      .map((p) => {'item_id': p.itemId, 'quantity': p.quantity})
+      .toList();
 
   // ── Build principal ───────────────────────────────────────────────────────────
 
@@ -272,7 +273,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
     return Column(
       children: [
-        // ── TabBar ──────────────────────────────────────────────────────────
+        // ── TabBar avec badges de comptage dynamiques ───────────────────────
         Material(
           color: Theme.of(context).cardColor,
           elevation: 1,
@@ -324,11 +325,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Onglet 0 : Incidents disponibles
+  // Onglet 0 : Incidents disponibles — regroupés par département
   // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildAvailableTab(AppLocalizations l10n, bool isMobile) {
-    final issues = _availableIssues;
+    final byDept = _availableIssuesByDept;
 
     return Align(
       alignment: Alignment.topLeft,
@@ -346,34 +347,88 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               ),
             ),
             const SizedBox(height: 4),
-            Text(l10n.techAvailableSubtitle,
+            Text(l10n.techAvailableGroupedSubtitle,
                 style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: Card(
-                child: issues.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.check_circle_outline,
-                                color: AppColors.success, size: 24),
-                            const SizedBox(width: 12),
-                            Text(l10n.techNoAvailableIncidents,
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      )
-                    : Column(
-                        children: issues
-                            .map((i) => _buildAvailableIssueItem(i, isMobile))
-                            .toList(),
+
+            if (byDept.isEmpty)
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.check_circle_outline,
+                            color: AppColors.success, size: 24),
+                        const SizedBox(width: 12),
+                        Text(l10n.techNoAvailableIncidents,
+                            style: const TextStyle(color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              ...byDept.entries.map((entry) {
+                final dept   = entry.key;
+                final issues = entry.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── En-tête de section département ──────────────────────
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primaryLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.location_city_outlined,
+                                    size: 13, color: AppColors.primary),
+                                const SizedBox(width: 5),
+                                Text(
+                                  dept,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            l10n.techAvailableDeptCount(issues.length),
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                        ],
                       ),
-              ),
-            ),
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Card(
+                        child: Column(
+                          children: issues
+                              .map((i) => _buildAvailableIssueItem(i, isMobile))
+                              .toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                );
+              }),
           ],
         ),
       ),
@@ -797,7 +852,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     return InkWell(
       onTap: () {
         if (_selectedIssueId == issue.id) {
-          // Désélectionner
           _stopTimer();
           setState(() {
             _selectedIssueId = null;
@@ -906,8 +960,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                         _formatElapsed(_elapsed),
                         style: const TextStyle(
                             fontSize: 11,
-                            color: AppColors.primary,
-                            fontFeatures: []),
+                            color: AppColors.primary),
                       ),
                     ],
                   ),
@@ -951,7 +1004,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Formulaire de mise à jour (partagé desktop / mobile)
+  // Formulaire de mise à jour (Bon de Travail)
   // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildInterventionFormContent(AppLocalizations l10n) {
@@ -1006,22 +1059,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         ),
         const SizedBox(height: 22),
 
-        // ── Statut de réparation ────────────────────────────────────────────
-        Text(l10n.techRepairStatus,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _repairStatus,
-          items: _repairStatuses
-              .map((s) => DropdownMenuItem(
-                    value: s,
-                    child: Text(_getRepairStatusDisplay(s, l10n)),
-                  ))
-              .toList(),
-          onChanged: (v) => setState(() => _repairStatus = v!),
-        ),
-        const SizedBox(height: 22),
-
         // ── Diagnostic ──────────────────────────────────────────────────────
         Text(l10n.techDiagnosis,
             style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -1048,63 +1085,72 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _buildPartsPicker(l10n),
         const SizedBox(height: 28),
 
-        // ── Boutons Enregistrer / Marquer résolu ─────────────────────────────
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed:
-                    (_isSaving || _isReassigning) ? null : _saveProgress,
-                child: Text(l10n.techSave),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: (_repairStatus == 'Réparé' &&
-                            !_isSaving &&
-                            !_isReassigning)
-                        ? _markResolved
-                        : null,
-                    icon: _isSaving
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white))
-                        : const Icon(Icons.check, size: 16),
-                    label: Text(l10n.techMarkResolved),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white),
-                  ),
-                  // Explication si le bouton est désactivé
-                  if (_repairStatus != 'Réparé')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
-                      child: Text(
-                        l10n.techMarkResolvedTooltip,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.error),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-
-        // ── Bouton Transférer ────────────────────────────────────────────────
+        // ── Bouton Sauvegarder ───────────────────────────────────────────────
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: (_isSaving || _isReassigning)
+            onPressed: (_isSaving || _isReassigning || _isEscalating)
+                ? null
+                : _saveProgress,
+            icon: _isSaving
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary))
+                : const Icon(Icons.save_outlined, size: 16),
+            label: Text(l10n.techSave),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Clôture formelle (Bon de Travail) ─────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: (_isSaving || _isReassigning || _isEscalating)
+                ? null
+                : () => _showWorkOrderDialog(issue),
+            icon: const Icon(Icons.verified_outlined, size: 16),
+            label: Text(l10n.techMarkResolved),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.success,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12)),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Escalader / Suspendre ─────────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: (_isSaving || _isReassigning || _isEscalating)
+                ? null
+                : () => _showEscalateDialog(issue),
+            icon: _isEscalating
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.error))
+                : const Icon(Icons.report_problem_outlined,
+                    size: 16, color: AppColors.error),
+            label: Text(l10n.techEscalateButton,
+                style: const TextStyle(color: AppColors.error)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.error),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Transférer (reassign groupe) ──────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: (_isSaving || _isReassigning || _isEscalating)
                 ? null
                 : () => _showReassignDialog(issue),
             icon: _isReassigning
@@ -1330,8 +1376,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     final events   = <_AgendaEvent>[];
     final techName = _currentTechnicianName;
 
-    // Incidents assignés à ce technicien — utilise taken_at si disponible,
-    // sinon created_at comme fallback.
     for (final issue in DataService().issues) {
       if (issue.assignedTechnician != techName) continue;
       if (issue.status != IssueStatus.inProgress &&
@@ -1348,7 +1392,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       ));
     }
 
-    // Maintenances passées
     for (final eq in DataService().equipment) {
       for (final rec in eq.maintenanceHistory) {
         if (rec.technician != techName) continue;
@@ -1360,7 +1403,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             type:     'maintenance',
             date:     date));
       }
-      // Maintenances futures
       for (final rec in eq.futureMaintenance) {
         if (rec.technician != techName) continue;
         final date = _parseDate(rec.date);
@@ -1491,7 +1533,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
           ),
           const SizedBox(height: 16),
 
-          // Événements du jour sélectionné
           Text(
             l10n.techEventsOn(
               '${_selectedDay.day.toString().padLeft(2, '0')}/'
@@ -1533,7 +1574,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 ),
           const SizedBox(height: 24),
 
-          // Historique complet
           if (allEvents.isNotEmpty) ...[
             Text(l10n.techFullHistory,
                 style: const TextStyle(
@@ -1720,7 +1760,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       );
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Dialogues et actions
+  // Dialog : Prise en charge
   // ─────────────────────────────────────────────────────────────────────────────
 
   void _showTakeOverDialog(Issue issue) {
@@ -1783,7 +1823,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _loadIssueData();
         _tabController.animateTo(1);
       });
-      // Démarre le chrono dès la prise en charge
       _startTimer(DateTime.now());
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
@@ -1801,6 +1840,407 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       ));
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Bon de Travail — Clôture formelle
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  void _showWorkOrderDialog(Issue issue) {
+    final l10n            = AppLocalizations.of(context)!;
+    bool safetyChecked    = false;
+    final closingNotesCtl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(children: [
+            const Icon(Icons.verified_outlined,
+                color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(l10n.techWorkOrderTitle,
+                    style: const TextStyle(fontSize: 16))),
+          ]),
+          content: SizedBox(
+            width: 480,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Récapitulatif
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(issue.displayName,
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 13)),
+                        const SizedBox(height: 2),
+                        Text(issue.department,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                        if (_selectedParts.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '${l10n.techPartsFromInventory} : '
+                            '${_selectedParts.map((p) => '${p.name} ×${p.quantity}').join(', ')}',
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.primary),
+                          ),
+                        ],
+                      ]),
+                ),
+                const SizedBox(height: 16),
+
+                // Checkbox de sécurité
+                InkWell(
+                  onTap: () => setDialogState(
+                      () => safetyChecked = !safetyChecked),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: safetyChecked,
+                        onChanged: (v) => setDialogState(
+                            () => safetyChecked = v ?? false),
+                        activeColor: AppColors.success,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(
+                            l10n.techWorkOrderSafetyCheck,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: safetyChecked
+                                  ? AppColors.success
+                                  : AppColors.textPrimary,
+                              fontWeight: safetyChecked
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!safetyChecked)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 46, top: 2),
+                    child: Text(
+                      l10n.techWorkOrderSafetyRequired,
+                      style: const TextStyle(
+                          fontSize: 11, color: AppColors.error),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+
+                // Notes de clôture
+                TextField(
+                  controller: closingNotesCtl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: l10n.techWorkOrderClosingNotes,
+                    hintText: l10n.techWorkOrderClosingNotesHint,
+                    isDense: true,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                closingNotesCtl.dispose();
+                Navigator.pop(ctx);
+              },
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: safetyChecked
+                  ? () async {
+                      final notes = closingNotesCtl.text.trim();
+                      closingNotesCtl.dispose();
+                      Navigator.pop(ctx);
+                      // Si des pièces sont sélectionnées → confirmation déstockage
+                      if (_selectedParts.isNotEmpty) {
+                        final confirmed =
+                            await _showDestockConfirmDialog(issue);
+                        if (!confirmed) return;
+                      }
+                      await _doWorkOrderClose(issue, notes);
+                    }
+                  : null,
+              icon: const Icon(Icons.check_circle_outline, size: 16),
+              label: Text(l10n.techWorkOrderConfirm),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Confirmation déstockage
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Future<bool> _showDestockConfirmDialog(Issue issue) async {
+    final l10n = AppLocalizations.of(context)!;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Row(children: [
+              const Icon(Icons.inventory_2_outlined,
+                  color: AppColors.warning, size: 20),
+              const SizedBox(width: 8),
+              Text(l10n.techDestockConfirmTitle,
+                  style: const TextStyle(fontSize: 16)),
+            ]),
+            content: SizedBox(
+              width: 440,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.techDestockConfirmSubtitle,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 12),
+
+                  // Liste des pièces avec stock actuel et estimé
+                  ..._selectedParts.map((part) {
+                    final inventoryItem = _inventoryItemFor(part.itemId);
+                    final currentStock  = inventoryItem?.currentStock ?? 0;
+                    final afterStock    = currentStock - part.quantity;
+                    final isLow         = afterStock <= (inventoryItem?.minStock ?? 0);
+                    final isNegative    = afterStock < 0;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: isNegative
+                            ? AppColors.errorLight
+                            : isLow
+                                ? AppColors.warningLight
+                                : AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isNegative
+                              ? AppColors.error
+                              : isLow
+                                  ? AppColors.warning
+                                  : AppColors.border,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.techDestockItemLine(
+                              part.name,
+                              part.quantity,
+                              part.unit,
+                              currentStock,
+                            ),
+                            style: const TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w500),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n.techDestockStockAfter(
+                                afterStock.clamp(0, 999999), part.unit),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isNegative
+                                  ? AppColors.error
+                                  : isLow
+                                      ? AppColors.warning
+                                      : AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (isLow && !isNegative) ...[
+                            const SizedBox(height: 2),
+                            Text(l10n.techDestockLowWarning,
+                                style: const TextStyle(
+                                    fontSize: 11, color: AppColors.warning)),
+                          ],
+                          if (isNegative) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '⛔ Stock insuffisant pour cette quantité',
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.error,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l10n.commonCancel),
+              ),
+              ElevatedButton.icon(
+                // Désactivé si au moins une pièce est en stock insuffisant
+                onPressed: _selectedParts.any((p) {
+                  final inv = _inventoryItemFor(p.itemId);
+                  return (inv?.currentStock ?? 0) < p.quantity;
+                })
+                    ? null
+                    : () => Navigator.pop(ctx, true),
+                icon: const Icon(Icons.check, size: 16),
+                label: Text(l10n.techDestockConfirm),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.warning,
+                    foregroundColor: Colors.white),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Escalade / Suspension
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  void _showEscalateDialog(Issue issue) {
+    final l10n          = AppLocalizations.of(context)!;
+    final formKey       = GlobalKey<FormState>();
+    String? escalStatus;
+    final commentCtl    = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(children: [
+            const Icon(Icons.report_problem_outlined,
+                color: AppColors.error, size: 20),
+            const SizedBox(width: 8),
+            Text(l10n.techEscalateTitle,
+                style: const TextStyle(fontSize: 16)),
+          ]),
+          content: SizedBox(
+            width: 480,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.techEscalateSubtitle,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 16),
+
+                  // Type d'escalade
+                  Text(l10n.techEscalateStatusLabel,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: escalStatus,
+                    hint: Text(l10n.techEscalateStatusLabel),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'Waiting Materials',
+                        child: Row(children: [
+                          const Icon(Icons.inventory_outlined,
+                              size: 16, color: AppColors.warning),
+                          const SizedBox(width: 8),
+                          Text(l10n.techEscalateWaitingMaterials),
+                        ]),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Redirected',
+                        child: Row(children: [
+                          const Icon(Icons.forward_outlined,
+                              size: 16, color: AppColors.error),
+                          const SizedBox(width: 8),
+                          Text(l10n.techEscalateRedirected),
+                        ]),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        setDialogState(() => escalStatus = v),
+                    validator: (v) =>
+                        v == null ? l10n.techEscalateStatusRequired : null,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Commentaire obligatoire
+                  TextFormField(
+                    controller: commentCtl,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l10n.techEscalateCommentLabel,
+                      hintText: l10n.techEscalateCommentHint,
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().length < 10) {
+                        return l10n.techEscalateCommentMinLength;
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                commentCtl.dispose();
+                Navigator.pop(ctx);
+              },
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final status  = escalStatus!;
+                final comment = commentCtl.text.trim();
+                commentCtl.dispose();
+                Navigator.pop(ctx);
+                await _doEscalate(issue, status, comment);
+              },
+              icon: const Icon(Icons.report_problem_outlined, size: 16),
+              label: Text(l10n.commonConfirm),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Transfert de groupe (réassignation)
+  // ─────────────────────────────────────────────────────────────────────────────
 
   void _showReassignDialog(Issue issue) {
     final l10n        = AppLocalizations.of(context)!;
@@ -1876,6 +2316,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Actions API
+  // ─────────────────────────────────────────────────────────────────────────────
+
   Future<void> _doReassign(
       Issue issue, String newGroup, String reason) async {
     final l10n = AppLocalizations.of(context)!;
@@ -1902,7 +2346,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _partsSearchController.clear();
         _selectedParts.clear();
         _legacyPartsText = '';
-        _repairStatus    = 'Diagnostic en cours';
       });
     } catch (_) {
       if (!mounted) return;
@@ -1913,6 +2356,45 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       ));
     } finally {
       if (mounted) setState(() => _isReassigning = false);
+    }
+  }
+
+  Future<void> _doEscalate(
+      Issue issue, String escalStatus, String comment) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _isEscalating = true);
+    try {
+      await DbApiService.instance.escalateIssue(issue.id, escalStatus, comment);
+      await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.report_problem_outlined, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techEscalateSuccess(escalStatus)),
+        ]),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      _stopTimer();
+      setState(() {
+        _selectedIssueId = null;
+        _diagnosisController.clear();
+        _actionsController.clear();
+        _partsSearchController.clear();
+        _selectedParts.clear();
+        _legacyPartsText = '';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${l10n.commonApiError}: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isEscalating = false);
     }
   }
 
@@ -1933,6 +2415,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         'parts_replaced': _serializeParts().isNotEmpty
             ? _serializeParts()
             : null,
+        // Pas de parts_consumed ici — le déstockage se fait uniquement à la clôture
       });
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
@@ -1949,7 +2432,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context)!.commonApiError),
+        content: Text(l10n.commonApiError),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));
@@ -1958,10 +2441,22 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     }
   }
 
-  Future<void> _markResolved() async {
+  Future<void> _doWorkOrderClose(Issue issue, String closingNotes) async {
     if (_selectedIssueId == null) return;
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isSaving = true);
+
+    // Fusionne les notes de clôture dans les actions si fournies
+    String? finalActions;
+    final existingActions = _actionsController.text.trim();
+    if (closingNotes.isNotEmpty) {
+      finalActions = existingActions.isNotEmpty
+          ? '$existingActions\n[Clôture] $closingNotes'
+          : '[Clôture] $closingNotes';
+    } else if (existingActions.isNotEmpty) {
+      finalActions = existingActions;
+    }
+
     try {
       await DbApiService.instance.updateIssue(_selectedIssueId!, {
         'status':              'Completed',
@@ -1969,12 +2464,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         'diagnosis': _diagnosisController.text.trim().isNotEmpty
             ? _diagnosisController.text.trim()
             : null,
-        'actions': _actionsController.text.trim().isNotEmpty
-            ? _actionsController.text.trim()
-            : null,
-        'parts_replaced': _serializeParts().isNotEmpty
-            ? _serializeParts()
-            : null,
+        'actions':        finalActions,
+        'parts_replaced': _serializeParts().isNotEmpty ? _serializeParts() : null,
+        // Déstockage transactionnel côté backend
+        if (_selectedParts.isNotEmpty) 'parts_consumed': _buildPartsConsumed(),
       });
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
@@ -1996,12 +2489,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         _partsSearchController.clear();
         _selectedParts.clear();
         _legacyPartsText = '';
-        _repairStatus    = 'Diagnostic en cours';
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context)!.commonApiError),
+        content: Text('${l10n.commonApiError}: $e'),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ));

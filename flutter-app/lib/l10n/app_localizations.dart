@@ -6872,6 +6872,156 @@ abstract class AppLocalizations {
   /// **'Prise en charge le {date}'**
   String techTakenAtLabel(String date);
 
+  /// No description provided for @techAvailableGroupedSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Regroupés par département / localisation'**
+  String get techAvailableGroupedSubtitle;
+
+  /// No description provided for @techAvailableDeptCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s)'**
+  String techAvailableDeptCount(int count);
+
+  /// No description provided for @techDestockConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer le déstockage'**
+  String get techDestockConfirmTitle;
+
+  /// No description provided for @techDestockConfirmSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous avez déclaré les pièces suivantes :'**
+  String get techDestockConfirmSubtitle;
+
+  /// No description provided for @techDestockItemLine.
+  ///
+  /// In fr, this message translates to:
+  /// **'{name} × {quantity} {unit}  (stock actuel : {stock})'**
+  String techDestockItemLine(String name, int quantity, String unit, int stock);
+
+  /// No description provided for @techDestockStockAfter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stock restant estimé : {after} {unit}'**
+  String techDestockStockAfter(int after, String unit);
+
+  /// No description provided for @techDestockLowWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'⚠ Stock faible après cette opération'**
+  String get techDestockLowWarning;
+
+  /// No description provided for @techDestockConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer et déstockerter'**
+  String get techDestockConfirm;
+
+  /// No description provided for @techEscalateButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Escalader / Suspendre'**
+  String get techEscalateButton;
+
+  /// No description provided for @techEscalateTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Escalader l\'incident'**
+  String get techEscalateTitle;
+
+  /// No description provided for @techEscalateSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suspendez l\'incident si vous manquez de matériel ou de compétences spécifiques. Cela le rend visible aux superviseurs.'**
+  String get techEscalateSubtitle;
+
+  /// No description provided for @techEscalateStatusLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type d\'escalade'**
+  String get techEscalateStatusLabel;
+
+  /// No description provided for @techEscalateWaitingMaterials.
+  ///
+  /// In fr, this message translates to:
+  /// **'Attente de matériaux / pièces'**
+  String get techEscalateWaitingMaterials;
+
+  /// No description provided for @techEscalateRedirected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rediriger vers un spécialiste'**
+  String get techEscalateRedirected;
+
+  /// No description provided for @techEscalateStatusRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le type d\'escalade est obligatoire'**
+  String get techEscalateStatusRequired;
+
+  /// No description provided for @techEscalateCommentLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaire obligatoire'**
+  String get techEscalateCommentLabel;
+
+  /// No description provided for @techEscalateCommentHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Expliquez le problème (pièces manquantes, expertise externe requise…)'**
+  String get techEscalateCommentHint;
+
+  /// No description provided for @techEscalateCommentMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le commentaire doit contenir au moins 10 caractères'**
+  String get techEscalateCommentMinLength;
+
+  /// No description provided for @techEscalateSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident escaladé — statut : {status}'**
+  String techEscalateSuccess(String status);
+
+  /// No description provided for @techWorkOrderTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bon de Travail — Clôture formelle'**
+  String get techWorkOrderTitle;
+
+  /// No description provided for @techWorkOrderSafetyCheck.
+  ///
+  /// In fr, this message translates to:
+  /// **'J\'atteste que toutes les vérifications de sécurité ont été effectuées et que l\'équipement est en état de fonctionnement.'**
+  String get techWorkOrderSafetyCheck;
+
+  /// No description provided for @techWorkOrderSafetyRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous devez valider les vérifications de sécurité avant de clore l\'incident.'**
+  String get techWorkOrderSafetyRequired;
+
+  /// No description provided for @techWorkOrderClosingNotes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notes de clôture'**
+  String get techWorkOrderClosingNotes;
+
+  /// No description provided for @techWorkOrderClosingNotesHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations complémentaires pour le superviseur ou les futurs intervenants…'**
+  String get techWorkOrderClosingNotesHint;
+
+  /// No description provided for @techWorkOrderConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la clôture'**
+  String get techWorkOrderConfirm;
+
   /// No description provided for @reportsPeriodLabel.
   ///
   /// In fr, this message translates to:

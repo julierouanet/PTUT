@@ -545,8 +545,9 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at |
 | GET     | /api/issues/:id             | Auth           | Details incident enrichis : `{ ...issue, equipment, audit_log: [{id,timestamp,user_name,user_role,action,details}], maintenance_records: [{id,equipment_id,date,intervention,technician,is_future}] }` |
 | POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
-| PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency) |
-| PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracee appendée dans `actions`. |
+| PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
+| PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracée appendée dans `actions`. |
+| PATCH   | /api/issues/:id/escalate    | Admin/Sup/Tech | Escalade/suspension. Body: `{ escalation_status, escalation_comment }`. `escalation_status` ∈ `Waiting Materials\|Redirected`, `escalation_comment` >= 10 char. Met à jour le statut et appende le commentaire dans `actions`. |
 | DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
 
 ### Lieux (`/api/locations`)

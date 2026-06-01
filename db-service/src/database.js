@@ -132,6 +132,9 @@ function initTables() {
   try { db.exec("ALTER TABLE issues ADD COLUMN location_text TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE issues ADD COLUMN location_tag  TEXT"); } catch (_) {}
 
+  // Migration : horodatage de prise en charge (chronomètre persistant côté technicien)
+  try { db.exec("ALTER TABLE issues ADD COLUMN taken_at TEXT"); } catch (_) {}
+
   // Migration : ajout de la colonne next_revision_date dans equipment
   try { db.exec("ALTER TABLE equipment ADD COLUMN next_revision_date TEXT"); } catch (_) {}
 

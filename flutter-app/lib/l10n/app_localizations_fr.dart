@@ -3686,6 +3686,103 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get techAvailableGroupedSubtitle =>
+      'Regroupés par département / localisation';
+
+  @override
+  String techAvailableDeptCount(int count) {
+    return '$count incident(s)';
+  }
+
+  @override
+  String get techDestockConfirmTitle => 'Confirmer le déstockage';
+
+  @override
+  String get techDestockConfirmSubtitle =>
+      'Vous avez déclaré les pièces suivantes :';
+
+  @override
+  String techDestockItemLine(
+    String name,
+    int quantity,
+    String unit,
+    int stock,
+  ) {
+    return '$name × $quantity $unit  (stock actuel : $stock)';
+  }
+
+  @override
+  String techDestockStockAfter(int after, String unit) {
+    return 'Stock restant estimé : $after $unit';
+  }
+
+  @override
+  String get techDestockLowWarning => '⚠ Stock faible après cette opération';
+
+  @override
+  String get techDestockConfirm => 'Confirmer et déstockerter';
+
+  @override
+  String get techEscalateButton => 'Escalader / Suspendre';
+
+  @override
+  String get techEscalateTitle => 'Escalader l\'incident';
+
+  @override
+  String get techEscalateSubtitle =>
+      'Suspendez l\'incident si vous manquez de matériel ou de compétences spécifiques. Cela le rend visible aux superviseurs.';
+
+  @override
+  String get techEscalateStatusLabel => 'Type d\'escalade';
+
+  @override
+  String get techEscalateWaitingMaterials => 'Attente de matériaux / pièces';
+
+  @override
+  String get techEscalateRedirected => 'Rediriger vers un spécialiste';
+
+  @override
+  String get techEscalateStatusRequired =>
+      'Le type d\'escalade est obligatoire';
+
+  @override
+  String get techEscalateCommentLabel => 'Commentaire obligatoire';
+
+  @override
+  String get techEscalateCommentHint =>
+      'Expliquez le problème (pièces manquantes, expertise externe requise…)';
+
+  @override
+  String get techEscalateCommentMinLength =>
+      'Le commentaire doit contenir au moins 10 caractères';
+
+  @override
+  String techEscalateSuccess(String status) {
+    return 'Incident escaladé — statut : $status';
+  }
+
+  @override
+  String get techWorkOrderTitle => 'Bon de Travail — Clôture formelle';
+
+  @override
+  String get techWorkOrderSafetyCheck =>
+      'J\'atteste que toutes les vérifications de sécurité ont été effectuées et que l\'équipement est en état de fonctionnement.';
+
+  @override
+  String get techWorkOrderSafetyRequired =>
+      'Vous devez valider les vérifications de sécurité avant de clore l\'incident.';
+
+  @override
+  String get techWorkOrderClosingNotes => 'Notes de clôture';
+
+  @override
+  String get techWorkOrderClosingNotesHint =>
+      'Informations complémentaires pour le superviseur ou les futurs intervenants…';
+
+  @override
+  String get techWorkOrderConfirm => 'Confirmer la clôture';
+
+  @override
   String get reportsPeriodLabel => 'Période d\'analyse';
 
   @override

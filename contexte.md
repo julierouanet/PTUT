@@ -189,6 +189,7 @@ PTUT/
 - **`equipment.macro_category_id`** : dérivé automatiquement de `subcategory_id` lors de l'insert/update si non fourni
 - **`equipment.criticality`** : valeurs autorisées `'A'`, `'B'`, `'C'` (Matrice ABC GMAO)
 - **`pm_protocols`** : protocoles par *type* d'équipement (≠ `preventive_maintenance_plans` qui est par équipement individuel)
+- **`issues.taken_at`** (TEXT, Nullable) : horodatage ISO 8601 de la prise en charge par le technicien — permet le chronomètre persistant côté Flutter (`DateTime.now().difference(takenAt)` au rechargement)
 
 ### Enums principaux (whitelists serveur)
 

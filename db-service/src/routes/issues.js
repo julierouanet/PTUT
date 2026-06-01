@@ -207,7 +207,7 @@ router.post('/', verifyToken, (req, res) => {
 // PUT /api/issues/:id - mettre à jour un incident
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group } = req.body;
+  const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group, taken_at, parts_consumed } = req.body;
 
   const existing = db.prepare('SELECT id, equipment_name, location_id, status, department, assigned_group FROM issues WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
@@ -223,6 +223,25 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     return res.status(400).json({ error: `Groupe invalide. Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
   }
 
+  // Déstockage transactionnel si des pièces ont été consommées
+  if (Array.isArray(parts_consumed) && parts_consumed.length > 0) {
+    try {
+      const destock = db.transaction((consumed) => {
+        for (const { item_id, quantity } of consumed) {
+          if (!item_id || typeof quantity !== 'number' || quantity <= 0) continue;
+          const item = db.prepare('SELECT id, name, current_stock FROM inventory WHERE id = ?').get(item_id);
+          if (!item) throw new Error(`Pièce introuvable : ${item_id}`);
+          const newStock = item.current_stock - quantity;
+          if (newStock < 0) throw new Error(`Stock insuffisant pour "${item.name}" (stock : ${item.current_stock}, demandé : ${quantity})`);
+          db.prepare(`UPDATE inventory SET current_stock = ?, updated_at = datetime('now','localtime') WHERE id = ?`).run(newStock, item_id);
+        }
+      });
+      destock(parts_consumed);
+    } catch (err) {
+      return res.status(409).json({ error: err.message });
+    }
+  }
+
   db.prepare(`
     UPDATE issues
     SET status = COALESCE(?, status),
@@ -232,9 +251,10 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         parts_replaced = COALESCE(?, parts_replaced),
         urgency = COALESCE(?, urgency),
         assigned_group = COALESCE(?, assigned_group),
+        taken_at = COALESCE(?, taken_at),
         updated_at = datetime('now','localtime')
     WHERE id = ?
-  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group || null, req.params.id);
+  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group || null, taken_at || null, req.params.id);
 
   const groupChanged = assigned_group && assigned_group !== existing.assigned_group;
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
@@ -245,10 +265,52 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     details: {
       ...(status ? { old_status: existing.status, new_status: status } : {}),
       ...(groupChanged ? { old_group: existing.assigned_group, new_group: assigned_group } : {}),
+      ...(parts_consumed?.length ? { parts_consumed } : {}),
     },
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident mis à jour' });
+});
+
+// ── PATCH /api/issues/:id/escalate ───────────────────────────────────────────
+// Suspend l'incident sur place (Waiting Materials ou Redirected) avec commentaire obligatoire.
+router.patch('/:id/escalate', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { escalation_status, escalation_comment } = req.body;
+
+  const VALID_ESCALATION_STATUSES = ['Waiting Materials', 'Redirected'];
+  if (!escalation_status || !VALID_ESCALATION_STATUSES.includes(escalation_status)) {
+    return res.status(400).json({ error: `escalation_status invalide. Valeurs acceptées : ${VALID_ESCALATION_STATUSES.join(', ')}` });
+  }
+  if (!escalation_comment || escalation_comment.trim().length < 10) {
+    return res.status(400).json({ error: 'escalation_comment est requis (min 10 caractères)' });
+  }
+
+  const existing = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const labelMap = { 'Waiting Materials': 'Matériaux manquants', 'Redirected': 'Redirigé' };
+  const appendedActions = existing.actions
+    ? `${existing.actions}\n[${ts}] Escalade (${labelMap[escalation_status]}) — ${escalation_comment.trim()}`
+    : `[${ts}] Escalade (${labelMap[escalation_status]}) — ${escalation_comment.trim()}`;
+
+  db.prepare(`
+    UPDATE issues
+    SET status = ?,
+        actions = ?,
+        updated_at = datetime('now','localtime')
+    WHERE id = ?
+  `).run(escalation_status, appendedActions, req.params.id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: `issue_status_${escalation_status.toLowerCase().replace(/\s+/g, '_')}`,
+    target_type: 'issue', target_id: req.params.id,
+    target_name: existing.equipment_name || existing.location_id || existing.department,
+    details: { old_status: existing.status, new_status: escalation_status, comment: escalation_comment.trim() },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Incident escaladé', id: req.params.id, new_status: escalation_status });
 });
 
 // ── PATCH /api/issues/:id/reassign ────────────────────────────────────────

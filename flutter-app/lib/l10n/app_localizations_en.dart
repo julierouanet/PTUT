@@ -3652,6 +3652,101 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get techAvailableGroupedSubtitle => 'Grouped by department / location';
+
+  @override
+  String techAvailableDeptCount(int count) {
+    return '$count issue(s)';
+  }
+
+  @override
+  String get techDestockConfirmTitle => 'Confirm stock deduction';
+
+  @override
+  String get techDestockConfirmSubtitle =>
+      'You have declared the following parts:';
+
+  @override
+  String techDestockItemLine(
+    String name,
+    int quantity,
+    String unit,
+    int stock,
+  ) {
+    return '$name × $quantity $unit  (current stock: $stock)';
+  }
+
+  @override
+  String techDestockStockAfter(int after, String unit) {
+    return 'Estimated remaining stock: $after $unit';
+  }
+
+  @override
+  String get techDestockLowWarning => '⚠ Low stock after this operation';
+
+  @override
+  String get techDestockConfirm => 'Confirm & deduct stock';
+
+  @override
+  String get techEscalateButton => 'Escalate / Suspend';
+
+  @override
+  String get techEscalateTitle => 'Escalate issue';
+
+  @override
+  String get techEscalateSubtitle =>
+      'Suspend the issue if you lack materials or specific skills. This makes it visible to supervisors.';
+
+  @override
+  String get techEscalateStatusLabel => 'Escalation type';
+
+  @override
+  String get techEscalateWaitingMaterials => 'Waiting for materials / parts';
+
+  @override
+  String get techEscalateRedirected => 'Redirect to a specialist';
+
+  @override
+  String get techEscalateStatusRequired => 'Escalation type is required';
+
+  @override
+  String get techEscalateCommentLabel => 'Mandatory comment';
+
+  @override
+  String get techEscalateCommentHint =>
+      'Explain the issue (missing parts, external expertise needed…)';
+
+  @override
+  String get techEscalateCommentMinLength =>
+      'Comment must be at least 10 characters';
+
+  @override
+  String techEscalateSuccess(String status) {
+    return 'Issue escalated — status: $status';
+  }
+
+  @override
+  String get techWorkOrderTitle => 'Work Order — Formal closure';
+
+  @override
+  String get techWorkOrderSafetyCheck =>
+      'I confirm that all safety checks have been performed and the equipment is operational.';
+
+  @override
+  String get techWorkOrderSafetyRequired =>
+      'You must validate the safety checks before closing the issue.';
+
+  @override
+  String get techWorkOrderClosingNotes => 'Closing notes';
+
+  @override
+  String get techWorkOrderClosingNotesHint =>
+      'Additional information for the supervisor or future technicians…';
+
+  @override
+  String get techWorkOrderConfirm => 'Confirm closure';
+
+  @override
   String get reportsPeriodLabel => 'Analysis period';
 
   @override
