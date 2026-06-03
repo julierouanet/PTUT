@@ -169,23 +169,18 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       listenable: _authService,
                       builder: (context, _) {
                         final prefs = _authService.notificationPreferences;
-                        final allEnabled = prefs == null
-                            ? true
+                        // Liste des flags pertinents selon le rôle
+                        final flags = prefs == null
+                            ? const <bool>[]
                             : [
-                                prefs.notifyNewIssue,
-                                prefs.notifyIssueAssigned,
-                                prefs.notifyIssueResolved,
-                                prefs.notifyIssueStatusUpdate,
+                                prefs.notifyCriticalNewIssue,
+                                prefs.notifyCriticalAcknowledged,
+                                prefs.notifyCriticalDiagnosed,
+                                prefs.notifyCriticalResolved,
                                 prefs.notifyPmDue,
-                              ].every((v) => v);
-                        final someEnabled = prefs != null &&
-                            [
-                              prefs.notifyNewIssue,
-                              prefs.notifyIssueAssigned,
-                              prefs.notifyIssueResolved,
-                              prefs.notifyIssueStatusUpdate,
-                              prefs.notifyPmDue,
-                            ].any((v) => v);
+                              ];
+                        final allEnabled  = prefs == null || flags.every((v) => v);
+                        final someEnabled = prefs != null && flags.any((v) => v);
                         return ListTile(
                           leading: Icon(
                             Icons.email_outlined,

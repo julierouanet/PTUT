@@ -65,6 +65,31 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 **Pas de FK** : les rôles vivent dans Keycloak, pas dans SQLite.
 **Migration automatique** : si l'ancienne table avec FK -> roles existe, elle est recréée sans FK au démarrage (`role_permissions_v2` pattern, marqueur `_rp_migrated`).
 
+### Table `feature_flags` **[NOUVEAU]**
+
+| Colonne     | Type    | Contraintes                                        |
+|-------------|---------|-----------------------------------------------------|
+| id          | TEXT    | PRIMARY KEY (ex: `equipment`, `inventory`)          |
+| name        | TEXT    | NOT NULL (nom affiché)                             |
+| description | TEXT    | Nullable                                           |
+| enabled     | INTEGER | NOT NULL DEFAULT 1 (0 = désactivé globalement)     |
+| updated_at  | TEXT    | DEFAULT datetime now                               |
+| updated_by  | TEXT    | Nullable (UUID Keycloak de l'admin)                |
+
+**Modules désactivables** : `equipment`, `inventory`. Le module `settings` n'a pas de ligne — il est verrouillé côté API (PUT refuse explicitement).
+**Seed automatique** : `initTables()` insère les deux flags avec `enabled=1` via `INSERT OR IGNORE`.
+
+### Table `feature_flag_overrides` **[NOUVEAU]**
+
+| Colonne  | Type    | Contraintes                                          |
+|----------|---------|-------------------------------------------------------|
+| flag_id  | TEXT    | NOT NULL, FK → feature_flags(id) ON DELETE CASCADE    |
+| role     | TEXT    | NOT NULL (nom de rôle Keycloak, ex: `hospitalStaff`) |
+| enabled  | INTEGER | NOT NULL (0 ou 1 — override pour ce rôle)            |
+
+**Cle primaire** : (flag_id, role)
+**Logique d'évaluation** : global.enabled=0 → désactivé pour tous ; override présent → override.enabled ; sinon → global.enabled.
+
 ### Table `department_change_requests`
 
 | Colonne              | Type | Contraintes                              |
@@ -207,6 +232,19 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 - Notifie tous les utilisateurs des rôles spécifiés ayant la préférence activée
 - **Body** : `{ type, roles: string[], payload }`
 - Requête Keycloak Admin API pour récupérer les emails, asynchrone (réponse immédiate)
+
+### Feature Flags (`/api/feature-flags`) **[NOUVEAU]**
+
+#### GET /api/feature-flags (Auth — tout rôle authentifié)
+- Retourne la liste de tous les modules avec leur état global et les overrides par rôle
+- **Réponse 200** : `[{ id, name, description, is_global_active: bool, role_overrides: { role: bool } }]`
+- Chargé au démarrage par `DataService.loadAll()` via `FeatureService.loadFeatures()`
+
+#### PUT /api/feature-flags/:id (Admin — `manageFeatures`)
+- Met à jour l'état global et remplace tous les overrides par rôle
+- **Body** : `{ is_global_active: bool, role_overrides: { role: bool } }`
+- **Erreurs** : 400 si `is_global_active` manquant ou non booléen ; 400 si rôle inconnu dans les overrides ; 400 si tentative de désactiver `settings` ; 404 si flag inconnu ; 403 si non-admin
+- **Audit trail** via `sendLog` (action `update_feature_flag`)
 
 ### Gestion des roles (`/api/roles`) - Rate limit : 60 req/min
 

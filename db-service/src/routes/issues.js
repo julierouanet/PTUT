@@ -152,7 +152,7 @@ router.post('/', verifyToken, (req, res) => {
   const db = getDb();
   const {
     id, equipment_id, equipment_name, location_id, location_text, location_tag, department,
-    type, description, reporter, reporter_id, reporter_email, urgency,
+    type, description, reporter, reporter_id, reporter_email, reporter_phone, urgency,
     issue_category: reqCategory, assigned_group: reqGroup,
   } = req.body;
 
@@ -195,8 +195,8 @@ router.post('/', verifyToken, (req, res) => {
 
   try {
     db.prepare(`
-      INSERT INTO issues (id, equipment_id, equipment_name, location_id, location_text, location_tag, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, urgency, created_at, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Reported')
+      INSERT INTO issues (id, equipment_id, equipment_name, location_id, location_text, location_tag, issue_category, assigned_group, department, type, description, reporter, reporter_id, reporter_email, reporter_phone, urgency, created_at, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), 'Reported')
     `).run(
       id,
       equipment_id   || null,
@@ -209,6 +209,7 @@ router.post('/', verifyToken, (req, res) => {
       department, type, description, reporter,
       reporter_id    || null,
       reporter_email || null,
+      reporter_phone || null,
       urgencyValue
     );
 
@@ -232,16 +233,19 @@ router.post('/', verifyToken, (req, res) => {
       });
     }
 
-    // ── Email aux superviseurs et admins (fire-and-forget) ───────────────────
-    setImmediate(() => {
-      _notifyRoles(['supervisor', 'admin'], 'new_issue', {
-        issue_id:      id,
-        equipment_name: equipment_name || null,
-        department,
-        urgency:       urgencyValue,
-        reporter_name: reporter,
-      }).catch(() => {});
-    });
+    // ── Email aux techniciens du groupe si incident CRITIQUE (fire-and-forget) ─
+    if (urgencyValue === 'Critique' && targetRoles.length) {
+      setImmediate(() => {
+        _notifyRoles(targetRoles, 'critical_new_issue', {
+          issue_id:       id,
+          equipment_name: equipment_name || null,
+          department,
+          urgency:        urgencyValue,
+          reporter_name:  reporter,
+          description:    description,
+        }).catch(() => {});
+      });
+    }
 
     res.status(201).json({ message: 'Incident signalé', id });
   } catch (err) {
@@ -255,7 +259,9 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
   const db = getDb();
   const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group, taken_at, parts_consumed } = req.body;
 
-  const existing = db.prepare('SELECT id, equipment_name, location_id, status, department, assigned_group FROM issues WHERE id = ?').get(req.params.id);
+  const existing = db.prepare(
+    'SELECT id, equipment_name, location_id, status, department, assigned_group, urgency, diagnosis, assigned_technician, created_at FROM issues WHERE id = ?'
+  ).get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
   // Validation enum statut, urgence et groupe
@@ -315,27 +321,71 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     },
     ...extractReqMeta(req) });
 
-  // ── Email au déclarant si son incident change de statut (fire-and-forget) ──
-  if (status && status !== existing.status) {
-    const updatedIssue = db.prepare('SELECT reporter_email, reporter_id, reporter FROM issues WHERE id = ?').get(req.params.id);
-    const reporterEmail = updatedIssue?.reporter_email;
-    const reporterName  = updatedIssue?.reporter;
-    const reporterId    = updatedIssue?.reporter_id;
-    if (reporterEmail) {
-      const notifType = status === 'Completed' ? 'issue_resolved' : 'issue_status_update';
+  // ── Notifications email sur incidents CRITIQUES uniquement (fire-and-forget) ─
+  // L'urgence effective est celle stockée en DB (avant la mise à jour)
+  // OU celle envoyée dans le body (mise à jour concomitante).
+  const effectiveUrgency = urgency || existing.urgency;
+  const isCritique       = effectiveUrgency === 'Critique';
+
+  if (isCritique) {
+    const issueId     = req.params.id;
+    const equip       = existing.equipment_name;
+    const dept        = existing.department;
+    const techName    = assigned_technician || req.user.name;
+    const supervisors = ['supervisor', 'admin'];
+
+    // 1. Technicien prend en charge (status → In Progress ET technicien assigné)
+    const technicianJustAssigned = status === 'In Progress'
+      && !existing.assigned_technician
+      && (assigned_technician || req.user.name);
+
+    if (technicianJustAssigned) {
       setImmediate(() => {
-        _notifyUser({
-          type:     notifType,
-          to_email: reporterEmail,
-          to_name:  reporterName,
-          user_id:  reporterId,
-          payload: {
-            issue_id:       req.params.id,
-            equipment_name: existing.equipment_name,
-            department:     existing.department,
-            new_status:     status,
-            tech_name:      req.user.name,
-          },
+        _notifyRoles(supervisors, 'critical_acknowledged', {
+          issue_id:        issueId,
+          equipment_name:  equip,
+          department:      dept,
+          technician_name: techName,
+        }).catch(() => {});
+      });
+    }
+
+    // 2. Diagnostic posé pour la première fois
+    const diagnosisJustSet = diagnosis
+      && diagnosis.trim().length > 0
+      && !existing.diagnosis;
+
+    if (diagnosisJustSet) {
+      setImmediate(() => {
+        _notifyRoles(supervisors, 'critical_diagnosed', {
+          issue_id:        issueId,
+          equipment_name:  equip,
+          department:      dept,
+          technician_name: techName,
+          diagnosis:       diagnosis.trim(),
+        }).catch(() => {});
+      });
+    }
+
+    // 3. Incident marqué Completed → KPIs de résolution
+    if (status === 'Completed' && existing.status !== 'Completed') {
+      const resolvedAt = new Date().toISOString();
+      // Récupérer les données à jour (diagnosis/actions/parts peuvent être dans ce même PUT)
+      const finalDiag    = diagnosis       || existing.diagnosis;
+      const finalActions = actions         || null;
+      const finalParts   = parts_replaced  || null;
+
+      setImmediate(() => {
+        _notifyRoles(supervisors, 'critical_resolved', {
+          issue_id:        issueId,
+          equipment_name:  equip,
+          department:      dept,
+          technician_name: techName,
+          created_at:      existing.created_at,
+          resolved_at:     resolvedAt,
+          diagnosis:       finalDiag,
+          actions:         finalActions,
+          parts_replaced:  finalParts,
         }).catch(() => {});
       });
     }

@@ -20,6 +20,21 @@ const users = [
 async function seed() {
   const db = getDb();
 
+  // ── Seed des feature flags (idempotent — INSERT OR IGNORE) ─────────────────
+  // Les flags sont aussi initialisés au démarrage via database.js/initTables().
+  // Ce bloc assure la cohérence après un npm run seed manuel.
+  const defaultFlags = [
+    { id: 'equipment', name: 'Module Équipement',  description: 'Gestion des équipements médicaux, incidents et maintenance préventive' },
+    { id: 'inventory', name: 'Module Inventaire',  description: 'Gestion des stocks de fournitures et consommables médicaux' },
+  ];
+  const insertFlag = db.prepare(
+    'INSERT OR IGNORE INTO feature_flags (id, name, description, enabled) VALUES (?, ?, ?, 1)'
+  );
+  for (const flag of defaultFlags) {
+    insertFlag.run(flag.id, flag.name, flag.description);
+    console.log(`[FEATURES] Flag "${flag.id}" initialisé (INSERT OR IGNORE)`);
+  }
+
   for (const user of users) {
     const exists = db.prepare('SELECT id FROM users WHERE id = ?').get(user.id);
     if (exists) {

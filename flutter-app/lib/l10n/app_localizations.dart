@@ -7637,19 +7637,25 @@ abstract class AppLocalizations {
   /// No description provided for @notifPrefsTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Préférences de notifications email'**
+  /// **'Alertes emails — Incidents critiques'**
   String get notifPrefsTitle;
 
   /// No description provided for @notifPrefsSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Choisissez les événements pour lesquels vous souhaitez recevoir un email.'**
+  /// **'Toutes les notifications portent sur les incidents de niveau Critique uniquement.'**
   String get notifPrefsSubtitle;
+
+  /// No description provided for @notifPrefsScope.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents de niveau Critique seulement'**
+  String get notifPrefsScope;
 
   /// No description provided for @notifPrefsFirstSetupSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Bienvenue ! Configurez vos notifications email.'**
+  /// **'Bienvenue ! Configurez vos alertes email.'**
   String get notifPrefsFirstSetupSubtitle;
 
   /// No description provided for @notifPrefsSkip.
@@ -7661,85 +7667,97 @@ abstract class AppLocalizations {
   /// No description provided for @notifPrefsUpdated.
   ///
   /// In fr, this message translates to:
-  /// **'Préférences de notification mises à jour'**
+  /// **'Préférences d\'alerte mises à jour'**
   String get notifPrefsUpdated;
 
   /// No description provided for @notifPrefsAllEnabled.
   ///
   /// In fr, this message translates to:
-  /// **'Toutes les notifications activées'**
+  /// **'Toutes les alertes activées'**
   String get notifPrefsAllEnabled;
 
   /// No description provided for @notifPrefsSomeEnabled.
   ///
   /// In fr, this message translates to:
-  /// **'Notifications partiellement activées'**
+  /// **'Alertes partiellement activées'**
   String get notifPrefsSomeEnabled;
 
   /// No description provided for @notifPrefsAllDisabled.
   ///
   /// In fr, this message translates to:
-  /// **'Toutes les notifications désactivées'**
+  /// **'Toutes les alertes désactivées'**
   String get notifPrefsAllDisabled;
 
-  /// No description provided for @notifPrefsNewIssue.
+  /// No description provided for @notifPrefsSectionTechnician.
   ///
   /// In fr, this message translates to:
-  /// **'Nouvel incident signalé'**
-  String get notifPrefsNewIssue;
+  /// **'Alertes technicien'**
+  String get notifPrefsSectionTechnician;
 
-  /// No description provided for @notifPrefsNewIssueDesc.
+  /// No description provided for @notifPrefsSectionSupervisor.
   ///
   /// In fr, this message translates to:
-  /// **'Recevoir un email quand un incident est signalé (superviseurs et admins).'**
-  String get notifPrefsNewIssueDesc;
+  /// **'Alertes superviseur'**
+  String get notifPrefsSectionSupervisor;
 
-  /// No description provided for @notifPrefsIssueAssigned.
+  /// No description provided for @notifPrefsCriticalNewIssue.
   ///
   /// In fr, this message translates to:
-  /// **'Incident assigné'**
-  String get notifPrefsIssueAssigned;
+  /// **'Nouvel incident critique signalé'**
+  String get notifPrefsCriticalNewIssue;
 
-  /// No description provided for @notifPrefsIssueAssignedDesc.
+  /// No description provided for @notifPrefsCriticalNewIssueDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Recevoir un email quand un incident vous est assigné.'**
-  String get notifPrefsIssueAssignedDesc;
+  /// **'Email dès qu\'un incident CRITIQUE est signalé dans votre groupe technique.'**
+  String get notifPrefsCriticalNewIssueDesc;
 
-  /// No description provided for @notifPrefsIssueResolved.
+  /// No description provided for @notifPrefsCriticalAcknowledged.
   ///
   /// In fr, this message translates to:
-  /// **'Incident résolu'**
-  String get notifPrefsIssueResolved;
+  /// **'Incident critique pris en charge'**
+  String get notifPrefsCriticalAcknowledged;
 
-  /// No description provided for @notifPrefsIssueResolvedDesc.
+  /// No description provided for @notifPrefsCriticalAcknowledgedDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Recevoir un email quand votre incident est marqué comme résolu.'**
-  String get notifPrefsIssueResolvedDesc;
+  /// **'Email quand un technicien prend en charge un incident critique.'**
+  String get notifPrefsCriticalAcknowledgedDesc;
 
-  /// No description provided for @notifPrefsIssueStatusUpdate.
+  /// No description provided for @notifPrefsCriticalDiagnosed.
   ///
   /// In fr, this message translates to:
-  /// **'Mise à jour de statut'**
-  String get notifPrefsIssueStatusUpdate;
+  /// **'Diagnostic posé sur un incident critique'**
+  String get notifPrefsCriticalDiagnosed;
 
-  /// No description provided for @notifPrefsIssueStatusUpdateDesc.
+  /// No description provided for @notifPrefsCriticalDiagnosedDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Recevoir un email à chaque changement de statut de votre incident.'**
-  String get notifPrefsIssueStatusUpdateDesc;
+  /// **'Email dès qu\'un technicien renseigne le diagnostic d\'un incident critique.'**
+  String get notifPrefsCriticalDiagnosedDesc;
+
+  /// No description provided for @notifPrefsCriticalResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident critique résolu (avec KPIs)'**
+  String get notifPrefsCriticalResolved;
+
+  /// No description provided for @notifPrefsCriticalResolvedDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email de clôture avec délai de résolution, diagnostic, actions et pièces remplacées.'**
+  String get notifPrefsCriticalResolvedDesc;
 
   /// No description provided for @notifPrefsPmDue.
   ///
   /// In fr, this message translates to:
-  /// **'Maintenance préventive'**
+  /// **'Maintenance préventive à planifier'**
   String get notifPrefsPmDue;
 
   /// No description provided for @notifPrefsPmDueDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Recevoir un email quand une maintenance préventive est à planifier.'**
+  /// **'Email quand une maintenance préventive est en retard ou imminente.'**
   String get notifPrefsPmDueDesc;
 }
 

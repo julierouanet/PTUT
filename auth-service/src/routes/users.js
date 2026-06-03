@@ -552,6 +552,7 @@ router.post('/:id/send-verify-email', verifyToken, requireAdmin, async (req, res
 // ── GET /api/users/me/notifications ───────────────────────────────────────────
 // Retourne les préférences de notification email de l'utilisateur connecté.
 // Crée une entrée par défaut (tout activé, non configuré) si elle n'existe pas.
+// Toutes les notifications sont centrées sur les incidents CRITIQUES.
 router.get('/me/notifications', verifyToken, (req, res) => {
   const db     = getDb();
   const userId = req.user.id;
@@ -564,8 +565,8 @@ router.get('/me/notifications', verifyToken, (req, res) => {
   if (!prefs) {
     db.prepare(`
       INSERT INTO user_notification_preferences
-        (user_id, notify_new_issue, notify_issue_assigned, notify_issue_resolved,
-         notify_issue_status_update, notify_pm_due, preferences_set)
+        (user_id, notify_critical_new_issue, notify_critical_acknowledged,
+         notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, preferences_set)
       VALUES (?, 1, 1, 1, 1, 1, 0)
     `).run(userId);
     prefs = db.prepare(
@@ -574,13 +575,13 @@ router.get('/me/notifications', verifyToken, (req, res) => {
   }
 
   res.json({
-    notify_new_issue:           !!prefs.notify_new_issue,
-    notify_issue_assigned:      !!prefs.notify_issue_assigned,
-    notify_issue_resolved:      !!prefs.notify_issue_resolved,
-    notify_issue_status_update: !!prefs.notify_issue_status_update,
-    notify_pm_due:              !!prefs.notify_pm_due,
-    preferences_set:            !!prefs.preferences_set,
-    updated_at:                 prefs.updated_at,
+    notify_critical_new_issue:    !!prefs.notify_critical_new_issue,
+    notify_critical_acknowledged: !!prefs.notify_critical_acknowledged,
+    notify_critical_diagnosed:    !!prefs.notify_critical_diagnosed,
+    notify_critical_resolved:     !!prefs.notify_critical_resolved,
+    notify_pm_due:                !!prefs.notify_pm_due,
+    preferences_set:              !!prefs.preferences_set,
+    updated_at:                   prefs.updated_at,
   });
 });
 
@@ -594,32 +595,33 @@ router.put('/me/notifications', verifyToken, (req, res) => {
     (val === undefined || val === null) ? fallback : (val ? 1 : 0);
 
   const {
-    notify_new_issue,
-    notify_issue_assigned,
-    notify_issue_resolved,
-    notify_issue_status_update,
+    notify_critical_new_issue,
+    notify_critical_acknowledged,
+    notify_critical_diagnosed,
+    notify_critical_resolved,
     notify_pm_due,
   } = req.body;
 
   db.prepare(`
     INSERT INTO user_notification_preferences
-      (user_id, notify_new_issue, notify_issue_assigned, notify_issue_resolved,
-       notify_issue_status_update, notify_pm_due, preferences_set, updated_at)
+      (user_id, notify_critical_new_issue, notify_critical_acknowledged,
+       notify_critical_diagnosed, notify_critical_resolved, notify_pm_due,
+       preferences_set, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
     ON CONFLICT(user_id) DO UPDATE SET
-      notify_new_issue           = excluded.notify_new_issue,
-      notify_issue_assigned      = excluded.notify_issue_assigned,
-      notify_issue_resolved      = excluded.notify_issue_resolved,
-      notify_issue_status_update = excluded.notify_issue_status_update,
-      notify_pm_due              = excluded.notify_pm_due,
-      preferences_set            = 1,
-      updated_at                 = excluded.updated_at
+      notify_critical_new_issue    = excluded.notify_critical_new_issue,
+      notify_critical_acknowledged = excluded.notify_critical_acknowledged,
+      notify_critical_diagnosed    = excluded.notify_critical_diagnosed,
+      notify_critical_resolved     = excluded.notify_critical_resolved,
+      notify_pm_due                = excluded.notify_pm_due,
+      preferences_set              = 1,
+      updated_at                   = excluded.updated_at
   `).run(
     userId,
-    toInt(notify_new_issue),
-    toInt(notify_issue_assigned),
-    toInt(notify_issue_resolved),
-    toInt(notify_issue_status_update),
+    toInt(notify_critical_new_issue),
+    toInt(notify_critical_acknowledged),
+    toInt(notify_critical_diagnosed),
+    toInt(notify_critical_resolved),
     toInt(notify_pm_due),
   );
 

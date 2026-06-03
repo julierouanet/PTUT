@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
@@ -578,9 +579,12 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           UrgencyBadge(urgency: issue.urgency),
         ]),
         const SizedBox(height: 16),
-        _InfoRow(label: l10n.issueDetailReporter, value: issue.reporter),
-        if (issue.reporterEmail != null && issue.reporterEmail!.isNotEmpty)
-          _InfoRow(label: l10n.commonEmail, value: issue.reporterEmail!),
+        _ReporterRow(
+          label: l10n.issueDetailReporter,
+          name: issue.reporter,
+          phone: issue.reporterPhone,
+          email: issue.reporterEmail,
+        ),
         _InfoRow(
           label: l10n.issueDetailReportDate,
           value: _fmtDateTime(issue.createdAt),
@@ -957,6 +961,73 @@ class _SectionCard extends StatelessWidget {
           child,
         ]),
       ),
+    );
+  }
+}
+
+/// Ligne signaleur avec raccourcis appel et email.
+class _ReporterRow extends StatelessWidget {
+  final String label;
+  final String name;
+  final String? phone;
+  final String? email;
+
+  const _ReporterRow({
+    required this.label,
+    required this.name,
+    this.phone,
+    this.email,
+  });
+
+  Future<void> _launch(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasPhone = phone != null && phone!.isNotEmpty;
+    final hasEmail = email != null && email!.isNotEmpty;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+        SizedBox(
+          width: 160,
+          child: Text(label,
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13)),
+        ),
+        Expanded(
+          child: Text(name,
+              style: const TextStyle(
+                  fontWeight: FontWeight.w500, fontSize: 13)),
+        ),
+        if (hasPhone)
+          Tooltip(
+            message: phone!,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _launch('tel:$phone'),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(Icons.phone, size: 18, color: AppColors.primary),
+              ),
+            ),
+          ),
+        if (hasEmail)
+          Tooltip(
+            message: email!,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(20),
+              onTap: () => _launch('mailto:$email'),
+              child: const Padding(
+                padding: EdgeInsets.all(6),
+                child: Icon(Icons.email_outlined, size: 18, color: AppColors.primary),
+              ),
+            ),
+          ),
+      ]),
     );
   }
 }

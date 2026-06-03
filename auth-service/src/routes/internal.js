@@ -1,6 +1,13 @@
 // ── Endpoints internes (service-à-service) ────────────────────────────────────
 // Protégés par le header x-internal-secret, jamais exposés au client Flutter.
 // Montés sous /internal dans index.js.
+//
+// Types d'événements reconnus :
+//   critical_new_issue    → techniciens : nouvel incident critique dans leur groupe
+//   critical_acknowledged → superviseurs/admins : technicien a pris en charge un critique
+//   critical_diagnosed    → superviseurs/admins : diagnostic posé sur un critique
+//   critical_resolved     → superviseurs/admins : incident critique résolu (avec KPIs)
+//   pm_due                → techniciens/admins  : maintenance préventive à planifier
 
 'use strict';
 
@@ -8,7 +15,7 @@ const express = require('express');
 const { getDb } = require('../database');
 const { INTERNAL_SECRET } = require('../config');
 const { sendEmail, buildEmailContent } = require('../utils/email_service');
-const { kcAdminFetch, mapKcUser } = require('../utils/keycloakAdmin');
+const { kcAdminFetch } = require('../utils/keycloakAdmin');
 
 const router = express.Router();
 
@@ -18,6 +25,18 @@ function requireInternalSecret(req, res, next) {
     return res.status(403).json({ error: 'Accès non autorisé' });
   }
   next();
+}
+
+// ── Résolution de la colonne préférence selon le type d'événement ─────────────
+function _prefColumnFor(type) {
+  switch (type) {
+    case 'critical_new_issue':    return 'notify_critical_new_issue';
+    case 'critical_acknowledged': return 'notify_critical_acknowledged';
+    case 'critical_diagnosed':    return 'notify_critical_diagnosed';
+    case 'critical_resolved':     return 'notify_critical_resolved';
+    case 'pm_due':                return 'notify_pm_due';
+    default:                      return null;
+  }
 }
 
 // ── POST /internal/notifications/send-email ────────────────────────────────────
@@ -30,42 +49,34 @@ router.post('/notifications/send-email', requireInternalSecret, (req, res) => {
     return res.status(400).json({ error: 'type et to_email sont requis' });
   }
 
+  const prefCol = _prefColumnFor(type);
+  if (!prefCol) {
+    return res.status(400).json({ error: `Type d'email inconnu: ${type}` });
+  }
+
   const db    = getDb();
-  // Si user_id fourni : vérifier les préférences ; sinon envoyer par défaut
   const prefs = user_id
     ? db.prepare('SELECT * FROM user_notification_preferences WHERE user_id = ?').get(user_id)
     : null;
 
-  const getPref = (key) => (prefs ? !!prefs[key] : true);
-
-  const shouldSend = (() => {
-    switch (type) {
-      case 'new_issue':           return getPref('notify_new_issue');
-      case 'issue_assigned':      return getPref('notify_issue_assigned');
-      case 'issue_resolved':      return getPref('notify_issue_resolved');
-      case 'issue_status_update': return getPref('notify_issue_status_update');
-      case 'pm_due':              return getPref('notify_pm_due');
-      default:                    return false;
-    }
-  })();
-
+  // Si pas de préférences enregistrées → envoyer par défaut (consentement implicite)
+  const shouldSend = prefs ? !!prefs[prefCol] : true;
   if (!shouldSend) {
     return res.json({ sent: false, reason: 'preference_disabled' });
   }
 
   const content = buildEmailContent(type, payload || {});
   if (!content) {
-    return res.status(400).json({ error: `Type d'email inconnu: ${type}` });
+    return res.status(400).json({ error: `Template introuvable pour: ${type}` });
   }
 
-  // Envoi non-bloquant — la réponse HTTP est renvoyée immédiatement
+  // Envoi non-bloquant
   sendEmail({ to: to_email, toName: to_name, ...content }).catch(() => {});
-
   res.json({ sent: true });
 });
 
 // ── POST /internal/notifications/send-to-roles ─────────────────────────────────
-// Envoie un email à tous les utilisateurs ayant l'un des rôles spécifiés,
+// Notifie tous les utilisateurs Keycloak ayant l'un des rôles spécifiés,
 // en respectant leurs préférences individuelles.
 // Body: { type, roles: string[], payload }
 router.post('/notifications/send-to-roles', requireInternalSecret, async (req, res) => {
@@ -75,20 +86,25 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
     return res.status(400).json({ error: 'type et roles[] sont requis' });
   }
 
+  const prefCol = _prefColumnFor(type);
+  if (!prefCol) {
+    return res.status(400).json({ error: `Type d'email inconnu: ${type}` });
+  }
+
   const content = buildEmailContent(type, payload || {});
   if (!content) {
-    return res.status(400).json({ error: `Type d'email inconnu: ${type}` });
+    return res.status(400).json({ error: `Template introuvable pour: ${type}` });
   }
 
   // Répondre immédiatement — l'envoi est asynchrone
   res.json({ queued: true });
 
-  // Récupérer les utilisateurs par rôle depuis Keycloak (parallèle)
+  // Récupérer les utilisateurs par rôle depuis Keycloak puis vérifier préférences
   setImmediate(async () => {
     try {
-      const db = getDb();
-      // Dédupliquer les utilisateurs si quelqu'un a plusieurs des rôles cibles
+      const db   = getDb();
       const seen = new Set();
+
       for (const role of roles) {
         let kcResp;
         try {
@@ -97,26 +113,18 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
         if (!kcResp.ok) continue;
 
         const users = await kcResp.json().catch(() => []);
+
         for (const u of users) {
           const email = u.email;
           const kcId  = u.id;
           if (!email || seen.has(kcId)) continue;
           seen.add(kcId);
 
-          // Vérifier les préférences de l'utilisateur
+          // Vérifier les préférences individuelles
           const prefs = db.prepare(
             'SELECT * FROM user_notification_preferences WHERE user_id = ?'
           ).get(kcId);
-
-          const getPref = (key) => (prefs ? !!prefs[key] : true);
-          const shouldSend = (() => {
-            switch (type) {
-              case 'new_issue':    return getPref('notify_new_issue');
-              case 'pm_due':       return getPref('notify_pm_due');
-              default:             return getPref('notify_new_issue');
-            }
-          })();
-
+          const shouldSend = prefs ? !!prefs[prefCol] : true;
           if (!shouldSend) continue;
 
           const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || email;

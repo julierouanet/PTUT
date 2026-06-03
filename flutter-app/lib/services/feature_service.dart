@@ -84,6 +84,25 @@ class FeatureService extends ChangeNotifier {
     }
   }
 
+  // ── Évaluation d'un flag pour un rôle donné ────────────────────────────────
+
+  /// Retourne true si le module [flagId] est actif pour le rôle [roleApiName].
+  ///
+  /// Logique :
+  ///   - Flag inconnu → true par défaut (module actif)
+  ///   - global désactivé → false (kill switch, aucune exception)
+  ///   - Override présent pour le rôle → valeur de l'override
+  ///   - Sinon → état global
+  bool isModuleEnabled(String flagId, [String? roleApiName]) {
+    final flag = _features.where((f) => f.id == flagId).firstOrNull;
+    if (flag == null) return true;
+    if (!flag.isGlobalActive) return false;
+    if (roleApiName != null && flag.roleOverrides.containsKey(roleApiName)) {
+      return flag.roleOverrides[roleApiName]!;
+    }
+    return flag.isGlobalActive;
+  }
+
   // ── Réinitialisation (déconnexion) ────────────────────────────────────────
 
   void clear() {

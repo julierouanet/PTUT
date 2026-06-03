@@ -9,6 +9,7 @@ import '../models/inventory_item.dart';
 import '../models/equipment.dart';
 import '../models/user_role.dart';
 import '../widgets/issue_category_selector.dart';
+import '../services/feature_service.dart';
 import 'account_settings_screen.dart';
 
 /// Hub post-connexion — tableau de bord personnalisé selon le rôle (RBAC).
@@ -147,7 +148,7 @@ class HomeHubScreen extends StatelessWidget {
             _buildHeader(context, user),
             Expanded(
               child: ListenableBuilder(
-                listenable: DataService(),
+                listenable: Listenable.merge([DataService(), FeatureService()]),
                 builder: (context, _) {
                   final data = DataService();
                   if (_isHospitalStaff(auth)) {
@@ -865,14 +866,21 @@ class HomeHubScreen extends StatelessWidget {
     int criticalCount,
     int stockAlertCount,
   ) {
-    final showSettings = auth.hasPermission(Permission.manageDepartments) ||
+    final role     = auth.primaryRole?.apiName;
+    final features = FeatureService();
+
+    final showSettings  = auth.hasPermission(Permission.manageDepartments) ||
         auth.hasPermission(Permission.manageUsers);
-    final showInventory = auth.hasPermission(Permission.viewInventory);
+    // Module Inventaire : permission ET flag actif pour le rôle
+    final showInventory = auth.hasPermission(Permission.viewInventory) &&
+        features.isModuleEnabled('inventory', role);
+    // Module Équipement : toujours visible si flag actif (permission gérée côté sidebar)
+    final showEquipment = features.isModuleEnabled('equipment', role);
 
     final cards = <Widget>[
-      _buildEquipmentCard(l10n, criticalCount),
+      if (showEquipment) _buildEquipmentCard(l10n, criticalCount),
       if (showInventory) _buildInventoryCard(l10n, stockAlertCount),
-      if (showSettings)  _buildSettingsCard(l10n),
+      if (showSettings)  _buildSettingsCard(l10n),   // Settings jamais conditionné par un flag
     ];
 
     if (cards.isEmpty) return const SizedBox.shrink();

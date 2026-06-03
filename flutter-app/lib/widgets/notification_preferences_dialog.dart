@@ -7,22 +7,21 @@ import '../models/user_role.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
-/// Affiche la modal de configuration des préférences email de l'utilisateur.
-/// [isFirstSetup] = true → contexte de 1ère connexion (pas de bouton "Annuler").
+/// Affiche la modal de configuration des préférences email.
+/// [isFirstSetup] = true → contexte 1ère connexion (fond rouge, pas de bouton Annuler).
 Future<void> showNotificationPreferencesDialog(
   BuildContext context, {
   bool isFirstSetup = false,
-}) async {
+}) {
   return showDialog<void>(
     context: context,
     barrierDismissible: !isFirstSetup,
-    builder: (ctx) => _NotificationPreferencesDialog(isFirstSetup: isFirstSetup),
+    builder: (_) => _NotificationPreferencesDialog(isFirstSetup: isFirstSetup),
   );
 }
 
 class _NotificationPreferencesDialog extends StatefulWidget {
   final bool isFirstSetup;
-
   const _NotificationPreferencesDialog({required this.isFirstSetup});
 
   @override
@@ -38,17 +37,30 @@ class _NotificationPreferencesDialogState
   @override
   void initState() {
     super.initState();
-    _prefs = AuthService().notificationPreferences ?? NotificationPreferences.defaults;
+    _prefs =
+        AuthService().notificationPreferences ?? NotificationPreferences.defaults;
   }
 
-  bool _isEligible(Set<UserRole> roles) {
-    final userRoles = AuthService().currentUser?.roles ?? const [];
-    return userRoles.any(roles.contains);
+  // ── Helpers de rôle ─────────────────────────────────────────────────────────
+
+  bool _hasRole(Set<UserRole> roles) {
+    final user = AuthService().currentUser;
+    return user?.roles.any(roles.contains) ?? false;
   }
 
-  bool get _isSupervisorOrAdmin => _isEligible({UserRole.supervisor, UserRole.admin});
-  bool get _isTechOrAdmin =>
-      _isEligible({UserRole.technician, UserRole.technicianBiomedical, UserRole.technicianIt, UserRole.technicianInfra, UserRole.admin});
+  bool get _isTechnician => _hasRole({
+        UserRole.technician,
+        UserRole.technicianBiomedical,
+        UserRole.technicianIt,
+        UserRole.technicianInfra,
+      });
+
+  bool get _isSupervisorOrAdmin =>
+      _hasRole({UserRole.supervisor, UserRole.admin});
+
+  bool get _isAdmin => _hasRole({UserRole.admin});
+
+  // ── Sauvegarde ──────────────────────────────────────────────────────────────
 
   Future<void> _save() async {
     setState(() => _loading = true);
@@ -73,6 +85,8 @@ class _NotificationPreferencesDialogState
     }
   }
 
+  // ── Build ────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -80,125 +94,181 @@ class _NotificationPreferencesDialogState
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
-        padding: const EdgeInsets.all(24),
+        constraints: const BoxConstraints(maxWidth: 520),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── En-tête ────────────────────────────────────────────────────
-            Row(
-              children: [
-                const Icon(Icons.email_outlined, color: AppColors.primary, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.notifPrefsTitle,
-                        style: const TextStyle(
-                          fontSize: 18, fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (widget.isFirstSetup) ...[
-                        const SizedBox(height: 2),
+            // ── Bandeau d'en-tête ────────────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 16),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_active_outlined,
+                      color: Colors.white, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          l10n.notifPrefsFirstSetupSubtitle,
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          l10n.notifPrefsTitle,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          widget.isFirstSetup
+                              ? l10n.notifPrefsFirstSetupSubtitle
+                              : l10n.notifPrefsScope,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
                         ),
                       ],
-                    ],
-                  ),
-                ),
-                if (!widget.isFirstSetup)
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              l10n.notifPrefsSubtitle,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 8),
-
-            // ── Préférences ────────────────────────────────────────────────
-            _PrefTile(
-              icon: Icons.report_problem_outlined,
-              title: l10n.notifPrefsNewIssue,
-              subtitle: l10n.notifPrefsNewIssueDesc,
-              value: _prefs.notifyNewIssue,
-              visible: _isSupervisorOrAdmin,
-              onChanged: (v) => setState(() => _prefs = _prefs.copyWith(notifyNewIssue: v)),
-            ),
-            _PrefTile(
-              icon: Icons.assignment_outlined,
-              title: l10n.notifPrefsIssueAssigned,
-              subtitle: l10n.notifPrefsIssueAssignedDesc,
-              value: _prefs.notifyIssueAssigned,
-              visible: _isTechOrAdmin,
-              onChanged: (v) => setState(() => _prefs = _prefs.copyWith(notifyIssueAssigned: v)),
-            ),
-            _PrefTile(
-              icon: Icons.check_circle_outline,
-              title: l10n.notifPrefsIssueResolved,
-              subtitle: l10n.notifPrefsIssueResolvedDesc,
-              value: _prefs.notifyIssueResolved,
-              visible: true,
-              onChanged: (v) => setState(() => _prefs = _prefs.copyWith(notifyIssueResolved: v)),
-            ),
-            _PrefTile(
-              icon: Icons.update_outlined,
-              title: l10n.notifPrefsIssueStatusUpdate,
-              subtitle: l10n.notifPrefsIssueStatusUpdateDesc,
-              value: _prefs.notifyIssueStatusUpdate,
-              visible: true,
-              onChanged: (v) => setState(() => _prefs = _prefs.copyWith(notifyIssueStatusUpdate: v)),
-            ),
-            _PrefTile(
-              icon: Icons.build_circle_outlined,
-              title: l10n.notifPrefsPmDue,
-              subtitle: l10n.notifPrefsPmDueDesc,
-              value: _prefs.notifyPmDue,
-              visible: _isTechOrAdmin,
-              onChanged: (v) => setState(() => _prefs = _prefs.copyWith(notifyPmDue: v)),
-            ),
-
-            const SizedBox(height: 16),
-            // ── Actions ────────────────────────────────────────────────────
-            Row(
-              children: [
-                if (widget.isFirstSetup) ...[
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: _loading ? null : () {
-                        // Passer en ignorant — marque quand même comme configuré
-                        AuthService().clearPreferencesSetupFlag();
-                        Navigator.pop(context);
-                      },
-                      child: Text(l10n.notifPrefsSkip),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  if (!widget.isFirstSetup)
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close, color: Colors.white),
+                    ),
                 ],
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _save,
-                    child: _loading
-                        ? const SizedBox(
-                            width: 18, height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : Text(l10n.commonSave),
+              ),
+            ),
+
+            // ── Corps ────────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.notifPrefsSubtitle,
+                    style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.4),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 14),
+
+                  // ── Groupe Techniciens ──────────────────────────────────
+                  if (_isTechnician || _isAdmin) ...[
+                    _SectionHeader(
+                      icon: Icons.build_outlined,
+                      label: l10n.notifPrefsSectionTechnician,
+                    ),
+                    _PrefTile(
+                      icon: Icons.report_problem,
+                      iconColor: AppColors.error,
+                      title: l10n.notifPrefsCriticalNewIssue,
+                      subtitle: l10n.notifPrefsCriticalNewIssueDesc,
+                      value: _prefs.notifyCriticalNewIssue,
+                      onChanged: (v) => setState(
+                          () => _prefs = _prefs.copyWith(notifyCriticalNewIssue: v)),
+                    ),
+                    _PrefTile(
+                      icon: Icons.engineering_outlined,
+                      iconColor: AppColors.warning,
+                      title: l10n.notifPrefsPmDue,
+                      subtitle: l10n.notifPrefsPmDueDesc,
+                      value: _prefs.notifyPmDue,
+                      onChanged: (v) => setState(
+                          () => _prefs = _prefs.copyWith(notifyPmDue: v)),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
+                  // ── Groupe Superviseurs ─────────────────────────────────
+                  if (_isSupervisorOrAdmin) ...[
+                    _SectionHeader(
+                      icon: Icons.supervisor_account_outlined,
+                      label: l10n.notifPrefsSectionSupervisor,
+                    ),
+                    _PrefTile(
+                      icon: Icons.handyman_outlined,
+                      iconColor: AppColors.primary,
+                      title: l10n.notifPrefsCriticalAcknowledged,
+                      subtitle: l10n.notifPrefsCriticalAcknowledgedDesc,
+                      value: _prefs.notifyCriticalAcknowledged,
+                      onChanged: (v) => setState(() =>
+                          _prefs = _prefs.copyWith(notifyCriticalAcknowledged: v)),
+                    ),
+                    _PrefTile(
+                      icon: Icons.manage_search_outlined,
+                      iconColor: AppColors.primary,
+                      title: l10n.notifPrefsCriticalDiagnosed,
+                      subtitle: l10n.notifPrefsCriticalDiagnosedDesc,
+                      value: _prefs.notifyCriticalDiagnosed,
+                      onChanged: (v) => setState(() =>
+                          _prefs = _prefs.copyWith(notifyCriticalDiagnosed: v)),
+                    ),
+                    _PrefTile(
+                      icon: Icons.verified_outlined,
+                      iconColor: AppColors.success,
+                      title: l10n.notifPrefsCriticalResolved,
+                      subtitle: l10n.notifPrefsCriticalResolvedDesc,
+                      value: _prefs.notifyCriticalResolved,
+                      onChanged: (v) => setState(() =>
+                          _prefs = _prefs.copyWith(notifyCriticalResolved: v)),
+                    ),
+                    if (!_isTechnician) ...[
+                      const SizedBox(height: 4),
+                      _PrefTile(
+                        icon: Icons.engineering_outlined,
+                        iconColor: AppColors.warning,
+                        title: l10n.notifPrefsPmDue,
+                        subtitle: l10n.notifPrefsPmDueDesc,
+                        value: _prefs.notifyPmDue,
+                        onChanged: (v) => setState(
+                            () => _prefs = _prefs.copyWith(notifyPmDue: v)),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                  ],
+                ],
+              ),
+            ),
+
+            // ── Actions ──────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: Row(
+                children: [
+                  if (widget.isFirstSetup) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _loading
+                            ? null
+                            : () {
+                                AuthService().clearPreferencesSetupFlag();
+                                Navigator.pop(context);
+                              },
+                        child: Text(l10n.notifPrefsSkip),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                  ],
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _save,
+                      child: _loading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text(l10n.commonSave),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -207,31 +277,72 @@ class _NotificationPreferencesDialogState
   }
 }
 
+// ── Widgets internes ──────────────────────────────────────────────────────────
+
+class _SectionHeader extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _SectionHeader({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 15, color: AppColors.textMuted),
+          const SizedBox(width: 6),
+          Text(
+            label.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PrefTile extends StatelessWidget {
   final IconData icon;
+  final Color iconColor;
   final String title;
   final String subtitle;
   final bool value;
-  final bool visible;
   final ValueChanged<bool> onChanged;
 
   const _PrefTile({
     required this.icon,
+    required this.iconColor,
     required this.title,
     required this.subtitle,
     required this.value,
-    required this.visible,
     required this.onChanged,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (!visible) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: value ? AppColors.primary : AppColors.textMuted, size: 22),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: (value ? iconColor : AppColors.textMuted)
+                  .withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon,
+                size: 16, color: value ? iconColor : AppColors.textMuted),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -240,13 +351,18 @@ class _PrefTile extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: value ? AppColors.textPrimary : AppColors.textMuted,
+                    color:
+                        value ? AppColors.textPrimary : AppColors.textMuted,
                   ),
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.3),
+                  style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      height: 1.3),
                 ),
               ],
             ),
@@ -254,8 +370,9 @@ class _PrefTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: AppColors.primary,
-            activeTrackColor: AppColors.primaryLight,
+            activeThumbColor: iconColor,
+            activeTrackColor: iconColor.withValues(alpha: 0.2),
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ],
       ),

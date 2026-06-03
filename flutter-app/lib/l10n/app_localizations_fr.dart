@@ -4117,63 +4117,75 @@ class AppLocalizationsFr extends AppLocalizations {
       'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.';
 
   @override
-  String get notifPrefsTitle => 'Préférences de notifications email';
+  String get notifPrefsTitle => 'Alertes emails — Incidents critiques';
 
   @override
   String get notifPrefsSubtitle =>
-      'Choisissez les événements pour lesquels vous souhaitez recevoir un email.';
+      'Toutes les notifications portent sur les incidents de niveau Critique uniquement.';
+
+  @override
+  String get notifPrefsScope => 'Incidents de niveau Critique seulement';
 
   @override
   String get notifPrefsFirstSetupSubtitle =>
-      'Bienvenue ! Configurez vos notifications email.';
+      'Bienvenue ! Configurez vos alertes email.';
 
   @override
   String get notifPrefsSkip => 'Ignorer';
 
   @override
-  String get notifPrefsUpdated => 'Préférences de notification mises à jour';
+  String get notifPrefsUpdated => 'Préférences d\'alerte mises à jour';
 
   @override
-  String get notifPrefsAllEnabled => 'Toutes les notifications activées';
+  String get notifPrefsAllEnabled => 'Toutes les alertes activées';
 
   @override
-  String get notifPrefsSomeEnabled => 'Notifications partiellement activées';
+  String get notifPrefsSomeEnabled => 'Alertes partiellement activées';
 
   @override
-  String get notifPrefsAllDisabled => 'Toutes les notifications désactivées';
+  String get notifPrefsAllDisabled => 'Toutes les alertes désactivées';
 
   @override
-  String get notifPrefsNewIssue => 'Nouvel incident signalé';
+  String get notifPrefsSectionTechnician => 'Alertes technicien';
 
   @override
-  String get notifPrefsNewIssueDesc =>
-      'Recevoir un email quand un incident est signalé (superviseurs et admins).';
+  String get notifPrefsSectionSupervisor => 'Alertes superviseur';
 
   @override
-  String get notifPrefsIssueAssigned => 'Incident assigné';
+  String get notifPrefsCriticalNewIssue => 'Nouvel incident critique signalé';
 
   @override
-  String get notifPrefsIssueAssignedDesc =>
-      'Recevoir un email quand un incident vous est assigné.';
+  String get notifPrefsCriticalNewIssueDesc =>
+      'Email dès qu\'un incident CRITIQUE est signalé dans votre groupe technique.';
 
   @override
-  String get notifPrefsIssueResolved => 'Incident résolu';
+  String get notifPrefsCriticalAcknowledged =>
+      'Incident critique pris en charge';
 
   @override
-  String get notifPrefsIssueResolvedDesc =>
-      'Recevoir un email quand votre incident est marqué comme résolu.';
+  String get notifPrefsCriticalAcknowledgedDesc =>
+      'Email quand un technicien prend en charge un incident critique.';
 
   @override
-  String get notifPrefsIssueStatusUpdate => 'Mise à jour de statut';
+  String get notifPrefsCriticalDiagnosed =>
+      'Diagnostic posé sur un incident critique';
 
   @override
-  String get notifPrefsIssueStatusUpdateDesc =>
-      'Recevoir un email à chaque changement de statut de votre incident.';
+  String get notifPrefsCriticalDiagnosedDesc =>
+      'Email dès qu\'un technicien renseigne le diagnostic d\'un incident critique.';
 
   @override
-  String get notifPrefsPmDue => 'Maintenance préventive';
+  String get notifPrefsCriticalResolved =>
+      'Incident critique résolu (avec KPIs)';
+
+  @override
+  String get notifPrefsCriticalResolvedDesc =>
+      'Email de clôture avec délai de résolution, diagnostic, actions et pièces remplacées.';
+
+  @override
+  String get notifPrefsPmDue => 'Maintenance préventive à planifier';
 
   @override
   String get notifPrefsPmDueDesc =>
-      'Recevoir un email quand une maintenance préventive est à planifier.';
+      'Email quand une maintenance préventive est en retard ou imminente.';
 }

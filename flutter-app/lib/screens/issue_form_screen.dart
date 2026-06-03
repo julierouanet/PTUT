@@ -827,6 +827,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       'reporter':            currentUser?.fullName ?? 'Inconnu',
       'reporter_id':         currentUser?.id ?? '',
       'reporter_email':      currentUser?.email ?? '',
+      'reporter_phone':      currentUser?.phone ?? '',
       'urgency':             _urgency.displayName,
       'equipment_available': _equipmentAvailable,
     };

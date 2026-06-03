@@ -159,7 +159,9 @@ PTUT/
 | `department_change_requests` | UUID TEXT | Demandes de changement de département (`pending` / `approved` / `rejected`) |
 | `role_change_requests` | UUID TEXT | Demandes de rôle supplémentaire (`pending` / `approved` / `rejected`) |
 | `access_requests` | AUTOINCREMENT | Traçabilité des comptes auto-créés via demande d'accès |
-| `user_notification_preferences` | `user_id` TEXT (UUID KC) | **[NOUVEAU]** Préférences de notifications email par utilisateur (5 flags booléens + `preferences_set`) |
+| `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur (5 flags booléens + `preferences_set`) |
+| `feature_flags` | `id` TEXT | **[NOUVEAU]** État global par module désactivable (`equipment`, `inventory`) — `enabled` INTEGER |
+| `feature_flag_overrides` | `(flag_id, role)` | **[NOUVEAU]** Overrides par rôle Keycloak — permet de désactiver un module pour un rôle spécifique |
 
 > Les tables `users`, `user_roles`, `refresh_tokens`, `roles` ont été **supprimées** — tout est dans Keycloak.
 

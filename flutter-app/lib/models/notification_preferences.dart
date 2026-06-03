@@ -1,68 +1,76 @@
-// ── Préférences de notifications email de l'utilisateur ──────────────────────
+// ── Préférences de notifications email — incidents critiques uniquement ────────
 
 /// Modèle immuable représentant les préférences de notification email.
-/// [preferencesSet] = false indique une première connexion (modal à afficher).
+///
+/// Toutes les notifications sont centrées sur les incidents CRITIQUES :
+///   - [notifyCriticalNewIssue]    : Techniciens — nouvel incident critique signalé
+///   - [notifyCriticalAcknowledged]: Superviseurs — technicien a pris en charge
+///   - [notifyCriticalDiagnosed]   : Superviseurs — diagnostic posé
+///   - [notifyCriticalResolved]    : Superviseurs — incident résolu (avec KPIs)
+///   - [notifyPmDue]               : Techniciens/Admins — maintenance préventive à planifier
+///
+/// [preferencesSet] = false → première connexion, modal de configuration à afficher.
 class NotificationPreferences {
-  final bool notifyNewIssue;
-  final bool notifyIssueAssigned;
-  final bool notifyIssueResolved;
-  final bool notifyIssueStatusUpdate;
+  final bool notifyCriticalNewIssue;
+  final bool notifyCriticalAcknowledged;
+  final bool notifyCriticalDiagnosed;
+  final bool notifyCriticalResolved;
   final bool notifyPmDue;
   final bool preferencesSet;
 
   const NotificationPreferences({
-    required this.notifyNewIssue,
-    required this.notifyIssueAssigned,
-    required this.notifyIssueResolved,
-    required this.notifyIssueStatusUpdate,
+    required this.notifyCriticalNewIssue,
+    required this.notifyCriticalAcknowledged,
+    required this.notifyCriticalDiagnosed,
+    required this.notifyCriticalResolved,
     required this.notifyPmDue,
     required this.preferencesSet,
   });
 
-  /// Préférences par défaut — tout activé, non encore confirmées par l'utilisateur.
+  /// Préférences par défaut — tout activé, non encore confirmées.
   static const NotificationPreferences defaults = NotificationPreferences(
-    notifyNewIssue:          true,
-    notifyIssueAssigned:     true,
-    notifyIssueResolved:     true,
-    notifyIssueStatusUpdate: true,
-    notifyPmDue:             true,
-    preferencesSet:          false,
+    notifyCriticalNewIssue:    true,
+    notifyCriticalAcknowledged: true,
+    notifyCriticalDiagnosed:   true,
+    notifyCriticalResolved:    true,
+    notifyPmDue:               true,
+    preferencesSet:            false,
   );
 
   factory NotificationPreferences.fromJson(Map<String, dynamic> json) {
     return NotificationPreferences(
-      notifyNewIssue:          (json['notify_new_issue']           as bool?) ?? true,
-      notifyIssueAssigned:     (json['notify_issue_assigned']      as bool?) ?? true,
-      notifyIssueResolved:     (json['notify_issue_resolved']      as bool?) ?? true,
-      notifyIssueStatusUpdate: (json['notify_issue_status_update'] as bool?) ?? true,
-      notifyPmDue:             (json['notify_pm_due']              as bool?) ?? true,
-      preferencesSet:          (json['preferences_set']            as bool?) ?? false,
+      notifyCriticalNewIssue:    (json['notify_critical_new_issue']    as bool?) ?? true,
+      notifyCriticalAcknowledged:(json['notify_critical_acknowledged'] as bool?) ?? true,
+      notifyCriticalDiagnosed:   (json['notify_critical_diagnosed']    as bool?) ?? true,
+      notifyCriticalResolved:    (json['notify_critical_resolved']     as bool?) ?? true,
+      notifyPmDue:               (json['notify_pm_due']                as bool?) ?? true,
+      preferencesSet:            (json['preferences_set']              as bool?) ?? false,
     );
   }
 
   Map<String, dynamic> toJson() => {
-    'notify_new_issue':           notifyNewIssue,
-    'notify_issue_assigned':      notifyIssueAssigned,
-    'notify_issue_resolved':      notifyIssueResolved,
-    'notify_issue_status_update': notifyIssueStatusUpdate,
-    'notify_pm_due':              notifyPmDue,
+    'notify_critical_new_issue':    notifyCriticalNewIssue,
+    'notify_critical_acknowledged': notifyCriticalAcknowledged,
+    'notify_critical_diagnosed':    notifyCriticalDiagnosed,
+    'notify_critical_resolved':     notifyCriticalResolved,
+    'notify_pm_due':                notifyPmDue,
   };
 
   NotificationPreferences copyWith({
-    bool? notifyNewIssue,
-    bool? notifyIssueAssigned,
-    bool? notifyIssueResolved,
-    bool? notifyIssueStatusUpdate,
+    bool? notifyCriticalNewIssue,
+    bool? notifyCriticalAcknowledged,
+    bool? notifyCriticalDiagnosed,
+    bool? notifyCriticalResolved,
     bool? notifyPmDue,
     bool? preferencesSet,
   }) {
     return NotificationPreferences(
-      notifyNewIssue:          notifyNewIssue          ?? this.notifyNewIssue,
-      notifyIssueAssigned:     notifyIssueAssigned     ?? this.notifyIssueAssigned,
-      notifyIssueResolved:     notifyIssueResolved     ?? this.notifyIssueResolved,
-      notifyIssueStatusUpdate: notifyIssueStatusUpdate ?? this.notifyIssueStatusUpdate,
-      notifyPmDue:             notifyPmDue             ?? this.notifyPmDue,
-      preferencesSet:          preferencesSet          ?? this.preferencesSet,
+      notifyCriticalNewIssue:    notifyCriticalNewIssue    ?? this.notifyCriticalNewIssue,
+      notifyCriticalAcknowledged:notifyCriticalAcknowledged?? this.notifyCriticalAcknowledged,
+      notifyCriticalDiagnosed:   notifyCriticalDiagnosed   ?? this.notifyCriticalDiagnosed,
+      notifyCriticalResolved:    notifyCriticalResolved     ?? this.notifyCriticalResolved,
+      notifyPmDue:               notifyPmDue               ?? this.notifyPmDue,
+      preferencesSet:            preferencesSet            ?? this.preferencesSet,
     );
   }
 }

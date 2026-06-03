@@ -146,19 +146,26 @@ function initTables() {
 
   // ── Préférences de notifications email par utilisateur ────────────────────
   // Pas de FK vers users : Keycloak gère les utilisateurs.
+  // Toutes les notifications sont centrées sur les incidents CRITIQUES uniquement.
   // preferences_set = 0 indique une première connexion (modal de configuration à afficher).
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_notification_preferences (
       user_id                     TEXT PRIMARY KEY,
-      notify_new_issue            INTEGER NOT NULL DEFAULT 1,
-      notify_issue_assigned       INTEGER NOT NULL DEFAULT 1,
-      notify_issue_resolved       INTEGER NOT NULL DEFAULT 1,
-      notify_issue_status_update  INTEGER NOT NULL DEFAULT 1,
+      notify_critical_new_issue   INTEGER NOT NULL DEFAULT 1,
+      notify_critical_acknowledged INTEGER NOT NULL DEFAULT 1,
+      notify_critical_diagnosed   INTEGER NOT NULL DEFAULT 1,
+      notify_critical_resolved    INTEGER NOT NULL DEFAULT 1,
       notify_pm_due               INTEGER NOT NULL DEFAULT 1,
       preferences_set             INTEGER NOT NULL DEFAULT 0,
       updated_at                  TEXT DEFAULT (datetime('now','localtime'))
     );
   `);
+
+  // Migrations idempotentes : ajout des nouvelles colonnes sur les installations existantes
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_new_issue INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_acknowledged INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_diagnosed INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_resolved INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
@@ -179,6 +186,48 @@ function initTables() {
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
   for (const [roleName, perms] of Object.entries(defaultPerms)) {
     for (const perm of perms) insertPerm.run(roleName, perm);
+  }
+
+  // ── Feature flags : table principale + overrides par rôle ─────────────────
+  // feature_flags : un flag par module désactivable (Settings est intentionnellement absent).
+  // feature_flag_overrides : exceptions par rôle Keycloak (ex: désactiver pour hospitalStaff).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS feature_flags (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      description TEXT,
+      enabled     INTEGER NOT NULL DEFAULT 1,
+      updated_at  TEXT DEFAULT (datetime('now','localtime')),
+      updated_by  TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS feature_flag_overrides (
+      flag_id  TEXT NOT NULL,
+      role     TEXT NOT NULL,
+      enabled  INTEGER NOT NULL,
+      PRIMARY KEY (flag_id, role),
+      FOREIGN KEY (flag_id) REFERENCES feature_flags(id) ON DELETE CASCADE
+    );
+  `);
+
+  // Seed des flags par défaut (idempotent — INSERT OR IGNORE)
+  const defaultFlags = [
+    {
+      id:          'equipment',
+      name:        'Module Équipement',
+      description: 'Gestion des équipements médicaux, incidents et maintenance préventive',
+    },
+    {
+      id:          'inventory',
+      name:        'Module Inventaire',
+      description: 'Gestion des stocks de fournitures et consommables médicaux',
+    },
+  ];
+  const insertFlag = db.prepare(
+    'INSERT OR IGNORE INTO feature_flags (id, name, description, enabled) VALUES (?, ?, ?, 1)'
+  );
+  for (const flag of defaultFlags) {
+    insertFlag.run(flag.id, flag.name, flag.description);
   }
 }
 

@@ -4076,63 +4076,75 @@ class AppLocalizationsEn extends AppLocalizations {
       'Tip: take a photo of the error screen, the equipment label, or the defective area.';
 
   @override
-  String get notifPrefsTitle => 'Email notification preferences';
+  String get notifPrefsTitle => 'Email alerts — Critical incidents';
 
   @override
   String get notifPrefsSubtitle =>
-      'Choose the events for which you want to receive an email.';
+      'All notifications relate to Critical-level incidents only.';
+
+  @override
+  String get notifPrefsScope => 'Critical-level incidents only';
 
   @override
   String get notifPrefsFirstSetupSubtitle =>
-      'Welcome! Configure your email notifications.';
+      'Welcome! Configure your email alerts.';
 
   @override
   String get notifPrefsSkip => 'Skip';
 
   @override
-  String get notifPrefsUpdated => 'Notification preferences updated';
+  String get notifPrefsUpdated => 'Alert preferences updated';
 
   @override
-  String get notifPrefsAllEnabled => 'All notifications enabled';
+  String get notifPrefsAllEnabled => 'All alerts enabled';
 
   @override
-  String get notifPrefsSomeEnabled => 'Notifications partially enabled';
+  String get notifPrefsSomeEnabled => 'Alerts partially enabled';
 
   @override
-  String get notifPrefsAllDisabled => 'All notifications disabled';
+  String get notifPrefsAllDisabled => 'All alerts disabled';
 
   @override
-  String get notifPrefsNewIssue => 'New issue reported';
+  String get notifPrefsSectionTechnician => 'Technician alerts';
 
   @override
-  String get notifPrefsNewIssueDesc =>
-      'Receive an email when an issue is reported (supervisors and admins).';
+  String get notifPrefsSectionSupervisor => 'Supervisor alerts';
 
   @override
-  String get notifPrefsIssueAssigned => 'Issue assigned';
+  String get notifPrefsCriticalNewIssue => 'New critical incident reported';
 
   @override
-  String get notifPrefsIssueAssignedDesc =>
-      'Receive an email when an issue is assigned to you.';
+  String get notifPrefsCriticalNewIssueDesc =>
+      'Email as soon as a CRITICAL incident is reported in your technical group.';
 
   @override
-  String get notifPrefsIssueResolved => 'Issue resolved';
+  String get notifPrefsCriticalAcknowledged =>
+      'Critical incident taken in charge';
 
   @override
-  String get notifPrefsIssueResolvedDesc =>
-      'Receive an email when your issue is marked as resolved.';
+  String get notifPrefsCriticalAcknowledgedDesc =>
+      'Email when a technician takes charge of a critical incident.';
 
   @override
-  String get notifPrefsIssueStatusUpdate => 'Status update';
+  String get notifPrefsCriticalDiagnosed =>
+      'Diagnosis set on critical incident';
 
   @override
-  String get notifPrefsIssueStatusUpdateDesc =>
-      'Receive an email on every status change of your issue.';
+  String get notifPrefsCriticalDiagnosedDesc =>
+      'Email when a technician fills in the diagnosis for a critical incident.';
 
   @override
-  String get notifPrefsPmDue => 'Preventive maintenance';
+  String get notifPrefsCriticalResolved =>
+      'Critical incident resolved (with KPIs)';
+
+  @override
+  String get notifPrefsCriticalResolvedDesc =>
+      'Closure email with resolution time, diagnosis, corrective actions, and replaced parts.';
+
+  @override
+  String get notifPrefsPmDue => 'Preventive maintenance due';
 
   @override
   String get notifPrefsPmDueDesc =>
-      'Receive an email when a preventive maintenance is due.';
+      'Email when a preventive maintenance is overdue or upcoming.';
 }
