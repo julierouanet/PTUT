@@ -3,11 +3,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { PORT } = require('./config');
-const authRoutes = require('./routes/auth');
-const usersRoutes = require('./routes/users');
-const debugRoutes = require('./routes/debug');
-const { getDb } = require('./database');
-const rolesRoutes = require('./routes/roles');
+const authRoutes     = require('./routes/auth');
+const usersRoutes    = require('./routes/users');
+const debugRoutes    = require('./routes/debug');
+const { getDb }      = require('./database');
+const rolesRoutes    = require('./routes/roles');
+const internalRoutes = require('./routes/internal');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/roles', rolesRoutes);
+app.use('/internal', internalRoutes);
 app.use('/', debugRoutes);
 
 const server = app.listen(PORT, () => {

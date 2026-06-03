@@ -144,6 +144,22 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_access_req_email  ON access_requests(email);
   `);
 
+  // ── Préférences de notifications email par utilisateur ────────────────────
+  // Pas de FK vers users : Keycloak gère les utilisateurs.
+  // preferences_set = 0 indique une première connexion (modal de configuration à afficher).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_notification_preferences (
+      user_id                     TEXT PRIMARY KEY,
+      notify_new_issue            INTEGER NOT NULL DEFAULT 1,
+      notify_issue_assigned       INTEGER NOT NULL DEFAULT 1,
+      notify_issue_resolved       INTEGER NOT NULL DEFAULT 1,
+      notify_issue_status_update  INTEGER NOT NULL DEFAULT 1,
+      notify_pm_due               INTEGER NOT NULL DEFAULT 1,
+      preferences_set             INTEGER NOT NULL DEFAULT 0,
+      updated_at                  TEXT DEFAULT (datetime('now','localtime'))
+    );
+  `);
+
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
   const defaultPerms = {

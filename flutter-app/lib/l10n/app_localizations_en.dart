@@ -4074,4 +4074,65 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get issueFormPhotoGuide =>
       'Tip: take a photo of the error screen, the equipment label, or the defective area.';
+
+  @override
+  String get notifPrefsTitle => 'Email notification preferences';
+
+  @override
+  String get notifPrefsSubtitle =>
+      'Choose the events for which you want to receive an email.';
+
+  @override
+  String get notifPrefsFirstSetupSubtitle =>
+      'Welcome! Configure your email notifications.';
+
+  @override
+  String get notifPrefsSkip => 'Skip';
+
+  @override
+  String get notifPrefsUpdated => 'Notification preferences updated';
+
+  @override
+  String get notifPrefsAllEnabled => 'All notifications enabled';
+
+  @override
+  String get notifPrefsSomeEnabled => 'Notifications partially enabled';
+
+  @override
+  String get notifPrefsAllDisabled => 'All notifications disabled';
+
+  @override
+  String get notifPrefsNewIssue => 'New issue reported';
+
+  @override
+  String get notifPrefsNewIssueDesc =>
+      'Receive an email when an issue is reported (supervisors and admins).';
+
+  @override
+  String get notifPrefsIssueAssigned => 'Issue assigned';
+
+  @override
+  String get notifPrefsIssueAssignedDesc =>
+      'Receive an email when an issue is assigned to you.';
+
+  @override
+  String get notifPrefsIssueResolved => 'Issue resolved';
+
+  @override
+  String get notifPrefsIssueResolvedDesc =>
+      'Receive an email when your issue is marked as resolved.';
+
+  @override
+  String get notifPrefsIssueStatusUpdate => 'Status update';
+
+  @override
+  String get notifPrefsIssueStatusUpdateDesc =>
+      'Receive an email on every status change of your issue.';
+
+  @override
+  String get notifPrefsPmDue => 'Preventive maintenance';
+
+  @override
+  String get notifPrefsPmDueDesc =>
+      'Receive an email when a preventive maintenance is due.';
 }

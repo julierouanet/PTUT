@@ -7633,6 +7633,114 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.'**
   String get issueFormPhotoGuide;
+
+  /// No description provided for @notifPrefsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Préférences de notifications email'**
+  String get notifPrefsTitle;
+
+  /// No description provided for @notifPrefsSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez les événements pour lesquels vous souhaitez recevoir un email.'**
+  String get notifPrefsSubtitle;
+
+  /// No description provided for @notifPrefsFirstSetupSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bienvenue ! Configurez vos notifications email.'**
+  String get notifPrefsFirstSetupSubtitle;
+
+  /// No description provided for @notifPrefsSkip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ignorer'**
+  String get notifPrefsSkip;
+
+  /// No description provided for @notifPrefsUpdated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Préférences de notification mises à jour'**
+  String get notifPrefsUpdated;
+
+  /// No description provided for @notifPrefsAllEnabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Toutes les notifications activées'**
+  String get notifPrefsAllEnabled;
+
+  /// No description provided for @notifPrefsSomeEnabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications partiellement activées'**
+  String get notifPrefsSomeEnabled;
+
+  /// No description provided for @notifPrefsAllDisabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Toutes les notifications désactivées'**
+  String get notifPrefsAllDisabled;
+
+  /// No description provided for @notifPrefsNewIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvel incident signalé'**
+  String get notifPrefsNewIssue;
+
+  /// No description provided for @notifPrefsNewIssueDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir un email quand un incident est signalé (superviseurs et admins).'**
+  String get notifPrefsNewIssueDesc;
+
+  /// No description provided for @notifPrefsIssueAssigned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident assigné'**
+  String get notifPrefsIssueAssigned;
+
+  /// No description provided for @notifPrefsIssueAssignedDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir un email quand un incident vous est assigné.'**
+  String get notifPrefsIssueAssignedDesc;
+
+  /// No description provided for @notifPrefsIssueResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident résolu'**
+  String get notifPrefsIssueResolved;
+
+  /// No description provided for @notifPrefsIssueResolvedDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir un email quand votre incident est marqué comme résolu.'**
+  String get notifPrefsIssueResolvedDesc;
+
+  /// No description provided for @notifPrefsIssueStatusUpdate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mise à jour de statut'**
+  String get notifPrefsIssueStatusUpdate;
+
+  /// No description provided for @notifPrefsIssueStatusUpdateDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir un email à chaque changement de statut de votre incident.'**
+  String get notifPrefsIssueStatusUpdateDesc;
+
+  /// No description provided for @notifPrefsPmDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive'**
+  String get notifPrefsPmDue;
+
+  /// No description provided for @notifPrefsPmDueDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recevoir un email quand une maintenance préventive est à planifier.'**
+  String get notifPrefsPmDueDesc;
 }
 
 class _AppLocalizationsDelegate

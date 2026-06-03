@@ -157,6 +157,9 @@ PTUT/
 |---|---|---|
 | `role_permissions` | `(role_name, permission)` | Permissions applicatives par rôle Keycloak — sans FK (rôles dans Keycloak) |
 | `department_change_requests` | UUID TEXT | Demandes de changement de département (`pending` / `approved` / `rejected`) |
+| `role_change_requests` | UUID TEXT | Demandes de rôle supplémentaire (`pending` / `approved` / `rejected`) |
+| `access_requests` | AUTOINCREMENT | Traçabilité des comptes auto-créés via demande d'accès |
+| `user_notification_preferences` | `user_id` TEXT (UUID KC) | **[NOUVEAU]** Préférences de notifications email par utilisateur (5 flags booléens + `preferences_set`) |
 
 > Les tables `users`, `user_roles`, `refresh_tokens`, `roles` ont été **supprimées** — tout est dans Keycloak.
 

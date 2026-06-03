@@ -109,14 +109,15 @@ class ApiConfig {
   }
 
   // ── Auth endpoints ────────────────────────────────────────────────────────────
-  static String get meUrl             => '$authBaseUrl/api/auth/me';
-  static String get usersUrl          => '$authBaseUrl/api/users';
-  static String get deptRequestsUrl   => '$authBaseUrl/api/users/department-requests';
-  static String get rolesUrl          => '$authBaseUrl/api/roles';
-  static String get registerUrl       => '$authBaseUrl/api/auth/register';
-  static String get forgotPasswordUrl => '$authBaseUrl/api/auth/forgot-password';
-  static String get accessRequestUrl  => '$authBaseUrl/api/auth/access-request';
-  static String get roleRequestsUrl   => '$authBaseUrl/api/users/role-requests';
+  static String get meUrl                  => '$authBaseUrl/api/auth/me';
+  static String get usersUrl               => '$authBaseUrl/api/users';
+  static String get deptRequestsUrl        => '$authBaseUrl/api/users/department-requests';
+  static String get rolesUrl               => '$authBaseUrl/api/roles';
+  static String get registerUrl            => '$authBaseUrl/api/auth/register';
+  static String get forgotPasswordUrl      => '$authBaseUrl/api/auth/forgot-password';
+  static String get accessRequestUrl       => '$authBaseUrl/api/auth/access-request';
+  static String get roleRequestsUrl        => '$authBaseUrl/api/users/role-requests';
+  static String get notificationPrefsUrl   => '$authBaseUrl/api/users/me/notifications';
 
   // ── DB endpoints ──────────────────────────────────────────────────────────────
   static String get locationsUrl  => '$dbBaseUrl/api/locations';

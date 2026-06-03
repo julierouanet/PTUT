@@ -4115,4 +4115,65 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get issueFormPhotoGuide =>
       'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.';
+
+  @override
+  String get notifPrefsTitle => 'Préférences de notifications email';
+
+  @override
+  String get notifPrefsSubtitle =>
+      'Choisissez les événements pour lesquels vous souhaitez recevoir un email.';
+
+  @override
+  String get notifPrefsFirstSetupSubtitle =>
+      'Bienvenue ! Configurez vos notifications email.';
+
+  @override
+  String get notifPrefsSkip => 'Ignorer';
+
+  @override
+  String get notifPrefsUpdated => 'Préférences de notification mises à jour';
+
+  @override
+  String get notifPrefsAllEnabled => 'Toutes les notifications activées';
+
+  @override
+  String get notifPrefsSomeEnabled => 'Notifications partiellement activées';
+
+  @override
+  String get notifPrefsAllDisabled => 'Toutes les notifications désactivées';
+
+  @override
+  String get notifPrefsNewIssue => 'Nouvel incident signalé';
+
+  @override
+  String get notifPrefsNewIssueDesc =>
+      'Recevoir un email quand un incident est signalé (superviseurs et admins).';
+
+  @override
+  String get notifPrefsIssueAssigned => 'Incident assigné';
+
+  @override
+  String get notifPrefsIssueAssignedDesc =>
+      'Recevoir un email quand un incident vous est assigné.';
+
+  @override
+  String get notifPrefsIssueResolved => 'Incident résolu';
+
+  @override
+  String get notifPrefsIssueResolvedDesc =>
+      'Recevoir un email quand votre incident est marqué comme résolu.';
+
+  @override
+  String get notifPrefsIssueStatusUpdate => 'Mise à jour de statut';
+
+  @override
+  String get notifPrefsIssueStatusUpdateDesc =>
+      'Recevoir un email à chaque changement de statut de votre incident.';
+
+  @override
+  String get notifPrefsPmDue => 'Maintenance préventive';
+
+  @override
+  String get notifPrefsPmDueDesc =>
+      'Recevoir un email quand une maintenance préventive est à planifier.';
 }

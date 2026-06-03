@@ -6,6 +6,7 @@ import '../services/auth_api_service.dart';
 import '../services/config_service.dart';
 import '../providers/locale_provider.dart';
 import '../models/user_role.dart';
+import '../widgets/notification_preferences_dialog.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
 class AccountSettingsScreen extends StatefulWidget {
@@ -162,6 +163,53 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     );
                   }),
                   const Divider(height: 1, indent: 16, endIndent: 16),
+                  // Préférences de notifications email (supervisor, technician*, admin)
+                  if (_hasNotificationPreferences(currentUser)) ...[
+                    ListenableBuilder(
+                      listenable: _authService,
+                      builder: (context, _) {
+                        final prefs = _authService.notificationPreferences;
+                        final allEnabled = prefs == null
+                            ? true
+                            : [
+                                prefs.notifyNewIssue,
+                                prefs.notifyIssueAssigned,
+                                prefs.notifyIssueResolved,
+                                prefs.notifyIssueStatusUpdate,
+                                prefs.notifyPmDue,
+                              ].every((v) => v);
+                        final someEnabled = prefs != null &&
+                            [
+                              prefs.notifyNewIssue,
+                              prefs.notifyIssueAssigned,
+                              prefs.notifyIssueResolved,
+                              prefs.notifyIssueStatusUpdate,
+                              prefs.notifyPmDue,
+                            ].any((v) => v);
+                        return ListTile(
+                          leading: Icon(
+                            Icons.email_outlined,
+                            color: someEnabled ? AppColors.primary : AppColors.textMuted,
+                          ),
+                          title: Text(
+                            l10n.notifPrefsTitle,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          subtitle: Text(
+                            allEnabled
+                                ? l10n.notifPrefsAllEnabled
+                                : someEnabled
+                                    ? l10n.notifPrefsSomeEnabled
+                                    : l10n.notifPrefsAllDisabled,
+                            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                          ),
+                          trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                          onTap: () => showNotificationPreferencesDialog(context),
+                        );
+                      },
+                    ),
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                  ],
                   // Demande de rôle supplémentaire
                   ListTile(
                     leading: const Icon(Icons.badge_outlined, color: AppColors.primary),
@@ -198,6 +246,21 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         ),
       ),
     );
+  }
+
+  // ── Éligibilité aux préférences email ─────────────────────────────────────
+
+  /// Retourne true si l'utilisateur peut configurer des préférences email
+  /// (supervisor, technician*, admin uniquement).
+  bool _hasNotificationPreferences(dynamic user) {
+    if (user == null) return false;
+    const eligible = {
+      UserRole.supervisor, UserRole.technician,
+      UserRole.technicianBiomedical, UserRole.technicianIt,
+      UserRole.technicianInfra, UserRole.admin,
+    };
+    final roles = (user.roles as List<UserRole>?) ?? const [];
+    return roles.any(eligible.contains);
   }
 
   // ── Bannières d'alerte compte ──────────────────────────────────────────────

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api_client.dart';
 import 'api_config.dart';
+import '../models/notification_preferences.dart';
 
 /// Résultat d'une tentative de connexion.
 class LoginResult {
@@ -309,6 +310,32 @@ class AuthApiService {
     if (response.statusCode >= 400) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       throw Exception(body['error'] ?? 'Erreur');
+    }
+  }
+
+  // ── Préférences de notifications email ───────────────────────────────────────
+
+  /// Récupère les préférences de notification email de l'utilisateur connecté.
+  Future<NotificationPreferences?> getNotificationPreferences() async {
+    try {
+      final response = await ApiClient.get(ApiConfig.notificationPrefsUrl);
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        return NotificationPreferences.fromJson(json);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Met à jour les préférences de notification de l'utilisateur connecté.
+  Future<void> updateNotificationPreferences(NotificationPreferences prefs) async {
+    final response = await ApiClient.put(
+      ApiConfig.notificationPrefsUrl,
+      prefs.toJson(),
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur mise à jour préférences');
     }
   }
 

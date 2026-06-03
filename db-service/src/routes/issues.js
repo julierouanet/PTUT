@@ -2,8 +2,43 @@ const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
-const { AUTH_SERVICE_URL } = require('../config');
+const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
+
+// ── Helpers d'envoi d'email vers auth-service (fire-and-forget) ───────────────
+
+/**
+ * Notifie un utilisateur spécifique via l'endpoint interne d'auth-service.
+ * @param {object} opts - { type, to_email, to_name, user_id, payload }
+ */
+async function _notifyUser({ type, to_email, to_name, user_id, payload }) {
+  if (!to_email) return;
+  await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-email`, {
+    method:  'POST',
+    headers: {
+      'Content-Type':       'application/json',
+      'x-internal-secret':  INTERNAL_SECRET,
+    },
+    body: JSON.stringify({ type, to_email, to_name, user_id, payload }),
+  });
+}
+
+/**
+ * Notifie tous les utilisateurs des rôles spécifiés via l'endpoint interne.
+ * @param {string[]} roles
+ * @param {string}   type
+ * @param {object}   payload
+ */
+async function _notifyRoles(roles, type, payload) {
+  await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-to-roles`, {
+    method:  'POST',
+    headers: {
+      'Content-Type':       'application/json',
+      'x-internal-secret':  INTERNAL_SECRET,
+    },
+    body: JSON.stringify({ roles, type, payload }),
+  });
+}
 
 const router = express.Router();
 
@@ -197,6 +232,17 @@ router.post('/', verifyToken, (req, res) => {
       });
     }
 
+    // ── Email aux superviseurs et admins (fire-and-forget) ───────────────────
+    setImmediate(() => {
+      _notifyRoles(['supervisor', 'admin'], 'new_issue', {
+        issue_id:      id,
+        equipment_name: equipment_name || null,
+        department,
+        urgency:       urgencyValue,
+        reporter_name: reporter,
+      }).catch(() => {});
+    });
+
     res.status(201).json({ message: 'Incident signalé', id });
   } catch (err) {
     if (err.message.includes('UNIQUE')) return res.status(409).json({ error: 'ID déjà utilisé' });
@@ -268,6 +314,32 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
       ...(parts_consumed?.length ? { parts_consumed } : {}),
     },
     ...extractReqMeta(req) });
+
+  // ── Email au déclarant si son incident change de statut (fire-and-forget) ──
+  if (status && status !== existing.status) {
+    const updatedIssue = db.prepare('SELECT reporter_email, reporter_id, reporter FROM issues WHERE id = ?').get(req.params.id);
+    const reporterEmail = updatedIssue?.reporter_email;
+    const reporterName  = updatedIssue?.reporter;
+    const reporterId    = updatedIssue?.reporter_id;
+    if (reporterEmail) {
+      const notifType = status === 'Completed' ? 'issue_resolved' : 'issue_status_update';
+      setImmediate(() => {
+        _notifyUser({
+          type:     notifType,
+          to_email: reporterEmail,
+          to_name:  reporterName,
+          user_id:  reporterId,
+          payload: {
+            issue_id:       req.params.id,
+            equipment_name: existing.equipment_name,
+            department:     existing.department,
+            new_status:     status,
+            tech_name:      req.user.name,
+          },
+        }).catch(() => {});
+      });
+    }
+  }
 
   res.json({ message: 'Incident mis à jour' });
 });

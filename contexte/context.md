@@ -188,6 +188,26 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 - **Body** : `{ "status": "approved|rejected", "admin_note?" }`
 - Si approved : met a jour le departement du user
 
+#### GET /api/users/me/notifications (Auth — supervisor/technician/admin)
+- Retourne les préférences de notification email de l'utilisateur connecté
+- Crée une entrée par défaut si absente (`preferences_set = false`)
+- **Réponse** : `{ notify_new_issue, notify_issue_assigned, notify_issue_resolved, notify_issue_status_update, notify_pm_due, preferences_set, updated_at }`
+
+#### PUT /api/users/me/notifications (Auth — supervisor/technician/admin)
+- Met à jour les préférences + marque `preferences_set = 1`
+- **Body** : `{ notify_new_issue?, notify_issue_assigned?, notify_issue_resolved?, notify_issue_status_update?, notify_pm_due? }` (tous optionnels, booléens)
+
+#### POST /internal/notifications/send-email (x-internal-secret)
+- Appelé par db-service — envoie un email à un utilisateur si ses préférences le permettent
+- **Body** : `{ type, to_email, to_name, user_id, payload }`
+- Types : `new_issue`, `issue_assigned`, `issue_resolved`, `issue_status_update`, `pm_due`
+- Répond immédiatement `{ sent: bool, reason? }`
+
+#### POST /internal/notifications/send-to-roles (x-internal-secret)
+- Notifie tous les utilisateurs des rôles spécifiés ayant la préférence activée
+- **Body** : `{ type, roles: string[], payload }`
+- Requête Keycloak Admin API pour récupérer les emails, asynchrone (réponse immédiate)
+
 ### Gestion des roles (`/api/roles`) - Rate limit : 60 req/min
 
 #### GET /api/roles (Admin)
@@ -730,8 +750,9 @@ Methode `loadAll()` charge tout, fallback sur donnees mock si API indisponible.
 | kcClientId           | flutter-app                                                  | KC_CLIENT_ID           |
 | meUrl                | /api/auth/me                                                 |                        |
 | usersUrl             | /api/users                                                   |                        |
-| deptRequestsUrl      | /api/users/department-requests                               |                        |
-| rolesUrl             | /api/roles                                                   |                        |
+| deptRequestsUrl         | /api/users/department-requests                            |                        |
+| rolesUrl                | /api/roles                                                |                        |
+| notificationPrefsUrl    | /api/users/me/notifications                               |                        |
 | equipmentUrl         | /api/equipment                                               |                        |
 | issuesUrl            | /api/issues                                                  |                        |
 | inventoryUrl         | /api/inventory                                               |                        |

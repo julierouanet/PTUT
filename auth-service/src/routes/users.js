@@ -549,6 +549,83 @@ router.post('/:id/send-verify-email', verifyToken, requireAdmin, async (req, res
   }
 });
 
+// ── GET /api/users/me/notifications ───────────────────────────────────────────
+// Retourne les préférences de notification email de l'utilisateur connecté.
+// Crée une entrée par défaut (tout activé, non configuré) si elle n'existe pas.
+router.get('/me/notifications', verifyToken, (req, res) => {
+  const db     = getDb();
+  const userId = req.user.id;
+
+  let prefs = db.prepare(
+    'SELECT * FROM user_notification_preferences WHERE user_id = ?'
+  ).get(userId);
+
+  // Initialise des préférences par défaut si l'utilisateur n'en a pas encore
+  if (!prefs) {
+    db.prepare(`
+      INSERT INTO user_notification_preferences
+        (user_id, notify_new_issue, notify_issue_assigned, notify_issue_resolved,
+         notify_issue_status_update, notify_pm_due, preferences_set)
+      VALUES (?, 1, 1, 1, 1, 1, 0)
+    `).run(userId);
+    prefs = db.prepare(
+      'SELECT * FROM user_notification_preferences WHERE user_id = ?'
+    ).get(userId);
+  }
+
+  res.json({
+    notify_new_issue:           !!prefs.notify_new_issue,
+    notify_issue_assigned:      !!prefs.notify_issue_assigned,
+    notify_issue_resolved:      !!prefs.notify_issue_resolved,
+    notify_issue_status_update: !!prefs.notify_issue_status_update,
+    notify_pm_due:              !!prefs.notify_pm_due,
+    preferences_set:            !!prefs.preferences_set,
+    updated_at:                 prefs.updated_at,
+  });
+});
+
+// ── PUT /api/users/me/notifications ───────────────────────────────────────────
+// Met à jour les préférences et marque preferences_set = 1.
+router.put('/me/notifications', verifyToken, (req, res) => {
+  const db     = getDb();
+  const userId = req.user.id;
+
+  const toInt = (val, fallback = 1) =>
+    (val === undefined || val === null) ? fallback : (val ? 1 : 0);
+
+  const {
+    notify_new_issue,
+    notify_issue_assigned,
+    notify_issue_resolved,
+    notify_issue_status_update,
+    notify_pm_due,
+  } = req.body;
+
+  db.prepare(`
+    INSERT INTO user_notification_preferences
+      (user_id, notify_new_issue, notify_issue_assigned, notify_issue_resolved,
+       notify_issue_status_update, notify_pm_due, preferences_set, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
+    ON CONFLICT(user_id) DO UPDATE SET
+      notify_new_issue           = excluded.notify_new_issue,
+      notify_issue_assigned      = excluded.notify_issue_assigned,
+      notify_issue_resolved      = excluded.notify_issue_resolved,
+      notify_issue_status_update = excluded.notify_issue_status_update,
+      notify_pm_due              = excluded.notify_pm_due,
+      preferences_set            = 1,
+      updated_at                 = excluded.updated_at
+  `).run(
+    userId,
+    toInt(notify_new_issue),
+    toInt(notify_issue_assigned),
+    toInt(notify_issue_resolved),
+    toInt(notify_issue_status_update),
+    toInt(notify_pm_due),
+  );
+
+  res.json({ message: 'Préférences de notification mises à jour' });
+});
+
 // ── GET /api/users/:id ────────────────────────────────────────────────────────
 // Placé en dernier pour ne pas masquer les routes statiques (/department-requests, etc.)
 router.get('/:id', verifyToken, requireAdmin, async (req, res) => {

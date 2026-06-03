@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import '../models/user_role.dart';
+import '../models/notification_preferences.dart';
 import '../data/mock_data.dart';
 import 'auth_api_service.dart';
 import 'data_service.dart';
@@ -20,14 +21,26 @@ class AuthService extends ChangeNotifier {
   String? _lastError;
   String? _sessionExpiredMessage;
 
-  User?   get currentUser          => _currentUser;
-  bool    get isLoggedIn           => _currentUser != null;
-  bool    get isLoading            => _isLoading;
-  String? get lastError            => _lastError;
-  String? get sessionExpiredMessage => _sessionExpiredMessage;
+  // Préférences de notification — null = pas encore chargées
+  NotificationPreferences? _notificationPreferences;
+  // Indique si la modal de 1ère configuration doit être affichée
+  bool _needsPreferencesSetup = false;
+
+  User?   get currentUser               => _currentUser;
+  bool    get isLoggedIn                => _currentUser != null;
+  bool    get isLoading                 => _isLoading;
+  String? get lastError                 => _lastError;
+  String? get sessionExpiredMessage     => _sessionExpiredMessage;
+  NotificationPreferences? get notificationPreferences => _notificationPreferences;
+  bool    get needsPreferencesSetup     => _needsPreferencesSetup;
 
   void clearSessionExpiredMessage() {
     _sessionExpiredMessage = null;
+  }
+
+  /// Marque la modal de configuration des préférences comme affichée.
+  void clearPreferencesSetupFlag() {
+    _needsPreferencesSetup = false;
   }
 
   /// Liste des rôles de l'utilisateur connecté (vide si non connecté).
@@ -83,6 +96,8 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         // Demande permission push et envoie la souscription (non-bloquant)
         PushNotificationWebService().requestAndSubscribe().catchError((_) {});
+        // Charge les préférences de notification et détecte la 1ère connexion
+        _loadNotificationPreferences();
         return true;
       }
 
@@ -135,6 +150,8 @@ class AuthService extends ChangeNotifier {
         notifyListeners();
         // Réabonnement push si la session est restaurée depuis le token stocké
         PushNotificationWebService().requestAndSubscribe().catchError((_) {});
+        // Charge les préférences de notification
+        _loadNotificationPreferences();
         return true;
       }
     } catch (_) {}
@@ -172,6 +189,8 @@ class AuthService extends ChangeNotifier {
     // Supprimer les tokens locaux puis notifier immédiatement
     await AuthApiService.instance.logout();
     _currentUser = null;
+    _notificationPreferences = null;
+    _needsPreferencesSetup = false;
     FeatureService().clear();
     EquipmentFilterState().reset();
     notifyListeners();
@@ -180,9 +199,54 @@ class AuthService extends ChangeNotifier {
   /// Déconnexion simple (mock).
   void logout() {
     _currentUser = null;
+    _notificationPreferences = null;
+    _needsPreferencesSetup = false;
     FeatureService().clear();
     EquipmentFilterState().reset();
     notifyListeners();
+  }
+
+  // ── Préférences de notification ────────────────────────────────────────────
+
+  /// Charge les préférences depuis l'API.
+  /// Détecte si l'utilisateur n'a pas encore configuré ses préférences.
+  /// Seulement pour les rôles supervisor, technician* et admin.
+  Future<void> _loadNotificationPreferences() async {
+    final user = _currentUser;
+    if (user == null) return;
+    // Seuls ces rôles ont des préférences email applicatives pertinentes
+    const eligibleRoles = {
+      UserRole.supervisor,
+      UserRole.technician,
+      UserRole.technicianBiomedical,
+      UserRole.technicianIt,
+      UserRole.technicianInfra,
+      UserRole.admin,
+    };
+    if (!user.roles.any(eligibleRoles.contains)) return;
+
+    try {
+      final prefs = await AuthApiService.instance.getNotificationPreferences();
+      if (prefs != null) {
+        _notificationPreferences = prefs;
+        // Si préférences jamais configurées → déclencher la modal de bienvenue
+        _needsPreferencesSetup = !prefs.preferencesSet;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  /// Met à jour les préférences localement et via l'API.
+  Future<bool> updateNotificationPreferences(NotificationPreferences prefs) async {
+    try {
+      await AuthApiService.instance.updateNotificationPreferences(prefs);
+      _notificationPreferences = prefs.copyWith(preferencesSet: true);
+      _needsPreferencesSetup = false;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ── Profil utilisateur ─────────────────────────────────────────────────────

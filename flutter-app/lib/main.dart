@@ -22,6 +22,7 @@ import 'models/user_role.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/notification_bell.dart';
 import 'widgets/issue_category_selector.dart';
+import 'widgets/notification_preferences_dialog.dart';
 import 'screens/home_hub_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/feature_management_screen.dart';
@@ -151,6 +152,14 @@ class _AppRootState extends State<_AppRoot> {
   void initState() {
     super.initState();
     _applyRoleRedirect();
+    // Affiche la modal de préférences email si c'est la 1ère connexion de cet utilisateur
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (AuthService().needsPreferencesSetup) {
+        AuthService().clearPreferencesSetupFlag();
+        showNotificationPreferencesDialog(context, isFirstSetup: true);
+      }
+    });
   }
 
   /// Redirige les techniciens directement vers le suivi des incidents
