@@ -3895,7 +3895,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accessRequestSubtitle =>
-      'Fill in this form. An administrator will process your request and create your account.';
+      'Create your account in seconds. You\'ll be logged in automatically with the Hospital Staff role.';
 
   @override
   String get accessRequestFirstName => 'First name *';
@@ -3907,24 +3907,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accessRequestEmail => 'Work email *';
 
   @override
-  String get accessRequestDepartment => 'Requested department (optional)';
+  String get accessRequestDepartment => 'Department (optional)';
 
   @override
-  String get accessRequestRole => 'Requested role (optional)';
+  String get accessRequestPassword => 'Password *';
 
   @override
-  String get accessRequestRoleHint => 'E.g.: Nurse, Doctor, Technician…';
+  String get accessRequestPasswordConfirm => 'Confirm password *';
 
   @override
-  String get accessRequestSubmit => 'Send request';
+  String get accessRequestPasswordTooShort => 'Minimum 8 characters';
 
   @override
-  String get accessRequestSuccess =>
-      'Request sent! An administrator will contact you to create your account.';
+  String get accessRequestPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get accessRequestAccountExists =>
+      'This email is already associated with an account';
+
+  @override
+  String get accessRequestSubmit => 'Create my account';
+
+  @override
+  String get accessRequestSuccess => 'Account created! Logging in…';
 
   @override
   String get accessRequestError =>
-      'Error while sending. Try again or contact the IT admin directly.';
+      'Error creating account. Try again or contact the IT admin directly.';
 
   @override
   String get accessRequestOtherOption => 'Other / Not listed';

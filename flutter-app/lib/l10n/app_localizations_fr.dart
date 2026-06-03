@@ -3934,7 +3934,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get accessRequestSubtitle =>
-      'Remplissez ce formulaire. Un administrateur traitera votre demande et créera votre compte.';
+      'Créez votre compte en quelques secondes. Vous serez connecté automatiquement avec le rôle Personnel hospitalier.';
 
   @override
   String get accessRequestFirstName => 'Prénom *';
@@ -3946,24 +3946,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accessRequestEmail => 'Email professionnel *';
 
   @override
-  String get accessRequestDepartment => 'Département souhaité (optionnel)';
+  String get accessRequestDepartment => 'Département (optionnel)';
 
   @override
-  String get accessRequestRole => 'Rôle souhaité (optionnel)';
+  String get accessRequestPassword => 'Mot de passe *';
 
   @override
-  String get accessRequestRoleHint => 'Ex : Infirmier, Médecin, Technicien…';
+  String get accessRequestPasswordConfirm => 'Confirmer le mot de passe *';
 
   @override
-  String get accessRequestSubmit => 'Envoyer la demande';
+  String get accessRequestPasswordTooShort => 'Minimum 8 caractères';
 
   @override
-  String get accessRequestSuccess =>
-      'Demande envoyée ! Un administrateur vous contactera pour créer votre compte.';
+  String get accessRequestPasswordMismatch =>
+      'Les mots de passe ne correspondent pas';
+
+  @override
+  String get accessRequestAccountExists =>
+      'Cet email est déjà associé à un compte';
+
+  @override
+  String get accessRequestSubmit => 'Créer mon compte';
+
+  @override
+  String get accessRequestSuccess => 'Compte créé ! Connexion en cours…';
 
   @override
   String get accessRequestError =>
-      'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.';
+      'Erreur lors de la création. Réessayez ou contactez directement l\'administrateur IT.';
 
   @override
   String get accessRequestOtherOption => 'Autre / Non listé';

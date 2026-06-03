@@ -200,7 +200,7 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: const _AccessRequestContent(),
+            child: _AccessRequestContent(onSuccess: _onAccessRequestSuccess),
           ),
         ),
       );
@@ -213,10 +213,19 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         builder: (ctx) => Padding(
           padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
-          child: const _AccessRequestContent(),
+          child: _AccessRequestContent(onSuccess: _onAccessRequestSuccess),
         ),
       );
     }
+  }
+
+  // Appelé par _AccessRequestContent après création réussie du compte
+  void _onAccessRequestSuccess(String email, String password) {
+    if (!mounted) return;
+    _emailCtrl.text    = email;
+    _passwordCtrl.text = password;
+    _switchMode(_AuthMode.login);
+    _submitLogin();
   }
 
   // ── Construction UI principale ─────────────────────────────────────────────
@@ -992,23 +1001,27 @@ class _LoginScreenState extends State<LoginScreen> {
 // Contenu partagé entre la dialog desktop et le bottom-sheet mobile.
 
 class _AccessRequestContent extends StatefulWidget {
-  const _AccessRequestContent();
+  final void Function(String email, String password) onSuccess;
+
+  const _AccessRequestContent({required this.onSuccess});
 
   @override
   State<_AccessRequestContent> createState() => _AccessRequestContentState();
 }
 
 class _AccessRequestContentState extends State<_AccessRequestContent> {
-  final _formKey   = GlobalKey<FormState>();
-  final _firstCtrl = TextEditingController();
-  final _lastCtrl  = TextEditingController();
-  final _emailCtrl = TextEditingController();
+  final _formKey      = GlobalKey<FormState>();
+  final _firstCtrl    = TextEditingController();
+  final _lastCtrl     = TextEditingController();
+  final _emailCtrl    = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  final _confirmCtrl  = TextEditingController();
 
   String? _selectedDept;
-  String? _selectedRole;
+  bool    _obscurePassword = true;
+  bool    _obscureConfirm  = true;
 
   bool    _loading = false;
-  bool    _success = false;
   String? _error;
 
   @override
@@ -1016,26 +1029,35 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
     _firstCtrl.dispose();
     _lastCtrl.dispose();
     _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    _confirmCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final l10n = AppLocalizations.of(context)!;
+    final l10n  = AppLocalizations.of(context)!;
+    final email = _emailCtrl.text.trim();
+    final pwd   = _passwordCtrl.text;
     setState(() { _loading = true; _error = null; });
     try {
       await AuthApiService.instance.accessRequest(
         firstName:  _firstCtrl.text.trim(),
         lastName:   _lastCtrl.text.trim(),
-        email:      _emailCtrl.text.trim(),
-        department: _selectedDept ?? '',
-        role:       _selectedRole ?? '',
+        email:      email,
+        password:   pwd,
+        department: _selectedDept,
       );
-      setState(() { _loading = false; _success = true; });
+      // Fermer le dialog/sheet et lancer l'auto-login dans le parent
+      if (mounted) Navigator.of(context).pop();
+      widget.onSuccess(email, pwd);
     } catch (e) {
+      final msg = e.toString();
       setState(() {
         _loading = false;
-        _error   = l10n.accessRequestError;
+        _error   = msg.contains('déjà associé') || msg.contains('already associated')
+            ? l10n.accessRequestAccountExists
+            : l10n.accessRequestError;
       });
     }
   }
@@ -1046,36 +1068,7 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
-      child: _success ? _buildSuccess(l10n) : _buildForm(l10n),
-    );
-  }
-
-  Widget _buildSuccess(AppLocalizations l10n) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 8),
-        const Icon(Icons.check_circle_outline, size: 64, color: AppColors.success),
-        const SizedBox(height: 16),
-        Text(
-          l10n.accessRequestSuccess,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 15, color: AppColors.textPrimary, height: 1.5),
-        ),
-        const SizedBox(height: 24),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text(l10n.commonClose),
-          ),
-        ),
-      ],
+      child: _buildForm(l10n),
     );
   }
 
@@ -1106,22 +1099,6 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
         .toList();
   }
 
-  List<DropdownMenuItem<String>> _buildRoleItems(AppLocalizations l10n) {
-    final roles = [
-      l10n.roleHospitalStaff,
-      l10n.roleTechnician,
-      l10n.roleTechnicianBiomedical,
-      l10n.roleTechnicianIt,
-      l10n.roleTechnicianInfra,
-      l10n.roleSupervisor,
-      l10n.roleAdmin,
-      l10n.accessRequestOtherOption,
-    ];
-    return roles
-        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
-        .toList();
-  }
-
   Widget _buildForm(AppLocalizations l10n) {
     return Form(
       key: _formKey,
@@ -1143,7 +1120,7 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
               ),
               IconButton(
                 icon: const Icon(Icons.close, size: 20),
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: _loading ? null : () => Navigator.of(context).pop(),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 color: AppColors.textSecondary,
@@ -1211,15 +1188,41 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
           ),
           const SizedBox(height: 12),
 
-          DropdownButtonFormField<String>(
-            initialValue: _selectedRole,
-            isExpanded: true,
+          TextFormField(
+            controller: _passwordCtrl,
+            obscureText: _obscurePassword,
             decoration: InputDecoration(
-              labelText: l10n.accessRequestRole,
-              prefixIcon: const Icon(Icons.work_outline),
+              labelText: l10n.accessRequestPassword,
+              prefixIcon: const Icon(Icons.lock_outlined),
+              suffixIcon: IconButton(
+                icon: Icon(_obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
             ),
-            items: _buildRoleItems(l10n),
-            onChanged: (v) => setState(() => _selectedRole = v),
+            validator: (v) {
+              if (v == null || v.isEmpty) return l10n.loginPasswordRequired;
+              if (v.length < 8) return l10n.accessRequestPasswordTooShort;
+              return null;
+            },
+          ),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: _confirmCtrl,
+            obscureText: _obscureConfirm,
+            decoration: InputDecoration(
+              labelText: l10n.accessRequestPasswordConfirm,
+              prefixIcon: const Icon(Icons.lock_outlined),
+              suffixIcon: IconButton(
+                icon: Icon(_obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
+            ),
+            validator: (v) {
+              if (v == null || v.isEmpty) return l10n.loginPasswordRequired;
+              if (v != _passwordCtrl.text) return l10n.accessRequestPasswordMismatch;
+              return null;
+            },
           ),
 
           // Boîte d'erreur

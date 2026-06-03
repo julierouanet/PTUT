@@ -7301,7 +7301,7 @@ abstract class AppLocalizations {
   /// No description provided for @accessRequestSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Remplissez ce formulaire. Un administrateur traitera votre demande et créera votre compte.'**
+  /// **'Créez votre compte en quelques secondes. Vous serez connecté automatiquement avec le rôle Personnel hospitalier.'**
   String get accessRequestSubtitle;
 
   /// No description provided for @accessRequestFirstName.
@@ -7325,37 +7325,55 @@ abstract class AppLocalizations {
   /// No description provided for @accessRequestDepartment.
   ///
   /// In fr, this message translates to:
-  /// **'Département souhaité (optionnel)'**
+  /// **'Département (optionnel)'**
   String get accessRequestDepartment;
 
-  /// No description provided for @accessRequestRole.
+  /// No description provided for @accessRequestPassword.
   ///
   /// In fr, this message translates to:
-  /// **'Rôle souhaité (optionnel)'**
-  String get accessRequestRole;
+  /// **'Mot de passe *'**
+  String get accessRequestPassword;
 
-  /// No description provided for @accessRequestRoleHint.
+  /// No description provided for @accessRequestPasswordConfirm.
   ///
   /// In fr, this message translates to:
-  /// **'Ex : Infirmier, Médecin, Technicien…'**
-  String get accessRequestRoleHint;
+  /// **'Confirmer le mot de passe *'**
+  String get accessRequestPasswordConfirm;
+
+  /// No description provided for @accessRequestPasswordTooShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Minimum 8 caractères'**
+  String get accessRequestPasswordTooShort;
+
+  /// No description provided for @accessRequestPasswordMismatch.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les mots de passe ne correspondent pas'**
+  String get accessRequestPasswordMismatch;
+
+  /// No description provided for @accessRequestAccountExists.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet email est déjà associé à un compte'**
+  String get accessRequestAccountExists;
 
   /// No description provided for @accessRequestSubmit.
   ///
   /// In fr, this message translates to:
-  /// **'Envoyer la demande'**
+  /// **'Créer mon compte'**
   String get accessRequestSubmit;
 
   /// No description provided for @accessRequestSuccess.
   ///
   /// In fr, this message translates to:
-  /// **'Demande envoyée ! Un administrateur vous contactera pour créer votre compte.'**
+  /// **'Compte créé ! Connexion en cours…'**
   String get accessRequestSuccess;
 
   /// No description provided for @accessRequestError.
   ///
   /// In fr, this message translates to:
-  /// **'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.'**
+  /// **'Erreur lors de la création. Réessayez ou contactez directement l\'administrateur IT.'**
   String get accessRequestError;
 
   /// No description provided for @accessRequestOtherOption.

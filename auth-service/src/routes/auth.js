@@ -159,32 +159,74 @@ router.post('/forgot-password', (req, res) => {
 });
 
 // ── POST /api/auth/access-request ─────────────────────────────────────────────
-// Endpoint public : enregistre une demande d'accès soumise depuis l'écran de connexion.
-// Aucune authentification requise — la demande est stockée en DB pour traitement admin.
-router.post('/access-request', (req, res) => {
-  const { first_name, last_name, email, department, role } = req.body;
+// Endpoint public : crée immédiatement un compte Keycloak avec le rôle hospitalStaff.
+// Aucune validation admin requise — l'utilisateur peut se connecter de suite.
+router.post('/access-request', async (req, res) => {
+  const { first_name, last_name, email, password, department } = req.body;
 
-  if (!first_name || !last_name || !email) {
-    return res.status(400).json({ error: 'Champs requis : first_name, last_name, email' });
+  if (!first_name || !last_name || !email || !password) {
+    return res.status(400).json({ error: 'Champs requis : first_name, last_name, email, password' });
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
     return res.status(400).json({ error: 'Adresse email invalide' });
   }
+  if (String(password).length < 8) {
+    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
+  }
 
-  const db = getDb();
-  db.prepare(
-    `INSERT INTO access_requests (first_name, last_name, email, department, role)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(
-    String(first_name).trim(),
-    String(last_name).trim(),
-    String(email).trim().toLowerCase(),
-    department ? String(department).trim() : null,
-    role       ? String(role).trim()       : null,
-  );
+  const cleanEmail = String(email).trim().toLowerCase();
+  const cleanFirst = String(first_name).trim();
+  const cleanLast  = String(last_name).trim();
+  const cleanDept  = department ? String(department).trim() : '';
 
-  console.log(`[AUTH] Demande d'accès enregistrée : ${String(email).trim().toLowerCase()}`);
-  res.status(201).json({ message: 'Demande enregistrée. Un administrateur vous contactera.' });
+  try {
+    // 1. Créer l'utilisateur dans Keycloak
+    const createResp = await kcAdminFetch('/users', {
+      method: 'POST',
+      body: JSON.stringify({
+        username:   cleanEmail,
+        email:      cleanEmail,
+        firstName:  cleanFirst,
+        lastName:   cleanLast,
+        enabled:    true,
+        attributes: { department: [cleanDept] },
+      }),
+    });
+
+    if (createResp.status === 409) {
+      return res.status(409).json({ error: 'Cet email est déjà associé à un compte' });
+    }
+    if (!createResp.ok) {
+      const body = await createResp.text();
+      console.error('[AUTH] Keycloak create user error:', body);
+      return res.status(502).json({ error: 'Erreur lors de la création du compte' });
+    }
+
+    const location = createResp.headers.get('Location') ?? '';
+    const kcId = location.split('/').pop();
+
+    // 2. Définir le mot de passe (permanent)
+    await kcAdminFetch(`/users/${kcId}/reset-password`, {
+      method: 'PUT',
+      body: JSON.stringify({ type: 'password', value: password, temporary: false }),
+    });
+
+    // 3. Assigner le rôle hospitalStaff uniquement
+    await assignRolesToUser(kcId, ['hospitalStaff']);
+
+    // 4. Traçabilité — enregistrement en DB avec statut auto_created
+    const db = getDb();
+    db.prepare(
+      `INSERT INTO access_requests (first_name, last_name, email, department, role, status)
+       VALUES (?, ?, ?, ?, 'hospitalStaff', 'auto_created')`
+    ).run(cleanFirst, cleanLast, cleanEmail, cleanDept || null);
+
+    console.log(`[AUTH] Compte auto-créé (hospitalStaff) : ${cleanEmail} (kcId: ${kcId})`);
+    res.status(201).json({ message: 'Compte créé. Vous pouvez maintenant vous connecter.' });
+  } catch (err) {
+    console.error('[AUTH] Erreur création compte access-request:', err.message);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
 });
 
 module.exports = router;

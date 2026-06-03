@@ -281,19 +281,19 @@ class AuthApiService {
     required String firstName,
     required String lastName,
     required String email,
+    required String password,
     String? department,
-    String? role,
   }) async {
     final response = await ApiClient.postPublic(ApiConfig.accessRequestUrl, {
       'first_name': firstName,
       'last_name':  lastName,
       'email':      email,
+      'password':   password,
       if (department != null && department.isNotEmpty) 'department': department,
-      if (role != null && role.isNotEmpty) 'role': role,
     });
     if (response.statusCode >= 400) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;
-      throw Exception(body['error'] ?? 'Erreur lors de l\'envoi de la demande');
+      throw Exception(body['error'] ?? 'Erreur lors de la création du compte');
     }
   }
 
