@@ -1508,6 +1508,8 @@
   "@accessRequestSuccess": {},
   "accessRequestError": "Erreur lors de l'envoi. Réessayez ou contactez directement l'administrateur IT.",
   "@accessRequestError": {},
+  "accessRequestOtherOption": "Autre / Non listé",
+  "@accessRequestOtherOption": {},
 
   "emergencyContactTitle": "Urgence ou compte bloqué ?",
   "@emergencyContactTitle": {},

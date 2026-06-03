@@ -3966,6 +3966,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.';
 
   @override
+  String get accessRequestOtherOption => 'Autre / Non listé';
+
+  @override
   String get emergencyContactTitle => 'Urgence ou compte bloqué ?';
 
   @override

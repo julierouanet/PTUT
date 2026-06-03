@@ -7358,6 +7358,12 @@ abstract class AppLocalizations {
   /// **'Erreur lors de l\'envoi. Réessayez ou contactez directement l\'administrateur IT.'**
   String get accessRequestError;
 
+  /// No description provided for @accessRequestOtherOption.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre / Non listé'**
+  String get accessRequestOtherOption;
+
   /// No description provided for @emergencyContactTitle.
   ///
   /// In fr, this message translates to:

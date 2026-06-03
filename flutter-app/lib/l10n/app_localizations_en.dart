@@ -3927,6 +3927,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Error while sending. Try again or contact the IT admin directly.';
 
   @override
+  String get accessRequestOtherOption => 'Other / Not listed';
+
+  @override
   String get emergencyContactTitle => 'Emergency or locked account?';
 
   @override

@@ -1003,8 +1003,9 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
   final _firstCtrl = TextEditingController();
   final _lastCtrl  = TextEditingController();
   final _emailCtrl = TextEditingController();
-  final _deptCtrl  = TextEditingController();
-  final _roleCtrl  = TextEditingController();
+
+  String? _selectedDept;
+  String? _selectedRole;
 
   bool    _loading = false;
   bool    _success = false;
@@ -1015,8 +1016,6 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
     _firstCtrl.dispose();
     _lastCtrl.dispose();
     _emailCtrl.dispose();
-    _deptCtrl.dispose();
-    _roleCtrl.dispose();
     super.dispose();
   }
 
@@ -1029,8 +1028,8 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
         firstName:  _firstCtrl.text.trim(),
         lastName:   _lastCtrl.text.trim(),
         email:      _emailCtrl.text.trim(),
-        department: _deptCtrl.text.trim(),
-        role:       _roleCtrl.text.trim(),
+        department: _selectedDept ?? '',
+        role:       _selectedRole ?? '',
       );
       setState(() { _loading = false; _success = true; });
     } catch (e) {
@@ -1078,6 +1077,49 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
         ),
       ],
     );
+  }
+
+  List<DropdownMenuItem<String>> _buildDeptItems(AppLocalizations l10n) {
+    final depts = [
+      l10n.deptAdministration,
+      l10n.deptOpd,
+      l10n.deptInternalMedicine,
+      l10n.deptPediatrics,
+      l10n.deptEmergency,
+      l10n.deptLaboratory,
+      l10n.deptStomatology,
+      l10n.deptPhysiotherapy,
+      l10n.deptNeonatology,
+      l10n.deptMaternity,
+      l10n.deptSurgery,
+      l10n.deptOperatingTheater,
+      l10n.deptOphthalmology,
+      l10n.deptTbMr,
+      l10n.deptGbv,
+      l10n.deptMentalHealth,
+      l10n.deptArv,
+      l10n.deptPharmacy,
+      l10n.accessRequestOtherOption,
+    ];
+    return depts
+        .map((d) => DropdownMenuItem(value: d, child: Text(d, overflow: TextOverflow.ellipsis)))
+        .toList();
+  }
+
+  List<DropdownMenuItem<String>> _buildRoleItems(AppLocalizations l10n) {
+    final roles = [
+      l10n.roleHospitalStaff,
+      l10n.roleTechnician,
+      l10n.roleTechnicianBiomedical,
+      l10n.roleTechnicianIt,
+      l10n.roleTechnicianInfra,
+      l10n.roleSupervisor,
+      l10n.roleAdmin,
+      l10n.accessRequestOtherOption,
+    ];
+    return roles
+        .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+        .toList();
   }
 
   Widget _buildForm(AppLocalizations l10n) {
@@ -1157,24 +1199,27 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
           ),
           const SizedBox(height: 12),
 
-          TextFormField(
-            controller: _deptCtrl,
-            textCapitalization: TextCapitalization.sentences,
+          DropdownButtonFormField<String>(
+            initialValue: _selectedDept,
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: l10n.accessRequestDepartment,
               prefixIcon: const Icon(Icons.apartment_outlined),
             ),
+            items: _buildDeptItems(l10n),
+            onChanged: (v) => setState(() => _selectedDept = v),
           ),
           const SizedBox(height: 12),
 
-          TextFormField(
-            controller: _roleCtrl,
-            textCapitalization: TextCapitalization.sentences,
+          DropdownButtonFormField<String>(
+            initialValue: _selectedRole,
+            isExpanded: true,
             decoration: InputDecoration(
               labelText: l10n.accessRequestRole,
-              hintText: l10n.accessRequestRoleHint,
               prefixIcon: const Icon(Icons.work_outline),
             ),
+            items: _buildRoleItems(l10n),
+            onChanged: (v) => setState(() => _selectedRole = v),
           ),
 
           // Boîte d'erreur
