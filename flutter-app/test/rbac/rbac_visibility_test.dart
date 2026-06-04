@@ -51,11 +51,22 @@ void _setMobileSize(WidgetTester tester) {
 }
 
 /// Entre dans le module Équipement depuis le Hub.
-/// - Admin/supervisor/tech : bouton "Open Equipment" sur la carte module.
-/// - hospitalStaff         : OutlinedButton "Mes incidents actifs" (hub simplifié).
+/// - Techniciens       : déjà dans MainScaffold (redirection auto), pompe
+///                       pour que le postFrameCallback traite _initialScreenType.
+/// - Admin/supervisor  : bouton "Open Equipment" — scrolle si hors écran.
+/// - hospitalStaff     : OutlinedButton "Mes incidents actifs" (hub simplifié).
 Future<void> _enterEquipmentModule(WidgetTester tester) async {
+  // Les techniciens sont redirigés directement dans MainScaffold au démarrage.
+  if (find.byType(MainScaffold).evaluate().isNotEmpty) {
+    await tester.pump(); // laisse le postFrameCallback appliquer _initialScreenType
+    return;
+  }
+
   final btn = find.text('Open Equipment');
   if (btn.evaluate().isNotEmpty) {
+    // Scroll si le bouton est hors de la zone visible (hub manager view).
+    await tester.ensureVisible(btn);
+    await tester.pump();
     await tester.tap(btn);
   } else {
     await tester.tap(find.byType(OutlinedButton).first);
@@ -103,15 +114,21 @@ void main() {
     );
 
     testWidgets(
-      'technician_biomedical voit le plan de travail ("My workplan for today")',
+      'technician_biomedical est redirigé directement dans le module équipement (sans passer par le hub)',
       (tester) async {
         _suppressOverflow(tester);
         AuthService().switchUser(_techBio);
 
         await tester.pumpWidget(const EquipmentManagementApp());
         await tester.pump();
+        // Pompe supplémentaire pour que le postFrameCallback de MainScaffold
+        // applique _initialScreenType = issueTracking.
+        await tester.pump();
 
-        expect(find.text('My workplan for today'), findsOneWidget);
+        // _applyRoleRedirect envoie les techniciens directement dans MainScaffold.
+        expect(find.byType(MainScaffold), findsOneWidget);
+        // Le hub n'est pas affiché pour les techniciens.
+        expect(find.text('My workplan for today'), findsNothing);
         expect(find.text('What would you like to do?'), findsNothing);
         expect(find.text('Global Dashboard'), findsNothing);
       },
@@ -381,13 +398,12 @@ void main() {
         await tester.pumpWidget(const EquipmentManagementApp());
         await _enterEquipmentModule(tester);
 
-        // Le titre du dashboard est visible
+        // Le titre du dashboard est visible dans la navigation
         expect(find.text('Dashboard'), findsWidgets);
 
-        // La vue staff ne dispose pas d'indicateurs KPI opérationnels complexes
-        // (pas de StatCards avec "Operational" / "Maintenance" counts)
-        // Elle ne contient que le widget météo + bouton signalement
-        expect(find.byType(FloatingActionButton), findsOneWidget);
+        // DashboardScreen expose un bouton refresh (IconButton) mais pas de FAB.
+        // Le FAB "Signaler" est dans HomeHubScreen, pas dans MainScaffold.
+        expect(find.byIcon(Icons.refresh), findsWidgets);
       },
     );
 
@@ -408,17 +424,19 @@ void main() {
     );
 
     testWidgets(
-      'technician_biomedical voit le dashboard avec indicateurs opérationnels',
+      'technician_biomedical arrive sur le suivi des incidents (redirection automatique)',
       (tester) async {
         _suppressOverflow(tester);
         AuthService().switchUser(_techBio);
 
         await tester.pumpWidget(const EquipmentManagementApp());
-        await _enterEquipmentModule(tester);
+        await tester.pump();
+        await tester.pump(); // postFrameCallback → _initialScreenType = issueTracking
 
-        // Le dashboard tech affiche "Dashboard" et le bouton refresh
-        expect(find.text('Dashboard'), findsWidgets);
-        expect(find.byIcon(Icons.refresh), findsWidgets);
+        // Les techniciens sont redirigés vers IssueTrackingScreen, pas DashboardScreen.
+        expect(find.byType(MainScaffold), findsOneWidget);
+        // "Issue Tracking" apparaît dans la navigation (sidebar ou bottom nav).
+        expect(find.text('Issue Tracking'), findsWidgets);
       },
     );
   });
