@@ -61,6 +61,7 @@ app.use('/api/features',       featuresRoutes);
 app.use('/api/admin/backups',  backupsRoutes);
 app.use('/api/categories',     categoriesRoutes);
 app.use('/api/pm-protocols',   pmProtocolsRoutes);
+app.use('/api/debug',          debugRoutes);
 app.use('/',                   debugRoutes);
 
 const server = app.listen(PORT, () => {

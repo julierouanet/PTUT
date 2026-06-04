@@ -4156,4 +4156,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportsPdfError => 'Error generating PDF report';
+
+  @override
+  String get navDebugTest => 'Debug & Test';
+
+  @override
+  String get navDebugTestShort => 'Debug';
+
+  @override
+  String get debugTitle => 'Debug & Test Module';
+
+  @override
+  String get debugSubtitle =>
+      'Reserved for administrators — irreversible data operations';
+
+  @override
+  String get debugDbSection => 'Database Management';
+
+  @override
+  String get debugClearIssuesLabel => 'Clear all incident reports';
+
+  @override
+  String get debugClearIssuesDesc =>
+      'Permanently deletes all incidents from the database. This action is irreversible.';
+
+  @override
+  String get debugClearIssuesButton => 'Clear all incidents';
+
+  @override
+  String get debugClearIssuesLoading => 'Clearing...';
+
+  @override
+  String get debugClearIssuesTitle => 'Confirm clearing';
+
+  @override
+  String get debugClearIssuesMessage =>
+      'This action will permanently delete ALL incidents from the database. This operation is irreversible and cannot be undone.';
+
+  @override
+  String get debugClearIssuesConfirm => 'Delete all';
+
+  @override
+  String debugClearIssuesSuccess(int count) {
+    return '$count incident(s) successfully deleted';
+  }
+
+  @override
+  String debugClearIssuesError(String error) {
+    return 'Error during clearing: $error';
+  }
+
+  @override
+  String get reportsArchivesSectionTitle => 'Archives & Historical Reports';
+
+  @override
+  String get reportsArchivesTypeMonthly => 'Monthly';
+
+  @override
+  String get reportsArchivesTypeAnnual => 'Annual';
+
+  @override
+  String get reportsArchivesDownload => 'Download PDF Report';
+
+  @override
+  String get reportsArchivesDownloading => 'Generating...';
+
+  @override
+  String get reportsArchivesHint =>
+      'Select a period to download a historical report as PDF.';
 }

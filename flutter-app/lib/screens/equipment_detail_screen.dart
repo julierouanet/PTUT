@@ -186,20 +186,27 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
               ),
             const SizedBox(width: 4),
           ],
-          bottom: TabBar(
-            isScrollable: false,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: AppColors.primary,
-            labelStyle: const TextStyle(
-                fontSize: 13, fontWeight: FontWeight.w600),
-            unselectedLabelStyle: const TextStyle(fontSize: 13),
-            tabs: [
-              Tab(text: l10n.equipDetailTabInfo),
-              Tab(text: l10n.equipDetailTabMaintenance),
-              Tab(text: l10n.equipDetailTabIncidents),
-              Tab(text: l10n.equipDetailTabDocuments),
-            ],
+          // TabBar compacte : hauteur 40px et indicateur fin pour maximiser l'espace données
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(40),
+            child: TabBar(
+              isScrollable: false,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: AppColors.textSecondary,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 2,
+              padding: EdgeInsets.zero,
+              labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+              labelStyle: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              tabs: [
+                Tab(height: 40, text: l10n.equipDetailTabInfo),
+                Tab(height: 40, text: l10n.equipDetailTabMaintenance),
+                Tab(height: 40, text: l10n.equipDetailTabIncidents),
+                Tab(height: 40, text: l10n.equipDetailTabDocuments),
+              ],
+            ),
           ),
         ),
         body: Column(

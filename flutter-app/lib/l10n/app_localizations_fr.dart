@@ -4198,4 +4198,73 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get reportsPdfError => 'Erreur lors de la génération du PDF';
+
+  @override
+  String get navDebugTest => 'Debug & Test';
+
+  @override
+  String get navDebugTestShort => 'Debug';
+
+  @override
+  String get debugTitle => 'Module Debug & Test';
+
+  @override
+  String get debugSubtitle =>
+      'Réservé aux administrateurs — actions irréversibles sur les données';
+
+  @override
+  String get debugDbSection => 'Gestion de la Base de Données';
+
+  @override
+  String get debugClearIssuesLabel =>
+      'Nettoyer tous les signalements d\'incidents';
+
+  @override
+  String get debugClearIssuesDesc =>
+      'Supprime définitivement tous les incidents de la base de données. Cette action est irréversible.';
+
+  @override
+  String get debugClearIssuesButton => 'Nettoyer tous les signalements';
+
+  @override
+  String get debugClearIssuesLoading => 'Nettoyage en cours...';
+
+  @override
+  String get debugClearIssuesTitle => 'Confirmer le nettoyage';
+
+  @override
+  String get debugClearIssuesMessage =>
+      'Cette action va supprimer TOUS les incidents de la base de données. Cette opération est irréversible et ne peut pas être annulée.';
+
+  @override
+  String get debugClearIssuesConfirm => 'Tout supprimer';
+
+  @override
+  String debugClearIssuesSuccess(int count) {
+    return '$count incident(s) supprimé(s) avec succès';
+  }
+
+  @override
+  String debugClearIssuesError(String error) {
+    return 'Erreur lors du nettoyage : $error';
+  }
+
+  @override
+  String get reportsArchivesSectionTitle => 'Archives & Rapports Historiques';
+
+  @override
+  String get reportsArchivesTypeMonthly => 'Mensuel';
+
+  @override
+  String get reportsArchivesTypeAnnual => 'Annuel';
+
+  @override
+  String get reportsArchivesDownload => 'Télécharger le rapport PDF';
+
+  @override
+  String get reportsArchivesDownloading => 'Génération en cours…';
+
+  @override
+  String get reportsArchivesHint =>
+      'Sélectionnez une période pour télécharger un rapport historique au format PDF.';
 }

@@ -7777,6 +7777,126 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Erreur lors de la génération du PDF'**
   String get reportsPdfError;
+
+  /// No description provided for @navDebugTest.
+  ///
+  /// In fr, this message translates to:
+  /// **'Debug & Test'**
+  String get navDebugTest;
+
+  /// No description provided for @navDebugTestShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Debug'**
+  String get navDebugTestShort;
+
+  /// No description provided for @debugTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Module Debug & Test'**
+  String get debugTitle;
+
+  /// No description provided for @debugSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réservé aux administrateurs — actions irréversibles sur les données'**
+  String get debugSubtitle;
+
+  /// No description provided for @debugDbSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion de la Base de Données'**
+  String get debugDbSection;
+
+  /// No description provided for @debugClearIssuesLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nettoyer tous les signalements d\'incidents'**
+  String get debugClearIssuesLabel;
+
+  /// No description provided for @debugClearIssuesDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprime définitivement tous les incidents de la base de données. Cette action est irréversible.'**
+  String get debugClearIssuesDesc;
+
+  /// No description provided for @debugClearIssuesButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nettoyer tous les signalements'**
+  String get debugClearIssuesButton;
+
+  /// No description provided for @debugClearIssuesLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nettoyage en cours...'**
+  String get debugClearIssuesLoading;
+
+  /// No description provided for @debugClearIssuesTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer le nettoyage'**
+  String get debugClearIssuesTitle;
+
+  /// No description provided for @debugClearIssuesMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action va supprimer TOUS les incidents de la base de données. Cette opération est irréversible et ne peut pas être annulée.'**
+  String get debugClearIssuesMessage;
+
+  /// No description provided for @debugClearIssuesConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout supprimer'**
+  String get debugClearIssuesConfirm;
+
+  /// No description provided for @debugClearIssuesSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s) supprimé(s) avec succès'**
+  String debugClearIssuesSuccess(int count);
+
+  /// No description provided for @debugClearIssuesError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du nettoyage : {error}'**
+  String debugClearIssuesError(String error);
+
+  /// No description provided for @reportsArchivesSectionTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Archives & Rapports Historiques'**
+  String get reportsArchivesSectionTitle;
+
+  /// No description provided for @reportsArchivesTypeMonthly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mensuel'**
+  String get reportsArchivesTypeMonthly;
+
+  /// No description provided for @reportsArchivesTypeAnnual.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annuel'**
+  String get reportsArchivesTypeAnnual;
+
+  /// No description provided for @reportsArchivesDownload.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger le rapport PDF'**
+  String get reportsArchivesDownload;
+
+  /// No description provided for @reportsArchivesDownloading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Génération en cours…'**
+  String get reportsArchivesDownloading;
+
+  /// No description provided for @reportsArchivesHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez une période pour télécharger un rapport historique au format PDF.'**
+  String get reportsArchivesHint;
 }
 
 class _AppLocalizationsDelegate

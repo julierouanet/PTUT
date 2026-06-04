@@ -1622,5 +1622,36 @@
   "reportsPdfSuccess": "Rapport PDF prêt — enregistrez-le depuis la boîte de dialogue",
   "@reportsPdfSuccess": {},
   "reportsPdfError": "Erreur lors de la génération du PDF",
-  "@reportsPdfError": {}
+  "@reportsPdfError": {},
+
+  "navDebugTest": "Debug & Test",
+  "navDebugTestShort": "Debug",
+
+  "debugTitle": "Module Debug & Test",
+  "debugSubtitle": "Réservé aux administrateurs — actions irréversibles sur les données",
+  "debugDbSection": "Gestion de la Base de Données",
+  "debugClearIssuesLabel": "Nettoyer tous les signalements d'incidents",
+  "debugClearIssuesDesc": "Supprime définitivement tous les incidents de la base de données. Cette action est irréversible.",
+  "debugClearIssuesButton": "Nettoyer tous les signalements",
+  "debugClearIssuesLoading": "Nettoyage en cours...",
+  "debugClearIssuesTitle": "Confirmer le nettoyage",
+  "debugClearIssuesMessage": "Cette action va supprimer TOUS les incidents de la base de données. Cette opération est irréversible et ne peut pas être annulée.",
+  "debugClearIssuesConfirm": "Tout supprimer",
+  "debugClearIssuesSuccess": "{count} incident(s) supprimé(s) avec succès",
+  "@debugClearIssuesSuccess": { "placeholders": { "count": { "type": "int" } } },
+  "debugClearIssuesError": "Erreur lors du nettoyage : {error}",
+  "@debugClearIssuesError": { "placeholders": { "error": { "type": "String" } } },
+
+  "reportsArchivesSectionTitle": "Archives & Rapports Historiques",
+  "@reportsArchivesSectionTitle": {},
+  "reportsArchivesTypeMonthly": "Mensuel",
+  "@reportsArchivesTypeMonthly": {},
+  "reportsArchivesTypeAnnual": "Annuel",
+  "@reportsArchivesTypeAnnual": {},
+  "reportsArchivesDownload": "Télécharger le rapport PDF",
+  "@reportsArchivesDownload": {},
+  "reportsArchivesDownloading": "Génération en cours…",
+  "@reportsArchivesDownloading": {},
+  "reportsArchivesHint": "Sélectionnez une période pour télécharger un rapport historique au format PDF.",
+  "@reportsArchivesHint": {}
 }

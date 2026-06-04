@@ -150,43 +150,63 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
         ),
 
-        // ── Onglets départements / catégories ─────────────────────────────────
+        // TabBar style pilule compacte — hauteur réduite pour maximiser l'espace contenu
         Container(
           margin: EdgeInsets.symmetric(horizontal: hPad),
-          decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(10)),
           child: TabBar(
             controller: _tabController,
-            indicator: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(10)),
+            indicator: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(8)),
             labelColor: Colors.white,
             unselectedLabelColor: AppColors.textSecondary,
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
-            padding: const EdgeInsets.all(4),
+            padding: const EdgeInsets.all(3),
             tabs: [
-              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.business, size: 18),
-                const SizedBox(width: 8),
-                Text(l10n.settingsDepartmentsTab(_configService.departments.length)),
-              ])),
-              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.category, size: 18),
-                const SizedBox(width: 8),
-                Text(l10n.settingsCategoriesTab(_configService.categories.length)),
-              ])),
-              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.menu, size: 18),
-                const SizedBox(width: 8),
-                Text(AppLocalizations.of(context)!.settingsMenuOrder),
-              ])),
-              Tab(child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                const Icon(Icons.admin_panel_settings, size: 18),
-                const SizedBox(width: 8),
-                Text(l10n.settingsRolesTab),
-              ])),
+              Tab(
+                height: 34,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.business, size: 15),
+                  const SizedBox(width: 6),
+                  Text(l10n.settingsDepartmentsTab(_configService.departments.length),
+                      style: const TextStyle(fontSize: 12)),
+                ]),
+              ),
+              Tab(
+                height: 34,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.category, size: 15),
+                  const SizedBox(width: 6),
+                  Text(l10n.settingsCategoriesTab(_configService.categories.length),
+                      style: const TextStyle(fontSize: 12)),
+                ]),
+              ),
+              Tab(
+                height: 34,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.menu, size: 15),
+                  const SizedBox(width: 6),
+                  Text(AppLocalizations.of(context)!.settingsMenuOrder,
+                      style: const TextStyle(fontSize: 12)),
+                ]),
+              ),
+              Tab(
+                height: 34,
+                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.admin_panel_settings, size: 15),
+                  const SizedBox(width: 6),
+                  Text(l10n.settingsRolesTab,
+                      style: const TextStyle(fontSize: 12)),
+                ]),
+              ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Expanded(
           child: TabBarView(
             controller: _tabController,

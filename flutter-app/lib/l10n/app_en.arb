@@ -1600,5 +1600,36 @@
   "reportsPdfSuccess": "PDF report ready — save it from the dialog",
   "@reportsPdfSuccess": {},
   "reportsPdfError": "Error generating PDF report",
-  "@reportsPdfError": {}
+  "@reportsPdfError": {},
+
+  "navDebugTest": "Debug & Test",
+  "navDebugTestShort": "Debug",
+
+  "debugTitle": "Debug & Test Module",
+  "debugSubtitle": "Reserved for administrators — irreversible data operations",
+  "debugDbSection": "Database Management",
+  "debugClearIssuesLabel": "Clear all incident reports",
+  "debugClearIssuesDesc": "Permanently deletes all incidents from the database. This action is irreversible.",
+  "debugClearIssuesButton": "Clear all incidents",
+  "debugClearIssuesLoading": "Clearing...",
+  "debugClearIssuesTitle": "Confirm clearing",
+  "debugClearIssuesMessage": "This action will permanently delete ALL incidents from the database. This operation is irreversible and cannot be undone.",
+  "debugClearIssuesConfirm": "Delete all",
+  "debugClearIssuesSuccess": "{count} incident(s) successfully deleted",
+  "@debugClearIssuesSuccess": { "placeholders": { "count": { "type": "int" } } },
+  "debugClearIssuesError": "Error during clearing: {error}",
+  "@debugClearIssuesError": { "placeholders": { "error": { "type": "String" } } },
+
+  "reportsArchivesSectionTitle": "Archives & Historical Reports",
+  "@reportsArchivesSectionTitle": {},
+  "reportsArchivesTypeMonthly": "Monthly",
+  "@reportsArchivesTypeMonthly": {},
+  "reportsArchivesTypeAnnual": "Annual",
+  "@reportsArchivesTypeAnnual": {},
+  "reportsArchivesDownload": "Download PDF Report",
+  "@reportsArchivesDownload": {},
+  "reportsArchivesDownloading": "Generating...",
+  "@reportsArchivesDownloading": {},
+  "reportsArchivesHint": "Select a period to download a historical report as PDF.",
+  "@reportsArchivesHint": {}
 }

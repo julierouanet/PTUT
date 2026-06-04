@@ -27,6 +27,7 @@ import 'screens/home_hub_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/feature_management_screen.dart';
 import 'screens/backup_management_screen.dart';
+import 'screens/debug_test_screen.dart';
 
 /// Screen types for navigation (no more string matching)
 enum ScreenType {
@@ -43,6 +44,7 @@ enum ScreenType {
   analytics,
   featureManagement,
   backupManagement,
+  debugTest,
 }
 
 void main() async {
@@ -193,6 +195,7 @@ class _AppRootState extends State<_AppRoot> {
     ScreenType.analytics,
     ScreenType.featureManagement,
     ScreenType.backupManagement,
+    ScreenType.debugTest,
   ];
   static const _inventoryScreens = [ScreenType.inventory];
 
@@ -271,7 +274,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
     _NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
     _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
-    _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs),
+    _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs, alternativePermission: Permission.approveRequests),
     _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
     _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
     _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
@@ -280,6 +283,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: l10n.navAnalytics, shortLabel: l10n.navAnalyticsShort, screenType: ScreenType.analytics, requiredPermission: Permission.generateReports),
     _NavItem(icon: Icons.tune_outlined, activeIcon: Icons.tune, label: l10n.navFeatureManagement, shortLabel: l10n.navFeatureManagementShort, screenType: ScreenType.featureManagement, requiredPermission: Permission.manageFeatures),
     _NavItem(icon: Icons.backup_outlined, activeIcon: Icons.backup, label: l10n.navBackupManagement, shortLabel: l10n.navBackupManagementShort, screenType: ScreenType.backupManagement, requiredPermission: Permission.manageBackups),
+    _NavItem(icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: l10n.navDebugTest, shortLabel: l10n.navDebugTestShort, screenType: ScreenType.debugTest, requiredPermission: Permission.manageFeatures),
   ];
 
   List<_NavItem> _navItems(AppLocalizations l10n) {
@@ -287,7 +291,9 @@ class _MainScaffoldState extends State<MainScaffold> {
     final visible = _allNavItems(l10n).where((item) {
       if (filter != null && !filter.contains(item.screenType)) return false;
       if (item.requiredPermission == null) return true;
-      return _authService.hasPermission(item.requiredPermission!);
+      return _authService.hasPermission(item.requiredPermission!) ||
+             (item.alternativePermission != null &&
+              _authService.hasPermission(item.alternativePermission!));
     }).toList();
 
     // Appliquer l'ordre configuré par l'admin pour le rôle "principal" du user
@@ -402,6 +408,8 @@ class _MainScaffoldState extends State<MainScaffold> {
         return const FeatureManagementScreen();
       case ScreenType.backupManagement:
         return const BackupManagementScreen();
+      case ScreenType.debugTest:
+        return const DebugTestScreen();
     }
   }
 
@@ -894,6 +902,8 @@ class _NavItem {
   final String shortLabel;
   final ScreenType screenType;
   final Permission? requiredPermission;
+  // Permission alternative : l'item est visible si l'utilisateur a l'une OU l'autre
+  final Permission? alternativePermission;
 
-  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.shortLabel, required this.screenType, this.requiredPermission});
+  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.shortLabel, required this.screenType, this.requiredPermission, this.alternativePermission});
 }

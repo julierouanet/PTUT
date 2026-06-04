@@ -1,7 +1,30 @@
 const express = require('express');
 const { getDb } = require('../database');
+const { verifyToken, requireRole } = require('../middleware/auth');
+const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
+
+// ── POST /clear-issues ────────────────────────────────────────────────────────
+// Supprime tous les incidents (réservé admin, usage debug/test uniquement)
+router.post('/clear-issues', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const result = db.prepare('DELETE FROM issues').run();
+
+  logAction({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      'debug_clear_all_issues',
+    target_type: 'issues',
+    target_id:   null,
+    target_name: 'Tous les incidents',
+    details:     JSON.stringify({ deleted_count: result.changes, note: 'Nettoyage complet des incidents' }),
+    ...extractReqMeta(req),
+  });
+
+  res.json({ message: `${result.changes} incident(s) supprimé(s)`, deleted: result.changes });
+});
 
 router.get('/', (req, res) => {
   const db = getDb();

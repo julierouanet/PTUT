@@ -12,6 +12,9 @@ import '../widgets/reports/report_kpi_section.dart';
 
 enum _ReportPeriod { last7, last30, last90, yearToDate, custom }
 
+// Type d'archive : mensuelle ou annuelle
+enum _ArchiveType { monthly, annual }
+
 /// Écran de rapports et d'analyses GMAO.
 ///
 /// Fonctionnalités :
@@ -20,6 +23,7 @@ enum _ReportPeriod { last7, last30, last90, yearToDate, custom }
 /// - Répartition des équipements (statut, département, catégorie)
 /// - Statistiques des incidents filtrées sur la période sélectionnée
 /// - Export CSV réel (web) ou message informatif (mobile/desktop)
+/// - Section "Archives" : téléchargement des rapports mensuels (24 mois) ou annuels
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -32,6 +36,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
   DateTimeRange? _customRange;
   bool _isExporting    = false;
   bool _isExportingPdf = false;
+
+  // ── État de la section Archives ────────────────────────────────────────────
+  _ArchiveType _archiveType        = _ArchiveType.monthly;
+  // Index dans la liste des 24 derniers mois (0 = mois courant, 1 = mois précédent, …)
+  int          _archiveMonthOffset = 0;
+  // Année sélectionnée pour les rapports annuels
+  late int     _archiveYear        = DateTime.now().year;
+  bool         _isDownloadingArchive = false;
 
   // ── Calcul de la plage temporelle active ───────────────────────────────────
 
@@ -323,6 +335,264 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
+  // ── Utilitaires Archives ───────────────────────────────────────────────────
+
+  /// Retourne le premier jour du mois offset (0 = mois courant, 1 = mois précédent, …)
+  DateTime _archiveMonthStart(int offset) {
+    final now = DateTime.now();
+    return DateTime(now.year, now.month - offset, 1);
+  }
+
+  /// Retourne le dernier jour du mois sélectionné.
+  DateTime _archiveMonthEnd(DateTime start) {
+    return DateTime(start.year, start.month + 1, 1)
+        .subtract(const Duration(days: 1));
+  }
+
+  /// Traduit un numéro de mois (1–12) en chaîne localisée.
+  String _monthName(AppLocalizations l10n, int month) => switch (month) {
+    1  => l10n.monthJanuary,
+    2  => l10n.monthFebruary,
+    3  => l10n.monthMarch,
+    4  => l10n.monthApril,
+    5  => l10n.monthMay,
+    6  => l10n.monthJune,
+    7  => l10n.monthJuly,
+    8  => l10n.monthAugust,
+    9  => l10n.monthSeptember,
+    10 => l10n.monthOctober,
+    11 => l10n.monthNovember,
+    _  => l10n.monthDecember,
+  };
+
+  /// Génère et ouvre le PDF pour la période d'archive sélectionnée.
+  Future<void> _downloadArchivePdf(BuildContext context, AppLocalizations l10n) async {
+    setState(() => _isDownloadingArchive = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      // Calcul de la plage de dates selon le type d'archive
+      final DateTimeRange range;
+      if (_archiveType == _ArchiveType.monthly) {
+        final start = _archiveMonthStart(_archiveMonthOffset);
+        final end   = _archiveMonthEnd(start);
+        range = DateTimeRange(start: start, end: end);
+      } else {
+        range = DateTimeRange(
+          start: DateTime(_archiveYear, 1, 1),
+          end:   DateTime(_archiveYear, 12, 31),
+        );
+      }
+
+      final issues                = _issuesInPeriod(range);
+      final mttr                  = _computeMttr(issues);
+      final (pmCompliant, pmTotal) = _computePmCompliance();
+      final topDepts              = _topDepartments(issues);
+      final user                  = AuthService().currentUser;
+
+      final pdfBytes = await PdfReportService.generate(
+        startDate:       range.start,
+        endDate:         range.end,
+        generatedByName: user?.name ?? '—',
+        generatedByRole: user?.roles.isNotEmpty == true
+            ? user!.roles.first.name
+            : '—',
+        allEquipment:    DataService().equipment,
+        periodIssues:    issues,
+        mttrDays:        mttr,
+        pmCompliant:     pmCompliant,
+        pmTotal:         pmTotal,
+        topDepartments:  topDepts,
+        inventory:       DataService().inventory,
+      );
+
+      // Libellé du fichier selon le type d'archive
+      final String periodLabel;
+      if (_archiveType == _ArchiveType.monthly) {
+        final start = range.start;
+        periodLabel = '${_monthName(l10n, start.month).toLowerCase()}_${start.year}';
+      } else {
+        periodLabel = '${_archiveYear}';
+      }
+
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+        name: 'rapport_kabutare_$periodLabel.pdf',
+      );
+
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.reportsPdfSuccess),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.reportsPdfError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloadingArchive = false);
+    }
+  }
+
+  /// Construit la section "Archives & Rapports Historiques".
+  Widget _buildArchivesSection(BuildContext context, AppLocalizations l10n) {
+    final now       = DateTime.now();
+    final yearList  = [now.year, now.year - 1];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête de section
+            Row(
+              children: [
+                const Icon(Icons.archive_outlined, size: 20, color: AppColors.primary),
+                const SizedBox(width: 10),
+                Text(
+                  l10n.reportsArchivesSectionTitle,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              l10n.reportsArchivesHint,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Sélecteur de type (Mensuel / Annuel) ──────────────────────
+            Wrap(
+              spacing: 8,
+              children: [
+                ChoiceChip(
+                  label: Text(l10n.reportsArchivesTypeMonthly),
+                  selected: _archiveType == _ArchiveType.monthly,
+                  selectedColor: AppColors.primary,
+                  labelStyle: TextStyle(
+                    color: _archiveType == _ArchiveType.monthly
+                        ? Colors.white
+                        : AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                  onSelected: (_) => setState(() {
+                    _archiveType        = _ArchiveType.monthly;
+                    _archiveMonthOffset = 0;
+                  }),
+                ),
+                ChoiceChip(
+                  label: Text(l10n.reportsArchivesTypeAnnual),
+                  selected: _archiveType == _ArchiveType.annual,
+                  selectedColor: AppColors.primary,
+                  labelStyle: TextStyle(
+                    color: _archiveType == _ArchiveType.annual
+                        ? Colors.white
+                        : AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                  onSelected: (_) => setState(() {
+                    _archiveType = _ArchiveType.annual;
+                    _archiveYear = now.year;
+                  }),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // ── Sélecteur de période dynamique ────────────────────────────
+            if (_archiveType == _ArchiveType.monthly)
+              DropdownButtonFormField<int>(
+                value: _archiveMonthOffset,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+                items: List.generate(24, (i) {
+                  final d = _archiveMonthStart(i);
+                  return DropdownMenuItem(
+                    value: i,
+                    child: Text('${_monthName(l10n, d.month)} ${d.year}'),
+                  );
+                }),
+                onChanged: (v) {
+                  if (v != null) setState(() => _archiveMonthOffset = v);
+                },
+              )
+            else
+              DropdownButtonFormField<int>(
+                value: _archiveYear,
+                decoration: InputDecoration(
+                  isDense: true,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+                items: yearList
+                    .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) setState(() => _archiveYear = v);
+                },
+              ),
+            const SizedBox(height: 16),
+
+            // ── Bouton de téléchargement ───────────────────────────────────
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isDownloadingArchive
+                    ? null
+                    : () => _downloadArchivePdf(context, l10n),
+                icon: _isDownloadingArchive
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.picture_as_pdf_outlined),
+                label: Text(
+                  _isDownloadingArchive
+                      ? l10n.reportsArchivesDownloading
+                      : l10n.reportsArchivesDownload,
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCustomChip(BuildContext context, AppLocalizations l10n) {
     final isSelected = _period == _ReportPeriod.custom;
     final label = isSelected && _customRange != null
@@ -460,6 +730,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         issueCard,
                       ]);
               }),
+
+              // ── Section Archives — visible uniquement si canGenerateReports ──
+              if (AuthService().canGenerateReports) ...[
+                const SizedBox(height: 24),
+                _buildArchivesSection(context, l10n),
+              ],
             ],
           ),
         );

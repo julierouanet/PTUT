@@ -638,12 +638,13 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/sidebar/config  | Auth  | Config pour le role (query: ?role=, defaut req.user.role) |
 | PUT     | /api/sidebar/config  | Admin | Modifier l'ordre des ecrans pour un role (transaction) |
 
-### Autres
+### Debug & Test (`/api/debug`)
 
-| Methode | Route   | Auth   | Description                              |
-|---------|---------|--------|------------------------------------------|
-| GET     | /       | Public | Dashboard HTML debug (stats + tableaux)  |
-| GET     | /health | Public | `{ "status": "ok", "service": "db-service" }` |
+| Methode | Route                      | Auth   | Description                                                       |
+|---------|----------------------------|--------|-------------------------------------------------------------------|
+| GET     | /                          | Public | Dashboard HTML debug (stats + tableaux)                           |
+| GET     | /health                    | Public | `{ "status": "ok", "service": "db-service" }`                    |
+| POST    | /api/debug/clear-issues    | Admin  | Supprime tous les incidents (`DELETE FROM issues`). Retourne `{ deleted: N }`. Audit trail action `debug_clear_all_issues`. |
 
 ## 2.5 Middleware
 
@@ -846,7 +847,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (14)
+## 3.4 Ecrans (15)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -854,17 +855,18 @@ status: StockStatus (normal, low, outOfStock)
 | 1  | DashboardScreen          | -                       | Stats equipements par statut, 4 incidents recents, alertes critiques |
 | 2  | EquipmentListScreen      | viewEquipment           | SliverList virtualisé, tri sur 4 colonnes, filtres PM (retard/imminente), RBAC colonnes (staffMedical vs technicien), export CSV liste filtrée, bouton "Planifier PM" quick-action, délègue créa/édition à EquipmentFormScreen |
 | 2b | EquipmentFormScreen      | manageEquipment         | Nouvel écran dédié créa/édition : Stepper 3 étapes (Infos essentielles / Infos techniques / GMAO & Maintenance). Remplace le dialog mono-bloc. |
-| 3  | IssueTrackingScreen      | trackIssues             | 2 onglets (tous les incidents / a valider), filtres statut. Clics naviguent vers IssueDetailScreen |
+| 3  | IssueTrackingScreen      | trackIssues             | Liste unique tous les incidents, filtres statut/urgence/période/groupe, recherche, vue Kanban (desktop), split view, export CSV. Onglet "À valider" déplacé vers TechnicianUpdateScreen. |
 | 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : 5 sections (contexte, panne, intervention, ressources, timeline). Charge GET /api/issues/:id enrichi |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
-| 5  | TechnicianUpdateScreen   | updateRepairs           | Diagnostic, actions, pieces remplacees                            |
+| 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | 3 onglets fixes (Disponibles / Mes interventions / Agenda) + 1 onglet conditionnel "À valider" (visible si `canApproveRequests`). Diagnostic, actions, pièces, chrono, validation incidents (admin/superviseur). |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
-| 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** (existant) + **Export PDF** multi-sections : synthèse, équipements, incidents, PM, MTTR, inventaire critique. Généré côté client Flutter via `PdfReportService` (pdf + printing). Bouton PDF conditionnel `canGenerateReports`. |
+| 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
 | 9  | SettingsScreen           | manageDepartments       | Departements, categories, permissions par role, sidebar order     |
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
 | 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe                        |
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
+| 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues), dialog de confirmation, SnackBar résultat, rechargement DataService |
 
 ## 3.5 Navigation
 
