@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/pdf_report_service.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../utils/csv_export.dart';
@@ -27,7 +30,8 @@ class ReportsScreen extends StatefulWidget {
 class _ReportsScreenState extends State<ReportsScreen> {
   _ReportPeriod _period = _ReportPeriod.last30;
   DateTimeRange? _customRange;
-  bool _isExporting = false;
+  bool _isExporting    = false;
+  bool _isExportingPdf = false;
 
   // ── Calcul de la plage temporelle active ───────────────────────────────────
 
@@ -218,6 +222,65 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
     } finally {
       if (mounted) setState(() => _isExporting = false);
+    }
+  }
+
+  // ── Export PDF ─────────────────────────────────────────────────────────────
+
+  Future<void> _exportPdf(BuildContext context, AppLocalizations l10n) async {
+    setState(() => _isExportingPdf = true);
+
+    // Capture avant tout await pour éviter use_build_context_synchronously
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final range        = _effectiveRange();
+      final issues       = _issuesInPeriod(range);
+      final mttr         = _computeMttr(issues);
+      final (compliant, total) = _computePmCompliance();
+      final topDepts     = _topDepartments(issues);
+      final user         = AuthService().currentUser;
+
+      final pdfBytes = await PdfReportService.generate(
+        startDate:       range.start,
+        endDate:         range.end,
+        generatedByName: user?.name ?? '—',
+        generatedByRole: user?.roles.isNotEmpty == true
+            ? user!.roles.first.name
+            : '—',
+        allEquipment:    DataService().equipment,
+        periodIssues:    issues,
+        mttrDays:        mttr,
+        pmCompliant:     compliant,
+        pmTotal:         total,
+        topDepartments:  topDepts,
+        inventory:       DataService().inventory,
+      );
+
+      final startStr = _fmtDate(range.start).replaceAll('/', '-');
+      final endStr   = _fmtDate(range.end).replaceAll('/', '-');
+
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+        name: 'rapport_kabutare_${startStr}_$endStr.pdf',
+      );
+
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.reportsPdfSuccess),
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.reportsPdfError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isExportingPdf = false);
     }
   }
 
@@ -456,6 +519,29 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   label: Text(l10n.reportsExportCsv),
                   style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                 ),
+                // Bouton PDF — visible uniquement si l'utilisateur a la permission generateReports
+                if (AuthService().canGenerateReports) ...[
+                  const SizedBox(width: 4),
+                  Tooltip(
+                    message: l10n.reportsPdfExportTooltip,
+                    child: TextButton.icon(
+                      onPressed: _isExportingPdf
+                          ? null
+                          : () => _exportPdf(context, l10n),
+                      icon: _isExportingPdf
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                      label: Text(_isExportingPdf
+                          ? l10n.reportsExportPDFProgress
+                          : l10n.reportsExportPDF),
+                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                    ),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 8),

@@ -7759,6 +7759,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Email quand une maintenance préventive est en retard ou imminente.'**
   String get notifPrefsPmDueDesc;
+
+  /// No description provided for @reportsPdfExportTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Générer et télécharger le rapport PDF'**
+  String get reportsPdfExportTooltip;
+
+  /// No description provided for @reportsPdfSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport PDF prêt — enregistrez-le depuis la boîte de dialogue'**
+  String get reportsPdfSuccess;
+
+  /// No description provided for @reportsPdfError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la génération du PDF'**
+  String get reportsPdfError;
 }
 
 class _AppLocalizationsDelegate

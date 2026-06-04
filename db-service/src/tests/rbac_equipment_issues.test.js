@@ -1,0 +1,654 @@
+'use strict';
+
+// ── Configuration DB en mémoire (DOIT être avant tout require du service) ──────
+process.env.DB_PATH          = ':memory:';
+process.env.KC_ISSUER        = 'http://keycloak-test/realms/kabutare-hospital';
+process.env.AUTH_SERVICE_URL = 'http://auth-service-test:3001';
+process.env.INTERNAL_SECRET  = 'test-internal-secret';
+
+// ── Rôle courant injecté par les tests ────────────────────────────────────────
+// Préfixé "mock" pour contourner la restriction de hoisting de jest.mock.
+let mockCurrentRoles = ['hospitalStaff'];
+
+function setTestRole(...roles) {
+  mockCurrentRoles = roles;
+}
+
+// ── Mock du middleware d'auth ─────────────────────────────────────────────────
+jest.mock('../middleware/auth', () => ({
+  verifyToken: (req, _res, next) => {
+    req.user = {
+      id:         'test-uuid-db-0001',
+      email:      'test@kabutare.rw',
+      name:       'Utilisateur Test',
+      roles:      mockCurrentRoles,
+      department: 'OPD',
+    };
+    next();
+  },
+  requireRole: (...allowed) => (req, res, next) => {
+    const userRoles = Array.isArray(req.user?.roles) ? req.user.roles : [];
+    if (!userRoles.some((r) => allowed.includes(r))) {
+      return res.status(403).json({ error: `Rôle requis: ${allowed.join(' ou ')}` });
+    }
+    next();
+  },
+  SYSTEM_ROLES: new Set(['offline_access', 'uma_authorization', 'default-roles-kabutare-hospital']),
+}));
+
+// ── Mock du logger (évite appels HTTP vers auth-service) ─────────────────────
+jest.mock('../utils/logger', () => ({
+  logAction:      jest.fn(),
+  extractReqMeta: jest.fn(() => ({})),
+  sendLog:        jest.fn(),
+}));
+
+// ── Mock des notifications push (évite appels réseau) ────────────────────────
+jest.mock('../utils/push_sender', () => ({
+  sendPushToRoles: jest.fn().mockResolvedValue(undefined),
+}));
+
+// ── Mock fetch global (évite appels à auth-service pour les emails) ───────────
+global.fetch = jest.fn().mockResolvedValue({
+  ok:   true,
+  json: () => Promise.resolve({}),
+  text: () => Promise.resolve(''),
+});
+
+// ── Mock des backups (initBackupCron peut utiliser node-cron) ─────────────────
+jest.mock('../routes/backups', () => ({
+  router:         require('express').Router(),
+  initBackupCron: jest.fn(),
+}));
+
+const request = require('supertest');
+const { app, server } = require('../index');
+const { getDb, closeDb } = require('../database');
+
+// ── Données de test insérées avant chaque suite ───────────────────────────────
+let db;
+
+beforeAll(() => {
+  db = getDb();
+
+  // ── Correction schéma issues en DB :memory: ──────────────────────────────────
+  // La migration "rebuild issues" crée une nouvelle table sans les colonnes
+  // ajoutées par les ALTER TABLE précédents (location_text, location_tag,
+  // reporter_phone, taken_at). Sur un déploiement existant cela ne se produit
+  // pas car les migrations s'appliquent en plusieurs démarrages successifs.
+  // Sur une DB :memory: fraîche, les colonnes manquent après le rebuild.
+  const existingCols = new Set(db.pragma('table_info(issues)').map((c) => c.name));
+  const missingCols = ['location_text', 'location_tag', 'reporter_phone', 'taken_at'];
+  for (const col of missingCols) {
+    if (!existingCols.has(col)) {
+      try { db.exec(`ALTER TABLE issues ADD COLUMN ${col} TEXT`); } catch (_) {}
+    }
+  }
+
+  // Équipement de référence utilisé par plusieurs tests
+  db.prepare(`
+    INSERT OR IGNORE INTO equipment (id, name, department, category, status)
+    VALUES ('eq-rbac-test', 'Moniteur cardiaque test', 'OPD', 'Monitoring', 'Operational')
+  `).run();
+
+  // Incident de référence pour les tests PUT /api/issues/:id
+  db.prepare(`
+    INSERT OR IGNORE INTO issues (
+      id, equipment_id, equipment_name, issue_category, assigned_group,
+      department, type, description, reporter, urgency, status, created_at
+    ) VALUES (
+      'iss-rbac-test', 'eq-rbac-test', 'Moniteur cardiaque test', 'Biomédical', 'Biomédical',
+      'OPD', 'Panne', 'Écran noir depuis ce matin', 'Dr. Test', 'Urgent', 'Assigned',
+      datetime('now','localtime')
+    )
+  `).run();
+
+  // Article d'inventaire de référence
+  db.prepare(`
+    INSERT OR IGNORE INTO inventory (id, name, category, current_stock, min_stock, unit, status)
+    VALUES ('inv-rbac-test', 'Gants stériles test', 'Consommable médical', 50, 10, 'boîte', 'Normal')
+  `).run();
+});
+
+afterAll(() => {
+  if (server) server.close();
+  closeDb();
+});
+
+// =============================================================================
+// 1. GET /api/equipment — accessible à tout rôle authentifié
+// =============================================================================
+describe('RBAC — GET /api/equipment', () => {
+  const ALL_ROLES = ['admin', 'hospitalStaff', 'supervisor', 'technician',
+    'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  test.each(ALL_ROLES)(
+    '✅ rôle %s peut lister les équipements → 200',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .get('/api/equipment')
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    }
+  );
+
+  test('✅ la liste contient l\'équipement de référence', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .get('/api/equipment')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const eq = res.body.find((e) => e.id === 'eq-rbac-test');
+    expect(eq).toBeDefined();
+    expect(eq.name).toBe('Moniteur cardiaque test');
+  });
+});
+
+// =============================================================================
+// 2. POST /api/equipment — créer un équipement (admin et supervisor)
+// =============================================================================
+describe('RBAC — POST /api/equipment', () => {
+  const ROLES_AUTORISÉS = ['admin', 'supervisor'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  let counter = 0;
+  const newEq = () => ({
+    id:         `eq-nouveau-${++counter}`,
+    name:       'Équipement créé en test',
+    department: 'OPD',
+    category:   'Monitoring',
+    status:     'Operational',
+  });
+
+  test.each(ROLES_AUTORISÉS)(
+    '✅ rôle %s peut créer un équipement → 201',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .post('/api/equipment')
+        .set('Authorization', 'Bearer fake-token')
+        .send(newEq());
+
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('message');
+    }
+  );
+
+  test.each(ROLES_REFUSÉS)(
+    '🚫 rôle %s ne peut PAS créer un équipement → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .post('/api/equipment')
+        .set('Authorization', 'Bearer fake-token')
+        .send(newEq());
+
+      expect(res.status).toBe(403);
+    }
+  );
+
+  test('🚫 admin — champs requis manquants → 400', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ name: 'Équipement sans ID ni département' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — statut invalide → 400', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-bad-status', name: 'Test', department: 'OPD', category: 'Monitoring', status: 'StatutInvalide' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — ID dupliqué → 409', async () => {
+    setTestRole('admin');
+
+    // Première insertion
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-duplicate-test', name: 'Dupliqué', department: 'OPD', category: 'Monitoring' });
+
+    // Deuxième insertion avec le même ID
+    const res = await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-duplicate-test', name: 'Dupliqué 2', department: 'OPD', category: 'Monitoring' });
+
+    expect(res.status).toBe(409);
+  });
+});
+
+// =============================================================================
+// 3. DELETE /api/equipment/:id — supprimer (admin uniquement)
+// =============================================================================
+describe('RBAC — DELETE /api/equipment/:id', () => {
+  const ROLES_NON_ADMIN = ['hospitalStaff', 'supervisor', 'technician',
+    'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  // Créer un équipement dédié à la suppression
+  const EQ_TO_DELETE = 'eq-to-delete-rbac';
+  beforeEach(() => {
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment (id, name, department, category)
+      VALUES ('${EQ_TO_DELETE}', 'Équipement à supprimer', 'OPD', 'Monitoring')
+    `).run();
+  });
+
+  test('✅ rôle admin peut supprimer un équipement → 200', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .delete(`/api/equipment/${EQ_TO_DELETE}`)
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('message');
+
+    // Vérifier que l'équipement n'existe plus
+    const eq = db.prepare('SELECT id FROM equipment WHERE id = ?').get(EQ_TO_DELETE);
+    expect(eq).toBeUndefined();
+  });
+
+  test.each(ROLES_NON_ADMIN)(
+    '🚫 rôle %s ne peut PAS supprimer un équipement → 403',
+    async (role) => {
+      setTestRole(role);
+
+      // Re-créer l'équipement au cas où le test admin l'aurait supprimé
+      db.prepare(`
+        INSERT OR IGNORE INTO equipment (id, name, department, category)
+        VALUES ('${EQ_TO_DELETE}', 'Équipement à supprimer', 'OPD', 'Monitoring')
+      `).run();
+
+      const res = await request(app)
+        .delete(`/api/equipment/${EQ_TO_DELETE}`)
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(403);
+    }
+  );
+
+  test('🚫 admin — équipement introuvable → 404', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .delete('/api/equipment/eq-qui-nexiste-absolument-pas')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(404);
+  });
+});
+
+// =============================================================================
+// 4. POST /api/issues — signaler un incident (tous les rôles authentifiés)
+// =============================================================================
+describe('RBAC — POST /api/issues', () => {
+  const ALL_ROLES = ['admin', 'hospitalStaff', 'supervisor', 'technician',
+    'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  let issueCounter = 0;
+  const newIssue = (extra = {}) => ({
+    id:             `iss-new-${Date.now()}-${++issueCounter}`,
+    equipment_id:   'eq-rbac-test',
+    equipment_name: 'Moniteur cardiaque test',
+    department:     'OPD',
+    type:           'Panne',
+    description:    'Description de test pour RBAC',
+    reporter:       'Testeur RBAC',
+    urgency:        'Moyen',
+    ...extra,
+  });
+
+  test.each(ALL_ROLES)(
+    '✅ rôle %s peut signaler un incident → 201',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .post('/api/issues')
+        .set('Authorization', 'Bearer fake-token')
+        .send(newIssue());
+
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('id');
+    }
+  );
+
+  test('🚫 champs requis manquants → 400', async () => {
+    setTestRole('hospitalStaff');
+
+    const res = await request(app)
+      .post('/api/issues')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'iss-bad', department: 'OPD' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('✅ incident critique → status initial Reported', async () => {
+    setTestRole('hospitalStaff');
+
+    const res = await request(app)
+      .post('/api/issues')
+      .set('Authorization', 'Bearer fake-token')
+      .send(newIssue({ urgency: 'Critique', description: 'Panne critique en test' }));
+
+    expect(res.status).toBe(201);
+
+    // Vérifier le statut initial en base
+    const iss = db.prepare('SELECT status FROM issues WHERE id = ?').get(res.body.id);
+    expect(iss.status).toBe('Reported');
+  });
+});
+
+// =============================================================================
+// 5. PUT /api/issues/:id — mettre à jour (admin, supervisor, technician*)
+//    ⚠️ Le rôle générique `technician` n'est PAS dans TECH_ROLES du service.
+//    Seuls technician_biomedical, technician_it, technician_infra sont autorisés.
+// =============================================================================
+describe('RBAC — PUT /api/issues/:id', () => {
+  // TECH_ROLES dans db-service : ['technician_biomedical', 'technician_it', 'technician_infra']
+  const ROLES_AUTORISÉS = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  // hospitalStaff et technician (générique) ne peuvent pas modifier un incident
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician'];
+
+  const ISSUE_ID = 'iss-rbac-test';
+
+  const updateBody = {
+    status:    'In Progress',
+    diagnosis: 'Diagnostic de test RBAC',
+    actions:   'Actions effectuées en test',
+  };
+
+  test.each(ROLES_AUTORISÉS)(
+    '✅ rôle %s peut mettre à jour un incident → 200',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .put(`/api/issues/${ISSUE_ID}`)
+        .set('Authorization', 'Bearer fake-token')
+        .send(updateBody);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toHaveProperty('message');
+    }
+  );
+
+  test.each(ROLES_REFUSÉS)(
+    '🚫 rôle %s ne peut PAS mettre à jour un incident → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .put(`/api/issues/${ISSUE_ID}`)
+        .set('Authorization', 'Bearer fake-token')
+        .send(updateBody);
+
+      expect(res.status).toBe(403);
+    }
+  );
+
+  test('🚫 incident introuvable → 404', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .put('/api/issues/iss-qui-nexiste-pas')
+      .set('Authorization', 'Bearer fake-token')
+      .send(updateBody);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 statut invalide → 400', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .put(`/api/issues/${ISSUE_ID}`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ status: 'StatutInvalide' });
+
+    expect(res.status).toBe(400);
+  });
+});
+
+// =============================================================================
+// 6. GET /api/inventory — admin et supervisor uniquement (permission viewInventory)
+// =============================================================================
+describe('RBAC — GET /api/inventory', () => {
+  const ROLES_AUTORISÉS = ['admin', 'supervisor'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician', 'technician_biomedical',
+    'technician_it', 'technician_infra'];
+
+  test.each(ROLES_AUTORISÉS)(
+    '✅ rôle %s peut lire l\'inventaire → 200',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .get('/api/inventory')
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body)).toBe(true);
+    }
+  );
+
+  test.each(ROLES_REFUSÉS)(
+    '🚫 rôle %s ne peut PAS lire l\'inventaire → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .get('/api/inventory')
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(403);
+    }
+  );
+
+  test('✅ admin — GET /api/inventory/:id → 200', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .get('/api/inventory/inv-rbac-test')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toHaveProperty('id', 'inv-rbac-test');
+  });
+
+  test('🚫 hospitalStaff — GET /api/inventory/:id → 403', async () => {
+    setTestRole('hospitalStaff');
+
+    const res = await request(app)
+      .get('/api/inventory/inv-rbac-test')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// =============================================================================
+// 7. POST /api/inventory — créer un article (admin et supervisor)
+// =============================================================================
+describe('RBAC — POST /api/inventory', () => {
+  const ROLES_AUTORISÉS = ['admin', 'supervisor'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  let invCounter = 0;
+  const newItem = () => ({
+    id:            `inv-new-${++invCounter}`,
+    name:          'Article inventaire test',
+    category:      'Consommable médical',
+    current_stock: 100,
+    min_stock:     10,
+    unit:          'unité',
+  });
+
+  test.each(ROLES_AUTORISÉS)(
+    '✅ rôle %s peut créer un article d\'inventaire → 201',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .post('/api/inventory')
+        .set('Authorization', 'Bearer fake-token')
+        .send(newItem());
+
+      expect(res.status).toBe(201);
+      expect(res.body).toHaveProperty('message');
+    }
+  );
+
+  test.each(ROLES_REFUSÉS)(
+    '🚫 rôle %s ne peut PAS créer un article d\'inventaire → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .post('/api/inventory')
+        .set('Authorization', 'Bearer fake-token')
+        .send(newItem());
+
+      expect(res.status).toBe(403);
+    }
+  );
+});
+
+// =============================================================================
+// 8. DELETE /api/inventory/:id — supprimer (admin uniquement)
+// =============================================================================
+describe('RBAC — DELETE /api/inventory/:id', () => {
+  const ROLES_NON_ADMIN = ['hospitalStaff', 'supervisor', 'technician',
+    'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  const INV_TO_DELETE = 'inv-to-delete-rbac';
+
+  beforeEach(() => {
+    db.prepare(`
+      INSERT OR IGNORE INTO inventory (id, name, category, current_stock, min_stock, unit, status)
+      VALUES ('${INV_TO_DELETE}', 'Article à supprimer', 'Consommable médical', 10, 2, 'unité', 'Normal')
+    `).run();
+  });
+
+  test('✅ rôle admin peut supprimer un article d\'inventaire → 200', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .delete(`/api/inventory/${INV_TO_DELETE}`)
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+  });
+
+  test.each(ROLES_NON_ADMIN)(
+    '🚫 rôle %s ne peut PAS supprimer un article d\'inventaire → 403',
+    async (role) => {
+      setTestRole(role);
+
+      db.prepare(`
+        INSERT OR IGNORE INTO inventory (id, name, category, current_stock, min_stock, unit, status)
+        VALUES ('${INV_TO_DELETE}', 'Article à supprimer', 'Consommable médical', 10, 2, 'unité', 'Normal')
+      `).run();
+
+      const res = await request(app)
+        .delete(`/api/inventory/${INV_TO_DELETE}`)
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(403);
+    }
+  );
+});
+
+// =============================================================================
+// 9. GET /api/logs — audit trail (admin uniquement)
+// =============================================================================
+describe('RBAC — GET /api/logs', () => {
+  const ROLES_NON_ADMIN = ['hospitalStaff', 'supervisor', 'technician',
+    'technician_biomedical', 'technician_it', 'technician_infra'];
+
+  test('✅ rôle admin peut consulter les logs d\'audit → 200', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .get('/api/logs')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  test.each(ROLES_NON_ADMIN)(
+    '🚫 rôle %s ne peut PAS accéder aux logs d\'audit → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .get('/api/logs')
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(403);
+    }
+  );
+});
+
+// =============================================================================
+// 10. PATCH /api/issues/:id/escalate — escalade (admin, supervisor, technician*)
+// =============================================================================
+describe('RBAC — PATCH /api/issues/:id/escalate', () => {
+  const ROLES_AUTORISÉS = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician'];
+  const ISSUE_ID        = 'iss-rbac-test';
+
+  const escalateBody = {
+    escalation_status:  'Waiting Materials',
+    escalation_comment: 'En attente de la pièce de rechange, délai estimé 3 jours.',
+  };
+
+  test.each(ROLES_AUTORISÉS)(
+    '✅ rôle %s peut escalader un incident → 200',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .patch(`/api/issues/${ISSUE_ID}/escalate`)
+        .set('Authorization', 'Bearer fake-token')
+        .send(escalateBody);
+
+      expect(res.status).toBe(200);
+    }
+  );
+
+  test.each(ROLES_REFUSÉS)(
+    '🚫 rôle %s ne peut PAS escalader un incident → 403',
+    async (role) => {
+      setTestRole(role);
+
+      const res = await request(app)
+        .patch(`/api/issues/${ISSUE_ID}/escalate`)
+        .set('Authorization', 'Bearer fake-token')
+        .send(escalateBody);
+
+      expect(res.status).toBe(403);
+    }
+  );
+});

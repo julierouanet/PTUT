@@ -11,8 +11,8 @@ const rolesCsv = (req) =>
     .filter((r) => !SYSTEM_ROLES.has(r))
     .join(',');
 
-// GET /api/inventory
-router.get('/', verifyToken, (req, res) => {
+// GET /api/inventory — permission viewInventory : admin et supervisor uniquement
+router.get('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
   const db = getDb();
   const { status, category } = req.query;
 
@@ -27,8 +27,8 @@ router.get('/', verifyToken, (req, res) => {
   res.json(db.prepare(query).all(...params));
 });
 
-// GET /api/inventory/:id
-router.get('/:id', verifyToken, (req, res) => {
+// GET /api/inventory/:id — même restriction que la liste
+router.get('/:id', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
   const db = getDb();
   const item = db.prepare('SELECT * FROM inventory WHERE id = ?').get(req.params.id);
 

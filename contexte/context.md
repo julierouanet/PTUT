@@ -859,7 +859,7 @@ status: StockStatus (normal, low, outOfStock)
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs           | Diagnostic, actions, pieces remplacees                            |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
-| 7  | ReportsScreen            | generateReports         | Statistiques maintenance, equipements                             |
+| 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** (existant) + **Export PDF** multi-sections : synthèse, équipements, incidents, PM, MTTR, inventaire critique. Généré côté client Flutter via `PdfReportService` (pdf + printing). Bouton PDF conditionnel `canGenerateReports`. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
 | 9  | SettingsScreen           | manageDepartments       | Departements, categories, permissions par role, sidebar order     |
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
@@ -1086,3 +1086,67 @@ Tous : HTTPS obligatoire (Let's Encrypt), redirect HTTP->HTTPS, proxy headers (H
 # 5. Departements hospitaliers
 
 Administration, OPD (Consultations externes), Medecine Interne, Pediatrie, Urgences, Laboratoire, Stomatologie, Kinesitherapie, Neonatologie, Maternite, Chirurgie, Bloc Operatoire, Ophtalmologie, TB-MR, GBV (Violence basee sur le genre), Sante Mentale, ARV (Traitement VIH/SIDA), Pharmacie, Radiologie, ICT
+
+---
+
+# 6. Tests et couverture RBAC
+
+## 6.1 Fichiers de tests automatisés
+
+| Fichier | Service | Tests | Couverture |
+|---|---|---|---|
+| `auth-service/src/tests/rbac_permissions.test.js` | auth-service | 73 tests RBAC | GET /api/auth/me (7 rôles × permissions), GET/POST /api/users (admin only), GET /api/roles (admin), GET/PUT /api/users/department-requests (admin), GET/PUT /api/users/me/notifications (tous), POST /api/users/department-request (tous) |
+| `db-service/src/tests/rbac_equipment_issues.test.js` | db-service | 79 tests RBAC | GET/POST/DELETE /api/equipment, POST /api/issues, PUT /api/issues/:id, GET/POST/DELETE /api/inventory, GET /api/logs, PATCH /api/issues/:id/escalate |
+| `db-service/__tests__/inventory_normalizer.test.js` | db-service | 32 tests unitaires | Normalisation des données XLSX (cleanCell, normalizeStatus, normalizeDate, tagToId) |
+| `flutter-app/test/models/user_role_test.dart` | Flutter | Tests unitaires | UserRole enum, Permission enum, getPermissionsForRole() |
+| `flutter-app/test/services/auth_service_test.dart` | Flutter | Tests unitaires | AuthService (login, logout, hasPermission, switchUser) |
+| `flutter-app/test/rbac/rbac_visibility_test.dart` | Flutter | 24 tests widget RBAC | Hub routing par rôle, visibilité cartes modules (Inventory/Settings), sidebar navigation par rôle, dashboard conditionnel, permissions AuthService, primaryRole |
+
+## 6.2 Scénarios de recette (recette commanditaire)
+
+| Fichier | Contenu |
+|---|---|
+| `tests/scenarios/scenarios_recette_roles.md` | 25 scénarios Given-When-Then par rôle (7 rôles + cross-rôles), grille de couverture des 14 permissions |
+| `tests/fixtures/test_users_roles.md` | 7 comptes Keycloak de test, données de référence, checklist de préparation |
+
+## 6.3 Patterns de tests Jest (backend)
+
+### Mock verifyToken (commun aux deux services)
+
+```js
+// Variable de rôle préfixée "mock" pour le hoisting jest.mock
+let mockCurrentRoles = ['hospitalStaff'];
+function setTestRole(...roles) { mockCurrentRoles = roles; }
+
+jest.mock('../middleware/auth', () => ({
+  verifyToken: (req, _res, next) => {
+    req.user = { id: 'test-uuid', email: 'test@kabutare.rw', name: 'Test',
+                 roles: mockCurrentRoles, department: 'OPD' };
+    next();
+  },
+  requireRole: (...allowed) => (req, res, next) => {
+    if (!req.user?.roles?.some(r => allowed.includes(r)))
+      return res.status(403).json({ error: `Rôle requis: ${allowed.join(' ou ')}` });
+    next();
+  },
+  requireAdmin: (req, res, next) => {
+    if (!req.user?.roles?.includes('admin'))
+      return res.status(403).json({ error: 'Access restricted to administrators' });
+    next();
+  },
+  SYSTEM_ROLES: new Set(['offline_access', 'uma_authorization', 'default-roles-kabutare-hospital']),
+}));
+```
+
+### Commandes d'exécution
+
+```bash
+cd auth-service && npm test   # 160 tests (87 existants + 73 RBAC)
+cd db-service  && npm test    # 145 tests (32 normalizer + 113 RBAC)
+```
+
+## 6.4 Correction sécurité appliquée — GET /api/inventory
+
+**✅ Corrigé** : `requireRole('admin', 'supervisor')` ajouté sur `GET /api/inventory` et `GET /api/inventory/:id` dans `db-service/src/routes/inventory.js`. La permission `viewInventory` est désormais vérifiée à la fois côté API backend et côté Flutter (masquage du menu).
+
+Les tests `rbac_equipment_issues.test.js` ont été mis à jour : le groupe `⚠️ comportement actuel (200 pour tous)` est remplacé par des assertions strictes `✅ 200 pour admin/supervisor` et `🚫 403 pour hospitalStaff/technician*`.

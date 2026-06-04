@@ -1593,5 +1593,12 @@
   "notifPrefsPmDue": "Preventive maintenance due",
   "@notifPrefsPmDue": {},
   "notifPrefsPmDueDesc": "Email when a preventive maintenance is overdue or upcoming.",
-  "@notifPrefsPmDueDesc": {}
+  "@notifPrefsPmDueDesc": {},
+
+  "reportsPdfExportTooltip": "Generate and download the PDF report",
+  "@reportsPdfExportTooltip": {},
+  "reportsPdfSuccess": "PDF report ready — save it from the dialog",
+  "@reportsPdfSuccess": {},
+  "reportsPdfError": "Error generating PDF report",
+  "@reportsPdfError": {}
 }

@@ -1615,5 +1615,12 @@
   "notifPrefsPmDue": "Maintenance préventive à planifier",
   "@notifPrefsPmDue": {},
   "notifPrefsPmDueDesc": "Email quand une maintenance préventive est en retard ou imminente.",
-  "@notifPrefsPmDueDesc": {}
+  "@notifPrefsPmDueDesc": {},
+
+  "reportsPdfExportTooltip": "Générer et télécharger le rapport PDF",
+  "@reportsPdfExportTooltip": {},
+  "reportsPdfSuccess": "Rapport PDF prêt — enregistrez-le depuis la boîte de dialogue",
+  "@reportsPdfSuccess": {},
+  "reportsPdfError": "Erreur lors de la génération du PDF",
+  "@reportsPdfError": {}
 }

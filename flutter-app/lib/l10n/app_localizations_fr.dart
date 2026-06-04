@@ -4188,4 +4188,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get notifPrefsPmDueDesc =>
       'Email quand une maintenance préventive est en retard ou imminente.';
+
+  @override
+  String get reportsPdfExportTooltip => 'Générer et télécharger le rapport PDF';
+
+  @override
+  String get reportsPdfSuccess =>
+      'Rapport PDF prêt — enregistrez-le depuis la boîte de dialogue';
+
+  @override
+  String get reportsPdfError => 'Erreur lors de la génération du PDF';
 }
