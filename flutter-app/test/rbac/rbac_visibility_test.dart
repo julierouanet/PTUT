@@ -355,31 +355,44 @@ void main() {
       },
     );
 
+    // NOTE : Ce test était fusionné (admin + staff dans le même pumpWidget).
+    // Il a été scindé en deux parce que _MainScaffoldState ne possède pas
+    // de didUpdateWidget → le second pumpWidget réutilisait l'arbre admin sans
+    // recalculer _navItems, donnant 5 destinations pour le staff aussi.
+    // Chaque testWidgets commence avec un arbre widget vierge, ce qui garantit
+    // une mesure indépendante et juste.
+
     testWidgets(
-      'hospitalStaff a moins de destinations nav que admin',
+      'admin a 5 destinations nav en mode mobile (6 items cappés à 5 par _buildBottomNav)',
       (tester) async {
         _setMobileSize(tester);
         _suppressOverflow(tester);
-
-        // Mesurer le nombre de destinations pour admin
         AuthService().initDemo();
+
         await tester.pumpWidget(const EquipmentManagementApp());
         await _enterEquipmentModule(tester);
 
         final adminNavBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-        final adminDestCount = adminNavBar.destinations.length;
+        // Admin a 6 items dans _equipmentScreens, NavigationBar.take(5) → 5.
+        expect(adminNavBar.destinations.length, equals(5));
+      },
+    );
 
-        // Réinitialiser et mesurer pour hospitalStaff
-        AuthService().logout();
+    testWidgets(
+      'hospitalStaff a 4 destinations nav (moins que les 5 de l\'admin)',
+      (tester) async {
+        _setMobileSize(tester);
+        _suppressOverflow(tester);
         AuthService().switchUser(_hospitalStaff);
+
         await tester.pumpWidget(const EquipmentManagementApp());
         await _enterEquipmentModule(tester);
 
         final staffNavBar = tester.widget<NavigationBar>(find.byType(NavigationBar));
-        final staffDestCount = staffNavBar.destinations.length;
-
-        // Le staff a strictement moins de destinations nav que l'admin
-        expect(staffDestCount, lessThan(adminDestCount));
+        // Staff : Dashboard, Équipements, Incidents, Signaler = 4 items.
+        // Technician (updateRepairs) et Reports (generateReports) sont absents.
+        expect(staffNavBar.destinations.length, equals(4));
+        expect(staffNavBar.destinations.length, lessThan(5)); // < admin's 5
       },
     );
   });
