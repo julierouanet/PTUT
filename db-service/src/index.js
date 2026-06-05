@@ -16,6 +16,7 @@ const categoriesRoutes     = require('./routes/categories');
 const pmProtocolsRoutes    = require('./routes/pm_protocols');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
+const { startPmReminderJob } = require('./jobs/pm_reminder_job');
 
 const app = express();
 
@@ -23,6 +24,8 @@ const app = express();
 getDb();
 // Activer le cron de sauvegarde automatique si configuré
 initBackupCron();
+// Démarrer le job quotidien de rappel PM (J-7 et J=0)
+startPmReminderJob();
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());

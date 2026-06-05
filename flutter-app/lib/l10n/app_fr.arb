@@ -1653,5 +1653,77 @@
   "reportsArchivesDownloading": "Génération en cours…",
   "@reportsArchivesDownloading": {},
   "reportsArchivesHint": "Sélectionnez une période pour télécharger un rapport historique au format PDF.",
-  "@reportsArchivesHint": {}
+  "@reportsArchivesHint": {},
+
+  "pmProtocols": "Protocoles de maintenance",
+  "@pmProtocols": {},
+  "pmChecklist": "Checklist de maintenance",
+  "@pmChecklist": {},
+  "pmStepsProgress": "{done} / {total} étapes validées",
+  "@pmStepsProgress": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "pmNoProtocolAvailable": "Aucun protocole défini pour ce type d'équipement",
+  "@pmNoProtocolAvailable": {},
+  "pmFrequencyLabel": "Fréquence de maintenance",
+  "@pmFrequencyLabel": {},
+  "pmFrequencyValue": "Tous les {months} mois",
+  "@pmFrequencyValue": {
+    "placeholders": {
+      "months": { "type": "int" }
+    }
+  },
+  "pmDurationEstimated": "Durée estimée : {min} min",
+  "@pmDurationEstimated": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+  "pmDurationActual": "Durée réelle : {min} min",
+  "@pmDurationActual": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+  "pmValidateButton": "Valider la maintenance préventive",
+  "@pmValidateButton": {},
+  "pmValidateConfirmTitle": "Confirmer la validation",
+  "@pmValidateConfirmTitle": {},
+  "pmValidateConfirmBody": "{unchecked} étape(s) non cochée(s). Valider quand même ?",
+  "@pmValidateConfirmBody": {
+    "placeholders": {
+      "unchecked": { "type": "int" }
+    }
+  },
+  "pmValidateSuccess": "Maintenance enregistrée",
+  "@pmValidateSuccess": {},
+  "pmNextDate": "Prochaine maintenance : {date}",
+  "@pmNextDate": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "pmPrintLabel": "Imprimer l'étiquette",
+  "@pmPrintLabel": {},
+  "pmEditLabel": "Étiquette de maintenance",
+  "@pmEditLabel": {},
+  "pmHistoryTitle": "Historique des maintenances préventives",
+  "@pmHistoryTitle": {},
+  "pmComplianceRate": "Conformité : {rate}%",
+  "@pmComplianceRate": {
+    "placeholders": {
+      "rate": { "type": "int" }
+    }
+  },
+  "pmPartsUsed": "Pièces utilisées",
+  "@pmPartsUsed": {},
+  "pmSeeAll": "Voir tout",
+  "@pmSeeAll": {},
+  "pmFrequencySaved": "Fréquence de maintenance mise à jour",
+  "@pmFrequencySaved": {},
+  "pmFrequencySelectLabel": "Définir la fréquence PM",
+  "@pmFrequencySelectLabel": {}
 }

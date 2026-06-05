@@ -4267,4 +4267,82 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get reportsArchivesHint =>
       'Sélectionnez une période pour télécharger un rapport historique au format PDF.';
+
+  @override
+  String get pmProtocols => 'Protocoles de maintenance';
+
+  @override
+  String get pmChecklist => 'Checklist de maintenance';
+
+  @override
+  String pmStepsProgress(int done, int total) {
+    return '$done / $total étapes validées';
+  }
+
+  @override
+  String get pmNoProtocolAvailable =>
+      'Aucun protocole défini pour ce type d\'équipement';
+
+  @override
+  String get pmFrequencyLabel => 'Fréquence de maintenance';
+
+  @override
+  String pmFrequencyValue(int months) {
+    return 'Tous les $months mois';
+  }
+
+  @override
+  String pmDurationEstimated(int min) {
+    return 'Durée estimée : $min min';
+  }
+
+  @override
+  String pmDurationActual(int min) {
+    return 'Durée réelle : $min min';
+  }
+
+  @override
+  String get pmValidateButton => 'Valider la maintenance préventive';
+
+  @override
+  String get pmValidateConfirmTitle => 'Confirmer la validation';
+
+  @override
+  String pmValidateConfirmBody(int unchecked) {
+    return '$unchecked étape(s) non cochée(s). Valider quand même ?';
+  }
+
+  @override
+  String get pmValidateSuccess => 'Maintenance enregistrée';
+
+  @override
+  String pmNextDate(String date) {
+    return 'Prochaine maintenance : $date';
+  }
+
+  @override
+  String get pmPrintLabel => 'Imprimer l\'étiquette';
+
+  @override
+  String get pmEditLabel => 'Étiquette de maintenance';
+
+  @override
+  String get pmHistoryTitle => 'Historique des maintenances préventives';
+
+  @override
+  String pmComplianceRate(int rate) {
+    return 'Conformité : $rate%';
+  }
+
+  @override
+  String get pmPartsUsed => 'Pièces utilisées';
+
+  @override
+  String get pmSeeAll => 'Voir tout';
+
+  @override
+  String get pmFrequencySaved => 'Fréquence de maintenance mise à jour';
+
+  @override
+  String get pmFrequencySelectLabel => 'Définir la fréquence PM';
 }

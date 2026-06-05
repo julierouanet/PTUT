@@ -103,11 +103,19 @@ class MaintenanceRecord {
   final String date;
   final String intervention;
   final String technician;
+  final String? technicianId;
+  final String? maintenanceType;
+  final int? durationMinutes;
+  final int? recordId;
 
   const MaintenanceRecord({
     required this.date,
     required this.intervention,
     required this.technician,
+    this.technicianId,
+    this.maintenanceType,
+    this.durationMinutes,
+    this.recordId,
   });
 }
 
@@ -157,6 +165,12 @@ class Equipment {
   final List<MaintenanceRecord> maintenanceHistory;
   final List<MaintenanceRecord> futureMaintenance;
 
+  // ── Protocoles PM (depuis pm_protocols via sous-catégorie) ────────────
+  final List<Map<String, dynamic>> pmProtocols;
+
+  // ── Plan PM actif (depuis preventive_maintenance_plans) ───────────────
+  final int? pmFrequencyMonths;
+
   const Equipment({
     required this.id,
     required this.name,
@@ -183,22 +197,30 @@ class Equipment {
     this.tags = const [],
     this.maintenanceHistory = const [],
     this.futureMaintenance = const [],
+    this.pmProtocols = const [],
+    this.pmFrequencyMonths,
   });
 
   factory Equipment.fromApiJson(Map<String, dynamic> json) {
+    MaintenanceRecord _parseRecord(dynamic m) {
+      final map = m as Map<String, dynamic>;
+      final rawId = map['id'];
+      return MaintenanceRecord(
+        date: map['date'] as String? ?? '',
+        intervention: map['intervention'] as String? ?? '',
+        technician: map['technician'] as String? ?? '',
+        technicianId: map['technician_id'] as String?,
+        maintenanceType: map['maintenance_type'] as String?,
+        durationMinutes: map['duration_minutes'] as int?,
+        recordId: rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null),
+      );
+    }
+
     final history = (json['maintenanceHistory'] as List? ?? [])
-        .map((m) => MaintenanceRecord(
-              date: m['date'] as String? ?? '',
-              intervention: m['intervention'] as String? ?? '',
-              technician: m['technician'] as String? ?? '',
-            ))
+        .map(_parseRecord)
         .toList();
     final future = (json['futureMaintenance'] as List? ?? [])
-        .map((m) => MaintenanceRecord(
-              date: m['date'] as String? ?? '',
-              intervention: m['intervention'] as String? ?? '',
-              technician: m['technician'] as String? ?? '',
-            ))
+        .map(_parseRecord)
         .toList();
 
     // manuf_year peut être INTEGER ou STRING (typage faible SQLite)
@@ -211,6 +233,19 @@ class Equipment {
     final tags = rawTags is List
         ? rawTags.map((t) => t.toString()).toList()
         : <String>[];
+
+    // pmProtocols : liste de protocoles avec checklist désérialisée
+    final rawProtocols = json['pmProtocols'] as List? ?? [];
+    final pmProtocols = rawProtocols
+        .map((p) => Map<String, dynamic>.from(p as Map))
+        .toList();
+
+    // pmFrequencyMonths depuis pmPlan retourné par GET /api/equipment/:id
+    final pmPlanMap = json['pmPlan'] as Map<String, dynamic>?;
+    final rawPmFreq = pmPlanMap?['frequency_months'];
+    final pmFrequencyMonths = rawPmFreq is int
+        ? rawPmFreq
+        : (rawPmFreq is String ? int.tryParse(rawPmFreq) : null);
 
     // subcategory_id et macro_category_id peuvent être int ou null
     final rawSubId = json['subcategory_id'];
@@ -245,6 +280,8 @@ class Equipment {
       tags:               tags,
       maintenanceHistory: history,
       futureMaintenance:  future,
+      pmProtocols:        pmProtocols,
+      pmFrequencyMonths:  pmFrequencyMonths,
     );
   }
 
@@ -314,6 +351,8 @@ class Equipment {
     List<String>? tags,
     List<MaintenanceRecord>? maintenanceHistory,
     List<MaintenanceRecord>? futureMaintenance,
+    List<Map<String, dynamic>>? pmProtocols,
+    int? pmFrequencyMonths,
   }) {
     return Equipment(
       id: id ?? this.id,
@@ -341,6 +380,8 @@ class Equipment {
       tags: tags ?? this.tags,
       maintenanceHistory: maintenanceHistory ?? this.maintenanceHistory,
       futureMaintenance: futureMaintenance ?? this.futureMaintenance,
+      pmProtocols: pmProtocols ?? this.pmProtocols,
+      pmFrequencyMonths: pmFrequencyMonths ?? this.pmFrequencyMonths,
     );
   }
 }

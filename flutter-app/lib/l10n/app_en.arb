@@ -1631,5 +1631,77 @@
   "reportsArchivesDownloading": "Generating...",
   "@reportsArchivesDownloading": {},
   "reportsArchivesHint": "Select a period to download a historical report as PDF.",
-  "@reportsArchivesHint": {}
+  "@reportsArchivesHint": {},
+
+  "pmProtocols": "Maintenance protocols",
+  "@pmProtocols": {},
+  "pmChecklist": "Maintenance checklist",
+  "@pmChecklist": {},
+  "pmStepsProgress": "{done} / {total} steps validated",
+  "@pmStepsProgress": {
+    "placeholders": {
+      "done": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "pmNoProtocolAvailable": "No protocol defined for this equipment type",
+  "@pmNoProtocolAvailable": {},
+  "pmFrequencyLabel": "Maintenance frequency",
+  "@pmFrequencyLabel": {},
+  "pmFrequencyValue": "Every {months} months",
+  "@pmFrequencyValue": {
+    "placeholders": {
+      "months": { "type": "int" }
+    }
+  },
+  "pmDurationEstimated": "Estimated duration: {min} min",
+  "@pmDurationEstimated": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+  "pmDurationActual": "Actual duration: {min} min",
+  "@pmDurationActual": {
+    "placeholders": {
+      "min": { "type": "int" }
+    }
+  },
+  "pmValidateButton": "Validate preventive maintenance",
+  "@pmValidateButton": {},
+  "pmValidateConfirmTitle": "Confirm validation",
+  "@pmValidateConfirmTitle": {},
+  "pmValidateConfirmBody": "{unchecked} unchecked step(s). Validate anyway?",
+  "@pmValidateConfirmBody": {
+    "placeholders": {
+      "unchecked": { "type": "int" }
+    }
+  },
+  "pmValidateSuccess": "Maintenance recorded",
+  "@pmValidateSuccess": {},
+  "pmNextDate": "Next maintenance: {date}",
+  "@pmNextDate": {
+    "placeholders": {
+      "date": { "type": "String" }
+    }
+  },
+  "pmPrintLabel": "Print label",
+  "@pmPrintLabel": {},
+  "pmEditLabel": "Maintenance label",
+  "@pmEditLabel": {},
+  "pmHistoryTitle": "Preventive maintenance history",
+  "@pmHistoryTitle": {},
+  "pmComplianceRate": "Compliance: {rate}%",
+  "@pmComplianceRate": {
+    "placeholders": {
+      "rate": { "type": "int" }
+    }
+  },
+  "pmPartsUsed": "Parts used",
+  "@pmPartsUsed": {},
+  "pmSeeAll": "See all",
+  "@pmSeeAll": {},
+  "pmFrequencySaved": "Maintenance frequency updated",
+  "@pmFrequencySaved": {},
+  "pmFrequencySelectLabel": "Set PM frequency",
+  "@pmFrequencySelectLabel": {}
 }

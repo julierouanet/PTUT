@@ -133,6 +133,12 @@ class ApiConfig {
   static String equipmentByTagUrl(String tag) =>
       '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
 
+  static String equipmentPmPlanUrl(String id) =>
+      '$dbBaseUrl/api/equipment/${Uri.encodeComponent(id)}/pm-plan';
+
+  static String equipmentValidatePmUrl(String id) =>
+      '$dbBaseUrl/api/equipment/${Uri.encodeComponent(id)}/maintenance/validate';
+
   // ── Health endpoints (publics, sans authentification) ────────────────────────
   static String get healthAuthUrl => '$authBaseUrl/health';
   static String get healthDbUrl   => '$dbBaseUrl/health';

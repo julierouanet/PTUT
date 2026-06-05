@@ -316,6 +316,41 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_pm_plans_equipment ON preventive_maintenance_plans(equipment_id);
   `);
 
+  // Migration : dédupliquer preventive_maintenance_plans + UNIQUE index sur equipment_id
+  // (nécessaire pour les UPSERT ON CONFLICT(equipment_id))
+  try {
+    db.exec(`
+      DELETE FROM preventive_maintenance_plans
+      WHERE id NOT IN (
+        SELECT MIN(id) FROM preventive_maintenance_plans GROUP BY equipment_id
+      )
+    `);
+  } catch (_) {}
+  try {
+    db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pm_plans_equipment_unique
+      ON preventive_maintenance_plans(equipment_id)
+    `);
+  } catch (_) {}
+
+  // Migration : nouvelles colonnes sur maintenance_records (PM v3)
+  const mrCols = db.prepare('PRAGMA table_info(maintenance_records)').all().map(c => c.name);
+  if (!mrCols.includes('technician_id')) {
+    db.prepare('ALTER TABLE maintenance_records ADD COLUMN technician_id TEXT').run();
+  }
+  if (!mrCols.includes('checklist_snapshot')) {
+    db.prepare('ALTER TABLE maintenance_records ADD COLUMN checklist_snapshot TEXT').run();
+  }
+  if (!mrCols.includes('duration_minutes')) {
+    db.prepare('ALTER TABLE maintenance_records ADD COLUMN duration_minutes INTEGER').run();
+  }
+  if (!mrCols.includes('parts_used')) {
+    db.prepare('ALTER TABLE maintenance_records ADD COLUMN parts_used TEXT').run();
+  }
+  if (!mrCols.includes('maintenance_type')) {
+    db.prepare("ALTER TABLE maintenance_records ADD COLUMN maintenance_type TEXT DEFAULT 'corrective'").run();
+  }
+
   // Table de configuration de la sidebar par rôle
   db.exec(`
     CREATE TABLE IF NOT EXISTS sidebar_config (

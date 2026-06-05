@@ -390,14 +390,19 @@ Peuplee par `scripts/import_inventory.js` depuis la feuille `Standard_Equipment_
 
 ### Table `maintenance_records`
 
-| Colonne      | Type    | Contraintes                                     |
-|--------------|---------|--------------------------------------------------|
-| id           | INTEGER | PRIMARY KEY AUTOINCREMENT                        |
-| equipment_id | TEXT    | NOT NULL, FK -> equipment(id) ON DELETE CASCADE  |
-| date         | TEXT    | NOT NULL                                         |
-| intervention | TEXT    | NOT NULL                                         |
-| technician   | TEXT    | NOT NULL                                         |
-| is_future    | INTEGER | DEFAULT 0                                        |
+| Colonne             | Type    | Contraintes                                           |
+|---------------------|---------|-------------------------------------------------------|
+| id                  | INTEGER | PRIMARY KEY AUTOINCREMENT                             |
+| equipment_id        | TEXT    | NOT NULL, FK -> equipment(id) ON DELETE CASCADE       |
+| date                | TEXT    | NOT NULL                                              |
+| intervention        | TEXT    | NOT NULL                                              |
+| technician          | TEXT    | NOT NULL                                              |
+| is_future           | INTEGER | DEFAULT 0                                             |
+| technician_id       | TEXT    | UUID Keycloak du technicien (FEAT-044, migration)     |
+| checklist_snapshot  | TEXT    | JSON sérialisé [{step,label,done}] (FEAT-044)         |
+| duration_minutes    | INTEGER | Durée réelle de l'intervention (FEAT-044)             |
+| parts_used          | TEXT    | JSON sérialisé [{inventory_id,name,qty}] (FEAT-044)   |
+| maintenance_type    | TEXT    | 'preventive' ou 'corrective' (FEAT-044, default corrective) |
 
 ### Table `preventive_maintenance_plans` (nouvelle)
 
@@ -571,11 +576,13 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | Methode | Route                           | Auth              | Description                                      |
 |---------|---------------------------------|-------------------|--------------------------------------------------|
 | GET     | /api/equipment                  | Auth              | Liste (filtres: department, status, category, **macro_category**, **macro_category_id**). Retourne maintenanceHistory + futureMaintenance + **macro_category** + **subcategory_name** |
-| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** (protocoles PM de la sous-catégorie) |
+| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** + **pmPlan** (fréquence + dernière date) |
 | POST    | /api/equipment                  | Admin/Supervisor  | Creer (required: id, name, department, category) + optionnel: **subcategory_id**, **warranty_end_date**, **criticality** |
 | PUT     | /api/equipment/:id              | Admin/Sup/Tech    | Modifier (COALESCE, partial update) + nouveaux champs GMAO |
 | DELETE  | /api/equipment/:id              | Admin             | Supprimer (snapshot audit, ?reason=)              |
-| POST    | /api/equipment/:id/maintenance  | Admin/Sup/Tech    | Ajouter enregistrement maintenance                |
+| POST    | /api/equipment/:id/maintenance  | Admin/Sup/Tech    | **v3** : body `{checklist_snapshot, notes, duration_minutes, parts_used, maintenance_type}`. Si `maintenance_type=preventive` : calcule next_pm, UPSERT plan, dé-stocke pièces, met à jour `last/next_preventive_maintenance`. Réponse: `{maintenance_record_id, next_preventive_maintenance, parts_updated}`. Legacy (corrective) : `{date, intervention, technician, is_future}` |
+| PUT     | /api/equipment/:id/pm-plan      | Admin/Sup/Tech    | UPSERT fréquence PM. Body: `{frequency_months: int}`. Crée ou met à jour `preventive_maintenance_plans` |
+| GET     | /api/equipment/:id/maintenance-label/:record_id | Admin/Sup/Tech | Génère un PDF A6 paysage (pdfkit). `Content-Type: application/pdf`. Inclut équipement, technicien, dates maint. |
 | POST    | /api/equipment/restore          | Admin             | Restaurer equipement supprime                     |
 
 ### Catégories & Sous-catégories (`/api/categories`) **[NOUVEAU]**

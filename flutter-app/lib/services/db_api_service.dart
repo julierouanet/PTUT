@@ -88,6 +88,34 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  /// Valide une maintenance préventive (POST enrichi v3).
+  /// Retourne la réponse JSON : { maintenance_record_id, next_preventive_maintenance, parts_updated }
+  Future<Map<String, dynamic>> validatePreventiveMaintenance(
+    String equipmentId, {
+    required List<Map<String, dynamic>> checklistSnapshot,
+    String? notes,
+    int? durationMinutes,
+    List<Map<String, dynamic>> partsUsed = const [],
+  }) async {
+    final url = '${ApiConfig.equipmentUrl}/$equipmentId/maintenance';
+    final response = await ApiClient.post(url, {
+      'checklist_snapshot': checklistSnapshot,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+      if (durationMinutes != null) 'duration_minutes': durationMinutes,
+      'parts_used': partsUsed,
+      'maintenance_type': 'preventive',
+    });
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Met à jour (UPSERT) la fréquence PM d'un équipement.
+  Future<void> updatePmPlan(String equipmentId, int frequencyMonths) async {
+    final url = ApiConfig.equipmentPmPlanUrl(equipmentId);
+    final response = await ApiClient.put(url, {'frequency_months': frequencyMonths});
+    _checkStatus(response, url);
+  }
+
   // ── LIEUX ─────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getLocations() async {

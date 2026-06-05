@@ -7897,6 +7897,132 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Sélectionnez une période pour télécharger un rapport historique au format PDF.'**
   String get reportsArchivesHint;
+
+  /// No description provided for @pmProtocols.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocoles de maintenance'**
+  String get pmProtocols;
+
+  /// No description provided for @pmChecklist.
+  ///
+  /// In fr, this message translates to:
+  /// **'Checklist de maintenance'**
+  String get pmChecklist;
+
+  /// No description provided for @pmStepsProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'{done} / {total} étapes validées'**
+  String pmStepsProgress(int done, int total);
+
+  /// No description provided for @pmNoProtocolAvailable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun protocole défini pour ce type d\'équipement'**
+  String get pmNoProtocolAvailable;
+
+  /// No description provided for @pmFrequencyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fréquence de maintenance'**
+  String get pmFrequencyLabel;
+
+  /// No description provided for @pmFrequencyValue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les {months} mois'**
+  String pmFrequencyValue(int months);
+
+  /// No description provided for @pmDurationEstimated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée estimée : {min} min'**
+  String pmDurationEstimated(int min);
+
+  /// No description provided for @pmDurationActual.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée réelle : {min} min'**
+  String pmDurationActual(int min);
+
+  /// No description provided for @pmValidateButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Valider la maintenance préventive'**
+  String get pmValidateButton;
+
+  /// No description provided for @pmValidateConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la validation'**
+  String get pmValidateConfirmTitle;
+
+  /// No description provided for @pmValidateConfirmBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'{unchecked} étape(s) non cochée(s). Valider quand même ?'**
+  String pmValidateConfirmBody(int unchecked);
+
+  /// No description provided for @pmValidateSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance enregistrée'**
+  String get pmValidateSuccess;
+
+  /// No description provided for @pmNextDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prochaine maintenance : {date}'**
+  String pmNextDate(String date);
+
+  /// No description provided for @pmPrintLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Imprimer l\'étiquette'**
+  String get pmPrintLabel;
+
+  /// No description provided for @pmEditLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étiquette de maintenance'**
+  String get pmEditLabel;
+
+  /// No description provided for @pmHistoryTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des maintenances préventives'**
+  String get pmHistoryTitle;
+
+  /// No description provided for @pmComplianceRate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Conformité : {rate}%'**
+  String pmComplianceRate(int rate);
+
+  /// No description provided for @pmPartsUsed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pièces utilisées'**
+  String get pmPartsUsed;
+
+  /// No description provided for @pmSeeAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir tout'**
+  String get pmSeeAll;
+
+  /// No description provided for @pmFrequencySaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fréquence de maintenance mise à jour'**
+  String get pmFrequencySaved;
+
+  /// No description provided for @pmFrequencySelectLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Définir la fréquence PM'**
+  String get pmFrequencySelectLabel;
 }
 
 class _AppLocalizationsDelegate

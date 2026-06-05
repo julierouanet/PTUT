@@ -4224,4 +4224,82 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reportsArchivesHint =>
       'Select a period to download a historical report as PDF.';
+
+  @override
+  String get pmProtocols => 'Maintenance protocols';
+
+  @override
+  String get pmChecklist => 'Maintenance checklist';
+
+  @override
+  String pmStepsProgress(int done, int total) {
+    return '$done / $total steps validated';
+  }
+
+  @override
+  String get pmNoProtocolAvailable =>
+      'No protocol defined for this equipment type';
+
+  @override
+  String get pmFrequencyLabel => 'Maintenance frequency';
+
+  @override
+  String pmFrequencyValue(int months) {
+    return 'Every $months months';
+  }
+
+  @override
+  String pmDurationEstimated(int min) {
+    return 'Estimated duration: $min min';
+  }
+
+  @override
+  String pmDurationActual(int min) {
+    return 'Actual duration: $min min';
+  }
+
+  @override
+  String get pmValidateButton => 'Validate preventive maintenance';
+
+  @override
+  String get pmValidateConfirmTitle => 'Confirm validation';
+
+  @override
+  String pmValidateConfirmBody(int unchecked) {
+    return '$unchecked unchecked step(s). Validate anyway?';
+  }
+
+  @override
+  String get pmValidateSuccess => 'Maintenance recorded';
+
+  @override
+  String pmNextDate(String date) {
+    return 'Next maintenance: $date';
+  }
+
+  @override
+  String get pmPrintLabel => 'Print label';
+
+  @override
+  String get pmEditLabel => 'Maintenance label';
+
+  @override
+  String get pmHistoryTitle => 'Preventive maintenance history';
+
+  @override
+  String pmComplianceRate(int rate) {
+    return 'Compliance: $rate%';
+  }
+
+  @override
+  String get pmPartsUsed => 'Parts used';
+
+  @override
+  String get pmSeeAll => 'See all';
+
+  @override
+  String get pmFrequencySaved => 'Maintenance frequency updated';
+
+  @override
+  String get pmFrequencySelectLabel => 'Set PM frequency';
 }

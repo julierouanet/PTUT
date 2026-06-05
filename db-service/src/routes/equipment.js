@@ -2,6 +2,7 @@ const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { generateMaintenanceLabelPdf } = require('../services/pdf_label_service');
 
 const router = express.Router();
 
@@ -185,7 +186,12 @@ router.get('/:id', verifyToken, (req, res) => {
         }))
     : [];
 
-  res.json({ ...eq, maintenanceHistory: history, futureMaintenance: future, tags, pmProtocols });
+  // Plan PM actif de cet équipement (fréquence + dernière date)
+  const pmPlan = db.prepare(
+    'SELECT id, frequency_months, last_completed_date FROM preventive_maintenance_plans WHERE equipment_id = ? LIMIT 1'
+  ).get(eq.id) || null;
+
+  res.json({ ...eq, maintenanceHistory: history, futureMaintenance: future, tags, pmProtocols, pmPlan });
 });
 
 // ── POST /api/equipment ───────────────────────────────────────────────────────
@@ -379,28 +385,231 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // ── POST /api/equipment/:id/maintenance ───────────────────────────────────────
+// Enregistrement d'une maintenance préventive ou corrective (v3).
+// Si maintenance_type = 'preventive' : met à jour last/next PM, gère le plan, dé-stocke les pièces.
+// Rétro-compatible : si seuls date/intervention/technician/is_future sont fournis, comportement legacy.
 router.post('/:id/maintenance', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const { date, intervention, technician, is_future } = req.body;
+  const { id } = req.params;
+  const {
+    date, intervention, technician, is_future,
+    checklist_snapshot, notes, duration_minutes, parts_used, maintenance_type,
+  } = req.body;
 
+  // Validation minimale legacy
+  if (is_future !== undefined && !maintenance_type) {
+    // Chemin legacy : date + intervention + technician requis
+    if (!date || !intervention || !technician) {
+      return res.status(400).json({ error: 'Champs requis: date, intervention, technician' });
+    }
+  }
+
+  const eq = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
+  if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  const isPreventive = maintenance_type === 'preventive';
+
+  // ── Chemin v3 (maintenance préventive) ──────────────────────────────────────
+  if (isPreventive) {
+    const now = db.prepare("SELECT datetime('now','localtime') as now").get().now;
+
+    // 1. Insérer dans maintenance_records
+    const insertResult = db.prepare(`
+      INSERT INTO maintenance_records
+        (equipment_id, date, intervention, technician, technician_id,
+         checklist_snapshot, duration_minutes, parts_used, maintenance_type, is_future)
+      VALUES (?, ?, 'Maintenance préventive', ?, ?, ?, ?, ?, 'preventive', 0)
+    `).run(
+      id, now,
+      req.user.name, req.user.id,
+      JSON.stringify(checklist_snapshot || []),
+      duration_minutes || null,
+      JSON.stringify(parts_used || []),
+    );
+
+    // 2. Récupérer frequency_months : plan existant > pm_protocols > défaut 12
+    let freqMonths = null;
+    const plan = db.prepare(
+      'SELECT frequency_months FROM preventive_maintenance_plans WHERE equipment_id = ?'
+    ).get(id);
+    if (plan) {
+      freqMonths = plan.frequency_months;
+    } else {
+      const proto = db.prepare(`
+        SELECT p.frequency_months FROM pm_protocols p
+        JOIN equipment_subcategories s ON s.id = p.subcategory_id
+        WHERE s.id = (SELECT subcategory_id FROM equipment WHERE id = ? LIMIT 1)
+        ORDER BY p.frequency_months ASC LIMIT 1
+      `).get(id);
+      freqMonths = proto ? proto.frequency_months : 12;
+    }
+
+    // 3. Calculer next_preventive_maintenance
+    const nextPm = db.prepare(
+      "SELECT datetime(?, '+' || ? || ' months') as next"
+    ).get(now, freqMonths).next;
+
+    // 4. UPSERT preventive_maintenance_plans
+    db.prepare(`
+      INSERT INTO preventive_maintenance_plans
+        (equipment_id, frequency_months, last_completed_date, updated_at)
+      VALUES (?, ?, ?, datetime('now','localtime'))
+      ON CONFLICT(equipment_id) DO UPDATE SET
+        last_completed_date = excluded.last_completed_date,
+        updated_at = excluded.updated_at
+    `).run(id, freqMonths, now);
+
+    // 5. UPDATE equipment (dates PM + statut)
+    db.prepare(`
+      UPDATE equipment SET
+        last_preventive_maintenance = ?,
+        next_preventive_maintenance = ?,
+        status = CASE WHEN status = 'Out of service' THEN status ELSE 'Operational' END,
+        updated_at = datetime('now','localtime')
+      WHERE id = ?
+    `).run(now, nextPm, id);
+
+    // 6. Déstockage des pièces utilisées
+    if (parts_used && parts_used.length > 0) {
+      const updateStock = db.prepare(`
+        UPDATE inventory
+        SET current_stock = MAX(0, current_stock - ?),
+            updated_at = datetime('now','localtime')
+        WHERE id = ?
+      `);
+      for (const part of parts_used) {
+        if (part.inventory_id && part.qty > 0) {
+          updateStock.run(part.qty, part.inventory_id);
+        }
+      }
+    }
+
+    // 7. Audit trail
+    logAction({
+      user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+      action: 'validate_preventive_maintenance',
+      target_type: 'equipment', target_id: id, target_name: eq.name,
+      details: JSON.stringify({
+        duration_minutes: duration_minutes || null,
+        parts_count: (parts_used || []).length,
+        next_pm: nextPm,
+      }),
+      ...extractReqMeta(req),
+    });
+
+    return res.json({
+      maintenance_record_id: insertResult.lastInsertRowid,
+      next_preventive_maintenance: nextPm,
+      parts_updated: (parts_used || []).length > 0,
+    });
+  }
+
+  // ── Chemin legacy (corrective / planifiée) ───────────────────────────────────
   if (!date || !intervention || !technician) {
     return res.status(400).json({ error: 'Champs requis: date, intervention, technician' });
   }
 
-  const eq = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(req.params.id);
-  if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
-
   const result = db.prepare(`
-    INSERT INTO maintenance_records (equipment_id, date, intervention, technician, is_future)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(req.params.id, date, intervention, technician, is_future ? 1 : 0);
+    INSERT INTO maintenance_records (equipment_id, date, intervention, technician, is_future, maintenance_type)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(id, date, intervention, technician, is_future ? 1 : 0, maintenance_type || 'corrective');
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: is_future ? 'schedule_maintenance' : 'add_maintenance',
-    target_type: 'equipment', target_id: req.params.id, target_name: eq.name,
-    details: { date, intervention, technician }, ...extractReqMeta(req) });
+    target_type: 'equipment', target_id: id, target_name: eq.name,
+    details: JSON.stringify({ date, intervention, technician }), ...extractReqMeta(req) });
 
   res.status(201).json({ message: 'Maintenance enregistrée', id: result.lastInsertRowid });
 });
+
+// ── PUT /api/equipment/:id/pm-plan ────────────────────────────────────────────
+router.put('/:id/pm-plan', verifyToken,
+  requireRole('admin', 'supervisor', 'technician', ...TECH_ROLES),
+  (req, res) => {
+    const db = getDb();
+    const { id } = req.params;
+    const { frequency_months } = req.body;
+
+    // Validation
+    if (!frequency_months || typeof frequency_months !== 'number' ||
+        !Number.isFinite(frequency_months) || frequency_months < 1) {
+      return res.status(400).json({ error: 'frequency_months requis (entier >= 1)' });
+    }
+
+    const eq = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(id);
+    if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
+
+    // UPSERT plan PM
+    db.prepare(`
+      INSERT INTO preventive_maintenance_plans (equipment_id, frequency_months, updated_at)
+      VALUES (?, ?, datetime('now','localtime'))
+      ON CONFLICT(equipment_id) DO UPDATE SET
+        frequency_months = excluded.frequency_months,
+        updated_at = excluded.updated_at
+    `).run(id, frequency_months);
+
+    logAction({
+      user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+      action: 'update_pm_frequency',
+      target_type: 'equipment', target_id: id, target_name: eq.name,
+      details: JSON.stringify({ frequency_months }),
+      ...extractReqMeta(req),
+    });
+
+    res.json({ message: 'Fréquence de maintenance mise à jour' });
+  }
+);
+
+// ── GET /api/equipment/:id/maintenance-label/:record_id ───────────────────────
+router.get('/:id/maintenance-label/:record_id', verifyToken,
+  requireRole('admin', 'supervisor', 'technician', ...TECH_ROLES),
+  async (req, res) => {
+    const db = getDb();
+    const { id, record_id } = req.params;
+
+    const eq = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
+    if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
+
+    const record = db.prepare(
+      'SELECT * FROM maintenance_records WHERE id = ? AND equipment_id = ?'
+    ).get(parseInt(record_id, 10), id);
+    if (!record) return res.status(404).json({ error: 'Enregistrement introuvable' });
+
+    const plan = db.prepare(
+      'SELECT frequency_months FROM preventive_maintenance_plans WHERE equipment_id = ? LIMIT 1'
+    ).get(id);
+    const freqMonths = plan ? plan.frequency_months : 12;
+    const nextPm = db.prepare(
+      "SELECT datetime(?, '+' || ? || ' months') as next"
+    ).get(record.date, freqMonths).next;
+
+    try {
+      const pdfBytes = await generateMaintenanceLabelPdf({
+        equipmentName: eq.name,
+        serialNumber:  eq.serial_number || null,
+        department:    eq.department,
+        technicianName: record.technician,
+        performedAt:   record.date,
+        nextPm,
+        hospitalName:  'Hôpital de District de Kabutare',
+      });
+
+      const dateStr = record.date.substring(0, 10).replace(/-/g, '');
+      logAction({
+        user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+        action: 'generate_maintenance_label',
+        target_type: 'equipment', target_id: id, target_name: eq.name,
+        details: JSON.stringify({ record_id }),
+        ...extractReqMeta(req),
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="label-${id}-${dateStr}.pdf"`);
+      res.send(pdfBytes);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 module.exports = router;
