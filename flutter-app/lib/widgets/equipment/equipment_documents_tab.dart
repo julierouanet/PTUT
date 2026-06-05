@@ -1,6 +1,9 @@
 import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
@@ -136,8 +139,21 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
   }
 
   void _openBytes(Uint8List bytes, String name, String mime) {
-    // Affichage inline pour PDF et images en plein écran
     if (!mounted) return;
+
+    if (kIsWeb) {
+      // Sur web : blob URL → le navigateur affiche le PDF dans son lecteur intégré,
+      // ou ouvre la visionneuse d'image selon le type MIME.
+      final blob    = html.Blob([bytes], mime);
+      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
+      html.window.open(blobUrl, '_blank');
+      // Libération mémoire différée (délai généreux pour l'ouverture de l'onglet)
+      Future.delayed(const Duration(minutes: 2),
+          () => html.Url.revokeObjectUrl(blobUrl));
+      return;
+    }
+
+    // Sur natif : préview image en plein écran uniquement
     if (mime.startsWith('image/')) {
       showDialog<void>(
         context: context,
@@ -161,7 +177,8 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
                 child: GestureDetector(
                   onTap: () => Navigator.pop(ctx),
                   child: Container(
-                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    decoration: const BoxDecoration(
+                        color: Colors.black54, shape: BoxShape.circle),
                     padding: const EdgeInsets.all(8),
                     child: const Icon(Icons.close, color: Colors.white, size: 22),
                   ),
@@ -172,9 +189,9 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
         ),
       );
     } else {
-      // PDF ou autre : impossible à afficher inline — SnackBar d'info
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Téléchargement disponible — ouverture navigateur non supportée sur cette plateforme'),
+      // PDF natif : informer que l'ouverture nécessite un plugin externe
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('$name — ouverture PDF non supportée sur cette plateforme natif'),
         behavior: SnackBarBehavior.floating,
       ));
     }
