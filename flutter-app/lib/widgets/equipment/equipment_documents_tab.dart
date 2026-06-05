@@ -1,9 +1,8 @@
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import '../../utils/open_blob_url.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
@@ -142,14 +141,8 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
     if (!mounted) return;
 
     if (kIsWeb) {
-      // Sur web : blob URL → le navigateur affiche le PDF dans son lecteur intégré,
-      // ou ouvre la visionneuse d'image selon le type MIME.
-      final blob    = html.Blob([bytes], mime);
-      final blobUrl = html.Url.createObjectUrlFromBlob(blob);
-      html.window.open(blobUrl, '_blank');
-      // Libération mémoire différée (délai généreux pour l'ouverture de l'onglet)
-      Future.delayed(const Duration(minutes: 2),
-          () => html.Url.revokeObjectUrl(blobUrl));
+      // Sur web : blob URL via import conditionnel (dart:html inaccessible sur VM/natif)
+      openBytesInBrowser(bytes, mime, name);
       return;
     }
 
