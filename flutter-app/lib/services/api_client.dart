@@ -146,6 +146,106 @@ class ApiClient {
     return response;
   }
 
+  /// Upload multipart avec authentification — retry sur 401 comme les autres méthodes.
+  ///
+  /// [url]      : URL complète de l'endpoint.
+  /// [fileBytes]: contenu binaire du fichier.
+  /// [fileName] : nom original du fichier (champ "file").
+  /// [mimeType] : type MIME (ex. "image/jpeg", "application/pdf").
+  /// [fields]   : champs de formulaire additionnels (ex. {"type": "technical"}).
+  /// [fileField]: nom du champ fichier (défaut "file").
+  ///
+  /// Retourne le JSON décodé ou lève une [Exception] avec le message d'erreur.
+  static Future<Map<String, dynamic>> postMultipart(
+    String url,
+    Uint8List fileBytes,
+    String fileName,
+    String mimeType,
+    Map<String, String> fields, {
+    String fileField = 'file',
+  }) async {
+    final result = await _sendMultipart(url, fileBytes, fileName, mimeType, fields, fileField);
+    if (result.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final retried = await _sendMultipart(url, fileBytes, fileName, mimeType, fields, fileField);
+        return _parseMultipartResponse(retried);
+      }
+    }
+    return _parseMultipartResponse(result);
+  }
+
+  /// Upload de plusieurs fichiers (champ multi-values "photos").
+  static Future<Map<String, dynamic>> postMultipartFiles(
+    String url,
+    List<({Uint8List bytes, String name, String mimeType})> files,
+  ) async {
+    final result = await _sendMultipartFiles(url, files);
+    if (result.statusCode == 401) {
+      final refreshed = await _tryRefresh();
+      if (refreshed) {
+        final retried = await _sendMultipartFiles(url, files);
+        return _parseMultipartResponse(retried);
+      }
+    }
+    return _parseMultipartResponse(result);
+  }
+
+  static Future<http.StreamedResponse> _sendMultipart(
+    String url,
+    Uint8List fileBytes,
+    String fileName,
+    String mimeType,
+    Map<String, String> fields,
+    String fileField,
+  ) async {
+    final token = await getAccessToken();
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    fields.forEach((k, v) => request.fields[k] = v);
+    request.files.add(http.MultipartFile.fromBytes(
+      fileField, fileBytes,
+      filename: fileName,
+      contentType: _mediaType(mimeType),
+    ));
+    return request.send().timeout(const Duration(seconds: 60));
+  }
+
+  static Future<http.StreamedResponse> _sendMultipartFiles(
+    String url,
+    List<({Uint8List bytes, String name, String mimeType})> files,
+  ) async {
+    final token = await getAccessToken();
+    final request = http.MultipartRequest('POST', Uri.parse(url));
+    if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    for (final f in files) {
+      request.files.add(http.MultipartFile.fromBytes(
+        'photos', f.bytes,
+        filename: f.name,
+        contentType: _mediaType(f.mimeType),
+      ));
+    }
+    return request.send().timeout(const Duration(seconds: 60));
+  }
+
+  static Future<Map<String, dynamic>> _parseMultipartResponse(http.StreamedResponse response) async {
+    final body = await response.stream.bytesToString();
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return jsonDecode(body) as Map<String, dynamic>;
+    }
+    String message = 'Erreur ${response.statusCode}';
+    try {
+      final decoded = jsonDecode(body) as Map<String, dynamic>;
+      message = decoded['error'] as String? ?? message;
+    } catch (_) {}
+    throw Exception(message);
+  }
+
+  static http.MediaType _mediaType(String mimeType) {
+    final parts = mimeType.split('/');
+    return http.MediaType(parts[0], parts.length > 1 ? parts[1] : '*');
+  }
+
   // ── Refresh token via Keycloak (rotation stricte) ────────────────────────
 
   static Future<bool> _tryRefresh() async {

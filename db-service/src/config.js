@@ -9,4 +9,6 @@ module.exports = {
   VAPID_PUBLIC_KEY:  process.env.VAPID_PUBLIC_KEY  || '',
   VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || '',
   VAPID_CONTACT:     process.env.VAPID_CONTACT     || 'mailto:admin@lucaslopvet.fr',
+  // Stockage fichiers
+  UPLOAD_DIR: process.env.UPLOAD_DIR || '/data/uploads/documents',
 };

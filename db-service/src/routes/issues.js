@@ -1,9 +1,11 @@
 const express = require('express');
+const path    = require('path');
 const { getDb } = require('../database');
 const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
-const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
+const { AUTH_SERVICE_URL, INTERNAL_SECRET, UPLOAD_DIR } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
+const { photoUpload } = require('../middleware/upload');
 
 // ── Helpers d'envoi d'email vers auth-service (fire-and-forget) ───────────────
 
@@ -475,6 +477,90 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ..
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident réassigné', id: req.params.id });
+});
+
+// ── POST /api/issues/:id/photos ──────────────────────────────────────────────
+router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: 'Aucun fichier reçu (champ "photos")' });
+  }
+
+  const db = getDb();
+  const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // Vérifier la limite de 5 photos au total
+  const existingCount = db.prepare('SELECT COUNT(*) AS c FROM issue_photos WHERE issue_id = ?').get(req.params.id).c;
+  if (existingCount + req.files.length > 5) {
+    return res.status(400).json({
+      error: `Limite de 5 photos atteinte (déjà ${existingCount} photo(s) sur cet incident)`,
+    });
+  }
+
+  const insertPhoto = db.prepare(`
+    INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
+    VALUES (?, ?, ?, ?, ?, datetime('now','localtime'))
+  `);
+
+  const inserted = [];
+  for (const file of req.files) {
+    const fileSizeKb = Math.ceil(file.size / 1024);
+    const result = insertPhoto.run(req.params.id, file.filename, file.originalname, file.mimetype, fileSizeKb);
+    inserted.push({ id: result.lastInsertRowid, original_name: file.originalname, file_size_kb: fileSizeKb });
+  }
+
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'upload_issue_photos',
+    target_type: 'issue', target_id: req.params.id, target_name: req.params.id,
+    details: JSON.stringify({ count: req.files.length }),
+    ...extractReqMeta(req),
+  });
+
+  res.status(201).json({ message: 'Photos ajoutées', photos: inserted });
+});
+
+// ── GET /api/issues/:id/photos ────────────────────────────────────────────────
+router.get('/:id/photos', verifyToken, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const photos = db.prepare(`
+    SELECT id, original_name, mime_type, file_size_kb, uploaded_at
+    FROM issue_photos
+    WHERE issue_id = ?
+    ORDER BY uploaded_at ASC
+  `).all(req.params.id);
+
+  res.json(photos);
+});
+
+// ── GET /api/issues/:id/photos/:photo_id/download ─────────────────────────────
+router.get('/:id/photos/:photo_id/download', verifyToken, (req, res) => {
+  const db = getDb();
+  const photo = db.prepare(`
+    SELECT * FROM issue_photos WHERE id = ? AND issue_id = ?
+  `).get(req.params.photo_id, req.params.id);
+
+  if (!photo) return res.status(404).json({ error: 'Photo introuvable' });
+
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'download_issue_photo',
+    target_type: 'issue', target_id: req.params.id, target_name: photo.original_name,
+    details: JSON.stringify({ photo_id: photo.id }),
+    ...extractReqMeta(req),
+  });
+
+  const filePath = path.join(UPLOAD_DIR, photo.stored_name);
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(photo.original_name)}"`);
+  res.setHeader('Content-Type', photo.mime_type);
+  res.sendFile(filePath, { root: '/' }, (err) => {
+    if (err && !res.headersSent) {
+      res.status(404).json({ error: 'Fichier introuvable sur le serveur' });
+    }
+  });
 });
 
 // DELETE /api/issues/:id (admin seulement)

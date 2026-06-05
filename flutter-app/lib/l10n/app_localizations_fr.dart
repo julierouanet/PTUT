@@ -4345,4 +4345,73 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get pmFrequencySelectLabel => 'Définir la fréquence PM';
+
+  @override
+  String get docTabTitle => 'Documents';
+
+  @override
+  String get docTechnicalSection => 'Documents techniques';
+
+  @override
+  String get docInterventionSection => 'Documents d\'intervention';
+
+  @override
+  String get docCertificationSection => 'Certificats & Conformité';
+
+  @override
+  String get docAddButton => 'Ajouter un document';
+
+  @override
+  String get docTypeLabel => 'Type de document';
+
+  @override
+  String get docTypeTechnical => 'Manuel / Fiche technique';
+
+  @override
+  String get docTypeIntervention => 'Rapport / Facture';
+
+  @override
+  String get docTypeCertification => 'Certificat / Conformité';
+
+  @override
+  String get docUploadSuccess => 'Document ajouté avec succès';
+
+  @override
+  String docUploadError(String error) {
+    return 'Échec de l\'upload : $error';
+  }
+
+  @override
+  String get docDeleteConfirmTitle => 'Supprimer ce document ?';
+
+  @override
+  String get docDeleteConfirmBody => 'Cette action est irréversible.';
+
+  @override
+  String get docDeleteSuccess => 'Document supprimé';
+
+  @override
+  String get docDownloadError => 'Impossible d\'ouvrir le document';
+
+  @override
+  String get docNoDocuments => 'Aucun document dans cette section';
+
+  @override
+  String get docRestrictedAccess =>
+      'Accès réservé aux techniciens et superviseurs';
+
+  @override
+  String get issuePhotosSection => 'Photos de l\'incident';
+
+  @override
+  String get issuePhotoLimitReached => 'Limite de 5 photos atteinte';
+
+  @override
+  String get issuePhotoCompressing => 'Compression en cours…';
+
+  @override
+  String get issuePhotosUploading => 'Envoi des photos…';
+
+  @override
+  String get issuePhotosNoPhotos => 'Aucune photo jointe';
 }

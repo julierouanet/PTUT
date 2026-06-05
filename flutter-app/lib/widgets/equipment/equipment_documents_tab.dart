@@ -1,59 +1,522 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/equipment.dart';
+import '../../models/equipment_document.dart';
+import '../../services/api_client.dart';
+import '../../services/api_config.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
 
-/// Onglet Documents — placeholder pour les manuels et fiches techniques.
+/// Onglet Documents d'un équipement.
 ///
-/// Fonctionnalité documentaire à implémenter dans une prochaine itération
-/// (stockage de fichiers côté db-service + upload/download Flutter).
-class EquipmentDocumentsTab extends StatelessWidget {
+/// Affiché uniquement pour les rôles non-hospitalStaff
+/// (la garde RBAC est déjà appliquée par EquipmentDetailScreen qui redirige
+/// le personnel médical vers EquipmentStaffView).
+///
+/// Deux sections :
+///  • Techniques & Certifications (document_type: technical, certification)
+///  • Documents d'intervention    (document_type: intervention)
+class EquipmentDocumentsTab extends StatefulWidget {
   final Equipment equipment;
 
   const EquipmentDocumentsTab({super.key, required this.equipment});
 
   @override
+  State<EquipmentDocumentsTab> createState() => _EquipmentDocumentsTabState();
+}
+
+class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
+  List<EquipmentDocument> _docs = [];
+  bool _loading = true;
+  String? _error;
+
+  bool get _canManage => AuthService().canManageEquipment;
+
+  String get _baseUrl =>
+      '${ApiConfig.dbBaseUrl}/api/equipment/${Uri.encodeComponent(widget.equipment.id)}';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDocuments();
+  }
+
+  // ── Chargement ────────────────────────────────────────────────────────────────
+
+  Future<void> _loadDocuments() async {
+    if (!mounted) return;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final resp = await ApiClient.get('$_baseUrl/documents');
+      if (!mounted) return;
+      if (resp.statusCode == 200) {
+        final raw = jsonDecode(resp.body) as List;
+        setState(() {
+          _docs = raw.map((j) => EquipmentDocument.fromJson(j as Map<String, dynamic>)).toList();
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = 'Erreur ${resp.statusCode}';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _error = e.toString(); _loading = false; });
+    }
+  }
+
+  // ── Upload ────────────────────────────────────────────────────────────────────
+
+  Future<void> _uploadDocument(BuildContext ctx, String docType) async {
+    final l10n = AppLocalizations.of(ctx)!;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null) return;
+
+    final mimeType = _mimeFromExtension(file.extension ?? '');
+
+    try {
+      await ApiClient.postMultipart(
+        '$_baseUrl/documents',
+        Uint8List.fromList(bytes),
+        file.name,
+        mimeType,
+        {'type': docType},
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+        content: Text(l10n.docUploadSuccess),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+      await _loadDocuments();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+        content: Text(l10n.docUploadError(e.toString())),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  // ── Téléchargement ────────────────────────────────────────────────────────────
+
+  Future<void> _openDocument(BuildContext ctx, EquipmentDocument doc) async {
+    final l10n = AppLocalizations.of(ctx)!;
+    final url = '$_baseUrl/documents/${doc.id}/download';
+    try {
+      final resp = await ApiClient.get(url);
+      if (!mounted) return;
+      if (resp.statusCode != 200) throw Exception('Erreur ${resp.statusCode}');
+
+      // Sur web : ouverture via blob URL
+      _openBytes(resp.bodyBytes, doc.originalName, doc.mimeType);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+        content: Text(l10n.docDownloadError),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  void _openBytes(Uint8List bytes, String name, String mime) {
+    // Affichage inline pour PDF et images en plein écran
+    if (!mounted) return;
+    if (mime.startsWith('image/')) {
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(8),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                color: Colors.black,
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+                ),
+                child: InteractiveViewer(
+                  child: Image.memory(bytes, fit: BoxFit.contain),
+                ),
+              ),
+              Positioned(
+                top: 8, right: 8,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                    padding: const EdgeInsets.all(8),
+                    child: const Icon(Icons.close, color: Colors.white, size: 22),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // PDF ou autre : impossible à afficher inline — SnackBar d'info
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Téléchargement disponible — ouverture navigateur non supportée sur cette plateforme'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  // ── Suppression ───────────────────────────────────────────────────────────────
+
+  Future<void> _confirmDelete(BuildContext ctx, EquipmentDocument doc) async {
+    final l10n = AppLocalizations.of(ctx)!;
+    final confirmed = await showDialog<bool>(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l10n.docDeleteConfirmTitle),
+        content: Text(l10n.docDeleteConfirmBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dialogCtx, true),
+            child: Text(l10n.commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      final resp = await ApiClient.delete('$_baseUrl/documents/${doc.id}');
+      if (!mounted) return;
+      if (resp.statusCode == 200) {
+        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+          content: Text(l10n.docDeleteSuccess),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+        await _loadDocuments();
+      } else {
+        throw Exception('Erreur ${resp.statusCode}');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+        content: Text('${l10n.commonError} : $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  // ── Sélecteur de type pour l'upload ──────────────────────────────────────────
+
+  Future<void> _showUploadDialog(BuildContext ctx) async {
+    final l10n = AppLocalizations.of(ctx)!;
+    String? selectedType;
+    final types = <String, String>{
+      'technical':     l10n.docTypeTechnical,
+      'intervention':  l10n.docTypeIntervention,
+      'certification': l10n.docTypeCertification,
+    };
+
+    await showDialog<void>(
+      context: ctx,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text(l10n.docTypeLabel),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: types.entries.map((e) => RadioListTile<String>(
+              title: Text(e.value),
+              value: e.key,
+              groupValue: selectedType,
+              onChanged: (v) => setDialogState(() => selectedType = v),
+            )).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton(
+              onPressed: selectedType == null ? null : () {
+                Navigator.pop(dialogCtx);
+                _uploadDocument(ctx, selectedType!);
+              },
+              child: Text(l10n.commonAdd),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────────
+
+  @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.folder_open_outlined,
-                  size: 56,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  l10n.equipDetailNoDocuments,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  l10n.equipDetailDocumentsHint,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                    height: 1.5,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+          const SizedBox(height: 12),
+          Text(_error!, style: const TextStyle(color: AppColors.error)),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: _loadDocuments,
+            icon: const Icon(Icons.refresh),
+            label: const Text('Réessayer'),
           ),
+        ]),
+      );
+    }
+
+    final techDocs = _docs
+        .where((d) => d.documentType == 'technical' || d.documentType == 'certification')
+        .toList();
+    final interDocs = _docs.where((d) => d.documentType == 'intervention').toList();
+
+    return RefreshIndicator(
+      onRefresh: _loadDocuments,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Section technique + certifications ──────────────────────────
+            _DocumentSection(
+              title: l10n.docTechnicalSection,
+              icon: Icons.description_outlined,
+              docs: techDocs,
+              canManage: _canManage,
+              emptyLabel: l10n.docNoDocuments,
+              onOpen: (doc) => _openDocument(context, doc),
+              onDelete: (doc) => _confirmDelete(context, doc),
+              onAdd: _canManage ? () => _showUploadDialog(context) : null,
+            ),
+            const SizedBox(height: 16),
+
+            // ── Section documents d'intervention ────────────────────────────
+            _DocumentSection(
+              title: l10n.docInterventionSection,
+              icon: Icons.build_outlined,
+              docs: interDocs,
+              canManage: _canManage,
+              emptyLabel: l10n.docNoDocuments,
+              onOpen: (doc) => _openDocument(context, doc),
+              onDelete: (doc) => _confirmDelete(context, doc),
+              onAdd: _canManage ? () => _showUploadDialog(context) : null,
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
+      ),
+    );
+  }
+
+  static String _mimeFromExtension(String ext) {
+    switch (ext.toLowerCase()) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'pdf':
+      default:
+        return 'application/pdf';
+    }
+  }
+}
+
+// ── Section de documents ──────────────────────────────────────────────────────
+
+class _DocumentSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final List<EquipmentDocument> docs;
+  final bool canManage;
+  final String emptyLabel;
+  final void Function(EquipmentDocument) onOpen;
+  final void Function(EquipmentDocument) onDelete;
+  final VoidCallback? onAdd;
+
+  const _DocumentSection({
+    required this.title,
+    required this.icon,
+    required this.docs,
+    required this.canManage,
+    required this.emptyLabel,
+    required this.onOpen,
+    required this.onDelete,
+    this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // En-tête section
+            Row(children: [
+              Icon(icon, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '$title (${docs.length})',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              if (canManage && onAdd != null)
+                TextButton.icon(
+                  onPressed: onAdd,
+                  icon: const Icon(Icons.upload_file, size: 16),
+                  label: const Text('Ajouter', style: TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  ),
+                ),
+            ]),
+            const Divider(height: 20),
+
+            // Liste ou état vide
+            if (docs.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(children: [
+                  const Icon(Icons.folder_open, color: AppColors.textMuted, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    emptyLabel,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13,
+                    ),
+                  ),
+                ]),
+              )
+            else
+              ...docs.map((doc) => _DocumentTile(
+                doc: doc,
+                canManage: canManage,
+                onOpen: () => onOpen(doc),
+                onDelete: () => onDelete(doc),
+              )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Tuile d'un document ───────────────────────────────────────────────────────
+
+class _DocumentTile extends StatelessWidget {
+  final EquipmentDocument doc;
+  final bool canManage;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  const _DocumentTile({
+    required this.doc,
+    required this.canManage,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  static String _formatDate(String raw) {
+    try {
+      return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = doc.isPdf
+        ? Icons.picture_as_pdf
+        : doc.isImage
+            ? Icons.image_outlined
+            : Icons.insert_drive_file_outlined;
+
+    final iconColor = doc.isPdf ? AppColors.error : AppColors.primary;
+
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: iconColor.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: iconColor, size: 22),
+      ),
+      title: Text(
+        doc.originalName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        '${doc.displaySize} · ${doc.uploaderName} · ${_formatDate(doc.uploadedAt)}',
+        style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.open_in_new, size: 18),
+            tooltip: 'Ouvrir',
+            color: AppColors.primary,
+            onPressed: onOpen,
+          ),
+          if (canManage)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18),
+              tooltip: 'Supprimer',
+              color: AppColors.error,
+              onPressed: onDelete,
+            ),
+        ],
       ),
     );
   }

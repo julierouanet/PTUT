@@ -8023,6 +8023,138 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Définir la fréquence PM'**
   String get pmFrequencySelectLabel;
+
+  /// No description provided for @docTabTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents'**
+  String get docTabTitle;
+
+  /// No description provided for @docTechnicalSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents techniques'**
+  String get docTechnicalSection;
+
+  /// No description provided for @docInterventionSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents d\'intervention'**
+  String get docInterventionSection;
+
+  /// No description provided for @docCertificationSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Certificats & Conformité'**
+  String get docCertificationSection;
+
+  /// No description provided for @docAddButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un document'**
+  String get docAddButton;
+
+  /// No description provided for @docTypeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type de document'**
+  String get docTypeLabel;
+
+  /// No description provided for @docTypeTechnical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Manuel / Fiche technique'**
+  String get docTypeTechnical;
+
+  /// No description provided for @docTypeIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport / Facture'**
+  String get docTypeIntervention;
+
+  /// No description provided for @docTypeCertification.
+  ///
+  /// In fr, this message translates to:
+  /// **'Certificat / Conformité'**
+  String get docTypeCertification;
+
+  /// No description provided for @docUploadSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Document ajouté avec succès'**
+  String get docUploadSuccess;
+
+  /// No description provided for @docUploadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de l\'upload : {error}'**
+  String docUploadError(String error);
+
+  /// No description provided for @docDeleteConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer ce document ?'**
+  String get docDeleteConfirmTitle;
+
+  /// No description provided for @docDeleteConfirmBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action est irréversible.'**
+  String get docDeleteConfirmBody;
+
+  /// No description provided for @docDeleteSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Document supprimé'**
+  String get docDeleteSuccess;
+
+  /// No description provided for @docDownloadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible d\'ouvrir le document'**
+  String get docDownloadError;
+
+  /// No description provided for @docNoDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun document dans cette section'**
+  String get docNoDocuments;
+
+  /// No description provided for @docRestrictedAccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès réservé aux techniciens et superviseurs'**
+  String get docRestrictedAccess;
+
+  /// No description provided for @issuePhotosSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photos de l\'incident'**
+  String get issuePhotosSection;
+
+  /// No description provided for @issuePhotoLimitReached.
+  ///
+  /// In fr, this message translates to:
+  /// **'Limite de 5 photos atteinte'**
+  String get issuePhotoLimitReached;
+
+  /// No description provided for @issuePhotoCompressing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compression en cours…'**
+  String get issuePhotoCompressing;
+
+  /// No description provided for @issuePhotosUploading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoi des photos…'**
+  String get issuePhotosUploading;
+
+  /// No description provided for @issuePhotosNoPhotos.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune photo jointe'**
+  String get issuePhotosNoPhotos;
 }
 
 class _AppLocalizationsDelegate

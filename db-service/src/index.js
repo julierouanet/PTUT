@@ -14,6 +14,7 @@ const featuresRoutes       = require('./routes/features');
 const { router: backupsRoutes, initBackupCron } = require('./routes/backups');
 const categoriesRoutes     = require('./routes/categories');
 const pmProtocolsRoutes    = require('./routes/pm_protocols');
+const documentsRoutes      = require('./routes/documents');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 const { startPmReminderJob } = require('./jobs/pm_reminder_job');
@@ -64,6 +65,7 @@ app.use('/api/features',       featuresRoutes);
 app.use('/api/admin/backups',  backupsRoutes);
 app.use('/api/categories',     categoriesRoutes);
 app.use('/api/pm-protocols',   pmProtocolsRoutes);
+app.use('/api/equipment',      documentsRoutes);
 app.use('/api/debug',          debugRoutes);
 app.use('/',                   debugRoutes);
 

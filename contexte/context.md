@@ -584,6 +584,10 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | PUT     | /api/equipment/:id/pm-plan      | Admin/Sup/Tech    | UPSERT fréquence PM. Body: `{frequency_months: int}`. Crée ou met à jour `preventive_maintenance_plans` |
 | GET     | /api/equipment/:id/maintenance-label/:record_id | Admin/Sup/Tech | Génère un PDF A6 paysage (pdfkit). `Content-Type: application/pdf`. Inclut équipement, technicien, dates maint. |
 | POST    | /api/equipment/restore          | Admin             | Restaurer equipement supprime                     |
+| GET     | /api/equipment/:id/documents    | Auth (non-staff)  | **[NOUVEAU]** Liste des documents actifs. Filtre optionnel: `?type=technical\|intervention\|certification`. Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at}]` |
+| POST    | /api/equipment/:id/documents    | Admin/Sup/Tech    | **[NOUVEAU]** Upload multipart (`file` + `type`). Stockage physique `/data/uploads/documents/` avec nom UUID. Retourne `{id, stored_name, original_name, document_type, mime_type, file_size_kb}` |
+| GET     | /api/equipment/:id/documents/:doc_id/download | Auth (non-staff) | **[NOUVEAU]** Téléchargement inline (`Content-Disposition: inline`). 404 si soft-deleted |
+| DELETE  | /api/equipment/:id/documents/:doc_id | Admin/Sup    | **[NOUVEAU]** Soft delete (`deleted_at`). Fichier physique conservé |
 
 ### Catégories & Sous-catégories (`/api/categories`) **[NOUVEAU]**
 
@@ -614,6 +618,9 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracée appendée dans `actions`. |
 | PATCH   | /api/issues/:id/escalate    | Admin/Sup/Tech | Escalade/suspension. Body: `{ escalation_status, escalation_comment }`. `escalation_status` ∈ `Waiting Materials\|Redirected`, `escalation_comment` >= 10 char. Met à jour le statut et appende le commentaire dans `actions`. |
 | DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
+| POST    | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Upload multipart (champ `photos`, max 5 fichiers JPEG/PNG, 5 Mo chacun). Vérifie que total ≤ 5. Retourne `{photos: [{id, original_name, file_size_kb}]}` |
+| GET     | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Liste les photos de l'incident. Retourne `[{id, original_name, mime_type, file_size_kb, uploaded_at}]` |
+| GET     | /api/issues/:id/photos/:photo_id/download | Auth | **[NOUVEAU]** Téléchargement inline d'une photo. `Content-Disposition: inline` |
 
 ### Lieux (`/api/locations`)
 
@@ -734,14 +741,19 @@ lib/
 │   ├── inventory_item.dart      # InventoryItem, InventoryCategory, StockStatus enums
 │   ├── notification.dart        # AppNotification model
 │   ├── location.dart            # Location model (lieux infrastructure)
-│   └── departments.dart         # Department, EquipmentCategory enums
+│   ├── departments.dart         # Department, EquipmentCategory enums
+│   ├── equipment_document.dart  # [NOUVEAU] EquipmentDocument (documents équipement)
+│   └── issue_photo.dart         # [NOUVEAU] IssuePhoto (photos incidents)
 ├── providers/
 │   └── locale_provider.dart     # FR/EN avec SharedPreferences
 ├── widgets/                     # Composants UI reutilisables
 │   ├── issue_category_selector.dart  # Selecteur de categorie avant IssueFormScreen
+│   └── equipment/
+│       └── equipment_documents_tab.dart  # [NOUVEAU] Onglet Documents (2 sections + upload/download/delete)
 ├── theme/                       # AppTheme, couleurs
 ├── l10n/                        # Traductions FR/EN
 ├── utils/                       # Utilitaires (file picker)
+│   └── image_compressor.dart    # [NOUVEAU] Compression images (web=bypass, natif=placeholder)
 └── data/                        # Donnees mock pour dev offline
 ```
 
@@ -963,6 +975,7 @@ Fichiers ARB template : `app_fr.arb` + `app_en.arb`. Génération : `flutter gen
 | table_calendar         | ^3.1.2   | Widget calendrier                 |
 | intl                   | any      | Internationalisation (FR/EN)      |
 | cupertino_icons        | ^1.0.8   | Icones iOS                        |
+| file_picker            | ^8.0.0   | **[NOUVEAU]** Sélection de fichiers (web + natif) pour upload documents |
 
 ---
 

@@ -729,6 +729,46 @@ function initTables() {
       } catch (_) {}
     }
   }
+
+  // ── Gestion documentaire équipements ──────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment_documents (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      equipment_id  TEXT    NOT NULL REFERENCES equipment(id) ON DELETE CASCADE,
+      document_type TEXT    NOT NULL DEFAULT 'technical',
+      original_name TEXT    NOT NULL,
+      stored_name   TEXT    NOT NULL UNIQUE,
+      mime_type     TEXT    NOT NULL,
+      file_size_kb  INTEGER NOT NULL,
+      uploaded_by   TEXT    NOT NULL,
+      uploader_name TEXT    NOT NULL,
+      uploaded_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime')),
+      deleted_at    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_eq_docs_equipment
+      ON equipment_documents(equipment_id)
+      WHERE deleted_at IS NULL;
+  `);
+
+  // ── Photos d'incidents ─────────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS issue_photos (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id      TEXT    NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+      stored_name   TEXT    NOT NULL UNIQUE,
+      original_name TEXT    NOT NULL,
+      mime_type     TEXT    NOT NULL DEFAULT 'image/jpeg',
+      file_size_kb  INTEGER NOT NULL,
+      uploaded_at   TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_issue_photos_issue
+      ON issue_photos(issue_id);
+  `);
+
+  // Créer le dossier d'upload au démarrage
+  const fs = require('fs');
+  const uploadDir = process.env.UPLOAD_DIR || '/data/uploads/documents';
+  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 function closeDb() {

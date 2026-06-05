@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
+import '../services/api_client.dart';
+import '../services/api_config.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
@@ -13,6 +15,7 @@ import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../models/departments.dart';
 import '../utils/file_picker.dart';
+import '../utils/image_compressor.dart';
 import '../widgets/urgency_badge.dart';
 
 /// Catalogue infrastructure 3 niveaux : catégorie → sous-catégorie → problèmes.
@@ -914,6 +917,27 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     setState(() => _isSubmitting = true);
     try {
       await DbApiService.instance.createIssue(issueData);
+
+      // Upload des photos après création de l'incident (multipart, max 5)
+      if (_photos.isNotEmpty) {
+        final photosUrl =
+            '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(ticketId)}/photos';
+        final files = <({Uint8List bytes, String name, String mimeType})>[];
+        for (final photo in _photos) {
+          final compressed = await ImageCompressor.compress(photo.bytes);
+          final mime = photo.name.toLowerCase().endsWith('.png')
+              ? 'image/png'
+              : 'image/jpeg';
+          files.add((bytes: compressed, name: photo.name, mimeType: mime));
+        }
+        try {
+          await ApiClient.postMultipartFiles(photosUrl, files);
+        } catch (_) {
+          // L'upload photo échoue silencieusement — l'incident est déjà créé.
+          debugPrint('[IssueForm] Échec upload photos — incident créé sans photos');
+        }
+      }
+
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;

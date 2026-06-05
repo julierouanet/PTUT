@@ -183,6 +183,8 @@ PTUT/
 | `inventory` | TEXT | Pièces détachées et consommables médicaux |
 | `logs` | AUTOINCREMENT | Audit trail de toutes les mutations |
 | `sidebar_config` | `(role, screen_type)` | Ordre et visibilité de la sidebar par rôle |
+| `equipment_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents liés aux équipements (manuels, rapports, certificats) — 3 types : `technical`, `intervention`, `certification` — soft delete via `deleted_at` |
+| `issue_photos` | AUTOINCREMENT | **[NOUVEAU]** Photos liées aux incidents — max 5 par incident — stockées sur le filesystem (`/data/uploads/documents`) |
 
 ### Points critiques
 

@@ -4302,4 +4302,73 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pmFrequencySelectLabel => 'Set PM frequency';
+
+  @override
+  String get docTabTitle => 'Documents';
+
+  @override
+  String get docTechnicalSection => 'Technical documents';
+
+  @override
+  String get docInterventionSection => 'Intervention documents';
+
+  @override
+  String get docCertificationSection => 'Certificates & Compliance';
+
+  @override
+  String get docAddButton => 'Add document';
+
+  @override
+  String get docTypeLabel => 'Document type';
+
+  @override
+  String get docTypeTechnical => 'Manual / Technical sheet';
+
+  @override
+  String get docTypeIntervention => 'Report / Invoice';
+
+  @override
+  String get docTypeCertification => 'Certificate / Compliance';
+
+  @override
+  String get docUploadSuccess => 'Document successfully added';
+
+  @override
+  String docUploadError(String error) {
+    return 'Upload failed: $error';
+  }
+
+  @override
+  String get docDeleteConfirmTitle => 'Delete this document?';
+
+  @override
+  String get docDeleteConfirmBody => 'This action cannot be undone.';
+
+  @override
+  String get docDeleteSuccess => 'Document deleted';
+
+  @override
+  String get docDownloadError => 'Unable to open document';
+
+  @override
+  String get docNoDocuments => 'No documents in this section';
+
+  @override
+  String get docRestrictedAccess =>
+      'Access restricted to technicians and supervisors';
+
+  @override
+  String get issuePhotosSection => 'Incident photos';
+
+  @override
+  String get issuePhotoLimitReached => '5-photo limit reached';
+
+  @override
+  String get issuePhotoCompressing => 'Compressing…';
+
+  @override
+  String get issuePhotosUploading => 'Uploading photos…';
+
+  @override
+  String get issuePhotosNoPhotos => 'No photos attached';
 }

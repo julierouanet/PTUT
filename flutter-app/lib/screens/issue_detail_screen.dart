@@ -1,10 +1,15 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
+import '../models/issue_photo.dart';
 import '../models/user_role.dart';
+import '../services/api_client.dart';
+import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
@@ -42,6 +47,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
 
   // ── État ──────────────────────────────────────────────────────────────────
   IssueDetail? _detail;
+  List<IssuePhoto> _photos = [];
   bool _loading = true;
   String? _error;
   bool _submitting = false;
@@ -76,7 +82,21 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   Future<void> _load() async {
     try {
       final detail = await DbApiService.instance.getIssueDetail(widget.issueId);
-      if (mounted) setState(() { _detail = detail; _loading = false; });
+      if (!mounted) return;
+
+      // Chargement des photos en parallèle (non bloquant — erreur ignorée)
+      List<IssuePhoto> photos = [];
+      try {
+        final photosUrl =
+            '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(widget.issueId)}/photos';
+        final photosResp = await ApiClient.get(photosUrl);
+        if (photosResp.statusCode == 200) {
+          final raw = jsonDecode(photosResp.body) as List;
+          photos = raw.map((j) => IssuePhoto.fromJson(j as Map<String, dynamic>)).toList();
+        }
+      } catch (_) {}
+
+      if (mounted) setState(() { _detail = detail; _photos = photos; _loading = false; });
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
@@ -829,55 +849,38 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
   }
 
-  // ── Carte Documents & Pièces jointes ──────────────────────────────────────
+  // ── Carte Photos de l'incident ─────────────────────────────────────────────
 
   Widget _buildDocumentsCard(AppLocalizations l10n) {
     return _SectionCard(
-      title: l10n.issueDetailSectionDocuments,
-      icon: Icons.attach_file,
-      iconColor: AppColors.textSecondary,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(children: [
-            const Icon(Icons.insert_drive_file_outlined,
-                color: AppColors.textMuted, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.issueDetailNoDocuments,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 13)),
-                    const SizedBox(height: 2),
-                    Text(l10n.issueDetailDocumentsHint,
-                        style: const TextStyle(
-                            color: AppColors.textMuted, fontSize: 12)),
-                  ]),
+      title: l10n.issuePhotosSection,
+      icon: Icons.photo_library_outlined,
+      iconColor: AppColors.primary,
+      child: _photos.isEmpty
+          ? Row(children: [
+              const Icon(Icons.photo_outlined, color: AppColors.textMuted, size: 18),
+              const SizedBox(width: 8),
+              Text(l10n.issuePhotosNoPhotos,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 13)),
+            ])
+          : GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: _photos.length == 1 ? 1 : 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 1,
+              ),
+              itemCount: _photos.length,
+              itemBuilder: (_, i) => _PhotoThumbnail(
+                photo: _photos[i],
+                issueId: widget.issueId,
+              ),
             ),
-          ]),
-        ),
-        const SizedBox(height: 12),
-        OutlinedButton.icon(
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('Fonctionnalité à venir — import de fichier'),
-              behavior: SnackBarBehavior.floating,
-            ));
-          },
-          icon: const Icon(Icons.upload_file, size: 16),
-          label: Text(l10n.issueDetailAddDocument),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          ),
-        ),
-      ]),
     );
   }
 
@@ -1211,5 +1214,118 @@ class _TimelineEntry extends StatelessWidget {
     }
     if (action == 'reassign_issue') return AppColors.primary;
     return AppColors.textSecondary;
+  }
+}
+
+// ── Vignette photo incident ────────────────────────────────────────────────────
+
+class _PhotoThumbnail extends StatefulWidget {
+  final IssuePhoto photo;
+  final String issueId;
+
+  const _PhotoThumbnail({required this.photo, required this.issueId});
+
+  @override
+  State<_PhotoThumbnail> createState() => _PhotoThumbnailState();
+}
+
+class _PhotoThumbnailState extends State<_PhotoThumbnail> {
+  Uint8List? _bytes;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPhoto();
+  }
+
+  Future<void> _fetchPhoto() async {
+    final url =
+        '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(widget.issueId)}'
+        '/photos/${widget.photo.id}/download';
+    try {
+      final resp = await ApiClient.get(url);
+      if (!mounted) return;
+      if (resp.statusCode == 200) {
+        setState(() { _bytes = resp.bodyBytes; _loading = false; });
+      } else {
+        setState(() { _error = true; _loading = false; });
+      }
+    } catch (_) {
+      if (mounted) setState(() { _error = true; _loading = false; });
+    }
+  }
+
+  void _openFullScreen() {
+    if (_bytes == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(8),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              color: Colors.black,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.9,
+              ),
+              child: InteractiveViewer(
+                child: Image.memory(_bytes!, fit: BoxFit.contain),
+              ),
+            ),
+            Positioned(
+              top: 8, right: 8,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: Container(
+                  decoration: const BoxDecoration(
+                      color: Colors.black54, shape: BoxShape.circle),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.close, color: Colors.white, size: 22),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 12, left: 0, right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Text(
+                    widget.photo.originalName,
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _openFullScreen,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          color: AppColors.background,
+          child: _loading
+              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+              : _error || _bytes == null
+                  ? const Center(
+                      child: Icon(Icons.broken_image,
+                          color: AppColors.textMuted, size: 32))
+                  : Image.memory(_bytes!, fit: BoxFit.cover),
+        ),
+      ),
+    );
   }
 }
