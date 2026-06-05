@@ -819,6 +819,15 @@ class HomeHubScreen extends StatelessWidget {
     int stockAlertCount,
     int outOfServiceCount,
   ) {
+    // Vérification des mêmes conditions que _buildModuleCards pour cohérence :
+    // ne pas naviguer vers un module désactivé depuis les tuiles KPI.
+    final auth     = AuthService();
+    final features = FeatureService();
+    final role     = auth.primaryRole?.apiName;
+    final canGoInventory = auth.hasPermission(Permission.viewInventory) &&
+        features.isModuleEnabled('inventory', role);
+    final canGoEquipment = features.isModuleEnabled('equipment', role);
+
     final tiles = <_KpiTile>[
       _KpiTile(
         label: l10n.hubKpiCriticalUrgentLabel,
@@ -826,7 +835,7 @@ class HomeHubScreen extends StatelessWidget {
         icon: Icons.warning_amber_rounded,
         color: criticalCount > 0 ? AppColors.error : AppColors.success,
         subtitle: criticalCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOpenIssues,
-        onTap: onEquipmentModule,
+        onTap: canGoEquipment ? onEquipmentModule : null,
       ),
       _KpiTile(
         label: l10n.hubKpiStockAlertsLabel,
@@ -834,7 +843,7 @@ class HomeHubScreen extends StatelessWidget {
         icon: Icons.inventory_outlined,
         color: stockAlertCount > 0 ? AppColors.warning : AppColors.success,
         subtitle: stockAlertCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiStockAlertsSubtitle,
-        onTap: onInventoryModule,
+        onTap: canGoInventory ? onInventoryModule : null,
       ),
       _KpiTile(
         label: l10n.hubKpiOutOfServiceLabel,
@@ -842,7 +851,7 @@ class HomeHubScreen extends StatelessWidget {
         icon: Icons.power_off_outlined,
         color: outOfServiceCount > 0 ? AppColors.warning : AppColors.success,
         subtitle: outOfServiceCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOutOfServiceSubtitle,
-        onTap: onEquipmentModule,
+        onTap: canGoEquipment ? onEquipmentModule : null,
       ),
     ];
 
@@ -1111,7 +1120,7 @@ class _KpiTile extends StatelessWidget {
   final IconData icon;
   final Color color;
   final String subtitle;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   const _KpiTile({
     required this.label,
@@ -1119,7 +1128,7 @@ class _KpiTile extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
   });
 
   @override
