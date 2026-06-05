@@ -4414,4 +4414,46 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get issuePhotosNoPhotos => 'Aucune photo jointe';
+
+  @override
+  String get showMore => 'Afficher plus';
+
+  @override
+  String get allEquipmentDisplayed => 'Tous les équipements sont affichés';
+
+  @override
+  String get issueStaffDetailTitle => 'Suivi de mon signalement';
+
+  @override
+  String get issueTimelineReported => 'Signalé';
+
+  @override
+  String get issueTimelineAcknowledged => 'Pris en charge';
+
+  @override
+  String get issueTimelineInProgress => 'En cours de réparation';
+
+  @override
+  String get issueTimelineResolved => 'Résolu';
+
+  @override
+  String get sidebarTitleEquipment => 'Gestion des équipements';
+
+  @override
+  String get sidebarTitleSettings => 'Configuration';
+
+  @override
+  String get sidebarTitleInventory => 'Inventaire';
+
+  @override
+  String get sidebarTitleReports => 'Rapports';
+
+  @override
+  String get see => 'Voir';
+
+  @override
+  String get exportingPdf => 'Génération du PDF…';
+
+  @override
+  String get exportError => 'Erreur lors de l\'export. Réessayez.';
 }

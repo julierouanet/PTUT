@@ -1750,5 +1750,20 @@
   "issuePhotosUploading": "Uploading photos…",
   "@issuePhotosUploading": {},
   "issuePhotosNoPhotos": "No photos attached",
-  "@issuePhotosNoPhotos": {}
+  "@issuePhotosNoPhotos": {},
+
+  "showMore": "Show more",
+  "allEquipmentDisplayed": "All equipment is displayed",
+  "issueStaffDetailTitle": "My report tracking",
+  "issueTimelineReported": "Reported",
+  "issueTimelineAcknowledged": "Acknowledged",
+  "issueTimelineInProgress": "In progress",
+  "issueTimelineResolved": "Resolved",
+  "sidebarTitleEquipment": "Equipment management",
+  "sidebarTitleSettings": "Settings",
+  "sidebarTitleInventory": "Inventory",
+  "sidebarTitleReports": "Reports",
+  "see": "See",
+  "exportingPdf": "Generating PDF…",
+  "exportError": "Export failed. Please try again."
 }

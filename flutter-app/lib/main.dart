@@ -587,6 +587,24 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
+  /// Retourne le sous-titre de la sidebar selon l'écran actif.
+  String _getSidebarSubtitle(AppLocalizations l10n, List<_NavItem> navItems) {
+    if (_currentIndex >= navItems.length) return l10n.hospitalSubtitle;
+    final screen = navItems[_currentIndex].screenType;
+    return switch (screen) {
+      ScreenType.equipment        => l10n.sidebarTitleEquipment,
+      ScreenType.inventory        => l10n.sidebarTitleInventory,
+      ScreenType.reports          => l10n.sidebarTitleReports,
+      ScreenType.settings         => l10n.sidebarTitleSettings,
+      ScreenType.users            => l10n.sidebarTitleSettings,
+      ScreenType.logs             => l10n.sidebarTitleSettings,
+      ScreenType.featureManagement => l10n.sidebarTitleSettings,
+      ScreenType.backupManagement  => l10n.sidebarTitleSettings,
+      ScreenType.debugTest         => l10n.sidebarTitleSettings,
+      _                           => l10n.hospitalSubtitle,
+    };
+  }
+
   Widget _buildSidebar(AppLocalizations l10n, List<_NavItem> navItems) {
     final currentUser = _authService.currentUser;
     return AnimatedContainer(
@@ -629,7 +647,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(l10n.hospitalName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
-                            Text(l10n.hospitalSubtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                            Text(_getSidebarSubtitle(l10n, navItems), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                           ],
                         ),
                       ),
@@ -709,6 +727,70 @@ class _MainScaffoldState extends State<MainScaffold> {
                 );
               },
             ),
+          ),
+          // ── Badge notifications (sidebar desktop) ────────────────────────
+          ListenableBuilder(
+            listenable: NotificationService(),
+            builder: (context, _) {
+              final unread = NotificationService().unreadCount;
+              if (unread == 0) return const SizedBox.shrink();
+              return Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 2),
+                child: _isSidebarCollapsed
+                    ? Tooltip(
+                        message: '${l10n.tooltipNotifications} ($unread)',
+                        child: Center(
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: const BoxDecoration(
+                                color: AppColors.error, shape: BoxShape.circle),
+                            child: Center(
+                              child: Text(
+                                unread > 9 ? '9+' : '$unread',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ),
+                      )
+                    : ListTile(
+                        leading: Stack(children: [
+                          const Icon(Icons.notifications_outlined,
+                              color: AppColors.textSecondary),
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                  color: AppColors.error,
+                                  shape: BoxShape.circle),
+                              child: Text(
+                                unread > 9 ? '9+' : '$unread',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ]),
+                        title: Text(
+                          l10n.tooltipNotifications,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        dense: true,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                        onTap: () {},
+                      ),
+              );
+            },
           ),
           // ── Bouton déconnexion ─────────────────────────────────────────────
           Padding(

@@ -1772,5 +1772,20 @@
   "issuePhotosUploading": "Envoi des photos…",
   "@issuePhotosUploading": {},
   "issuePhotosNoPhotos": "Aucune photo jointe",
-  "@issuePhotosNoPhotos": {}
+  "@issuePhotosNoPhotos": {},
+
+  "showMore": "Afficher plus",
+  "allEquipmentDisplayed": "Tous les équipements sont affichés",
+  "issueStaffDetailTitle": "Suivi de mon signalement",
+  "issueTimelineReported": "Signalé",
+  "issueTimelineAcknowledged": "Pris en charge",
+  "issueTimelineInProgress": "En cours de réparation",
+  "issueTimelineResolved": "Résolu",
+  "sidebarTitleEquipment": "Gestion des équipements",
+  "sidebarTitleSettings": "Configuration",
+  "sidebarTitleInventory": "Inventaire",
+  "sidebarTitleReports": "Rapports",
+  "see": "Voir",
+  "exportingPdf": "Génération du PDF…",
+  "exportError": "Erreur lors de l'export. Réessayez."
 }

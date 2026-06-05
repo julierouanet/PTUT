@@ -5,12 +5,14 @@ import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
 import '../models/issue.dart';
+import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
 import '../widgets/issues/kanban_board.dart';
 import '../utils/csv_export.dart';
 import 'issue_detail_screen.dart';
+import 'issue_staff_detail_screen.dart';
 
 // Filtre période
 enum _PeriodFilter { all, last7Days, last30Days }
@@ -1025,20 +1027,38 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
 
   void _showIssueDetail(Issue issue) {
     final isDesktop = MediaQuery.of(context).size.width >= 800;
-    if (isDesktop) {
-      // Mode Split View : mise à jour du panneau droit
+
+    // Vérification RBAC : techniciens/superviseurs/admins → vue complète
+    final canEdit = _authService.hasPermission(Permission.updateRepairs) ||
+                    _authService.hasPermission(Permission.approveRequests) ||
+                    _authService.hasPermission(Permission.manageEquipment);
+
+    if (isDesktop && canEdit) {
+      // Mode Split View desktop : mise à jour du panneau droit
       setState(() => _selectedIssueId = issue.id);
-    } else {
-      // Mode Mobile : navigation plein écran
+    } else if (!canEdit) {
+      // hospitalStaff → vue lecture seule
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => IssueDetailScreen(
-            issueId:    issue.id,
-            onNavigate: widget.onNavigate,
-          ),
+          builder: (_) => IssueStaffDetailScreen(issue: issue),
         ),
       );
+    } else {
+      // Desktop sans canEdit ou mobile avec canEdit → vue complète
+      if (isDesktop) {
+        setState(() => _selectedIssueId = issue.id);
+      } else {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => IssueDetailScreen(
+              issueId:    issue.id,
+              onNavigate: widget.onNavigate,
+            ),
+          ),
+        );
+      }
     }
   }
 }

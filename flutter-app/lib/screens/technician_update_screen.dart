@@ -295,9 +295,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     final l10n      = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.of(context).size.width >= 800;
 
+    // Sur mobile (< 600px), icônes seules pour éviter l'overflow du TabBar
+    final isMobileTab = MediaQuery.of(context).size.width < 600;
+
     return Column(
       children: [
-        // TabBar compacte : icône + texte côte à côte (économise ~30px vs empilement vertical)
+        // TabBar : icône + texte sur desktop, icône seule sur mobile
         Material(
           color: Theme.of(context).cardColor,
           elevation: 1,
@@ -312,56 +315,91 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             tabs: [
               Tab(
                 height: 40,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Badge(
-                    isLabelVisible: _availableIssues.isNotEmpty,
-                    label: Text('${_availableIssues.length}',
-                        style: const TextStyle(fontSize: 10)),
-                    child: const Icon(Icons.inbox_outlined, size: 16),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(l10n.techAvailableTab,
-                      style: const TextStyle(fontSize: 13)),
-                ]),
+                child: isMobileTab
+                    ? Tooltip(
+                        message: l10n.techAvailableTab,
+                        child: Badge(
+                          isLabelVisible: _availableIssues.isNotEmpty,
+                          label: Text('${_availableIssues.length}',
+                              style: const TextStyle(fontSize: 10)),
+                          child: const Icon(Icons.inbox_outlined, size: 18),
+                        ),
+                      )
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        Badge(
+                          isLabelVisible: _availableIssues.isNotEmpty,
+                          label: Text('${_availableIssues.length}',
+                              style: const TextStyle(fontSize: 10)),
+                          child: const Icon(Icons.inbox_outlined, size: 16),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(l10n.techAvailableTab,
+                            style: const TextStyle(fontSize: 13)),
+                      ]),
               ),
               Tab(
                 height: 40,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Badge(
-                    isLabelVisible: _myIssues.isNotEmpty,
-                    label: Text('${_myIssues.length}',
-                        style: const TextStyle(fontSize: 10)),
-                    child: const Icon(Icons.build_outlined, size: 16),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(l10n.techMyInterventionsTab,
-                      style: const TextStyle(fontSize: 13)),
-                ]),
+                child: isMobileTab
+                    ? Tooltip(
+                        message: l10n.techMyInterventionsTab,
+                        child: Badge(
+                          isLabelVisible: _myIssues.isNotEmpty,
+                          label: Text('${_myIssues.length}',
+                              style: const TextStyle(fontSize: 10)),
+                          child: const Icon(Icons.build_outlined, size: 18),
+                        ),
+                      )
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        Badge(
+                          isLabelVisible: _myIssues.isNotEmpty,
+                          label: Text('${_myIssues.length}',
+                              style: const TextStyle(fontSize: 10)),
+                          child: const Icon(Icons.build_outlined, size: 16),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(l10n.techMyInterventionsTab,
+                            style: const TextStyle(fontSize: 13)),
+                      ]),
               ),
               Tab(
                 height: 40,
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.calendar_today_outlined, size: 16),
-                  const SizedBox(width: 6),
-                  Text(l10n.techScheduleTab,
-                      style: const TextStyle(fontSize: 13)),
-                ]),
+                child: isMobileTab
+                    ? Tooltip(
+                        message: l10n.techScheduleTab,
+                        child: const Icon(Icons.calendar_today_outlined, size: 18),
+                      )
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.calendar_today_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Text(l10n.techScheduleTab,
+                            style: const TextStyle(fontSize: 13)),
+                      ]),
               ),
               // Onglet Validation — visible uniquement pour admin/superviseur
               if (_canValidate)
                 Tab(
                   height: 40,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Badge(
-                      isLabelVisible: _openIssuesForValidation.isNotEmpty,
-                      label: Text('${_openIssuesForValidation.length}',
-                          style: const TextStyle(fontSize: 10)),
-                      child: const Icon(Icons.pending_actions_outlined, size: 16),
-                    ),
-                    const SizedBox(width: 6),
-                    Text(l10n.issueValidationTab,
-                        style: const TextStyle(fontSize: 13)),
-                  ]),
+                  child: isMobileTab
+                      ? Tooltip(
+                          message: l10n.issueValidationTab,
+                          child: Badge(
+                            isLabelVisible: _openIssuesForValidation.isNotEmpty,
+                            label: Text('${_openIssuesForValidation.length}',
+                                style: const TextStyle(fontSize: 10)),
+                            child: const Icon(Icons.pending_actions_outlined, size: 18),
+                          ),
+                        )
+                      : Row(mainAxisSize: MainAxisSize.min, children: [
+                          Badge(
+                            isLabelVisible: _openIssuesForValidation.isNotEmpty,
+                            label: Text('${_openIssuesForValidation.length}',
+                                style: const TextStyle(fontSize: 10)),
+                            child: const Icon(Icons.pending_actions_outlined, size: 16),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(l10n.issueValidationTab,
+                              style: const TextStyle(fontSize: 13)),
+                        ]),
                 ),
             ],
           ),

@@ -8155,6 +8155,90 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucune photo jointe'**
   String get issuePhotosNoPhotos;
+
+  /// No description provided for @showMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher plus'**
+  String get showMore;
+
+  /// No description provided for @allEquipmentDisplayed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les équipements sont affichés'**
+  String get allEquipmentDisplayed;
+
+  /// No description provided for @issueStaffDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivi de mon signalement'**
+  String get issueStaffDetailTitle;
+
+  /// No description provided for @issueTimelineReported.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signalé'**
+  String get issueTimelineReported;
+
+  /// No description provided for @issueTimelineAcknowledged.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pris en charge'**
+  String get issueTimelineAcknowledged;
+
+  /// No description provided for @issueTimelineInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours de réparation'**
+  String get issueTimelineInProgress;
+
+  /// No description provided for @issueTimelineResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu'**
+  String get issueTimelineResolved;
+
+  /// No description provided for @sidebarTitleEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Gestion des équipements'**
+  String get sidebarTitleEquipment;
+
+  /// No description provided for @sidebarTitleSettings.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configuration'**
+  String get sidebarTitleSettings;
+
+  /// No description provided for @sidebarTitleInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
+  String get sidebarTitleInventory;
+
+  /// No description provided for @sidebarTitleReports.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapports'**
+  String get sidebarTitleReports;
+
+  /// No description provided for @see.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir'**
+  String get see;
+
+  /// No description provided for @exportingPdf.
+  ///
+  /// In fr, this message translates to:
+  /// **'Génération du PDF…'**
+  String get exportingPdf;
+
+  /// No description provided for @exportError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de l\'export. Réessayez.'**
+  String get exportError;
 }
 
 class _AppLocalizationsDelegate

@@ -185,6 +185,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ── Mode d'affichage ───────────────────────────────────────────────────
   bool _isGridView = false;
 
+  // ── Pagination en mémoire ──────────────────────────────────────────────
+  static const int _pageSize = 20;
+  int _visibleCount = _pageSize;
+
   // ── Contrôleur de recherche (restaure le texte après rebuild) ─────────
   late final TextEditingController _searchCtrl;
 
@@ -252,7 +256,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   // ── Persistance session ────────────────────────────────────────────────
 
-  void _saveFilters() {
+  void _saveFilters({bool resetPage = false}) {
+    if (resetPage) _visibleCount = _pageSize;
     final s = EquipmentFilterState();
     s.searchTerm          = _searchTerm;
     s.departmentFilter    = _departmentFilter;
@@ -353,6 +358,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     final l10n     = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < 600;
     final filtered = _filteredEquipment;
+    // Tranche visible pour la pagination en mémoire
+    final visible  = filtered.take(_visibleCount).toList();
 
     return CustomScrollView(
       slivers: [
@@ -391,11 +398,11 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             sliver: SliverToBoxAdapter(child: _buildTableHeader(l10n)),
           ),
 
-        // Lignes virtualisées (liste ou grille)
+        // Lignes virtualisées (liste ou grille) — sur la tranche visible
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
               isMobile ? 16 : 24, isMobile ? 8 : 4,
-              isMobile ? 16 : 24, isMobile ? 16 : 24),
+              isMobile ? 16 : 24, 0),
           sliver: filtered.isEmpty
               ? SliverToBoxAdapter(child: _buildEmptyState(l10n))
               : (!isMobile && _isGridView)
@@ -408,18 +415,49 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                         mainAxisSpacing: 8,
                       ),
                       delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _buildGridCard(filtered[i], l10n),
-                        childCount: filtered.length,
+                        (ctx, i) => _buildGridCard(visible[i], l10n),
+                        childCount: visible.length,
                       ),
                     )
                   : SliverList(
                       delegate: SliverChildBuilderDelegate(
                         (ctx, i) => isMobile
-                            ? _buildMobileCard(filtered[i], l10n)
-                            : _buildDesktopRow(filtered[i], l10n),
-                        childCount: filtered.length,
+                            ? _buildMobileCard(visible[i], l10n)
+                            : _buildDesktopRow(visible[i], l10n),
+                        childCount: visible.length,
                       ),
                     ),
+        ),
+
+        // Pied de pagination : bouton "Afficher plus" ou fin de liste
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(
+              isMobile ? 16 : 24, 8, isMobile ? 16 : 24, isMobile ? 16 : 24),
+          sliver: SliverToBoxAdapter(
+            child: filtered.isEmpty
+                ? const SizedBox.shrink()
+                : _visibleCount < filtered.length
+                    ? Center(
+                        child: TextButton(
+                          onPressed: () =>
+                              setState(() => _visibleCount += _pageSize),
+                          child: Text(l10n.showMore),
+                        ),
+                      )
+                    : filtered.length > _pageSize
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                l10n.allEquipmentDisplayed,
+                                style: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+          ),
         ),
       ],
     );
@@ -537,7 +575,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           checkmarkColor: AppColors.primary,
           onSelected: (v) => setState(() {
             _departmentFilter = v ? myDept : l10n.commonAll;
-            _saveFilters();
+            _saveFilters(resetPage: true);
           }),
         ),
 
@@ -552,7 +590,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             deleteIcon: const Icon(Icons.close, size: 14),
             onDeleted: () => setState(() {
               _macroCategoryFilter = null;
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
             onSelected: (_) {},
           ),
@@ -568,7 +606,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             deleteIcon: const Icon(Icons.close, size: 14),
             onDeleted: () => setState(() {
               _locationFilter = null;
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
             onSelected: (_) {},
           ),
@@ -583,7 +621,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             checkmarkColor: AppColors.error,
             onSelected: (v) => setState(() {
               _filterPmOverdue = v;
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
           ),
           FilterChip(
@@ -594,7 +632,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             checkmarkColor: AppColors.warning,
             onSelected: (v) => setState(() {
               _filterPmSoon = v;
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
           ),
         ],
@@ -617,7 +655,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             _availableUnits(all),
             (v) => setState(() {
               _locationFilter = (v == all) ? null : v;
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
           )
         : null;
@@ -634,21 +672,21 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       child: _dropdown(l10n.commonDepartment, _departmentFilter,
                           _departments(all), (v) => setState(() {
                             _departmentFilter = v!;
-                            _saveFilters();
+                            _saveFilters(resetPage: true);
                           }))),
                   const SizedBox(width: 10),
                   Expanded(
                       child: _dropdown(l10n.commonStatus, _statusFilter,
                           _statuses(all), (v) => setState(() {
                             _statusFilter = v!;
-                            _saveFilters();
+                            _saveFilters(resetPage: true);
                           }))),
                 ]),
                 const SizedBox(height: 10),
                 _dropdown(l10n.commonCategory, _categoryFilter,
                     _categories(all), (v) => setState(() {
                       _categoryFilter = v!;
-                      _saveFilters();
+                      _saveFilters(resetPage: true);
                     })),
                 if (unitDropdown != null) ...[
                   const SizedBox(height: 10),
@@ -662,21 +700,21 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     child: _dropdown(l10n.commonDepartment, _departmentFilter,
                         _departments(all), (v) => setState(() {
                           _departmentFilter = v!;
-                          _saveFilters();
+                          _saveFilters(resetPage: true);
                         }))),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _dropdown(l10n.commonStatus, _statusFilter,
                         _statuses(all), (v) => setState(() {
                           _statusFilter = v!;
-                          _saveFilters();
+                          _saveFilters(resetPage: true);
                         }))),
                 const SizedBox(width: 12),
                 Expanded(
                     child: _dropdown(l10n.commonCategory, _categoryFilter,
                         _categories(all), (v) => setState(() {
                           _categoryFilter = v!;
-                          _saveFilters();
+                          _saveFilters(resetPage: true);
                         }))),
                 if (unitDropdown != null) ...[
                   const SizedBox(width: 12),
@@ -691,6 +729,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         controller: _searchCtrl,
         onChanged: (v) => setState(() {
           _searchTerm = v;
+          _visibleCount = _pageSize;
           _saveFilters();
         }),
         decoration: InputDecoration(

@@ -4371,4 +4371,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issuePhotosNoPhotos => 'No photos attached';
+
+  @override
+  String get showMore => 'Show more';
+
+  @override
+  String get allEquipmentDisplayed => 'All equipment is displayed';
+
+  @override
+  String get issueStaffDetailTitle => 'My report tracking';
+
+  @override
+  String get issueTimelineReported => 'Reported';
+
+  @override
+  String get issueTimelineAcknowledged => 'Acknowledged';
+
+  @override
+  String get issueTimelineInProgress => 'In progress';
+
+  @override
+  String get issueTimelineResolved => 'Resolved';
+
+  @override
+  String get sidebarTitleEquipment => 'Equipment management';
+
+  @override
+  String get sidebarTitleSettings => 'Settings';
+
+  @override
+  String get sidebarTitleInventory => 'Inventory';
+
+  @override
+  String get sidebarTitleReports => 'Reports';
+
+  @override
+  String get see => 'See';
+
+  @override
+  String get exportingPdf => 'Generating PDF…';
+
+  @override
+  String get exportError => 'Export failed. Please try again.';
 }

@@ -669,6 +669,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               _buildHeader(l10n, isMobile),
               const SizedBox(height: 16),
 
+              // ── Section Archives — en tête de page pour accès rapide ───────
+              if (AuthService().canGenerateReports) ...[
+                _buildArchivesSection(context, l10n),
+                const SizedBox(height: 24),
+              ],
+
               // ── Sélecteur de période + export CSV ─────────────────────────
               _buildPeriodBar(context, l10n),
               const SizedBox(height: 24),
@@ -730,12 +736,6 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         issueCard,
                       ]);
               }),
-
-              // ── Section Archives — visible uniquement si canGenerateReports ──
-              if (AuthService().canGenerateReports) ...[
-                const SizedBox(height: 24),
-                _buildArchivesSection(context, l10n),
-              ],
             ],
           ),
         );
@@ -764,14 +764,73 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildPeriodBar(BuildContext context, AppLocalizations l10n) {
+    final csvButton = TextButton.icon(
+      onPressed: _isExporting ? null : () => _exportCsv(context, l10n),
+      icon: _isExporting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.download_outlined, size: 18),
+      label: Text(l10n.reportsExportCsv),
+      style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+    );
+
+    final pdfButton = AuthService().canGenerateReports
+        ? Tooltip(
+            message: l10n.reportsPdfExportTooltip,
+            child: TextButton.icon(
+              onPressed: _isExportingPdf ? null : () => _exportPdf(context, l10n),
+              icon: _isExportingPdf
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              label: Text(_isExportingPdf
+                  ? l10n.reportsExportPDFProgress
+                  : l10n.reportsExportPDF),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            ),
+          )
+        : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
+            // Sur mobile : empiler le label et les boutons pour éviter l'overflow
+            LayoutBuilder(builder: (_, constraints) {
+              final isMobileBar = constraints.maxWidth < 600;
+              if (isMobileBar) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        l10n.reportsPeriodLabel,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ]),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      csvButton,
+                      if (pdfButton != null) ...[const SizedBox(width: 4), pdfButton],
+                    ]),
+                  ],
+                );
+              }
+              return Row(children: [
                 const Icon(Icons.calendar_month_outlined, size: 16, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Text(
@@ -783,43 +842,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                 ),
                 const Spacer(),
-                TextButton.icon(
-                  onPressed: _isExporting ? null : () => _exportCsv(context, l10n),
-                  icon: _isExporting
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.download_outlined, size: 18),
-                  label: Text(l10n.reportsExportCsv),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
-                ),
-                // Bouton PDF — visible uniquement si l'utilisateur a la permission generateReports
-                if (AuthService().canGenerateReports) ...[
-                  const SizedBox(width: 4),
-                  Tooltip(
-                    message: l10n.reportsPdfExportTooltip,
-                    child: TextButton.icon(
-                      onPressed: _isExportingPdf
-                          ? null
-                          : () => _exportPdf(context, l10n),
-                      icon: _isExportingPdf
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                      label: Text(_isExportingPdf
-                          ? l10n.reportsExportPDFProgress
-                          : l10n.reportsExportPDF),
-                      style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+                csvButton,
+                if (pdfButton != null) ...[const SizedBox(width: 4), pdfButton],
+              ]);
+            }),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,

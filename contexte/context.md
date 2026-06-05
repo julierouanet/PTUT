@@ -711,12 +711,13 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 ```
 lib/
 ├── main.dart              # Point d'entree, navigation, module hub
-├── screens/               # 13 ecrans (8965 lignes)
+├── screens/               # 14 ecrans
 │   ├── login_screen.dart
 │   ├── dashboard_screen.dart
 │   ├── equipment_list_screen.dart
 │   ├── issue_tracking_screen.dart
 │   ├── issue_form_screen.dart
+│   ├── issue_staff_detail_screen.dart  # Vue lecture seule incidents pour hospitalStaff (timeline, pas de champs techniques)
 │   ├── technician_update_screen.dart
 │   ├── inventory_screen.dart
 │   ├── reports_screen.dart
