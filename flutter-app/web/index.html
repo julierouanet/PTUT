@@ -40,19 +40,16 @@
     }
     #k-loading.k-fade { opacity: 0; }
 
-    /* Icône croix médicale */
+    /* Logo hôpital */
     .k-icon {
-      width: 64px;
-      height: 64px;
-      background: #2563EB;
-      border-radius: 16px;
+      width: 80px;
+      height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      box-shadow: 0 4px 14px rgba(37,99,235,.25);
     }
-    .k-icon svg { width: 36px; height: 36px; fill: #fff; }
+    .k-icon img { width: 80px; height: 80px; object-fit: contain; }
 
     /* Textes */
     .k-title {
@@ -101,12 +98,7 @@
   <!-- ── Écran de chargement (retiré dès le 1er frame Flutter) ─────────── -->
   <div id="k-loading">
     <div class="k-icon">
-      <!-- Croix médicale SVG — inline, zéro requête réseau -->
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M19 8h-4V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4H5a1 1
-                 0 0 0-1 1v4a1 1 0 0 0 1 1h4v4a1 1 0 0 0 1 1h4a1 1
-                 0 0 0 1-1v-4h4a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
-      </svg>
+      <img src="icons/Icon-192.png" alt="Logo Hôpital de Kabutare">
     </div>
     <div class="k-title">Hôpital de Kabutare</div>
     <div class="k-sub">Gestion des équipements médicaux</div>
