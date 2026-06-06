@@ -124,7 +124,7 @@ pipeline {
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app:/app \
                         alpine \
-                        sh -c 'printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
+                        sh -c 'sed -i "s/await self\\.registration\\.unregister();//g" /app/build/web/flutter_service_worker.js && printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
 
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \
@@ -160,7 +160,7 @@ pipeline {
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app:/app \
                         alpine \
-                        sh -c 'printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
+                        sh -c 'sed -i "s/await self\\.registration\\.unregister();//g" /app/build/web/flutter_service_worker.js && printf "\\n/* === Web Push Handlers (injecté par CI) === */\\n" >> /app/build/web/flutter_service_worker.js && cat /app/web/push_sw.js >> /app/build/web/flutter_service_worker.js'
 
                     docker run --rm \
                         -v ${HOST_WORKSPACE}/flutter-app/build/web:/src \

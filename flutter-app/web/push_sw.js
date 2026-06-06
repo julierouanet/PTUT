@@ -1,6 +1,12 @@
 // ── Service Worker : Web Push Notifications ───────────────────────────────────
-// Ce fichier est enregistré séparément du service worker Flutter (flutter_service_worker.js).
-// Il gère uniquement la réception et l'affichage des notifications push.
+// Ce fichier est injecté dans flutter_service_worker.js par le CI.
+// Le CI patche également le handler activate de Flutter (qui appelle unregister()
+// par défaut) pour que le SW reste actif et puisse recevoir les push.
+
+// Prend le contrôle de tous les clients existants dès l'activation
+self.addEventListener('activate', (event) => {
+  event.waitUntil(clients.claim());
+});
 
 self.addEventListener('push', (event) => {
   let data = {};
