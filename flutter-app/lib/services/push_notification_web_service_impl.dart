@@ -13,6 +13,9 @@ import 'api_config.dart';
 @JS('requestPushPermission')
 external JSPromise<JSString> _jsRequestPermission();
 
+@JS('getPushPermission')
+external JSString _jsGetPermission();
+
 /// Retourne le JSON de la souscription push, ou null si refusé/indisponible.
 @JS('subscribeToPush')
 external JSPromise<JSString?> _jsSubscribe(JSString vapidKey);
@@ -60,6 +63,16 @@ class PushNotificationWebService {
       });
     } catch (_) {
       // Silencieux — les push notifications sont optionnelles
+    }
+  }
+
+  /// Retourne true si les notifications push sont accordées par le navigateur.
+  Future<bool> isPushActive() async {
+    if (!kIsWeb) return true;
+    try {
+      return _jsGetPermission().toDart == 'granted';
+    } catch (_) {
+      return true;
     }
   }
 

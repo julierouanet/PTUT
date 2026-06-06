@@ -10,6 +10,7 @@ import '../models/equipment.dart';
 import '../models/user_role.dart';
 import '../widgets/issue_category_selector.dart';
 import '../services/feature_service.dart';
+import '../services/push_notification_web_service.dart';
 import 'account_settings_screen.dart';
 
 /// Hub post-connexion — tableau de bord personnalisé selon le rôle (RBAC).
@@ -146,6 +147,7 @@ class HomeHubScreen extends StatelessWidget {
         child: Column(
           children: [
             _buildHeader(context, user),
+            const _PushNotificationBanner(),
             Expanded(
               child: ListenableBuilder(
                 listenable: Listenable.merge([DataService(), FeatureService()]),
@@ -1373,6 +1375,108 @@ class _HubModuleCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bannière push notifications ───────────────────────────────────────────────
+// Affiche un avertissement compact si les notifications push ne sont pas activées.
+// Se retire automatiquement après activation réussie ou fermeture manuelle.
+class _PushNotificationBanner extends StatefulWidget {
+  const _PushNotificationBanner();
+
+  @override
+  State<_PushNotificationBanner> createState() => _PushNotificationBannerState();
+}
+
+class _PushNotificationBannerState extends State<_PushNotificationBanner> {
+  bool _visible = false;
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    final active = await PushNotificationWebService().isPushActive();
+    if (mounted) setState(() => _visible = !active);
+  }
+
+  Future<void> _activate() async {
+    setState(() => _loading = true);
+    await PushNotificationWebService().requestAndSubscribe();
+    final active = await PushNotificationWebService().isPushActive();
+    if (mounted) setState(() { _visible = !active; _loading = false; });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
+
+    final l10n = AppLocalizations.of(context)!;
+
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.warning.withValues(alpha: 0.12),
+          border: Border(bottom: BorderSide(color: AppColors.warning.withValues(alpha: 0.4))),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.notifications_off_outlined, color: AppColors.warning, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    l10n.pushBannerTitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                  Text(
+                    l10n.pushBannerBody,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            _loading
+                ? SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning),
+                  )
+                : TextButton(
+                    onPressed: _activate,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.warning,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(l10n.pushBannerActivate,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                  ),
+            IconButton(
+              onPressed: () => setState(() => _visible = false),
+              icon: const Icon(Icons.close, size: 16),
+              color: AppColors.textSecondary,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+            ),
+          ],
         ),
       ),
     );

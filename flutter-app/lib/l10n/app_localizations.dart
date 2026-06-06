@@ -8240,6 +8240,24 @@ abstract class AppLocalizations {
   /// **'Erreur lors de l\'export. Réessayez.'**
   String get exportError;
 
+  /// No description provided for @pushBannerTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications désactivées'**
+  String get pushBannerTitle;
+
+  /// No description provided for @pushBannerBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activez les notifications pour recevoir les alertes critiques en temps réel.'**
+  String get pushBannerBody;
+
+  /// No description provided for @pushBannerActivate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer'**
+  String get pushBannerActivate;
+
   /// No description provided for @debugNotifySection.
   ///
   /// In fr, this message translates to:

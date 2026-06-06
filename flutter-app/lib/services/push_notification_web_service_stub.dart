@@ -13,4 +13,7 @@ class PushNotificationWebService {
 
   /// No-op sur les plateformes non-web.
   Future<void> unsubscribe() async {}
+
+  /// Toujours actif sur les plateformes non-web (pas de bannière).
+  Future<bool> isPushActive() async => true;
 }

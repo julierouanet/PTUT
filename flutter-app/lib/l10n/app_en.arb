@@ -1767,6 +1767,10 @@
   "exportingPdf": "Generating PDF…",
   "exportError": "Export failed. Please try again.",
 
+  "pushBannerTitle": "Notifications disabled",
+  "pushBannerBody": "Enable notifications to receive critical alerts in real time.",
+  "pushBannerActivate": "Enable",
+
   "debugNotifySection": "Notification Tests",
   "debugNotifyWarning": "Scheduling active ({interval}). Will reset on next server restart.",
   "@debugNotifyWarning": { "placeholders": { "interval": { "type": "String" } } },

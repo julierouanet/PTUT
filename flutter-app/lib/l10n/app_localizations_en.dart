@@ -4415,6 +4415,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get exportError => 'Export failed. Please try again.';
 
   @override
+  String get pushBannerTitle => 'Notifications disabled';
+
+  @override
+  String get pushBannerBody =>
+      'Enable notifications to receive critical alerts in real time.';
+
+  @override
+  String get pushBannerActivate => 'Enable';
+
+  @override
   String get debugNotifySection => 'Notification Tests';
 
   @override
