@@ -684,9 +684,14 @@ class HomeHubScreen extends StatelessWidget {
     DataService data,
     AuthService auth,
   ) {
-    final criticalCount    = _countCriticalUrgent(data);
-    final stockAlertCount  = _countStockAlerts(data);
+    final criticalCount     = _countCriticalUrgent(data);
     final outOfServiceCount = _countOutOfService(data);
+
+    // Alertes stock masquées si le module inventaire est désactivé dans les feature flags
+    final role = auth.primaryRole?.apiName;
+    final inventoryEnabled = auth.hasPermission(Permission.viewInventory) &&
+        FeatureService().isModuleEnabled('inventory', role);
+    final stockAlertCount = inventoryEnabled ? _countStockAlerts(data) : 0;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
