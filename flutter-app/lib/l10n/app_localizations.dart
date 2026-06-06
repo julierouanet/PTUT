@@ -8239,6 +8239,66 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Erreur lors de l\'export. Réessayez.'**
   String get exportError;
+
+  /// No description provided for @debugNotifySection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tests de Notifications'**
+  String get debugNotifySection;
+
+  /// No description provided for @debugNotifyWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Scheduling actif ({interval}). Sera réinitialisé au prochain redémarrage du serveur.'**
+  String debugNotifyWarning(String interval);
+
+  /// No description provided for @debugNotifyNow.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notification immédiate'**
+  String get debugNotifyNow;
+
+  /// No description provided for @debugNotifyMinute.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notif auto (toutes les minutes)'**
+  String get debugNotifyMinute;
+
+  /// No description provided for @debugNotifyHour.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notif auto (toutes les heures)'**
+  String get debugNotifyHour;
+
+  /// No description provided for @debugNotifyStop.
+  ///
+  /// In fr, this message translates to:
+  /// **'Stopper les notifs auto'**
+  String get debugNotifyStop;
+
+  /// No description provided for @debugNotifySent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notification envoyée à {email}'**
+  String debugNotifySent(String email);
+
+  /// No description provided for @debugNotifyStarted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications auto activées ({interval})'**
+  String debugNotifyStarted(String interval);
+
+  /// No description provided for @debugNotifyStopped.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications auto arrêtées'**
+  String get debugNotifyStopped;
+
+  /// No description provided for @debugNotifyAlreadyStopped.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune notification auto en cours'**
+  String get debugNotifyAlreadyStopped;
 }
 
 class _AppLocalizationsDelegate

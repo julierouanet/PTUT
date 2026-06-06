@@ -4456,4 +4456,40 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get exportError => 'Erreur lors de l\'export. Réessayez.';
+
+  @override
+  String get debugNotifySection => 'Tests de Notifications';
+
+  @override
+  String debugNotifyWarning(String interval) {
+    return 'Scheduling actif ($interval). Sera réinitialisé au prochain redémarrage du serveur.';
+  }
+
+  @override
+  String get debugNotifyNow => 'Notification immédiate';
+
+  @override
+  String get debugNotifyMinute => 'Notif auto (toutes les minutes)';
+
+  @override
+  String get debugNotifyHour => 'Notif auto (toutes les heures)';
+
+  @override
+  String get debugNotifyStop => 'Stopper les notifs auto';
+
+  @override
+  String debugNotifySent(String email) {
+    return 'Notification envoyée à $email';
+  }
+
+  @override
+  String debugNotifyStarted(String interval) {
+    return 'Notifications auto activées ($interval)';
+  }
+
+  @override
+  String get debugNotifyStopped => 'Notifications auto arrêtées';
+
+  @override
+  String get debugNotifyAlreadyStopped => 'Aucune notification auto en cours';
 }

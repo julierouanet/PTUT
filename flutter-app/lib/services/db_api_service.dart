@@ -291,6 +291,26 @@ class DbApiService {
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
 
+  // ── DEBUG ──────────────────────────────────────────────────────────────────
+
+  /// Envoie une notification email de test immédiate à l'utilisateur connecté.
+  Future<Map<String, dynamic>> debugNotifyNow() async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/notify-now';
+    final response = await ApiClient.post(url, {});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Active ou désactive les notifications email automatiques de test.
+  ///
+  /// [interval] : 'minute' | 'hour' | 'stop'
+  Future<Map<String, dynamic>> debugNotifySchedule(String interval) async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/notify-schedule';
+    final response = await ApiClient.post(url, {'interval': interval});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── Utilitaire ─────────────────────────────────────────────────────────────
 
   void _checkStatus(dynamic response, String url) {

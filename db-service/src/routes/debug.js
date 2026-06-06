@@ -2,8 +2,12 @@ const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
 
 const router = express.Router();
+
+// Intervalle de test des notifications — stocké en mémoire (réinitialisé au redémarrage du serveur)
+let debugNotifyInterval = null;
 
 // ── POST /clear-issues ────────────────────────────────────────────────────────
 // Supprime tous les incidents (réservé admin, usage debug/test uniquement)
@@ -24,6 +28,162 @@ router.post('/clear-issues', verifyToken, requireRole('admin'), (req, res) => {
   });
 
   res.json({ message: `${result.changes} incident(s) supprimé(s)`, deleted: result.changes });
+});
+
+// ── POST /notify-now ──────────────────────────────────────────────────────────
+// Envoie une notification email de test immédiate à l'administrateur appelant.
+router.post('/notify-now', verifyToken, requireRole('admin'), async (req, res) => {
+  const userId    = req.user.id;
+  const userEmail = req.user.email;
+  const userName  = req.user.name;
+
+  if (!userEmail) {
+    return res.status(400).json({ success: false, error: 'Email introuvable dans le token' });
+  }
+
+  try {
+    // Appel auth-service : type critical_new_issue avec payload de test
+    const resp = await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-email`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-internal-secret': INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
+        type:     'critical_new_issue',
+        to_email: userEmail,
+        to_name:  userName,
+        user_id:  userId,
+        payload: {
+          equipment_name: '[TEST] Notification de débogage GMAO',
+          department:     req.user.department || 'Administration',
+          description:    'Ceci est une notification de test envoyée depuis le panneau admin debug.',
+          reporter_name:  userName,
+          issue_id:       'DEBUG-TEST',
+        },
+      }),
+    });
+
+    const body = await resp.json().catch(() => ({}));
+
+    if (!resp.ok) {
+      console.error('[debug/notify-now] Erreur auth-service:', body);
+      return res.status(500).json({ success: false, error: body.error || `HTTP ${resp.status}` });
+    }
+
+    logAction({
+      user_id:     userId,
+      user_name:   userName,
+      user_role:   req.user.roles[0],
+      action:      'debug_notify_now',
+      target_type: 'user',
+      target_id:   userId,
+      target_name: userEmail,
+      details:     JSON.stringify({ sent: body.sent, reason: body.reason }),
+      ...extractReqMeta(req),
+    });
+
+    return res.json({ success: true, message: `Notification envoyée à ${userEmail}`, sent: body.sent, reason: body.reason });
+  } catch (err) {
+    console.error('[debug/notify-now] Erreur:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── POST /notify-schedule ─────────────────────────────────────────────────────
+// Active ou désactive les notifications email de test à intervalle fixe (in-memory).
+router.post('/notify-schedule', verifyToken, requireRole('admin'), async (req, res) => {
+  const { interval } = req.body;
+
+  if (!interval || !['minute', 'hour', 'stop'].includes(interval)) {
+    return res.status(400).json({
+      success: false,
+      error: 'Paramètre "interval" manquant ou invalide. Valeurs acceptées : minute | hour | stop',
+    });
+  }
+
+  try {
+    // Cas : arrêt du scheduling
+    if (interval === 'stop') {
+      if (debugNotifyInterval) {
+        clearInterval(debugNotifyInterval);
+        debugNotifyInterval = null;
+
+        logAction({
+          user_id:     req.user.id,
+          user_name:   req.user.name,
+          user_role:   req.user.roles[0],
+          action:      'debug_notify_stop',
+          target_type: 'system',
+          target_id:   null,
+          target_name: 'debug-scheduler',
+          details:     JSON.stringify({ note: 'Notifications automatiques de test arrêtées' }),
+          ...extractReqMeta(req),
+        });
+
+        return res.json({ success: true, status: 'stopped' });
+      }
+      return res.json({ success: true, status: 'already_stopped' });
+    }
+
+    // Éviter les fuites : supprimer l'intervalle existant avant d'en créer un nouveau
+    if (debugNotifyInterval) {
+      clearInterval(debugNotifyInterval);
+      debugNotifyInterval = null;
+    }
+
+    // Captures pour le setInterval (req sera périmé à l'exécution différée)
+    const userId    = req.user.id;
+    const userEmail = req.user.email;
+    const userName  = req.user.name;
+    const userDept  = req.user.department || 'Administration';
+
+    const delay = interval === 'minute' ? 60_000 : 3_600_000;
+    debugNotifyInterval = setInterval(async () => {
+      try {
+        await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-email`, {
+          method:  'POST',
+          headers: {
+            'Content-Type':      'application/json',
+            'x-internal-secret': INTERNAL_SECRET,
+          },
+          body: JSON.stringify({
+            type:     'critical_new_issue',
+            to_email: userEmail,
+            to_name:  userName,
+            user_id:  userId,
+            payload: {
+              equipment_name: `[TEST AUTO] Notification debug — intervalle : ${interval}`,
+              department:     userDept,
+              description:    `Notification automatique de test (intervalle : ${interval}).`,
+              reporter_name:  userName,
+              issue_id:       'DEBUG-AUTO',
+            },
+          }),
+        });
+        console.log(`[debug/notify-schedule] Notification auto envoyée (${interval})`);
+      } catch (err) {
+        console.error('[debug/notify-schedule] Erreur envoi auto:', err.message);
+      }
+    }, delay);
+
+    logAction({
+      user_id:     req.user.id,
+      user_name:   req.user.name,
+      user_role:   req.user.roles[0],
+      action:      'debug_notify_start',
+      target_type: 'system',
+      target_id:   null,
+      target_name: 'debug-scheduler',
+      details:     JSON.stringify({ interval, note: 'Notifications automatiques de test activées' }),
+      ...extractReqMeta(req),
+    });
+
+    return res.json({ success: true, status: 'started', interval });
+  } catch (err) {
+    console.error('[debug/notify-schedule] Erreur:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 router.get('/', (req, res) => {

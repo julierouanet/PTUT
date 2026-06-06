@@ -6,6 +6,7 @@ import '../services/api_client.dart';
 import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 
 /// Écran Debug & Test — réservé aux administrateurs.
@@ -19,6 +20,15 @@ class DebugTestScreen extends StatefulWidget {
 
 class _DebugTestScreenState extends State<DebugTestScreen> {
   bool _isClearingIssues = false;
+
+  // ── État des tests de notifications ─────────────────────────────────────────
+  bool   _isScheduleActive = false;
+  String? _scheduleInterval; // 'minute' | 'hour' | null
+  bool   _loadingNotifyNow  = false;
+  bool   _loadingSchedule   = false;
+
+  // Mini-historique des 3 derniers envois (in-memory Flutter)
+  final List<String> _notifyHistory = [];
 
   // ── Nettoyage de tous les incidents ─────────────────────────────────────────
   Future<void> _clearAllIssues() async {
@@ -101,6 +111,91 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
     }
   }
 
+  // ── Tests de notifications ────────────────────────────────────────────────────
+
+  Future<void> _sendNotifyNow() async {
+    setState(() => _loadingNotifyNow = true);
+    try {
+      final result = await DbApiService.instance.debugNotifyNow();
+      final msg = result['message'] as String? ?? 'Notification envoyée';
+      _addHistory(msg);
+      _showSnackBar(msg, success: true);
+    } catch (e) {
+      _showSnackBar('Erreur : $e', success: false);
+    } finally {
+      if (mounted) setState(() => _loadingNotifyNow = false);
+    }
+  }
+
+  Future<void> _startSchedule(String interval) async {
+    // Capture avant l'await pour éviter l'utilisation de context après une gap asynchrone
+    final startedMsg = AppLocalizations.of(context)!.debugNotifyStarted(interval);
+    setState(() => _loadingSchedule = true);
+    try {
+      final result = await DbApiService.instance.debugNotifySchedule(interval);
+      if (result['success'] == true) {
+        if (mounted) {
+          setState(() {
+            _isScheduleActive  = true;
+            _scheduleInterval  = interval;
+          });
+        }
+        _addHistory('Scheduling démarré ($interval)');
+        _showSnackBar(startedMsg, success: true);
+      }
+    } catch (e) {
+      _showSnackBar('Erreur : $e', success: false);
+    } finally {
+      if (mounted) setState(() => _loadingSchedule = false);
+    }
+  }
+
+  Future<void> _stopSchedule() async {
+    // Capture avant l'await pour éviter l'utilisation de context après une gap asynchrone
+    final stoppedMsg       = AppLocalizations.of(context)!.debugNotifyStopped;
+    final alreadyStoppedMsg = AppLocalizations.of(context)!.debugNotifyAlreadyStopped;
+    setState(() => _loadingSchedule = true);
+    try {
+      final result = await DbApiService.instance.debugNotifySchedule('stop');
+      if (result['success'] == true) {
+        if (mounted) {
+          setState(() {
+            _isScheduleActive = false;
+            _scheduleInterval = null;
+          });
+        }
+        final status = result['status'] as String? ?? 'stopped';
+        final msg = status == 'already_stopped' ? alreadyStoppedMsg : stoppedMsg;
+        _addHistory(msg);
+        _showSnackBar(msg, success: true);
+      }
+    } catch (e) {
+      _showSnackBar('Erreur : $e', success: false);
+    } finally {
+      if (mounted) setState(() => _loadingSchedule = false);
+    }
+  }
+
+  /// Ajoute une entrée à l'historique (max 3 entrées).
+  void _addHistory(String message) {
+    if (!mounted) return;
+    setState(() {
+      _notifyHistory.insert(0, message);
+      if (_notifyHistory.length > 3) _notifyHistory.removeLast();
+    });
+  }
+
+  void _showSnackBar(String message, {required bool success}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: success ? AppColors.success : AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
+  }
+
+  // ── Build ─────────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -177,7 +272,6 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Description de l'action
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -202,8 +296,6 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-
-                  // Bouton d'action destructif
                   ElevatedButton.icon(
                     onPressed: _isClearingIssues ? null : _clearAllIssues,
                     icon: _isClearingIssues
@@ -223,7 +315,139 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 28),
+
+          // ── Section : Tests de Notifications ─────────────────────────────────
+          Text(
+            l10n.debugNotifySection,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: const BorderSide(color: AppColors.border),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Avertissement scheduling in-memory
+                  if (_isScheduleActive) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.warning),
+                      ),
+                      child: Text(
+                        l10n.debugNotifyWarning(_scheduleInterval ?? ''),
+                        style: TextStyle(fontSize: 12, color: AppColors.warning),
+                      ),
+                    ),
+                  ],
+
+                  // Bouton 1 : Notification immédiate
+                  _buildNotifyButton(
+                    label: l10n.debugNotifyNow,
+                    icon: Icons.send_outlined,
+                    loading: _loadingNotifyNow,
+                    onPressed: _sendNotifyNow,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Bouton 2 : Notif auto toutes les minutes
+                  _buildNotifyButton(
+                    label: l10n.debugNotifyMinute,
+                    icon: Icons.timer_outlined,
+                    loading: _loadingSchedule,
+                    onPressed: () => _startSchedule('minute'),
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Bouton 3 : Notif auto toutes les heures
+                  _buildNotifyButton(
+                    label: l10n.debugNotifyHour,
+                    icon: Icons.schedule_outlined,
+                    loading: _loadingSchedule,
+                    onPressed: () => _startSchedule('hour'),
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Bouton 4 : Stopper (grisé si aucune notif active)
+                  _buildNotifyButton(
+                    label: l10n.debugNotifyStop,
+                    icon: Icons.stop_circle_outlined,
+                    loading: _loadingSchedule,
+                    onPressed: _isScheduleActive ? _stopSchedule : null,
+                    color: AppColors.error,
+                  ),
+
+                  // Mini-historique des 3 derniers envois
+                  if (_notifyHistory.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Derniers envois :',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ..._notifyHistory.map((e) => Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        '• $e',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNotifyButton({
+    required String label,
+    required IconData icon,
+    required bool loading,
+    required VoidCallback? onPressed,
+    required Color color,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: loading ? null : onPressed,
+        icon: loading
+            ? SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              )
+            : Icon(icon),
+        label: Text(label),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: onPressed == null ? AppColors.border : color,
+          foregroundColor: Colors.white,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
       ),
     );
   }

@@ -659,6 +659,8 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /                          | Public | Dashboard HTML debug (stats + tableaux)                           |
 | GET     | /health                    | Public | `{ "status": "ok", "service": "db-service" }`                    |
 | POST    | /api/debug/clear-issues    | Admin  | Supprime tous les incidents (`DELETE FROM issues`). Retourne `{ deleted: N }`. Audit trail action `debug_clear_all_issues`. |
+| POST    | /api/debug/notify-now      | Admin  | Envoie une notification email de test immédiate à l'admin appelant (type `critical_new_issue`). Retourne `{ success, message, sent, reason }`. Audit `debug_notify_now`. |
+| POST    | /api/debug/notify-schedule | Admin  | Active/désactive les notifications email auto de test. Body: `{ interval: "minute" \| "hour" \| "stop" }`. Retourne `{ success, status, interval? }`. Audit `debug_notify_start` / `debug_notify_stop`. Scheduling in-memory (reset au redémarrage). |
 
 ## 2.5 Middleware
 
@@ -886,7 +888,7 @@ status: StockStatus (normal, low, outOfStock)
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
 | 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe                        |
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
-| 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues), dialog de confirmation, SnackBar résultat, rechargement DataService |
+| 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues) ; section "Tests de Notifications" : 4 boutons (notify-now, auto/minute, auto/heure, stop) + mini-historique des 3 derniers envois |
 
 ## 3.5 Navigation
 

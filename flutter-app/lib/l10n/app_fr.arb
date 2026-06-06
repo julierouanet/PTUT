@@ -1787,5 +1787,19 @@
   "sidebarTitleReports": "Rapports",
   "see": "Voir",
   "exportingPdf": "Génération du PDF…",
-  "exportError": "Erreur lors de l'export. Réessayez."
+  "exportError": "Erreur lors de l'export. Réessayez.",
+
+  "debugNotifySection": "Tests de Notifications",
+  "debugNotifyWarning": "Scheduling actif ({interval}). Sera réinitialisé au prochain redémarrage du serveur.",
+  "@debugNotifyWarning": { "placeholders": { "interval": { "type": "String" } } },
+  "debugNotifyNow": "Notification immédiate",
+  "debugNotifyMinute": "Notif auto (toutes les minutes)",
+  "debugNotifyHour": "Notif auto (toutes les heures)",
+  "debugNotifyStop": "Stopper les notifs auto",
+  "debugNotifySent": "Notification envoyée à {email}",
+  "@debugNotifySent": { "placeholders": { "email": { "type": "String" } } },
+  "debugNotifyStarted": "Notifications auto activées ({interval})",
+  "@debugNotifyStarted": { "placeholders": { "interval": { "type": "String" } } },
+  "debugNotifyStopped": "Notifications auto arrêtées",
+  "debugNotifyAlreadyStopped": "Aucune notification auto en cours"
 }

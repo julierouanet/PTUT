@@ -1765,5 +1765,19 @@
   "sidebarTitleReports": "Reports",
   "see": "See",
   "exportingPdf": "Generating PDF…",
-  "exportError": "Export failed. Please try again."
+  "exportError": "Export failed. Please try again.",
+
+  "debugNotifySection": "Notification Tests",
+  "debugNotifyWarning": "Scheduling active ({interval}). Will reset on next server restart.",
+  "@debugNotifyWarning": { "placeholders": { "interval": { "type": "String" } } },
+  "debugNotifyNow": "Send immediate notification",
+  "debugNotifyMinute": "Auto notif (every minute)",
+  "debugNotifyHour": "Auto notif (every hour)",
+  "debugNotifyStop": "Stop auto notifications",
+  "debugNotifySent": "Notification sent to {email}",
+  "@debugNotifySent": { "placeholders": { "email": { "type": "String" } } },
+  "debugNotifyStarted": "Auto notifications started ({interval})",
+  "@debugNotifyStarted": { "placeholders": { "interval": { "type": "String" } } },
+  "debugNotifyStopped": "Auto notifications stopped",
+  "debugNotifyAlreadyStopped": "No auto notifications running"
 }
