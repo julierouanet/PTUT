@@ -48,9 +48,9 @@ services:
       # iss réel émis par Keycloak (frontendUrl stockée en DB = dev.keycloak)
       KC_ISSUER: https://dev.keycloak.lucaslopvet.fr/realms/kabutare-hospital
       KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs
-      # Web Push VAPID (mêmes clés que prod si disponibles, sinon vides)
-      VAPID_PUBLIC_KEY:  ${VAPID_PUBLIC_KEY:-}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      # Web Push VAPID — clés fixes pour l'environnement dev (non critiques)
+      VAPID_PUBLIC_KEY:  BNSxWm6_z2kjIc654t4rmIOp62UcOP2WNbMXLTcdlEcAqYYtT--ctC6LEfDQLGCOfZDR_xcd2RhhKHfjl7Tr32M
+      VAPID_PRIVATE_KEY: LebuqiLfnFEJEHNsLnbnupJa_2jj4oiVBTCiGAoxVOQ
       VAPID_CONTACT:     ${VAPID_CONTACT:-mailto:admin@lucaslopvet.fr}
     volumes:
       - db_data_dev:/data

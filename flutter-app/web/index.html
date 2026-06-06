@@ -193,17 +193,6 @@
     // actif. Pour tester les push en local, builder en --release ou utiliser
     // Chrome DevTools → Application → Service Workers → Push.
 
-    // ── Enregistrement explicite du SW (requis en build non-release) ───────────
-    // Flutter bootstrap enregistre le SW en mode release, mais pas en dev/profile.
-    // On force l'enregistrement ici pour que navigator.serviceWorker.ready résolve.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/flutter_service_worker.js')
-        .then(reg => {
-          console.log('[SW] Enregistré :', reg.scope);
-        })
-        .catch(err => console.warn('[SW] Enregistrement échoué :', err));
-    }
-
     window.requestPushPermission = async function() {
       return await Notification.requestPermission();
     };
