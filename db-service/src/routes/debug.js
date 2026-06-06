@@ -3,6 +3,7 @@ const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
+const { sendPushToUser } = require('../utils/push_sender');
 
 const router = express.Router();
 
@@ -70,6 +71,12 @@ router.post('/notify-now', verifyToken, requireRole('admin'), async (req, res) =
       console.error('[debug/notify-now] Erreur auth-service:', body);
       return res.status(500).json({ success: false, error: body.error || `HTTP ${resp.status}` });
     }
+
+    // Notification push immédiate (fire-and-forget) — indépendante des préférences email
+    sendPushToUser(userId, {
+      title: '[TEST] Notification de débogage GMAO',
+      body:  'Notification immédiate envoyée depuis le panneau admin debug.',
+    }).catch((err) => console.error('[debug/notify-now] Erreur push:', err.message));
 
     logAction({
       user_id:     userId,
@@ -141,6 +148,13 @@ router.post('/notify-schedule', verifyToken, requireRole('admin'), async (req, r
     const delay = interval === 'minute' ? 60_000 : 3_600_000;
     debugNotifyInterval = setInterval(async () => {
       try {
+        // Notification push (immédiate, visible dans le navigateur)
+        await sendPushToUser(userId, {
+          title: `[TEST AUTO] Notification GMAO (${interval})`,
+          body:  `Notification automatique de test — intervalle : ${interval}.`,
+        });
+
+        // Email via auth-service (respecte les préférences utilisateur)
         await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-email`, {
           method:  'POST',
           headers: {
@@ -161,7 +175,7 @@ router.post('/notify-schedule', verifyToken, requireRole('admin'), async (req, r
             },
           }),
         });
-        console.log(`[debug/notify-schedule] Notification auto envoyée (${interval})`);
+        console.log(`[debug/notify-schedule] Push + email envoyés (${interval})`);
       } catch (err) {
         console.error('[debug/notify-schedule] Erreur envoi auto:', err.message);
       }
