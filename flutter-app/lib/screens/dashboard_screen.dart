@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/equipment_filter_state.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../models/user_role.dart';
@@ -12,8 +13,6 @@ import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
-import 'equipment_list_screen.dart';
-
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigate;
   const DashboardScreen({super.key, required this.onNavigate});
@@ -84,19 +83,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   };
 
   // Navigation vers EquipmentListScreen avec filtres pré-appliqués depuis une StatCard.
+  // Passe par widget.onNavigate pour rester dans le MainScaffold (sidebar conservée).
   void _navigateToEquipList({EquipmentStatus? status, bool pmOverdue = false}) {
     final macroCategory = _macroCategoryForRole(AuthService().primaryRole);
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EquipmentListScreen(
-          onNavigate: (int idx, {String? equipmentId}) => widget.onNavigate(idx),
-          initialStatus: status,
-          initialPmOverdue: pmOverdue,
-          initialMacroCategory: macroCategory,
-        ),
-      ),
-    );
+
+    // Pré-remplir le singleton de filtres — lu par EquipmentListScreen.initState
+    final fs = EquipmentFilterState();
+    fs.reset();
+    if (status != null) fs.statusFilter = status.displayName;
+    if (pmOverdue) fs.filterPmOverdue = true;
+    if (macroCategory != null) fs.macroCategoryFilter = macroCategory;
+
+    // ScreenType.equipment = index 1
+    widget.onNavigate(1);
   }
 
   @override
