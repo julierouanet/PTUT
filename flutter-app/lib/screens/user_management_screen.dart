@@ -130,7 +130,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       u.hasRole(UserRole.technicianInfra)
     ).length;
 
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
 
     return Align(
       alignment: Alignment.topLeft,

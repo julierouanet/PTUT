@@ -3,14 +3,10 @@ const express = require('express');
 const { getDb }  = require('../database');
 const { verifyToken } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { rolesCsv } = require('../utils/roles');
 const config = require('../config');
 
 const router = express.Router();
-
-const rolesCsv = (req) =>
-  (Array.isArray(req.user?.roles) ? req.user.roles : [])
-    .filter((r) => !['offline_access', 'uma_authorization', 'default-roles-kabutare-hospital'].includes(r))
-    .join(',');
 
 // ── GET /api/notifications/vapid-key ─────────────────────────────────────────
 // Public — renvoie la clé publique VAPID pour que le frontend puisse s'abonner.

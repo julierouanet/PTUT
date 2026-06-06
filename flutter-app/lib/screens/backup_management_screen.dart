@@ -289,7 +289,7 @@ class _BackupManagementScreenState extends State<BackupManagementScreen> {
       return _buildAccessDenied(l10n);
     }
 
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
 
     return ListenableBuilder(
       listenable: _service,

@@ -54,7 +54,7 @@ final _kOptions = <_CategoryOption>[
 /// Affiche la sélection de catégorie avant [IssueFormScreen].
 /// < 800 px → ModalBottomSheet. >= 800 px → Dialog centré max 500 px.
 void showIssueCategorySelector(BuildContext context) {
-  final isWide = MediaQuery.of(context).size.width >= 800;
+  final isWide = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
   if (isWide) {
     showDialog<void>(
       context: context,

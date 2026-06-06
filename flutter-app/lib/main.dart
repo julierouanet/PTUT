@@ -19,44 +19,29 @@ import 'services/data_service.dart';
 import 'services/notification_service.dart';
 import 'services/api_client.dart';
 import 'models/user_role.dart';
+import 'models/nav_item.dart';
 import 'providers/locale_provider.dart';
-import 'widgets/notification_bell.dart';
 import 'widgets/issue_category_selector.dart';
 import 'widgets/notification_preferences_dialog.dart';
+import 'widgets/layout/app_sidebar.dart';
+import 'widgets/layout/app_top_bar.dart';
+import 'widgets/layout/app_bottom_nav.dart';
 import 'screens/home_hub_screen.dart';
 import 'screens/analytics_screen.dart';
 import 'screens/feature_management_screen.dart';
 import 'screens/backup_management_screen.dart';
 import 'screens/debug_test_screen.dart';
 
-/// Screen types for navigation (no more string matching)
-enum ScreenType {
-  dashboard,
-  equipment,
-  issueTracking,
-  issueForm,
-  technician,
-  inventory,
-  reports,
-  users,
-  settings,
-  logs,
-  analytics,
-  featureManagement,
-  backupManagement,
-  debugTest,
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocaleProvider().loadSavedLocale();
 
-  // Configurer le callback de session expiree
+  // Configurer le callback de session expirée
   ApiClient.onSessionExpired = () {
     AuthService().handleSessionExpired();
   };
 
-  // Tenter l'auto-login si des tokens sont stockes
+  // Tenter l'auto-login si des tokens sont stockés
   try {
     if (await ApiClient.hasStoredTokens()) {
       final restored = await AuthService().restoreSession();
@@ -229,7 +214,9 @@ class _AppRootState extends State<_AppRoot> {
 
 // ── Main scaffold ────────────────────────────────────────────────────────────
 
-/// Main scaffold with sidebar navigation
+/// Scaffold principal — gère la navigation entre écrans via sidebar (desktop)
+/// ou bottom nav / drawer (mobile). Délègue le rendu de la sidebar, topbar
+/// et bottom nav à des widgets dédiés (AppSidebar, AppTopBar, AppBottomNav).
 class MainScaffold extends StatefulWidget {
   final List<ScreenType>? moduleFilter;
   final VoidCallback? onBackToHub;
@@ -244,7 +231,6 @@ class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
   String? _selectedEquipmentId;
   String? _selectedIssueId;
-  bool _isSidebarCollapsed = false;
   final AuthService _authService = AuthService();
   final List<int> _history = [];
   final GlobalKey<IssueFormScreenState> _issueFormKey = GlobalKey<IssueFormScreenState>();
@@ -268,25 +254,26 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
-  /// Define all nav items with their required permissions
-  List<_NavItem> _allNavItems(AppLocalizations l10n) => [
-    _NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
-    _NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
-    _NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
-    _NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
-    _NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs, alternativePermission: Permission.approveRequests),
-    _NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
-    _NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
-    _NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
-    _NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
-    _NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: l10n.navLogs, shortLabel: l10n.navLogsShort, screenType: ScreenType.logs, requiredPermission: Permission.manageUsers),
-    _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: l10n.navAnalytics, shortLabel: l10n.navAnalyticsShort, screenType: ScreenType.analytics, requiredPermission: Permission.generateReports),
-    _NavItem(icon: Icons.tune_outlined, activeIcon: Icons.tune, label: l10n.navFeatureManagement, shortLabel: l10n.navFeatureManagementShort, screenType: ScreenType.featureManagement, requiredPermission: Permission.manageFeatures),
-    _NavItem(icon: Icons.backup_outlined, activeIcon: Icons.backup, label: l10n.navBackupManagement, shortLabel: l10n.navBackupManagementShort, screenType: ScreenType.backupManagement, requiredPermission: Permission.manageBackups),
-    _NavItem(icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: l10n.navDebugTest, shortLabel: l10n.navDebugTestShort, screenType: ScreenType.debugTest, requiredPermission: Permission.manageFeatures),
+  /// Liste complète des items de navigation, sans filtre de permission.
+  List<NavItem> _allNavItems(AppLocalizations l10n) => [
+    NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
+    NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
+    NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
+    NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
+    NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs, alternativePermission: Permission.approveRequests),
+    NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
+    NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
+    NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),
+    NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
+    NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: l10n.navLogs, shortLabel: l10n.navLogsShort, screenType: ScreenType.logs, requiredPermission: Permission.manageUsers),
+    NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: l10n.navAnalytics, shortLabel: l10n.navAnalyticsShort, screenType: ScreenType.analytics, requiredPermission: Permission.generateReports),
+    NavItem(icon: Icons.tune_outlined, activeIcon: Icons.tune, label: l10n.navFeatureManagement, shortLabel: l10n.navFeatureManagementShort, screenType: ScreenType.featureManagement, requiredPermission: Permission.manageFeatures),
+    NavItem(icon: Icons.backup_outlined, activeIcon: Icons.backup, label: l10n.navBackupManagement, shortLabel: l10n.navBackupManagementShort, screenType: ScreenType.backupManagement, requiredPermission: Permission.manageBackups),
+    NavItem(icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: l10n.navDebugTest, shortLabel: l10n.navDebugTestShort, screenType: ScreenType.debugTest, requiredPermission: Permission.manageFeatures),
   ];
 
-  List<_NavItem> _navItems(AppLocalizations l10n) {
+  /// Items filtrés par module actif et permissions du user.
+  List<NavItem> _navItems(AppLocalizations l10n) {
     final filter = widget.moduleFilter;
     final visible = _allNavItems(l10n).where((item) {
       if (filter != null && !filter.contains(item.screenType)) return false;
@@ -296,17 +283,14 @@ class _MainScaffoldState extends State<MainScaffold> {
               _authService.hasPermission(item.alternativePermission!));
     }).toList();
 
-    // Appliquer l'ordre configuré par l'admin pour le rôle "principal" du user
-    // (la sidebar_config est indexée par un seul nom de rôle côté API).
+    // Ordre configuré par l'admin pour le rôle principal (sidebar_config côté API)
     final roleName = _authService.primaryRole?.apiName ?? '';
     final order = DataService().sidebarOrder[roleName];
     if (order != null && order.isNotEmpty) {
       visible.sort((a, b) {
-        final ai = order.indexOf(a.screenType.name);
-        final bi = order.indexOf(b.screenType.name);
-        final aIdx = ai == -1 ? order.length : ai;
-        final bIdx = bi == -1 ? order.length : bi;
-        return aIdx.compareTo(bIdx);
+        final aIdx = order.indexOf(a.screenType.name);
+        final bIdx = order.indexOf(b.screenType.name);
+        return (aIdx == -1 ? order.length : aIdx).compareTo(bIdx == -1 ? order.length : bIdx);
       });
     }
     return visible;
@@ -331,10 +315,7 @@ class _MainScaffoldState extends State<MainScaffold> {
         ]),
         content: Text(l10n.issueFormLeaveMessage),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.commonCancel),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning, foregroundColor: Colors.white),
@@ -378,38 +359,24 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
-  Widget _buildCurrentScreen(List<_NavItem> navItems) {
+  Widget _buildCurrentScreen(List<NavItem> navItems) {
     if (_currentIndex >= navItems.length) return _buildAccessDeniedScreen();
     final currentItem = navItems[_currentIndex];
     switch (currentItem.screenType) {
-      case ScreenType.dashboard:
-        return DashboardScreen(onNavigate: _navigateByScreenType);
-      case ScreenType.equipment:
-        return EquipmentListScreen(onNavigate: _navigateByScreenType);
-      case ScreenType.issueTracking:
-        return IssueTrackingScreen(onNavigate: _navigateByScreenType);
-      case ScreenType.issueForm:
-        return IssueFormScreen(key: _issueFormKey, equipmentId: _selectedEquipmentId, onCancel: _goBack);
-      case ScreenType.technician:
-        return TechnicianUpdateScreen(issueId: _selectedIssueId);
-      case ScreenType.inventory:
-        return const InventoryScreen();
-      case ScreenType.reports:
-        return const ReportsScreen();
-      case ScreenType.users:
-        return const UserManagementScreen();
-      case ScreenType.settings:
-        return const SettingsScreen();
-      case ScreenType.logs:
-        return const LogsScreen();
-      case ScreenType.analytics:
-        return const AnalyticsScreen();
-      case ScreenType.featureManagement:
-        return const FeatureManagementScreen();
-      case ScreenType.backupManagement:
-        return const BackupManagementScreen();
-      case ScreenType.debugTest:
-        return const DebugTestScreen();
+      case ScreenType.dashboard:       return DashboardScreen(onNavigate: _navigateByScreenType);
+      case ScreenType.equipment:       return EquipmentListScreen(onNavigate: _navigateByScreenType);
+      case ScreenType.issueTracking:   return IssueTrackingScreen(onNavigate: _navigateByScreenType);
+      case ScreenType.issueForm:       return IssueFormScreen(key: _issueFormKey, equipmentId: _selectedEquipmentId, onCancel: _goBack);
+      case ScreenType.technician:      return TechnicianUpdateScreen(issueId: _selectedIssueId);
+      case ScreenType.inventory:       return const InventoryScreen();
+      case ScreenType.reports:         return const ReportsScreen();
+      case ScreenType.users:           return const UserManagementScreen();
+      case ScreenType.settings:        return const SettingsScreen();
+      case ScreenType.logs:            return const LogsScreen();
+      case ScreenType.analytics:       return const AnalyticsScreen();
+      case ScreenType.featureManagement: return const FeatureManagementScreen();
+      case ScreenType.backupManagement:  return const BackupManagementScreen();
+      case ScreenType.debugTest:         return const DebugTestScreen();
     }
   }
 
@@ -455,116 +422,19 @@ class _MainScaffoldState extends State<MainScaffold> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width > 800;
-    final l10n = AppLocalizations.of(context)!;
-    final navItems = _navItems(l10n);
-
-    return Scaffold(
-      body: Builder(
-        builder: (scaffoldContext) => Row(
-          children: [
-            if (isWide) _buildSidebar(l10n, navItems),
-            Expanded(
-              child: Column(
-                children: [
-                  _buildTopBar(l10n, navItems, isWide, scaffoldContext),
-                  Expanded(child: _buildCurrentScreen(navItems)),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: isWide ? null : _buildBottomNav(navItems),
-      drawer: isWide ? null : _buildDrawer(l10n, navItems),
-    );
-  }
-
-  /// Barre de titre en haut du contenu avec la cloche de notifications
-  Widget _buildTopBar(
-    AppLocalizations l10n,
-    List<_NavItem> navItems,
-    bool isWide,
-    BuildContext scaffoldContext,
-  ) {
-    final currentLabel = _currentIndex < navItems.length
-        ? navItems[_currentIndex].label
-        : '';
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(bottom: BorderSide(color: AppColors.border)),
-      ),
-      child: Row(
-        children: [
-          // Bouton menu sur écran étroit
-          if (!isWide) ...[
-            IconButton(
-              icon: const Icon(Icons.menu, color: AppColors.textSecondary),
-              onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
-              tooltip: l10n.tooltipMenu,
-            ),
-          ],
-          if (isWide && widget.onBackToHub != null) ...[
-            IconButton(
-              icon: const Icon(Icons.grid_view_rounded, color: AppColors.primary),
-              onPressed: widget.onBackToHub,
-              tooltip: l10n.backToModulesLabel,
-            ),
-          ],
-          // Bouton retour
-          if (_canGoBack) ...[
-            IconButton(
-              icon: const Icon(Icons.arrow_back, color: AppColors.textSecondary),
-              onPressed: _goBack,
-              tooltip: l10n.tooltipBack,
-            ),
-            const SizedBox(width: 4),
-          ],
-          Text(
-            currentLabel,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.manage_accounts_outlined, color: AppColors.textSecondary),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
-            tooltip: l10n.tooltipAccountSettings,
-          ),
-          const SizedBox(width: 8),
-          NotificationBell(onNavigate: _navigateByScreenType),
-          const SizedBox(width: 4),
-        ],
-      ),
-    );
-  }
-
   Future<void> _confirmLogout(AppLocalizations l10n) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            const Icon(Icons.logout, color: AppColors.error),
-            const SizedBox(width: 12),
-            Text(l10n.logoutConfirmTitle),
-          ],
-        ),
+        title: Row(children: [
+          const Icon(Icons.logout, color: AppColors.error),
+          const SizedBox(width: 12),
+          Text(l10n.logoutConfirmTitle),
+        ]),
         content: Text(l10n.logoutConfirmMessage),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: Text(l10n.commonCancel),
-          ),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
@@ -579,336 +449,24 @@ class _MainScaffoldState extends State<MainScaffold> {
     }
   }
 
-  void _handleNavTap(BuildContext context, _NavItem item, int index) {
-    if (item.screenType == ScreenType.issueForm) {
-      showIssueCategorySelector(context);
-    } else {
-      _navigateTo(index);
-    }
-  }
-
-  /// Retourne le sous-titre de la sidebar selon l'écran actif.
-  String _getSidebarSubtitle(AppLocalizations l10n, List<_NavItem> navItems) {
+  /// Sous-titre de la sidebar selon l'écran actif.
+  String _getSidebarSubtitle(AppLocalizations l10n, List<NavItem> navItems) {
     if (_currentIndex >= navItems.length) return l10n.hospitalSubtitle;
-    final screen = navItems[_currentIndex].screenType;
-    return switch (screen) {
-      ScreenType.equipment        => l10n.sidebarTitleEquipment,
-      ScreenType.inventory        => l10n.sidebarTitleInventory,
-      ScreenType.reports          => l10n.sidebarTitleReports,
-      ScreenType.settings         => l10n.sidebarTitleSettings,
-      ScreenType.users            => l10n.sidebarTitleSettings,
-      ScreenType.logs             => l10n.sidebarTitleSettings,
+    return switch (navItems[_currentIndex].screenType) {
+      ScreenType.equipment         => l10n.sidebarTitleEquipment,
+      ScreenType.inventory         => l10n.sidebarTitleInventory,
+      ScreenType.reports           => l10n.sidebarTitleReports,
+      ScreenType.settings          => l10n.sidebarTitleSettings,
+      ScreenType.users             => l10n.sidebarTitleSettings,
+      ScreenType.logs              => l10n.sidebarTitleSettings,
       ScreenType.featureManagement => l10n.sidebarTitleSettings,
       ScreenType.backupManagement  => l10n.sidebarTitleSettings,
       ScreenType.debugTest         => l10n.sidebarTitleSettings,
-      _                           => l10n.hospitalSubtitle,
+      _                            => l10n.hospitalSubtitle,
     };
   }
 
-  Widget _buildSidebar(AppLocalizations l10n, List<_NavItem> navItems) {
-    final currentUser = _authService.currentUser;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeInOut,
-      width: _isSidebarCollapsed ? 70.0 : 260.0,
-      decoration: const BoxDecoration(color: Colors.white, border: Border(right: BorderSide(color: AppColors.border))),
-      child: Column(
-        children: [
-          // ── En-tête : logo + nom hôpital + bouton bascule ──────────────────
-          Container(
-            padding: _isSidebarCollapsed
-                ? const EdgeInsets.symmetric(vertical: 8)
-                : const EdgeInsets.all(20),
-            child: _isSidebarCollapsed
-                ? Column(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                        tooltip: l10n.tooltipMenu,
-                        onPressed: () => setState(() => _isSidebarCollapsed = false),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                        child: Image.asset('assets/images/logo_hopital.png', height: 36, width: 36, fit: BoxFit.contain),
-                      ),
-                    ],
-                  )
-                : Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                        child: Image.asset('assets/images/logo_hopital.png', height: 36, width: 36, fit: BoxFit.contain),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(l10n.hospitalName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)),
-                            Text(_getSidebarSubtitle(l10n, navItems), style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.chevron_left, color: AppColors.textSecondary),
-                        tooltip: l10n.tooltipMenu,
-                        onPressed: () => setState(() => _isSidebarCollapsed = true),
-                      ),
-                    ],
-                  ),
-          ),
-          const Divider(height: 1),
-          // ── Bouton retour aux modules ───────────────────────────────────────
-          if (widget.onBackToHub != null) ...[
-            Padding(
-              padding: EdgeInsets.fromLTRB(_isSidebarCollapsed ? 4 : 12, 8, _isSidebarCollapsed ? 4 : 12, 4),
-              child: _isSidebarCollapsed
-                  ? Tooltip(
-                      message: l10n.backToModules,
-                      child: Material(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(8),
-                        child: InkWell(
-                          onTap: widget.onBackToHub,
-                          borderRadius: BorderRadius.circular(8),
-                          child: const SizedBox(height: 44, child: Center(child: Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20))),
-                        ),
-                      ),
-                    )
-                  : ListTile(
-                      leading: const Icon(Icons.grid_view_rounded, color: AppColors.primary, size: 20),
-                      title: Builder(builder: (ctx) => Text(AppLocalizations.of(ctx)!.backToModules, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 14))),
-                      dense: true,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      tileColor: AppColors.primaryLight,
-                      onTap: widget.onBackToHub,
-                    ),
-            ),
-            const Divider(height: 1),
-          ],
-          // ── Liste des items de navigation ──────────────────────────────────
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: navItems.length,
-              itemBuilder: (context, index) {
-                final item = navItems[index];
-                final isSelected = _currentIndex == index;
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 2),
-                  child: _isSidebarCollapsed
-                      ? Tooltip(
-                          message: item.label,
-                          child: Material(
-                            color: isSelected ? AppColors.primaryLight : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                            child: InkWell(
-                              onTap: () => _handleNavTap(context, item, index),
-                              borderRadius: BorderRadius.circular(8),
-                              child: SizedBox(
-                                height: 48,
-                                child: Center(
-                                  child: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
-                                ),
-                              ),
-                            ),
-                          ),
-                        )
-                      : ListTile(
-                          leading: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
-                          title: Text(item.label, style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
-                          selected: isSelected,
-                          selectedTileColor: AppColors.primaryLight,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          onTap: () => _handleNavTap(context, item, index),
-                        ),
-                );
-              },
-            ),
-          ),
-          // ── Badge notifications (sidebar desktop) ────────────────────────
-          ListenableBuilder(
-            listenable: NotificationService(),
-            builder: (context, _) {
-              final unread = NotificationService().unreadCount;
-              if (unread == 0) return const SizedBox.shrink();
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 2),
-                child: _isSidebarCollapsed
-                    ? Tooltip(
-                        message: '${l10n.tooltipNotifications} ($unread)',
-                        child: Center(
-                          child: Container(
-                            width: 28,
-                            height: 28,
-                            decoration: const BoxDecoration(
-                                color: AppColors.error, shape: BoxShape.circle),
-                            child: Center(
-                              child: Text(
-                                unread > 9 ? '9+' : '$unread',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ),
-                      )
-                    : ListTile(
-                        leading: Stack(children: [
-                          const Icon(Icons.notifications_outlined,
-                              color: AppColors.textSecondary),
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                  color: AppColors.error,
-                                  shape: BoxShape.circle),
-                              child: Text(
-                                unread > 9 ? '9+' : '$unread',
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
-                        ]),
-                        title: Text(
-                          l10n.tooltipNotifications,
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                        dense: true,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                        onTap: () {},
-                      ),
-              );
-            },
-          ),
-          // ── Bouton déconnexion ─────────────────────────────────────────────
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: _isSidebarCollapsed ? 4 : 12, vertical: 4),
-            child: _isSidebarCollapsed
-                ? Tooltip(
-                    message: l10n.logout,
-                    child: Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(8),
-                      child: InkWell(
-                        onTap: () => _confirmLogout(l10n),
-                        borderRadius: BorderRadius.circular(8),
-                        child: const SizedBox(height: 48, child: Center(child: Icon(Icons.logout, color: AppColors.error))),
-                      ),
-                    ),
-                  )
-                : ListTile(
-                    leading: const Icon(Icons.logout, color: AppColors.error),
-                    title: Text(l10n.logout, style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    onTap: () => _confirmLogout(l10n),
-                  ),
-          ),
-          const Divider(height: 1),
-          // ── Pied de page : profil utilisateur ─────────────────────────────
-          Padding(
-            padding: EdgeInsets.fromLTRB(_isSidebarCollapsed ? 0 : 16, 8, _isSidebarCollapsed ? 0 : 8, 8),
-            child: _isSidebarCollapsed
-                ? Center(
-                    child: Tooltip(
-                      message: currentUser?.fullName ?? l10n.user,
-                      child: CircleAvatar(
-                        backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
-                        child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
-                      ),
-                    ),
-                  )
-                : Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff).withValues(alpha: 0.2),
-                        child: Icon(_getRoleIconData(_authService.primaryRole ?? UserRole.hospitalStaff), color: _getRoleColor(_authService.primaryRole ?? UserRole.hospitalStaff)),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(currentUser?.fullName ?? l10n.user, style: const TextStyle(fontWeight: FontWeight.w500)),
-                            Text(
-                              currentUser?.roles.map((r) => r.displayName).join(', ') ?? '',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 20),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
-                        tooltip: l10n.tooltipAccountSettings,
-                      ),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  IconData _getRoleIconData(UserRole role) {
-    switch (role) {
-      case UserRole.admin: return Icons.admin_panel_settings;
-      case UserRole.supervisor: return Icons.supervisor_account;
-      case UserRole.technician:
-      case UserRole.technicianBiomedical:
-      case UserRole.technicianIt:
-      case UserRole.technicianInfra:
-        return Icons.build;
-      case UserRole.hospitalStaff: return Icons.medical_services;
-    }
-  }
-
-  Color _getRoleColor(UserRole role) {
-    switch (role) {
-      case UserRole.admin: return AppColors.error;
-      case UserRole.supervisor: return AppColors.warning;
-      case UserRole.technician: return AppColors.success;
-      case UserRole.technicianBiomedical: return AppColors.success;
-      case UserRole.technicianIt: return AppColors.primary;
-      case UserRole.technicianInfra: return AppColors.warning;
-      case UserRole.hospitalStaff: return AppColors.primary;
-    }
-  }
-
-  Widget _buildBottomNav(List<_NavItem> navItems) {
-    final visibleItems = navItems.take(5).toList();
-    if (visibleItems.length < 2) return const SizedBox.shrink();
-    return NavigationBar(
-      selectedIndex: _currentIndex < visibleItems.length ? _currentIndex : 0,
-      onDestinationSelected: (index) {
-        final item = visibleItems[index];
-        if (item.screenType == ScreenType.issueForm) {
-          showIssueCategorySelector(context);
-        } else {
-          _navigateTo(index);
-        }
-      },
-      labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-      destinations: visibleItems.map((item) => NavigationDestination(
-        icon: Icon(item.icon),
-        selectedIcon: Icon(item.activeIcon),
-        label: item.shortLabel,
-      )).toList(),
-    );
-  }
-
-  Widget _buildDrawer(AppLocalizations l10n, List<_NavItem> navItems) {
+  Widget _buildDrawer(AppLocalizations l10n, List<NavItem> navItems) {
     return Drawer(
       child: ListView(
         padding: EdgeInsets.zero,
@@ -922,12 +480,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                  child: Image.asset(
-                    'assets/images/logo_hopital.png',
-                    height: 44,
-                    width: 44,
-                    fit: BoxFit.contain,
-                  ),
+                  child: Image.asset('assets/images/logo_hopital.png', height: 44, width: 44, fit: BoxFit.contain),
                 ),
                 const SizedBox(height: 12),
                 Text(l10n.hospitalName, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
@@ -953,7 +506,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               selected: isSelected,
               selectedTileColor: AppColors.primaryLight,
               onTap: () {
-                Navigator.pop(context); // ferme le drawer
+                Navigator.pop(context);
                 if (item.screenType == ScreenType.issueForm) {
                   showIssueCategorySelector(context);
                 } else {
@@ -975,17 +528,54 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
     );
   }
-}
 
-class _NavItem {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
-  final String shortLabel;
-  final ScreenType screenType;
-  final Permission? requiredPermission;
-  // Permission alternative : l'item est visible si l'utilisateur a l'une OU l'autre
-  final Permission? alternativePermission;
+  @override
+  Widget build(BuildContext context) {
+    final isWide = MediaQuery.of(context).size.width > AppBreakpoints.desktop;
+    final l10n = AppLocalizations.of(context)!;
+    final navItems = _navItems(l10n);
+    final currentTitle = _currentIndex < navItems.length ? navItems[_currentIndex].label : '';
 
-  const _NavItem({required this.icon, required this.activeIcon, required this.label, required this.shortLabel, required this.screenType, this.requiredPermission, this.alternativePermission});
+    return Scaffold(
+      body: Builder(
+        builder: (scaffoldContext) => Row(
+          children: [
+            if (isWide)
+              AppSidebar(
+                navItems: navItems,
+                currentIndex: _currentIndex,
+                subtitle: _getSidebarSubtitle(l10n, navItems),
+                onNavTap: (ctx, item, index) => _navigateTo(index),
+                onBackToHub: widget.onBackToHub,
+                onLogout: () => _confirmLogout(l10n),
+              ),
+            Expanded(
+              child: Column(
+                children: [
+                  AppTopBar(
+                    title: currentTitle,
+                    canGoBack: _canGoBack,
+                    onBack: _goBack,
+                    isWide: isWide,
+                    onBackToHub: widget.onBackToHub,
+                    onOpenDrawer: () => Scaffold.of(scaffoldContext).openDrawer(),
+                    onNavigate: _navigateByScreenType,
+                  ),
+                  Expanded(child: _buildCurrentScreen(navItems)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: isWide
+          ? null
+          : AppBottomNav(
+              navItems: navItems,
+              currentIndex: _currentIndex,
+              onTap: (ctx, item, index) => _navigateTo(index),
+            ),
+      drawer: isWide ? null : _buildDrawer(l10n, navItems),
+    );
+  }
 }

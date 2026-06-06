@@ -256,7 +256,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     }
 
     final detail  = _detail!;
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
 
     return RefreshIndicator(
       onRefresh: () async {

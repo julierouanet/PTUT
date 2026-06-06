@@ -356,7 +356,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n     = AppLocalizations.of(context)!;
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
     final filtered = _filteredEquipment;
     // Tranche visible pour la pagination en mémoire
     final visible  = filtered.take(_visibleCount).toList();

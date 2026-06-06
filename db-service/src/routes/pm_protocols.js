@@ -1,16 +1,12 @@
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { rolesCsv } = require('../utils/roles');
 
 const router = express.Router();
 
 const VALID_CRITICALITIES = ['A', 'B', 'C'];
-
-const rolesCsv = (req) =>
-  (Array.isArray(req.user?.roles) ? req.user.roles : [])
-    .filter((r) => !SYSTEM_ROLES.has(r))
-    .join(',');
 
 // ── GET /api/pm-protocols ────────────────────────────────────────────────────
 // Liste des protocoles PM. Filtres : ?subcategory_id=, ?macro_category_id=

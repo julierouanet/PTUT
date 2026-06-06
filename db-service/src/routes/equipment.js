@@ -1,17 +1,11 @@
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { TECH_ROLES, rolesCsv } = require('../utils/roles');
 const { generateMaintenanceLabelPdf } = require('../services/pdf_label_service');
 
 const router = express.Router();
-
-// Rôles techniciens spécialisés (autorisés sur les mêmes routes que l'ancien `technician`).
-const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
-const rolesCsv = (req) =>
-  (Array.isArray(req.user?.roles) ? req.user.roles : [])
-    .filter((r) => !SYSTEM_ROLES.has(r))
-    .join(',');
 
 const VALID_STATUSES_EQ = [
   'Operational',
@@ -33,19 +27,6 @@ const BASE_SELECT = `
   LEFT JOIN equipment_subcategories        es  ON es.id  = e.subcategory_id
   LEFT JOIN equipment_macro_categories     emc ON emc.id = e.macro_category_id
 `;
-
-// Helper : enrichit un équipement brut avec maintenance + tags
-function enrichEquipment(db, eq) {
-  const histStmt   = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC');
-  const futureStmt = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC');
-  const tagsStmt   = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC');
-  return {
-    ...eq,
-    maintenanceHistory: histStmt.all(eq.id),
-    futureMaintenance:  futureStmt.all(eq.id),
-    tags:               tagsStmt.all(eq.id).map(r => r.tag_number),
-  };
-}
 
 // Résout macro_category_id à partir de subcategory_id si non fourni explicitement
 function resolveMacroCategoryId(db, subcategoryId, explicitMacroCategoryId) {

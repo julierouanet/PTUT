@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // ── Dialogue / bottom-sheet : Demande d'accès ─────────────────────────────
 
   void _showAccessRequestSheet(BuildContext context) {
-    final isDesktop = MediaQuery.sizeOf(context).width >= 800;
+    final isDesktop = MediaQuery.sizeOf(context).width >= AppBreakpoints.desktop;
     if (isDesktop) {
       showDialog(
         context: context,

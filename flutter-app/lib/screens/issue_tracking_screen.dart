@@ -165,8 +165,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
 
   Widget _buildMainContent(BuildContext context) {
     final l10n      = AppLocalizations.of(context)!;
-    final isMobile  = MediaQuery.of(context).size.width < 600;
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final isMobile  = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
+    final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
     // Contenu de liste partagé entre les deux modes
     final listPanel = SingleChildScrollView(
@@ -1026,7 +1026,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
   // ── Navigation vers le détail ──────────────────────────────────────────────
 
   void _showIssueDetail(Issue issue) {
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
     // Vérification RBAC : techniciens/superviseurs/admins → vue complète
     final canEdit = _authService.hasPermission(Permission.updateRepairs) ||

@@ -657,7 +657,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final (pmCompliant, pmTotal)    = _computePmCompliance();
         final topDepts                  = _topDepartments(periodIssues);
 
-        final isMobile = MediaQuery.of(context).size.width < 600;
+        final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
         final pad      = isMobile ? 16.0 : 24.0;
 
         return SingleChildScrollView(

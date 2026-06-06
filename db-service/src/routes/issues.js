@@ -1,8 +1,9 @@
 const express = require('express');
 const path    = require('path');
 const { getDb } = require('../database');
-const { verifyToken, requireRole, SYSTEM_ROLES } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
+const { TECH_ROLES, rolesCsv } = require('../utils/roles');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET, UPLOAD_DIR } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
 const { photoUpload } = require('../middleware/upload');
@@ -56,14 +57,6 @@ const GROUP_TO_ROLE = {
   'Infrastructure': 'technician_infra',
 };
 
-// Tous les rôles techniciens spécialisés (utilisés pour requireRole).
-const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
-
-// Sérialise les rôles d'un user (issus du JWT) pour la colonne `user_role` des logs.
-const rolesCsv = (req) =>
-  (Array.isArray(req.user?.roles) ? req.user.roles : [])
-    .filter((r) => !SYSTEM_ROLES.has(r))
-    .join(',');
 
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {

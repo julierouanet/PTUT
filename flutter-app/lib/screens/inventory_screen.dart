@@ -27,7 +27,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     final lowStock = DataService().inventory.where((i) => i.status == StockStatus.low).length;
     final outOfStock = DataService().inventory.where((i) => i.status == StockStatus.outOfStock).length;
 
-    final isMobile = MediaQuery.of(context).size.width < 600;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
 
     return Align(
       alignment: Alignment.topLeft,

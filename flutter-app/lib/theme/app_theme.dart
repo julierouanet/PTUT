@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+/// Seuils de largeur pour le responsive (desktop ≥ 800px, tablet ≥ 600px).
+class AppBreakpoints {
+  static const double desktop = 800.0;
+  static const double tablet  = 600.0;
+
+  AppBreakpoints._();
+}
+
 /// Application color scheme
 class AppColors {
   // Primary colors

@@ -14,6 +14,7 @@ import '../models/user_role.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
+import '../widgets/tab_label.dart';
 import 'issue_detail_screen.dart';
 
 // ── Modèles internes ──────────────────────────────────────────────────────────
@@ -293,10 +294,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   @override
   Widget build(BuildContext context) {
     final l10n      = AppLocalizations.of(context)!;
-    final isDesktop = MediaQuery.of(context).size.width >= 800;
+    final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
     // Sur mobile (< 600px), icônes seules pour éviter l'overflow du TabBar
-    final isMobileTab = MediaQuery.of(context).size.width < 600;
+    final isMobileTab = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
 
     return Column(
       children: [
@@ -315,91 +316,40 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             tabs: [
               Tab(
                 height: 40,
-                child: isMobileTab
-                    ? Tooltip(
-                        message: l10n.techAvailableTab,
-                        child: Badge(
-                          isLabelVisible: _availableIssues.isNotEmpty,
-                          label: Text('${_availableIssues.length}',
-                              style: const TextStyle(fontSize: 10)),
-                          child: const Icon(Icons.inbox_outlined, size: 18),
-                        ),
-                      )
-                    : Row(mainAxisSize: MainAxisSize.min, children: [
-                        Badge(
-                          isLabelVisible: _availableIssues.isNotEmpty,
-                          label: Text('${_availableIssues.length}',
-                              style: const TextStyle(fontSize: 10)),
-                          child: const Icon(Icons.inbox_outlined, size: 16),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(l10n.techAvailableTab,
-                            style: const TextStyle(fontSize: 13)),
-                      ]),
+                child: TabLabel(
+                  isMobile: isMobileTab,
+                  icon: Icons.inbox_outlined,
+                  label: l10n.techAvailableTab,
+                  badgeCount: _availableIssues.length,
+                ),
               ),
               Tab(
                 height: 40,
-                child: isMobileTab
-                    ? Tooltip(
-                        message: l10n.techMyInterventionsTab,
-                        child: Badge(
-                          isLabelVisible: _myIssues.isNotEmpty,
-                          label: Text('${_myIssues.length}',
-                              style: const TextStyle(fontSize: 10)),
-                          child: const Icon(Icons.build_outlined, size: 18),
-                        ),
-                      )
-                    : Row(mainAxisSize: MainAxisSize.min, children: [
-                        Badge(
-                          isLabelVisible: _myIssues.isNotEmpty,
-                          label: Text('${_myIssues.length}',
-                              style: const TextStyle(fontSize: 10)),
-                          child: const Icon(Icons.build_outlined, size: 16),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(l10n.techMyInterventionsTab,
-                            style: const TextStyle(fontSize: 13)),
-                      ]),
+                child: TabLabel(
+                  isMobile: isMobileTab,
+                  icon: Icons.build_outlined,
+                  label: l10n.techMyInterventionsTab,
+                  badgeCount: _myIssues.length,
+                ),
               ),
               Tab(
                 height: 40,
-                child: isMobileTab
-                    ? Tooltip(
-                        message: l10n.techScheduleTab,
-                        child: const Icon(Icons.calendar_today_outlined, size: 18),
-                      )
-                    : Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.calendar_today_outlined, size: 16),
-                        const SizedBox(width: 6),
-                        Text(l10n.techScheduleTab,
-                            style: const TextStyle(fontSize: 13)),
-                      ]),
+                child: TabLabel(
+                  isMobile: isMobileTab,
+                  icon: Icons.calendar_today_outlined,
+                  label: l10n.techScheduleTab,
+                ),
               ),
               // Onglet Validation — visible uniquement pour admin/superviseur
               if (_canValidate)
                 Tab(
                   height: 40,
-                  child: isMobileTab
-                      ? Tooltip(
-                          message: l10n.issueValidationTab,
-                          child: Badge(
-                            isLabelVisible: _openIssuesForValidation.isNotEmpty,
-                            label: Text('${_openIssuesForValidation.length}',
-                                style: const TextStyle(fontSize: 10)),
-                            child: const Icon(Icons.pending_actions_outlined, size: 18),
-                          ),
-                        )
-                      : Row(mainAxisSize: MainAxisSize.min, children: [
-                          Badge(
-                            isLabelVisible: _openIssuesForValidation.isNotEmpty,
-                            label: Text('${_openIssuesForValidation.length}',
-                                style: const TextStyle(fontSize: 10)),
-                            child: const Icon(Icons.pending_actions_outlined, size: 16),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(l10n.issueValidationTab,
-                              style: const TextStyle(fontSize: 13)),
-                        ]),
+                  child: TabLabel(
+                    isMobile: isMobileTab,
+                    icon: Icons.pending_actions_outlined,
+                    label: l10n.issueValidationTab,
+                    badgeCount: _openIssuesForValidation.length,
+                  ),
                 ),
             ],
           ),
@@ -520,7 +470,15 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                       child: Card(
                         child: Column(
                           children: issues
-                              .map((i) => _buildAvailableIssueItem(i, isMobile))
+                              .map((i) => _AvailableIssueCard(
+                                    issue: i,
+                                    equipment: _equipmentFor(i),
+                                    isMobile: isMobile,
+                                    onTakeOver: () => _showTakeOverDialog(i),
+                                    onViewSheet: _equipmentFor(i) != null
+                                        ? () => EquipmentDetailDialog.show(context, _equipmentFor(i)!)
+                                        : null,
+                                  ))
                               .toList(),
                         ),
                       ),
@@ -535,179 +493,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
-  Widget _buildAvailableIssueItem(Issue issue, bool isMobile) {
-    final l10n = AppLocalizations.of(context)!;
-    final eq   = _equipmentFor(issue);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: AppColors.border))),
-      child: isMobile
-          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _urgencyBgColor(issue.urgency),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(Icons.warning_amber_rounded,
-                      color: _urgencyFgColor(issue.urgency), size: 18),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(issue.displayName,
-                            style: const TextStyle(fontWeight: FontWeight.w600)),
-                        Text(issue.department,
-                            style: const TextStyle(
-                                color: AppColors.textSecondary, fontSize: 12)),
-                      ]),
-                ),
-                UrgencyBadge(urgency: issue.urgency, isCompact: true),
-              ]),
-              const SizedBox(height: 8),
-              Text(issue.type,
-                  style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500)),
-              const SizedBox(height: 2),
-              Text(issue.description,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis),
-              if (eq != null) ...[
-                const SizedBox(height: 4),
-                Wrap(spacing: 8, children: [
-                  if (eq.category.isNotEmpty)
-                    _miniChip(Icons.category, eq.category),
-                  if (eq.location.isNotEmpty)
-                    _miniChip(Icons.location_on, eq.location),
-                  if (eq.serialNumber.isNotEmpty)
-                    _miniChip(Icons.qr_code, eq.serialNumber),
-                ]),
-              ],
-              const SizedBox(height: 4),
-              Text(
-                  l10n.issuesReportedByDate(issue.reporter, issue.createdAt),
-                  style: const TextStyle(
-                      color: AppColors.textMuted, fontSize: 12)),
-              const SizedBox(height: 12),
-              Row(children: [
-                if (eq != null) ...[
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => EquipmentDetailDialog.show(context, eq),
-                      icon: const Icon(Icons.info_outline, size: 14),
-                      label: Text(l10n.techSheet),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showTakeOverDialog(issue),
-                    icon: const Icon(Icons.handyman_outlined, size: 16),
-                    label: Text(l10n.techTakeCharge),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white),
-                  ),
-                ),
-              ]),
-            ])
-          : Row(children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: _urgencyBgColor(issue.urgency),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(Icons.warning_amber_rounded,
-                    color: _urgencyFgColor(issue.urgency), size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Text(issue.displayName,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 8),
-                        _infoChip(issue.department, AppColors.primaryLight,
-                            AppColors.primary),
-                        const SizedBox(width: 6),
-                        _infoChip(issue.type, AppColors.background,
-                            AppColors.textSecondary),
-                        if (eq != null && eq.category.isNotEmpty) ...[
-                          const SizedBox(width: 6),
-                          _infoChip(eq.category, AppColors.successLight,
-                              AppColors.success),
-                        ],
-                      ]),
-                      const SizedBox(height: 4),
-                      Text(issue.description,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        Text(
-                            l10n.issuesReportedByDate(
-                                issue.reporter, issue.createdAt),
-                            style: const TextStyle(
-                                color: AppColors.textMuted, fontSize: 12)),
-                        if (eq != null && eq.location.isNotEmpty) ...[
-                          const SizedBox(width: 10),
-                          const Icon(Icons.location_on,
-                              size: 12, color: AppColors.textMuted),
-                          const SizedBox(width: 2),
-                          Text(eq.location,
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppColors.textMuted)),
-                        ],
-                        if (eq != null && eq.serialNumber.isNotEmpty) ...[
-                          const SizedBox(width: 10),
-                          const Icon(Icons.qr_code,
-                              size: 12, color: AppColors.textMuted),
-                          const SizedBox(width: 2),
-                          Text(eq.serialNumber,
-                              style: const TextStyle(
-                                  fontSize: 12, color: AppColors.textMuted)),
-                        ],
-                      ]),
-                    ]),
-              ),
-              const SizedBox(width: 16),
-              UrgencyBadge(urgency: issue.urgency),
-              const SizedBox(width: 8),
-              if (eq != null)
-                OutlinedButton.icon(
-                  onPressed: () => EquipmentDetailDialog.show(context, eq),
-                  icon: const Icon(Icons.info_outline, size: 14),
-                  label: Text(l10n.techSheet),
-                ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                onPressed: () => _showTakeOverDialog(issue),
-                icon: const Icon(Icons.handyman_outlined, size: 16),
-                label: Text(l10n.techTakeCharge),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white),
-              ),
-            ]),
-    );
-  }
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Onglet 1 : Mes interventions — Layout Desktop (Master-Detail)
@@ -1818,46 +1603,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // Helpers visuels
   // ─────────────────────────────────────────────────────────────────────────────
 
-  Color _urgencyBgColor(IssueUrgency u) {
-    switch (u) {
-      case IssueUrgency.critique: return AppColors.criticalLight;
-      case IssueUrgency.urgent:   return AppColors.errorLight;
-      case IssueUrgency.moyen:    return AppColors.warningLight;
-      case IssueUrgency.faible:   return AppColors.background;
-    }
-  }
-
-  Color _urgencyFgColor(IssueUrgency u) {
-    switch (u) {
-      case IssueUrgency.critique: return AppColors.critical;
-      case IssueUrgency.urgent:   return AppColors.error;
-      case IssueUrgency.moyen:    return AppColors.warning;
-      case IssueUrgency.faible:   return AppColors.textSecondary;
-    }
-  }
-
-  Widget _infoChip(String label, Color bg, Color fg) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration:
-            BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
-        child: Text(label, style: TextStyle(fontSize: 11, color: fg)),
-      );
-
-  Widget _miniChip(IconData icon, String label) => Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        decoration: BoxDecoration(
-            color: AppColors.background,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppColors.border)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 10, color: AppColors.textSecondary),
-          const SizedBox(width: 3),
-          Text(label,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
-        ]),
-      );
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Dialog : Prise en charge
@@ -3064,5 +2809,201 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
+  }
+}
+
+// ── Fonctions utilitaires pures — couleurs d'urgence et chips ────────────────
+
+Color _urgencyBgColor(IssueUrgency u) {
+  switch (u) {
+    case IssueUrgency.critique: return AppColors.criticalLight;
+    case IssueUrgency.urgent:   return AppColors.errorLight;
+    case IssueUrgency.moyen:    return AppColors.warningLight;
+    case IssueUrgency.faible:   return AppColors.background;
+  }
+}
+
+Color _urgencyFgColor(IssueUrgency u) {
+  switch (u) {
+    case IssueUrgency.critique: return AppColors.critical;
+    case IssueUrgency.urgent:   return AppColors.error;
+    case IssueUrgency.moyen:    return AppColors.warning;
+    case IssueUrgency.faible:   return AppColors.textSecondary;
+  }
+}
+
+Widget _infoChip(String label, Color bg, Color fg) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(4)),
+      child: Text(label, style: TextStyle(fontSize: 11, color: fg)),
+    );
+
+Widget _miniChip(IconData icon, String label) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: AppColors.border)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 10, color: AppColors.textSecondary),
+        const SizedBox(width: 3),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+      ]),
+    );
+
+// ── Widget : carte d'un incident disponible (onglet 0 du technicien) ─────────
+
+/// Affiche un incident disponible en version mobile (colonne) ou desktop (ligne).
+/// Tous les callbacks sont passés explicitement — ce widget est sans état.
+class _AvailableIssueCard extends StatelessWidget {
+  final Issue issue;
+  final Equipment? equipment;
+  final bool isMobile;
+  final VoidCallback onTakeOver;
+  final VoidCallback? onViewSheet;
+
+  const _AvailableIssueCard({
+    required this.issue,
+    required this.isMobile,
+    required this.onTakeOver,
+    this.equipment,
+    this.onViewSheet,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final eq   = equipment;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border))),
+      child: isMobile ? _buildMobile(l10n, eq) : _buildDesktop(l10n, eq),
+    );
+  }
+
+  Widget _buildMobile(AppLocalizations l10n, Equipment? eq) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: _urgencyBgColor(issue.urgency),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(Icons.warning_amber_rounded, color: _urgencyFgColor(issue.urgency), size: 18),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text(issue.department, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          ]),
+        ),
+        UrgencyBadge(urgency: issue.urgency, isCompact: true),
+      ]),
+      const SizedBox(height: 8),
+      Text(issue.type, style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
+      const SizedBox(height: 2),
+      Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+      if (eq != null) ...[
+        const SizedBox(height: 4),
+        Wrap(spacing: 8, children: [
+          if (eq.category.isNotEmpty)     _miniChip(Icons.category, eq.category),
+          if (eq.location.isNotEmpty)     _miniChip(Icons.location_on, eq.location),
+          if (eq.serialNumber.isNotEmpty) _miniChip(Icons.qr_code, eq.serialNumber),
+        ]),
+      ],
+      const SizedBox(height: 4),
+      Text(l10n.issuesReportedByDate(issue.reporter, issue.createdAt),
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+      const SizedBox(height: 12),
+      Row(children: [
+        if (onViewSheet != null) ...[
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: onViewSheet,
+              icon: const Icon(Icons.info_outline, size: 14),
+              label: Text(l10n.techSheet),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          flex: 2,
+          child: ElevatedButton.icon(
+            onPressed: onTakeOver,
+            icon: const Icon(Icons.handyman_outlined, size: 16),
+            label: Text(l10n.techTakeCharge),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+          ),
+        ),
+      ]),
+    ]);
+  }
+
+  Widget _buildDesktop(AppLocalizations l10n, Equipment? eq) {
+    return Row(children: [
+      Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: _urgencyBgColor(issue.urgency),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(Icons.warning_amber_rounded, color: _urgencyFgColor(issue.urgency), size: 20),
+      ),
+      const SizedBox(width: 16),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            Text(issue.displayName, style: const TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(width: 8),
+            _infoChip(issue.department, AppColors.primaryLight, AppColors.primary),
+            const SizedBox(width: 6),
+            _infoChip(issue.type, AppColors.background, AppColors.textSecondary),
+            if (eq != null && eq.category.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              _infoChip(eq.category, AppColors.successLight, AppColors.success),
+            ],
+          ]),
+          const SizedBox(height: 4),
+          Text(issue.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 4),
+          Row(children: [
+            Text(l10n.issuesReportedByDate(issue.reporter, issue.createdAt),
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            if (eq != null && eq.location.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              const Icon(Icons.location_on, size: 12, color: AppColors.textMuted),
+              const SizedBox(width: 2),
+              Text(eq.location, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ],
+            if (eq != null && eq.serialNumber.isNotEmpty) ...[
+              const SizedBox(width: 10),
+              const Icon(Icons.qr_code, size: 12, color: AppColors.textMuted),
+              const SizedBox(width: 2),
+              Text(eq.serialNumber, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ],
+          ]),
+        ]),
+      ),
+      const SizedBox(width: 16),
+      UrgencyBadge(urgency: issue.urgency),
+      const SizedBox(width: 8),
+      if (onViewSheet != null)
+        OutlinedButton.icon(
+          onPressed: onViewSheet,
+          icon: const Icon(Icons.info_outline, size: 14),
+          label: Text(l10n.techSheet),
+        ),
+      const SizedBox(width: 8),
+      ElevatedButton.icon(
+        onPressed: onTakeOver,
+        icon: const Icon(Icons.handyman_outlined, size: 16),
+        label: Text(l10n.techTakeCharge),
+        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+      ),
+    ]);
   }
 }

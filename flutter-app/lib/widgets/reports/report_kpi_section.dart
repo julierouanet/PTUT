@@ -31,7 +31,7 @@ class ReportKpiSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final isMobile = MediaQuery.of(context).size.width < 800;
+    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.desktop;
 
     if (isMobile) {
       return Column(

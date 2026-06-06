@@ -1,0 +1,19 @@
+// ── Constantes et helpers partagés entre toutes les routes du db-service ─────
+
+const { SYSTEM_ROLES } = require('../middleware/auth');
+
+// Rôles techniciens spécialisés — utilisés dans requireRole() et les filtres métier.
+const TECH_ROLES = ['technician_biomedical', 'technician_it', 'technician_infra'];
+
+/**
+ * Sérialise les rôles applicatifs du user (hors rôles systèmes Keycloak)
+ * pour la colonne `user_role` des logs d'audit.
+ * @param {import('express').Request} req
+ * @returns {string}
+ */
+const rolesCsv = (req) =>
+  (Array.isArray(req.user?.roles) ? req.user.roles : [])
+    .filter((r) => !SYSTEM_ROLES.has(r))
+    .join(',');
+
+module.exports = { TECH_ROLES, rolesCsv };
