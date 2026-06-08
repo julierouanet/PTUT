@@ -5,7 +5,6 @@ import '../../models/nav_item.dart';
 import '../../models/user_role.dart';
 import '../../screens/account_settings_screen.dart';
 import '../../services/auth_service.dart';
-import '../../services/notification_service.dart';
 import '../issue_category_selector.dart';
 
 /// Sidebar desktop animée (expandable/collapsible).
@@ -58,7 +57,6 @@ class _AppSidebarState extends State<AppSidebar> {
             const Divider(height: 1),
           ],
           Expanded(child: _buildNavList(l10n)),
-          _buildNotificationsBadge(l10n),
           _buildLogoutButton(l10n),
           const Divider(height: 1),
           _buildUserFooter(l10n, currentUser, authService.primaryRole),
@@ -183,57 +181,6 @@ class _AppSidebarState extends State<AppSidebar> {
                       widget.onNavTap(context, item, index);
                     }
                   },
-                ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNotificationsBadge(AppLocalizations l10n) {
-    return ListenableBuilder(
-      listenable: NotificationService(),
-      builder: (context, _) {
-        final unread = NotificationService().unreadCount;
-        if (unread == 0) return const SizedBox.shrink();
-        return Padding(
-          padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 4 : 12, vertical: 2),
-          child: _isCollapsed
-              ? Tooltip(
-                  message: '${l10n.tooltipNotifications} ($unread)',
-                  child: Center(
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                      child: Center(
-                        child: Text(
-                          unread > 9 ? '9+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              : ListTile(
-                  leading: Stack(children: [
-                    const Icon(Icons.notifications_outlined, color: AppColors.textSecondary),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
-                        child: Text(
-                          unread > 9 ? '9+' : '$unread',
-                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-                  ]),
-                  title: Text(l10n.tooltipNotifications, style: const TextStyle(fontSize: 14)),
-                  dense: true,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  onTap: () {},
                 ),
         );
       },
