@@ -1,6 +1,7 @@
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
+const { logAction, extractReqMeta } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -93,7 +94,6 @@ router.post('/sub', verifyToken, requireRole('admin'), (req, res) => {
     'INSERT INTO equipment_subcategories (name, macro_category_id) VALUES (?, ?)'
   ).run(name.trim(), parseInt(macro_category_id, 10));
 
-  const { logAction, extractReqMeta } = require('../utils/logger');
   logAction({
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] ?? 'admin',
     action: 'create_subcategory',
@@ -137,7 +137,6 @@ router.put('/sub/:id', verifyToken, requireRole('admin'), (req, res) => {
     'UPDATE equipment_subcategories SET name = ?, macro_category_id = ? WHERE id = ?'
   ).run(name.trim(), newMacroId, id);
 
-  const { logAction, extractReqMeta } = require('../utils/logger');
   logAction({
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] ?? 'admin',
     action: 'update_subcategory',
@@ -172,7 +171,6 @@ router.delete('/sub/:id', verifyToken, requireRole('admin'), (req, res) => {
 
   db.prepare('DELETE FROM equipment_subcategories WHERE id = ?').run(id);
 
-  const { logAction, extractReqMeta } = require('../utils/logger');
   logAction({
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] ?? 'admin',
     action: 'delete_subcategory',
