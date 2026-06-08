@@ -4598,4 +4598,71 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notificationsTitleCritical => 'Incident critique';
+
+  @override
+  String get roleDetailOpenButton => 'Détails';
+
+  @override
+  String get roleDetailTabHierarchy => 'Hiérarchie';
+
+  @override
+  String get roleDetailTabFeatures => 'Fonctionnalités';
+
+  @override
+  String get roleDetailTabMenu => 'Menu';
+
+  @override
+  String get roleDetailTabUsers => 'Utilisateurs';
+
+  @override
+  String get roleDetailParentRole => 'Rôle parent';
+
+  @override
+  String get roleDetailNoParent => 'Rôle racine (aucun parent)';
+
+  @override
+  String get roleDetailChildRoles => 'Rôles enfants';
+
+  @override
+  String get roleDetailNoChildren => 'Aucun rôle enfant';
+
+  @override
+  String get roleDetailNoUsers => 'Aucun utilisateur avec ce rôle';
+
+  @override
+  String roleDetailUsersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count utilisateurs',
+      one: '1 utilisateur',
+      zero: 'Aucun utilisateur',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get roleDetailSavedSuccess => 'Configuration sauvegardée';
+
+  @override
+  String get roleDetailSaveError => 'Erreur lors de la sauvegarde';
+
+  @override
+  String get roleDetailOffline => 'Mode hors ligne — modifications désactivées';
+
+  @override
+  String roleDetailInheritedFrom(String role) {
+    return 'Hérité de $role';
+  }
+
+  @override
+  String get roleDetailAdminLocked =>
+      'Les permissions de l\'Administrateur sont verrouillées.';
+
+  @override
+  String get roleDetailMenuVisible =>
+      'Éléments visibles (ordre par glisser-déposer)';
+
+  @override
+  String get roleDetailMenuHidden => 'Éléments masqués';
 }

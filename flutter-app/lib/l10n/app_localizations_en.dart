@@ -4555,4 +4555,69 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsTitleCritical => 'Critical issue';
+
+  @override
+  String get roleDetailOpenButton => 'Details';
+
+  @override
+  String get roleDetailTabHierarchy => 'Hierarchy';
+
+  @override
+  String get roleDetailTabFeatures => 'Features';
+
+  @override
+  String get roleDetailTabMenu => 'Menu order';
+
+  @override
+  String get roleDetailTabUsers => 'Users';
+
+  @override
+  String get roleDetailParentRole => 'Parent role';
+
+  @override
+  String get roleDetailNoParent => 'Root role (no parent)';
+
+  @override
+  String get roleDetailChildRoles => 'Child roles';
+
+  @override
+  String get roleDetailNoChildren => 'No child roles';
+
+  @override
+  String get roleDetailNoUsers => 'No users with this role';
+
+  @override
+  String roleDetailUsersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count users',
+      one: '1 user',
+      zero: 'No users',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get roleDetailSavedSuccess => 'Configuration saved';
+
+  @override
+  String get roleDetailSaveError => 'Error while saving';
+
+  @override
+  String get roleDetailOffline => 'Offline — edits disabled';
+
+  @override
+  String roleDetailInheritedFrom(String role) {
+    return 'Inherited from $role';
+  }
+
+  @override
+  String get roleDetailAdminLocked => 'Administrator permissions are locked.';
+
+  @override
+  String get roleDetailMenuVisible => 'Visible items (drag to reorder)';
+
+  @override
+  String get roleDetailMenuHidden => 'Hidden items';
 }

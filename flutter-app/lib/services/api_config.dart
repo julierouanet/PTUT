@@ -150,6 +150,11 @@ class ApiConfig {
   static String equipmentValidatePmUrl(String id) =>
       '$dbBaseUrl/api/equipment/${Uri.encodeComponent(id)}/maintenance/validate';
 
+  // ── Détail d'un rôle (auth-service) ──────────────────────────────────────────
+  static String roleHierarchyUrl(String n)   => '$rolesUrl/${Uri.encodeComponent(n)}/hierarchy';
+  static String rolePermissionsUrl(String n) => '$rolesUrl/${Uri.encodeComponent(n)}/permissions';
+  static String roleUsersUrl(String n)       => '$rolesUrl/${Uri.encodeComponent(n)}/users';
+
   // ── Health endpoints (publics, sans authentification) ────────────────────────
   static String get healthAuthUrl => '$authBaseUrl/health';
   static String get healthDbUrl   => '$dbBaseUrl/health';

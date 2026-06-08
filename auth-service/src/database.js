@@ -210,6 +210,24 @@ function initTables() {
     );
   `);
 
+  // role_hierarchy : hiérarchie logique des rôles (technician → spécialisés)
+  // Keycloak Composite Roles n'est pas utilisé dans ce projet — la hiérarchie
+  // est gérée ici. Un rôle enfant hérite des permissions de son parent.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS role_hierarchy (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      parent_role TEXT NOT NULL,
+      child_role  TEXT NOT NULL,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+      UNIQUE(parent_role, child_role)
+    );
+  `);
+  // Seed : hiérarchie technician (idempotent)
+  const insertHierarchy = db.prepare('INSERT OR IGNORE INTO role_hierarchy (parent_role, child_role) VALUES (?, ?)');
+  insertHierarchy.run('technician', 'technician_biomedical');
+  insertHierarchy.run('technician', 'technician_it');
+  insertHierarchy.run('technician', 'technician_infra');
+
   // Seed des flags par défaut (idempotent — INSERT OR IGNORE)
   const defaultFlags = [
     {

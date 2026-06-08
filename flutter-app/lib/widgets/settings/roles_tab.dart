@@ -3,6 +3,7 @@ import '../../l10n/app_localizations.dart';
 import '../../services/auth_api_service.dart';
 import '../../services/data_service.dart';
 import '../../models/user_role.dart';
+import '../../screens/role_detail_screen.dart';
 import '../../theme/app_theme.dart';
 
 class _RoleConfig {
@@ -218,6 +219,21 @@ class _RolesTabState extends State<RolesTab> {
                 ),
               ],
               const Spacer(),
+              // Bouton "Détails" → RoleDetailScreen (onglets hiérarchie/fonctionnalités/menu/users)
+              TextButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => RoleDetailScreen(
+                      roleName:    role.name,
+                      displayName: role.displayName,
+                    ),
+                  ),
+                ),
+                icon: const Icon(Icons.tune, size: 16),
+                label: Text(l10n.roleDetailOpenButton),
+                style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+              ),
               if (role.name == 'admin')
                 Tooltip(
                   message: l10n.settingsAdminAlwaysAll,

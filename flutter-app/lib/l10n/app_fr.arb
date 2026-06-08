@@ -1843,5 +1843,26 @@
   "notificationsEmpty": "Aucune notification",
   "notificationsOsPermissionDenied": "Notifications système désactivées. Activez-les dans les paramètres.",
   "notificationsTitleNewIssue": "Nouvel incident signalé",
-  "notificationsTitleCritical": "Incident critique"
+  "notificationsTitleCritical": "Incident critique",
+
+  "roleDetailOpenButton": "Détails",
+  "roleDetailTabHierarchy": "Hiérarchie",
+  "roleDetailTabFeatures": "Fonctionnalités",
+  "roleDetailTabMenu": "Menu",
+  "roleDetailTabUsers": "Utilisateurs",
+  "roleDetailParentRole": "Rôle parent",
+  "roleDetailNoParent": "Rôle racine (aucun parent)",
+  "roleDetailChildRoles": "Rôles enfants",
+  "roleDetailNoChildren": "Aucun rôle enfant",
+  "roleDetailNoUsers": "Aucun utilisateur avec ce rôle",
+  "roleDetailUsersCount": "{count,plural,=0{Aucun utilisateur}=1{1 utilisateur}other{{count} utilisateurs}}",
+  "@roleDetailUsersCount": { "placeholders": { "count": { "type": "int" } } },
+  "roleDetailSavedSuccess": "Configuration sauvegardée",
+  "roleDetailSaveError": "Erreur lors de la sauvegarde",
+  "roleDetailOffline": "Mode hors ligne — modifications désactivées",
+  "roleDetailInheritedFrom": "Hérité de {role}",
+  "@roleDetailInheritedFrom": { "placeholders": { "role": { "type": "String" } } },
+  "roleDetailAdminLocked": "Les permissions de l'Administrateur sont verrouillées.",
+  "roleDetailMenuVisible": "Éléments visibles (ordre par glisser-déposer)",
+  "roleDetailMenuHidden": "Éléments masqués"
 }

@@ -122,6 +122,59 @@ router.put('/:name/permissions', verifyToken, requireAdmin, async (req, res) => 
   res.json({ message: 'Permissions mises à jour', role: name, permissions });
 });
 
+// ── GET /api/roles/:name/permissions — permissions d'un rôle spécifique ────────
+router.get('/:name/permissions', verifyToken, requireAdmin, (req, res) => {
+  const db = getDb();
+  const { name } = req.params;
+  const perms = db.prepare('SELECT permission FROM role_permissions WHERE role_name = ? ORDER BY permission')
+    .all(name).map((p) => p.permission);
+  res.json({ role: name, permissions: perms });
+});
+
+// ── GET /api/roles/:name/hierarchy — hiérarchie parent/enfants d'un rôle ───────
+router.get('/:name/hierarchy', verifyToken, requireAdmin, (req, res) => {
+  const db = getDb();
+  const { name } = req.params;
+  const parentRow  = db.prepare('SELECT parent_role FROM role_hierarchy WHERE child_role = ?').get(name);
+  const childRows  = db.prepare('SELECT child_role FROM role_hierarchy WHERE parent_role = ? ORDER BY child_role').all(name);
+  res.json({
+    parent:        parentRow ? parentRow.parent_role : null,
+    children:      childRows.map((r) => r.child_role),
+    inheritedFrom: parentRow ? parentRow.parent_role : null,
+  });
+});
+
+// ── GET /api/roles/:name/users — utilisateurs Keycloak ayant ce rôle ────────────
+router.get('/:name/users', verifyToken, requireAdmin, async (req, res) => {
+  const { name } = req.params;
+  const page  = Math.max(1, parseInt(req.query.page  || '1', 10));
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit || '20', 10)));
+  const first = (page - 1) * limit;
+  try {
+    // Récupère la page demandée
+    const resp = await kcAdminFetch(`/roles/${encodeURIComponent(name)}/users?first=${first}&max=${limit}`);
+    if (!resp.ok) return res.status(502).json({ error: 'Erreur Keycloak' });
+    const users = await resp.json();
+    // Comptage total (appel séparé avec max élevé — acceptable pour des listes de rôles)
+    const countResp = await kcAdminFetch(`/roles/${encodeURIComponent(name)}/users?max=500`);
+    const total = countResp.ok ? (await countResp.json()).length : users.length;
+    res.json({
+      users: users.map((u) => ({
+        id:       u.id,
+        name:     `${u.firstName ?? ''} ${u.lastName ?? ''}`.trim() || u.username || '',
+        email:    u.email    ?? '',
+        username: u.username ?? '',
+      })),
+      total,
+      page,
+      limit,
+    });
+  } catch (err) {
+    console.error(`[ROLES] Erreur GET /roles/${name}/users:`, err.message);
+    res.status(500).json({ error: 'Erreur interne du serveur' });
+  }
+});
+
 // ── DELETE /api/roles/:name — supprimer un rôle personnalisé (admin) ───────────
 router.delete('/:name', verifyToken, requireAdmin, async (req, res) => {
   const db = getDb();

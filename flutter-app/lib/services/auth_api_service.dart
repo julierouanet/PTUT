@@ -339,6 +339,62 @@ class AuthApiService {
     }
   }
 
+  // ── Détail d'un rôle (hiérarchie, permissions, utilisateurs) ─────────────────
+
+  /// Permissions applicatives d'un rôle.
+  Future<List<String>> getRolePermissions(String roleName) async {
+    final response = await ApiClient.get(ApiConfig.rolePermissionsUrl(roleName));
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return List<String>.from(body['permissions'] as List? ?? []);
+  }
+
+  /// Hiérarchie parent/enfants d'un rôle.
+  Future<Map<String, dynamic>> getRoleHierarchy(String roleName) async {
+    final response = await ApiClient.get(ApiConfig.roleHierarchyUrl(roleName));
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Utilisateurs Keycloak ayant ce rôle (paginé).
+  Future<Map<String, dynamic>> getRoleUsers(
+    String roleName, {
+    int page  = 1,
+    int limit = 20,
+  }) async {
+    final url = '${ApiConfig.roleUsersUrl(roleName)}?page=$page&limit=$limit';
+    final response = await ApiClient.get(url);
+    if (response.statusCode >= 400) {
+      throw Exception('Erreur ${response.statusCode}: ${response.body}');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Ordre sidebar pour un rôle (db-service).
+  Future<List<String>> getRoleSidebarOrder(String roleName) async {
+    final url = '${ApiConfig.sidebarUrl}?role=${Uri.encodeComponent(roleName)}';
+    final response = await ApiClient.get(url);
+    if (response.statusCode >= 400) return [];
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return List<String>.from(body['order'] as List? ?? []);
+  }
+
+  /// Sauvegarde l'ordre sidebar pour un rôle (db-service).
+  Future<void> saveRoleSidebarOrder(String roleName, List<String> order) async {
+    final response = await ApiClient.put(
+      ApiConfig.sidebarUrl,
+      {'role': roleName, 'order': order},
+    );
+    if (response.statusCode >= 400) {
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      throw Exception(body['error'] ?? 'Erreur sauvegarde sidebar');
+    }
+  }
+
   // ── Demandes de rôle ──────────────────────────────────────────────────────────
 
   /// Soumet une demande de rôle supplémentaire (utilisateur connecté).

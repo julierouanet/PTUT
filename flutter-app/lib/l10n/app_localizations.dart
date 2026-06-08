@@ -8485,6 +8485,114 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Incident critique'**
   String get notificationsTitleCritical;
+
+  /// No description provided for @roleDetailOpenButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détails'**
+  String get roleDetailOpenButton;
+
+  /// No description provided for @roleDetailTabHierarchy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hiérarchie'**
+  String get roleDetailTabHierarchy;
+
+  /// No description provided for @roleDetailTabFeatures.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fonctionnalités'**
+  String get roleDetailTabFeatures;
+
+  /// No description provided for @roleDetailTabMenu.
+  ///
+  /// In fr, this message translates to:
+  /// **'Menu'**
+  String get roleDetailTabMenu;
+
+  /// No description provided for @roleDetailTabUsers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateurs'**
+  String get roleDetailTabUsers;
+
+  /// No description provided for @roleDetailParentRole.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle parent'**
+  String get roleDetailParentRole;
+
+  /// No description provided for @roleDetailNoParent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôle racine (aucun parent)'**
+  String get roleDetailNoParent;
+
+  /// No description provided for @roleDetailChildRoles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôles enfants'**
+  String get roleDetailChildRoles;
+
+  /// No description provided for @roleDetailNoChildren.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun rôle enfant'**
+  String get roleDetailNoChildren;
+
+  /// No description provided for @roleDetailNoUsers.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun utilisateur avec ce rôle'**
+  String get roleDetailNoUsers;
+
+  /// No description provided for @roleDetailUsersCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count,plural,=0{Aucun utilisateur}=1{1 utilisateur}other{{count} utilisateurs}}'**
+  String roleDetailUsersCount(int count);
+
+  /// No description provided for @roleDetailSavedSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configuration sauvegardée'**
+  String get roleDetailSavedSuccess;
+
+  /// No description provided for @roleDetailSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la sauvegarde'**
+  String get roleDetailSaveError;
+
+  /// No description provided for @roleDetailOffline.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode hors ligne — modifications désactivées'**
+  String get roleDetailOffline;
+
+  /// No description provided for @roleDetailInheritedFrom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hérité de {role}'**
+  String roleDetailInheritedFrom(String role);
+
+  /// No description provided for @roleDetailAdminLocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les permissions de l\'Administrateur sont verrouillées.'**
+  String get roleDetailAdminLocked;
+
+  /// No description provided for @roleDetailMenuVisible.
+  ///
+  /// In fr, this message translates to:
+  /// **'Éléments visibles (ordre par glisser-déposer)'**
+  String get roleDetailMenuVisible;
+
+  /// No description provided for @roleDetailMenuHidden.
+  ///
+  /// In fr, this message translates to:
+  /// **'Éléments masqués'**
+  String get roleDetailMenuHidden;
 }
 
 class _AppLocalizationsDelegate
