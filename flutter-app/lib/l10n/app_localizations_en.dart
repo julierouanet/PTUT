@@ -760,6 +760,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportsByCategory => 'Equipment by category';
 
   @override
+  String get seeMore => 'See more';
+
+  @override
+  String get seeLess => 'See less';
+
+  @override
   String get reportsIssueStats => 'Issue statistics';
 
   @override
@@ -4459,4 +4465,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get debugNotifyAlreadyStopped => 'No auto notifications running';
+
+  @override
+  String get notificationsBell => 'Notifications';
+
+  @override
+  String notificationsUnread(int count) {
+    return '$count unread';
+  }
+
+  @override
+  String get notificationsMarkAllRead => 'Mark all as read';
+
+  @override
+  String get notificationsEmpty => 'No notifications';
+
+  @override
+  String get notificationsOsPermissionDenied =>
+      'System notifications disabled. Enable them in settings.';
+
+  @override
+  String get notificationsTitleNewIssue => 'New issue reported';
+
+  @override
+  String get notificationsTitleCritical => 'Critical issue';
 }

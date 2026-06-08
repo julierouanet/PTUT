@@ -92,4 +92,75 @@ router.post('/unsubscribe', verifyToken, (req, res) => {
   }
 });
 
+// ── GET /api/notifications ─────────────────────────────────────────────────────
+// Retourne les notifications in-app de l'utilisateur connecté (+ broadcasts par rôle)
+router.get('/', verifyToken, (req, res) => {
+  const db      = getDb();
+  const userId  = req.user.id;
+  const roles   = req.user.roles || [];
+  const { unread_only, limit = 50 } = req.query;
+
+  try {
+    // Construit la liste de paramètres : userId + un paramètre par rôle + limit
+    const rolePlaceholders = roles.map(() => '?').join(',') || "''";
+    const unreadClause = unread_only === 'true' ? 'AND is_read = 0' : '';
+
+    const rows = db.prepare(`
+      SELECT * FROM notifications
+      WHERE (user_id = ? OR role IN (${rolePlaceholders}))
+      ${unreadClause}
+      ORDER BY created_at DESC
+      LIMIT ?
+    `).all(userId, ...roles, Number(limit));
+
+    res.json(rows);
+  } catch (err) {
+    console.error('[notifications/get] Erreur:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/notifications/read-all ─────────────────────────────────────────
+// Marque toutes les notifications non lues de l'utilisateur comme lues
+router.patch('/read-all', verifyToken, (req, res) => {
+  const db     = getDb();
+  const userId = req.user.id;
+
+  try {
+    db.prepare(`UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0`).run(userId);
+
+    logAction({
+      user_id: userId, user_name: req.user.name, user_role: req.user.roles?.[0] || '',
+      action: 'notifications_mark_all_read', target_type: 'notifications',
+      target_id: null, target_name: userId,
+      details: JSON.stringify({ note: 'Toutes les notifications marquées comme lues' }),
+      ...extractReqMeta(req),
+    });
+
+    res.json({ message: 'Toutes les notifications marquées comme lues' });
+  } catch (err) {
+    console.error('[notifications/read-all] Erreur:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PATCH /api/notifications/:id/read ─────────────────────────────────────────
+// Marque une notification spécifique comme lue
+router.patch('/:id/read', verifyToken, (req, res) => {
+  const db     = getDb();
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  const notif = db.prepare('SELECT * FROM notifications WHERE id = ?').get(id);
+  if (!notif) return res.status(404).json({ error: 'Notification introuvable' });
+
+  try {
+    db.prepare('UPDATE notifications SET is_read = 1 WHERE id = ?').run(id);
+    res.json({ message: 'Notification marquée comme lue' });
+  } catch (err) {
+    console.error('[notifications/:id/read] Erreur:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

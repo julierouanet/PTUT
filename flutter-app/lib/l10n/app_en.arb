@@ -253,6 +253,8 @@
   "reportsOutOfService": "Out of service",
   "reportsByDepartment": "Equipment by department",
   "reportsByCategory": "Equipment by category",
+  "seeMore": "See more",
+  "seeLess": "See less",
   "reportsIssueStats": "Issue statistics",
   "reportsExportData": "Export data",
   "reportsExportExcel": "Export to Excel",
@@ -1783,5 +1785,14 @@
   "debugNotifyStarted": "Auto notifications started ({interval})",
   "@debugNotifyStarted": { "placeholders": { "interval": { "type": "String" } } },
   "debugNotifyStopped": "Auto notifications stopped",
-  "debugNotifyAlreadyStopped": "No auto notifications running"
+  "debugNotifyAlreadyStopped": "No auto notifications running",
+
+  "notificationsBell": "Notifications",
+  "notificationsUnread": "{count} unread",
+  "@notificationsUnread": { "placeholders": { "count": { "type": "int" } } },
+  "notificationsMarkAllRead": "Mark all as read",
+  "notificationsEmpty": "No notifications",
+  "notificationsOsPermissionDenied": "System notifications disabled. Enable them in settings.",
+  "notificationsTitleNewIssue": "New issue reported",
+  "notificationsTitleCritical": "Critical issue"
 }

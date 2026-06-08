@@ -45,6 +45,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   late int     _archiveYear        = DateTime.now().year;
   bool         _isDownloadingArchive = false;
 
+  // ── État réductible des listes par département / catégorie ─────────────────
+  bool _deptExpanded = false;
+  bool _catExpanded  = false;
+  static const int _kCollapsedItemCount = 5;
+
   // ── Calcul de la plage temporelle active ───────────────────────────────────
 
   DateTimeRange _effectiveRange() {
@@ -1007,46 +1012,98 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildDepartmentReport(AppLocalizations l10n, Map<String, int> byDepartment) {
+    final entries   = byDepartment.entries.toList();
+    final hasMore   = entries.length > _kCollapsedItemCount;
+    final displayed = _deptExpanded ? entries : entries.take(_kCollapsedItemCount).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.reportsByDepartment,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            if (byDepartment.isEmpty)
-              Text('—', style: const TextStyle(color: AppColors.textSecondary))
-            else
-              ...byDepartment.entries.map((e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(e.key, overflow: TextOverflow.ellipsis),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${e.value}',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+            // En-tête avec bouton réductible
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.reportsByDepartment,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
-              )),
+                if (hasMore)
+                  IconButton(
+                    icon: Icon(
+                      _deptExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: AppColors.textSecondary,
+                    ),
+                    tooltip: _deptExpanded ? l10n.seeLess : l10n.seeMore,
+                    onPressed: () => setState(() => _deptExpanded = !_deptExpanded),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (entries.isEmpty)
+              Text('—', style: const TextStyle(color: AppColors.textSecondary))
+            else ...[
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: Column(
+                  children: displayed.map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(e.key, overflow: TextOverflow.ellipsis),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${e.value}',
+                            style: const TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )).toList(),
+                ),
+              ),
+              if (hasMore) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _deptExpanded = !_deptExpanded),
+                    icon: Icon(
+                      _deptExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _deptExpanded
+                          ? l10n.seeLess
+                          : l10n.seeMore + ' (${entries.length - _kCollapsedItemCount})',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -1054,46 +1111,98 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildCategoryReport(AppLocalizations l10n, Map<String, int> byCategory) {
+    final entries   = byCategory.entries.toList();
+    final hasMore   = entries.length > _kCollapsedItemCount;
+    final displayed = _catExpanded ? entries : entries.take(_kCollapsedItemCount).toList();
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              l10n.reportsByCategory,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 20),
-            if (byCategory.isEmpty)
-              Text('—', style: const TextStyle(color: AppColors.textSecondary))
-            else
-              ...byCategory.entries.map((e) => Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(e.key, overflow: TextOverflow.ellipsis),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.successLight,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${e.value}',
-                        style: const TextStyle(
-                          color: AppColors.success,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
+            // En-tête avec bouton réductible
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  l10n.reportsByCategory,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
-              )),
+                if (hasMore)
+                  IconButton(
+                    icon: Icon(
+                      _catExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: AppColors.textSecondary,
+                    ),
+                    tooltip: _catExpanded ? l10n.seeLess : l10n.seeMore,
+                    onPressed: () => setState(() => _catExpanded = !_catExpanded),
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (entries.isEmpty)
+              Text('—', style: const TextStyle(color: AppColors.textSecondary))
+            else ...[
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: Column(
+                  children: displayed.map((e) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(e.key, overflow: TextOverflow.ellipsis),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.successLight,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${e.value}',
+                            style: const TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )).toList(),
+                ),
+              ),
+              if (hasMore) ...[
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => _catExpanded = !_catExpanded),
+                    icon: Icon(
+                      _catExpanded ? Icons.expand_less : Icons.expand_more,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _catExpanded
+                          ? l10n.seeLess
+                          : l10n.seeMore + ' (${entries.length - _kCollapsedItemCount})',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.success,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ],
         ),
       ),

@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/notification.dart';
 import '../models/issue.dart';
 import '../models/user_role.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
+import '../services/api_client.dart';
+import '../services/api_config.dart';
+import '../services/os_notification_service.dart';
 
 /// Service de notifications in-app — singleton + ChangeNotifier
 class NotificationService extends ChangeNotifier {
@@ -36,11 +40,61 @@ class NotificationService extends ChangeNotifier {
     }
   }
 
-  /// Marquer toutes comme lues
+  /// Marquer toutes comme lues — met aussi à jour le backend
   void markAllAsRead() {
     if (_notifications.any((n) => !n.read)) {
       _notifications = _notifications.map((n) => n.copyWith(read: true)).toList();
       notifyListeners();
+    }
+    // Synchronisation backend (fire-and-forget, erreur silencieuse)
+    _markAllReadBackend();
+  }
+
+  Future<void> _markAllReadBackend() async {
+    try {
+      await ApiClient.patch('${ApiConfig.dbBaseUrl}/api/notifications/read-all', {});
+    } catch (e) {
+      debugPrint('[NotificationService] markAllAsRead erreur backend: $e');
+    }
+  }
+
+  /// Récupère les notifications depuis l'API et fusionne avec les notifs locales.
+  /// Appelé après un fetch ou un notify-now pour mettre à jour le badge cloche.
+  Future<void> fetchFromApi() async {
+    try {
+      final response = await ApiClient.get(
+        '${ApiConfig.dbBaseUrl}/api/notifications?limit=50',
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = json.decode(response.body) as List<dynamic>;
+        final apiNotifs = data
+            .map((e) => AppNotification.fromApiJson(e as Map<String, dynamic>))
+            .toList();
+
+        // Fusionne : les notifs API (préfixe 'api-') s'ajoutent aux notifs locales
+        final existingIds = _notifications.map((n) => n.id).toSet();
+        for (final n in apiNotifs) {
+          if (!existingIds.contains(n.id)) {
+            _notifications.add(n);
+          }
+        }
+        // Trie par date décroissante
+        _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        notifyListeners();
+
+        // Déclenche une notification OS pour les nouvelles notifs non lues
+        final unread = _notifications.where((n) => !n.read).toList();
+        if (unread.isNotEmpty) {
+          await OsNotificationService.showIfPermitted(
+            title: unread.first.title ?? unread.first.equipmentName,
+            body: unread.length > 1
+                ? '${unread.length} nouvelles notifications'
+                : (unread.first.body ?? ''),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] fetchFromApi erreur: $e');
     }
   }
 
@@ -131,14 +185,20 @@ class NotificationService extends ChangeNotifier {
     // Les plus récents en premier
     generated.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Conserver l'état "lu" des notifications existantes
+    // Conserver l'état "lu" des notifications locales existantes
     final Map<String, bool> previousReadState = {
       for (final n in _notifications) n.id: n.read,
     };
-    _notifications = generated.map((n) {
+
+    // Remplace uniquement les notifs locales (préfixe 'notif-'), garde les API ('api-')
+    final apiNotifs = _notifications.where((n) => n.id.startsWith('api-')).toList();
+    final mergedLocal = generated.map((n) {
       final wasRead = previousReadState[n.id] ?? false;
       return wasRead ? n.copyWith(read: true) : n;
     }).toList();
+
+    _notifications = [...mergedLocal, ...apiNotifs];
+    _notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     notifyListeners();
   }

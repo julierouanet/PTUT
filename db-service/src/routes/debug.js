@@ -78,6 +78,23 @@ router.post('/notify-now', verifyToken, requireRole('admin'), async (req, res) =
       body:  'Notification immédiate envoyée depuis le panneau admin debug.',
     }).catch((err) => console.error('[debug/notify-now] Erreur push:', err.message));
 
+    // Persistance in-app de la notification debug dans la table notifications
+    try {
+      const db = getDb();
+      db.prepare(`
+        INSERT INTO notifications (user_id, type, title, body, target_type)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        userId,
+        'critical_new_issue',
+        '[TEST] Notification de débogage GMAO',
+        'Notification de test déclenchée depuis DebugTestScreen',
+        null
+      );
+    } catch (dbErr) {
+      console.error('[debug/notify-now] Erreur persistance notif:', dbErr.message);
+    }
+
     logAction({
       user_id:     userId,
       user_name:   userName,

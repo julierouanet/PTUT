@@ -764,6 +764,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportsByCategory => 'Equipements par categorie';
 
   @override
+  String get seeMore => 'Voir plus';
+
+  @override
+  String get seeLess => 'Voir moins';
+
+  @override
   String get reportsIssueStats => 'Statistiques des incidents';
 
   @override
@@ -4502,4 +4508,28 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get debugNotifyAlreadyStopped => 'Aucune notification auto en cours';
+
+  @override
+  String get notificationsBell => 'Notifications';
+
+  @override
+  String notificationsUnread(int count) {
+    return '$count non lue(s)';
+  }
+
+  @override
+  String get notificationsMarkAllRead => 'Tout marquer comme lu';
+
+  @override
+  String get notificationsEmpty => 'Aucune notification';
+
+  @override
+  String get notificationsOsPermissionDenied =>
+      'Notifications système désactivées. Activez-les dans les paramètres.';
+
+  @override
+  String get notificationsTitleNewIssue => 'Nouvel incident signalé';
+
+  @override
+  String get notificationsTitleCritical => 'Incident critique';
 }

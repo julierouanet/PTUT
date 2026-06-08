@@ -1520,6 +1520,18 @@ abstract class AppLocalizations {
   /// **'Equipements par categorie'**
   String get reportsByCategory;
 
+  /// No description provided for @seeMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir plus'**
+  String get seeMore;
+
+  /// No description provided for @seeLess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir moins'**
+  String get seeLess;
+
   /// No description provided for @reportsIssueStats.
   ///
   /// In fr, this message translates to:
@@ -8317,6 +8329,48 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucune notification auto en cours'**
   String get debugNotifyAlreadyStopped;
+
+  /// No description provided for @notificationsBell.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get notificationsBell;
+
+  /// No description provided for @notificationsUnread.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} non lue(s)'**
+  String notificationsUnread(int count);
+
+  /// No description provided for @notificationsMarkAllRead.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tout marquer comme lu'**
+  String get notificationsMarkAllRead;
+
+  /// No description provided for @notificationsEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune notification'**
+  String get notificationsEmpty;
+
+  /// No description provided for @notificationsOsPermissionDenied.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications système désactivées. Activez-les dans les paramètres.'**
+  String get notificationsOsPermissionDenied;
+
+  /// No description provided for @notificationsTitleNewIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvel incident signalé'**
+  String get notificationsTitleNewIssue;
+
+  /// No description provided for @notificationsTitleCritical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident critique'**
+  String get notificationsTitleCritical;
 }
 
 class _AppLocalizationsDelegate

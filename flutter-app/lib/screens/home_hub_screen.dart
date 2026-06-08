@@ -4,10 +4,12 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/api_config.dart';
+import '../services/notification_service.dart';
 import '../models/issue.dart';
 import '../models/inventory_item.dart';
 import '../models/equipment.dart';
 import '../models/user_role.dart';
+import '../models/notification.dart';
 import '../widgets/issue_category_selector.dart';
 import '../services/feature_service.dart';
 import '../services/push_notification_web_service.dart';
@@ -1038,6 +1040,47 @@ class HomeHubScreen extends StatelessWidget {
             ),
             tooltip: l10n.tooltipAccountSettings,
           ),
+          // ── Cloche de notifications avec badge ──────────────────────────
+          ListenableBuilder(
+            listenable: NotificationService(),
+            builder: (ctx, _) {
+              final unread = NotificationService().unreadCount;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_outlined,
+                        color: AppColors.textSecondary),
+                    tooltip: l10n.notificationsBell,
+                    onPressed: () => _showNotificationsPanel(ctx, l10n),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                            minWidth: 16, minHeight: 16),
+                        child: Text(
+                          unread > 99 ? '99+' : unread.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.error),
             tooltip: l10n.logout,
@@ -1080,6 +1123,157 @@ class HomeHubScreen extends StatelessWidget {
       ),
     );
   }
+
+  // ── Panneau de notifications (bottom sheet) ───────────────────────────────────
+
+  void _showNotificationsPanel(BuildContext context, AppLocalizations l10n) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.55,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        builder: (_, scrollCtrl) => Column(
+          children: [
+            // ── En-tête ────────────────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 12, 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.notifications_outlined,
+                      color: AppColors.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      l10n.notificationsBell,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      NotificationService().markAllAsRead();
+                    },
+                    child: Text(
+                      l10n.notificationsMarkAllRead,
+                      style: const TextStyle(
+                          fontSize: 12, color: AppColors.primary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            // ── Liste ──────────────────────────────────────────────────────
+            Expanded(
+              child: ListenableBuilder(
+                listenable: NotificationService(),
+                builder: (context2, _) {
+                  final notifs = NotificationService().all;
+                  if (notifs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.notifications_none_outlined,
+                              size: 48,
+                              color: AppColors.textSecondary
+                                  .withValues(alpha: 0.4)),
+                          const SizedBox(height: 12),
+                          Text(
+                            l10n.notificationsEmpty,
+                            style: const TextStyle(
+                                color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    controller: scrollCtrl,
+                    itemCount: notifs.length,
+                    separatorBuilder: (context3, _) =>
+                        const Divider(height: 1, indent: 16, endIndent: 16),
+                    itemBuilder: (_, i) {
+                      final n = notifs[i];
+                      return ListTile(
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: (n.read
+                                    ? AppColors.textSecondary
+                                    : AppColors.primary)
+                                .withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            _notifIcon(n.type),
+                            size: 18,
+                            color: n.read
+                                ? AppColors.textSecondary
+                                : AppColors.primary,
+                          ),
+                        ),
+                        title: Text(
+                          n.title ?? n.equipmentName,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: n.read
+                                ? FontWeight.normal
+                                : FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          n.body ?? n.department,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppColors.textSecondary),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: n.read
+                            ? null
+                            : Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                        onTap: () {
+                          NotificationService().markAsRead(n.id);
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _notifIcon(NotificationType type) => switch (type) {
+    NotificationType.newIssue        => Icons.report_problem_outlined,
+    NotificationType.issueInProgress => Icons.build_outlined,
+    NotificationType.issueResolved   => Icons.check_circle_outline,
+    NotificationType.deptRequest     => Icons.swap_horiz_outlined,
+  };
 
   // ── Pied de page version ───────────────────────────────────────────────────
 

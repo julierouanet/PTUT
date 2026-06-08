@@ -769,6 +769,29 @@ function initTables() {
   const fs = require('fs');
   const uploadDir = process.env.UPLOAD_DIR || '/data/uploads/documents';
   if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+  // ── Migration : table notifications in-app ───────────────────────────────────
+  // Vérifie l'existence avant de créer (idempotent)
+  const notifCols = db.prepare("PRAGMA table_info('notifications')").all().map(c => c.name);
+  if (!notifCols.includes('id')) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id     TEXT,
+        role        TEXT,
+        type        TEXT NOT NULL,
+        title       TEXT NOT NULL,
+        body        TEXT NOT NULL,
+        target_id   TEXT,
+        target_type TEXT,
+        is_read     INTEGER NOT NULL DEFAULT 0,
+        created_at  TEXT DEFAULT (datetime('now','localtime'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notif_role ON notifications(role);
+      CREATE INDEX IF NOT EXISTS idx_notif_read ON notifications(is_read);
+    `);
+  }
 }
 
 function closeDb() {

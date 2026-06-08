@@ -268,6 +268,8 @@
   "reportsOutOfService": "Hors service",
   "reportsByDepartment": "Equipements par departement",
   "reportsByCategory": "Equipements par categorie",
+  "seeMore": "Voir plus",
+  "seeLess": "Voir moins",
   "reportsIssueStats": "Statistiques des incidents",
   "reportsExportData": "Exporter les donnees",
   "reportsExportExcel": "Exporter en Excel",
@@ -1805,5 +1807,14 @@
   "debugNotifyStarted": "Notifications auto activées ({interval})",
   "@debugNotifyStarted": { "placeholders": { "interval": { "type": "String" } } },
   "debugNotifyStopped": "Notifications auto arrêtées",
-  "debugNotifyAlreadyStopped": "Aucune notification auto en cours"
+  "debugNotifyAlreadyStopped": "Aucune notification auto en cours",
+
+  "notificationsBell": "Notifications",
+  "notificationsUnread": "{count} non lue(s)",
+  "@notificationsUnread": { "placeholders": { "count": { "type": "int" } } },
+  "notificationsMarkAllRead": "Tout marquer comme lu",
+  "notificationsEmpty": "Aucune notification",
+  "notificationsOsPermissionDenied": "Notifications système désactivées. Activez-les dans les paramètres.",
+  "notificationsTitleNewIssue": "Nouvel incident signalé",
+  "notificationsTitleCritical": "Incident critique"
 }

@@ -7,6 +7,7 @@ import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
+import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
 /// Écran Debug & Test — réservé aux administrateurs.
@@ -120,6 +121,8 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
       final msg = result['message'] as String? ?? 'Notification envoyée';
       _addHistory(msg);
       _showSnackBar(msg, success: true);
+      // Recharge les notifs in-app pour mettre à jour le badge cloche
+      await NotificationService().fetchFromApi();
     } catch (e) {
       _showSnackBar('Erreur : $e', success: false);
     } finally {

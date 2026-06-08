@@ -17,6 +17,7 @@ import 'screens/logs_screen.dart';
 import 'services/auth_service.dart';
 import 'services/data_service.dart';
 import 'services/notification_service.dart';
+import 'services/os_notification_service.dart';
 import 'services/api_client.dart';
 import 'models/user_role.dart';
 import 'models/nav_item.dart';
@@ -35,6 +36,7 @@ import 'screens/debug_test_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await LocaleProvider().loadSavedLocale();
+  await OsNotificationService.initialize();
 
   // Configurer le callback de session expirée
   ApiClient.onSessionExpired = () {
