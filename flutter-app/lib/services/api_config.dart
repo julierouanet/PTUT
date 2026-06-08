@@ -130,6 +130,17 @@ class ApiConfig {
   static String get featuresUrl   => '$authBaseUrl/api/feature-flags';
   static String get backupsUrl    => '$dbBaseUrl/api/admin/backups';
 
+  // ── Départements (db-service) ─────────────────────────────────────────────────
+  static String get departmentsUrl => '$dbBaseUrl/api/departments';
+  static String departmentStatsUrl(int id) => '$dbBaseUrl/api/departments/$id/stats';
+  static String departmentCheckDepsUrl(int id) => '$dbBaseUrl/api/departments/$id/check-dependencies';
+
+  // ── Catégories (db-service) ───────────────────────────────────────────────────
+  static String get categoriesMacroUrl => '$dbBaseUrl/api/categories/macro';
+  static String get categoriesSubUrl => '$dbBaseUrl/api/categories/sub';
+  static String categoriesSubByMacroUrl(int macroId) => '$dbBaseUrl/api/categories/sub?macro_category_id=$macroId';
+  static String categoriesSubItemUrl(int id) => '$dbBaseUrl/api/categories/sub/$id';
+
   static String equipmentByTagUrl(String tag) =>
       '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';
 

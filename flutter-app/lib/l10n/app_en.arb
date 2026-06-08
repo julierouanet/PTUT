@@ -1014,6 +1014,33 @@
 
   "permManageBackups": "Manage backups",
 
+  "settingsTabDepartments": "Departments",
+  "settingsTabCategories": "Categories",
+  "settingsTabRoles": "Roles & Permissions",
+  "settingsTabActivity": "Activity log",
+
+  "settingsDeptDescription": "Description (optional)",
+  "settingsDeptDescriptionHint": "E.g.: Pediatric intensive care",
+  "settingsDeptConfirmDelete": "Confirm deletion of \"{name}\"?",
+  "@settingsDeptConfirmDelete": { "placeholders": { "name": { "type": "String" } } },
+  "settingsDeptDeleteDisabledTooltip": "Cannot delete: equipment is linked to this department",
+  "settingsDeptDeleteBlocked": "This department has {count} linked equipment(s)",
+  "@settingsDeptDeleteBlocked": { "placeholders": { "count": { "type": "int" } } },
+  "settingsDeptStatsOt": "{count} open WOs",
+  "@settingsDeptStatsOt": { "placeholders": { "count": { "type": "int" } } },
+  "settingsDeptStatsAssets": "{count} assets",
+  "@settingsDeptStatsAssets": { "placeholders": { "count": { "type": "int" } } },
+
+  "settingsCatBiomedical": "Biomedical",
+  "settingsCatInfrastructure": "Infrastructure",
+  "settingsCatIt": "IT",
+  "settingsCatAddSub": "Add sub-category",
+  "settingsCatSelectMacro": "Macro-category",
+
+  "settingsEmptyList": "No items to display",
+  "settingsLoadMore": "Load more",
+  "settingsActivityFilter": "Filter by action",
+
   "backupTitle": "Backup Management",
   "backupSubtitle": "Back up, schedule, and download hospital data",
   "backupLoading": "Loading...",

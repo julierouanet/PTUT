@@ -332,6 +332,74 @@ class DbApiService {
     }
   }
 
+  // ── DÉPARTEMENTS ──────────────────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getDepartments() async {
+    final response = await ApiClient.get(ApiConfig.departmentsUrl);
+    _checkStatus(response, ApiConfig.departmentsUrl);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  Future<Map<String, dynamic>> createDepartment(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.departmentsUrl, data);
+    _checkStatus(response, ApiConfig.departmentsUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateDepartment(int id, Map<String, dynamic> data) async {
+    final url = '${ApiConfig.departmentsUrl}/$id';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteDepartment(int id) async {
+    final url = '${ApiConfig.departmentsUrl}/$id';
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  Future<Map<String, dynamic>> checkDepartmentDeps(int id) async {
+    final url = ApiConfig.departmentCheckDepsUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  // ── CATÉGORIES (macro + sous) ──────────────────────────────────────────────
+
+  Future<List<Map<String, dynamic>>> getMacroCategories() async {
+    final response = await ApiClient.get(ApiConfig.categoriesMacroUrl);
+    _checkStatus(response, ApiConfig.categoriesMacroUrl);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  Future<List<Map<String, dynamic>>> getSubCategories({int? macroId}) async {
+    final url = macroId != null
+        ? ApiConfig.categoriesSubByMacroUrl(macroId)
+        : ApiConfig.categoriesSubUrl;
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  Future<Map<String, dynamic>> createSubCategory(Map<String, dynamic> data) async {
+    final response = await ApiClient.post(ApiConfig.categoriesSubUrl, data);
+    _checkStatus(response, ApiConfig.categoriesSubUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateSubCategory(int id, Map<String, dynamic> data) async {
+    final url = ApiConfig.categoriesSubItemUrl(id);
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteSubCategory(int id) async {
+    final url = ApiConfig.categoriesSubItemUrl(id);
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
   // ── CONFIGURATION SIDEBAR ─────────────────────────────────────────────────
 
   /// Récupère l'ordre de la sidebar pour [role].

@@ -129,11 +129,14 @@ PTUT/
 │   └── lib/
 │       ├── main.dart             # MaterialApp, routing (enum ScreenType)
 │       ├── screens/              # 13 écrans (1 fichier par écran)
+│       │                         # SettingsScreen : TabBar 4 onglets (Départements, Catégories,
+│       │                         #   Rôles & Perms + Ordre menu, Journal activité)
 │       ├── services/             # ApiClient, AuthService, DataService, DbApiService,
 │       │                         # AuthApiService, ConfigService, NotificationService
 │       ├── models/               # Equipment, Issue, User, Location, InventoryItem,
 │       │                         # UserRole/Permission, AppNotification
 │       ├── widgets/              # issue_category_selector, StatCard, StatusBadge, ...
+│       │   └── settings/         # DepartmentsTab, CategoriesTab, RolesTab, ActivityTab
 │       ├── providers/            # locale_provider.dart (FR/EN)
 │       ├── theme/                # AppTheme.lightTheme, AppColors
 │       └── l10n/                 # app_fr.arb (template), app_en.arb

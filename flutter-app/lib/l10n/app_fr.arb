@@ -1036,6 +1036,33 @@
 
   "permManageBackups": "Gérer les sauvegardes",
 
+  "settingsTabDepartments": "Départements",
+  "settingsTabCategories": "Catégories",
+  "settingsTabRoles": "Rôles & Permissions",
+  "settingsTabActivity": "Journal d'activité",
+
+  "settingsDeptDescription": "Description (optionnel)",
+  "settingsDeptDescriptionHint": "Ex: Soins intensifs pédiatriques",
+  "settingsDeptConfirmDelete": "Confirmer la suppression de « {name} » ?",
+  "@settingsDeptConfirmDelete": { "placeholders": { "name": { "type": "String" } } },
+  "settingsDeptDeleteDisabledTooltip": "Suppression impossible : des équipements sont liés à ce département",
+  "settingsDeptDeleteBlocked": "Ce département a {count} équipement(s) associé(s)",
+  "@settingsDeptDeleteBlocked": { "placeholders": { "count": { "type": "int" } } },
+  "settingsDeptStatsOt": "{count} OT ouvertes",
+  "@settingsDeptStatsOt": { "placeholders": { "count": { "type": "int" } } },
+  "settingsDeptStatsAssets": "{count} actifs",
+  "@settingsDeptStatsAssets": { "placeholders": { "count": { "type": "int" } } },
+
+  "settingsCatBiomedical": "Biomédical",
+  "settingsCatInfrastructure": "Infrastructure",
+  "settingsCatIt": "Informatique",
+  "settingsCatAddSub": "Ajouter une sous-catégorie",
+  "settingsCatSelectMacro": "Macro-catégorie",
+
+  "settingsEmptyList": "Aucun élément à afficher",
+  "settingsLoadMore": "Charger plus",
+  "settingsActivityFilter": "Filtrer par action",
+
   "backupTitle": "Gestion des Sauvegardes",
   "backupSubtitle": "Sauvegardez, planifiez et téléchargez les données de l'hôpital",
   "backupLoading": "Chargement...",

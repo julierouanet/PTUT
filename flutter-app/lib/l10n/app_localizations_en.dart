@@ -2750,6 +2750,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String get permManageBackups => 'Manage backups';
 
   @override
+  String get settingsTabDepartments => 'Departments';
+
+  @override
+  String get settingsTabCategories => 'Categories';
+
+  @override
+  String get settingsTabRoles => 'Roles & Permissions';
+
+  @override
+  String get settingsTabActivity => 'Activity log';
+
+  @override
+  String get settingsDeptDescription => 'Description (optional)';
+
+  @override
+  String get settingsDeptDescriptionHint => 'E.g.: Pediatric intensive care';
+
+  @override
+  String settingsDeptConfirmDelete(String name) {
+    return 'Confirm deletion of \"$name\"?';
+  }
+
+  @override
+  String get settingsDeptDeleteDisabledTooltip =>
+      'Cannot delete: equipment is linked to this department';
+
+  @override
+  String settingsDeptDeleteBlocked(int count) {
+    return 'This department has $count linked equipment(s)';
+  }
+
+  @override
+  String settingsDeptStatsOt(int count) {
+    return '$count open WOs';
+  }
+
+  @override
+  String settingsDeptStatsAssets(int count) {
+    return '$count assets';
+  }
+
+  @override
+  String get settingsCatBiomedical => 'Biomedical';
+
+  @override
+  String get settingsCatInfrastructure => 'Infrastructure';
+
+  @override
+  String get settingsCatIt => 'IT';
+
+  @override
+  String get settingsCatAddSub => 'Add sub-category';
+
+  @override
+  String get settingsCatSelectMacro => 'Macro-category';
+
+  @override
+  String get settingsEmptyList => 'No items to display';
+
+  @override
+  String get settingsLoadMore => 'Load more';
+
+  @override
+  String get settingsActivityFilter => 'Filter by action';
+
+  @override
   String get backupTitle => 'Backup Management';
 
   @override

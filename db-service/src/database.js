@@ -117,6 +117,21 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_equipment_tags_tag ON equipment_tags(tag_number);
   `);
 
+  // Migration : colonne description sur departments (idempotente)
+  try { db.exec('ALTER TABLE departments ADD COLUMN description TEXT'); } catch (_) {}
+
+  // Seed des départements de l'hôpital de Kabutare (idempotent via INSERT OR IGNORE)
+  {
+    const insertDept = db.prepare('INSERT OR IGNORE INTO departments(name) VALUES (?)');
+    const hospitalDepts = [
+      'OPD (Outpatient Department)', 'Internal Medicine', 'Pediatrics', 'Emergency',
+      'Laboratory', 'Stomatology', 'Kinesitherapy', 'Neonatology', 'Maternity', 'Surgery',
+      'Theater', 'Ophthalmology', 'TB-MR', 'GBV (Gender-Based Violence Unit)',
+      'Mental Health', 'ARV (HIV/AIDS Treatment Unit)', 'Pharmacy', 'ICT',
+    ];
+    for (const name of hospitalDepts) insertDept.run(name);
+  }
+
   // Migration : ajout des colonnes ip_address et user_agent si elles n'existent pas
   try { db.exec('ALTER TABLE logs ADD COLUMN ip_address TEXT'); } catch (_) {}
   try { db.exec('ALTER TABLE logs ADD COLUMN user_agent TEXT'); } catch (_) {}

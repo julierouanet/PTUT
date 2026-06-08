@@ -5222,6 +5222,120 @@ abstract class AppLocalizations {
   /// **'Gérer les sauvegardes'**
   String get permManageBackups;
 
+  /// No description provided for @settingsTabDepartments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Départements'**
+  String get settingsTabDepartments;
+
+  /// No description provided for @settingsTabCategories.
+  ///
+  /// In fr, this message translates to:
+  /// **'Catégories'**
+  String get settingsTabCategories;
+
+  /// No description provided for @settingsTabRoles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôles & Permissions'**
+  String get settingsTabRoles;
+
+  /// No description provided for @settingsTabActivity.
+  ///
+  /// In fr, this message translates to:
+  /// **'Journal d\'activité'**
+  String get settingsTabActivity;
+
+  /// No description provided for @settingsDeptDescription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description (optionnel)'**
+  String get settingsDeptDescription;
+
+  /// No description provided for @settingsDeptDescriptionHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex: Soins intensifs pédiatriques'**
+  String get settingsDeptDescriptionHint;
+
+  /// No description provided for @settingsDeptConfirmDelete.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la suppression de « {name} » ?'**
+  String settingsDeptConfirmDelete(String name);
+
+  /// No description provided for @settingsDeptDeleteDisabledTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppression impossible : des équipements sont liés à ce département'**
+  String get settingsDeptDeleteDisabledTooltip;
+
+  /// No description provided for @settingsDeptDeleteBlocked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce département a {count} équipement(s) associé(s)'**
+  String settingsDeptDeleteBlocked(int count);
+
+  /// No description provided for @settingsDeptStatsOt.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} OT ouvertes'**
+  String settingsDeptStatsOt(int count);
+
+  /// No description provided for @settingsDeptStatsAssets.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} actifs'**
+  String settingsDeptStatsAssets(int count);
+
+  /// No description provided for @settingsCatBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomédical'**
+  String get settingsCatBiomedical;
+
+  /// No description provided for @settingsCatInfrastructure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get settingsCatInfrastructure;
+
+  /// No description provided for @settingsCatIt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informatique'**
+  String get settingsCatIt;
+
+  /// No description provided for @settingsCatAddSub.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter une sous-catégorie'**
+  String get settingsCatAddSub;
+
+  /// No description provided for @settingsCatSelectMacro.
+  ///
+  /// In fr, this message translates to:
+  /// **'Macro-catégorie'**
+  String get settingsCatSelectMacro;
+
+  /// No description provided for @settingsEmptyList.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun élément à afficher'**
+  String get settingsEmptyList;
+
+  /// No description provided for @settingsLoadMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Charger plus'**
+  String get settingsLoadMore;
+
+  /// No description provided for @settingsActivityFilter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Filtrer par action'**
+  String get settingsActivityFilter;
+
   /// No description provided for @backupTitle.
   ///
   /// In fr, this message translates to:

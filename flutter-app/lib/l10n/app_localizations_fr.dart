@@ -2772,6 +2772,72 @@ class AppLocalizationsFr extends AppLocalizations {
   String get permManageBackups => 'Gérer les sauvegardes';
 
   @override
+  String get settingsTabDepartments => 'Départements';
+
+  @override
+  String get settingsTabCategories => 'Catégories';
+
+  @override
+  String get settingsTabRoles => 'Rôles & Permissions';
+
+  @override
+  String get settingsTabActivity => 'Journal d\'activité';
+
+  @override
+  String get settingsDeptDescription => 'Description (optionnel)';
+
+  @override
+  String get settingsDeptDescriptionHint => 'Ex: Soins intensifs pédiatriques';
+
+  @override
+  String settingsDeptConfirmDelete(String name) {
+    return 'Confirmer la suppression de « $name » ?';
+  }
+
+  @override
+  String get settingsDeptDeleteDisabledTooltip =>
+      'Suppression impossible : des équipements sont liés à ce département';
+
+  @override
+  String settingsDeptDeleteBlocked(int count) {
+    return 'Ce département a $count équipement(s) associé(s)';
+  }
+
+  @override
+  String settingsDeptStatsOt(int count) {
+    return '$count OT ouvertes';
+  }
+
+  @override
+  String settingsDeptStatsAssets(int count) {
+    return '$count actifs';
+  }
+
+  @override
+  String get settingsCatBiomedical => 'Biomédical';
+
+  @override
+  String get settingsCatInfrastructure => 'Infrastructure';
+
+  @override
+  String get settingsCatIt => 'Informatique';
+
+  @override
+  String get settingsCatAddSub => 'Ajouter une sous-catégorie';
+
+  @override
+  String get settingsCatSelectMacro => 'Macro-catégorie';
+
+  @override
+  String get settingsEmptyList => 'Aucun élément à afficher';
+
+  @override
+  String get settingsLoadMore => 'Charger plus';
+
+  @override
+  String get settingsActivityFilter => 'Filtrer par action';
+
+  @override
   String get backupTitle => 'Gestion des Sauvegardes';
 
   @override
