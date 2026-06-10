@@ -118,13 +118,25 @@ afterAll(() => {
 
 describe('GET /health', () => {
   test('retourne 200 avec status ok sans infos sensibles', async () => {
-    const res = await request(app).get('/health');
-    expect(res.status).toBe(200);
-    expect(res.body.status).toBe('ok');
-    expect(res.body.service).toBe('auth-service');
-    const body = JSON.stringify(res.body);
-    expect(body).not.toContain('secret');
-    expect(body).not.toContain('password');
+    // Isolation : le handler /health interroge Keycloak (OIDC discovery) via fetch.
+    // On mocke global.fetch pour éviter tout appel réseau réel en test (correctif #9 audit).
+    const realFetch = global.fetch;
+    global.fetch = jest.fn().mockResolvedValue({
+      ok:   true,
+      json: () => Promise.resolve({ issuer: 'https://keycloak/realms/kabutare-hospital' }),
+    });
+
+    try {
+      const res = await request(app).get('/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+      expect(res.body.service).toBe('auth-service');
+      const body = JSON.stringify(res.body);
+      expect(body).not.toContain('secret');
+      expect(body).not.toContain('password');
+    } finally {
+      global.fetch = realFetch;
+    }
   });
 });
 
@@ -246,6 +258,87 @@ describe('POST /api/auth/register', () => {
   test('erreur Keycloak non-409 → 502', async () => {
     kcAdminFetch.mockResolvedValueOnce(kcResp('Internal error', { status: 500 }));
     const res = await request(app).post('/api/auth/register').send(valid);
+    expect(res.status).toBe(502);
+  });
+});
+
+// =============================================================================
+//  3b. POST /api/auth/access-request (public — sécurisé audit 2026-06-10)
+// =============================================================================
+
+describe('POST /api/auth/access-request', () => {
+  const valid = {
+    first_name: 'Claire', last_name: 'Niyonsaba',
+    email: 'claire@kabutare.rw', password: 'Password1!', department: 'Maternité',
+  };
+
+  // Récupère le mock sendLog (module mocké en tête de fichier)
+  const { sendLog } = require('../src/utils/logger');
+
+  test('champs requis manquants → 400', async () => {
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ email: 'x@k.rw' });
+    expect(res.status).toBe(400);
+  });
+
+  test('email invalide → 400', async () => {
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ ...valid, email: 'pas-un-email' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/email/i);
+  });
+
+  test('mot de passe trop court → 400', async () => {
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ ...valid, password: 'abc' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/8 caractères/);
+  });
+
+  test('email déjà utilisé (Keycloak 409) → 409', async () => {
+    kcAdminFetch.mockResolvedValueOnce(kcResp({}, { status: 409 }));
+    const res = await request(app).post('/api/auth/access-request').send(valid);
+    expect(res.status).toBe(409);
+  });
+
+  test('création réussie → 201, compte créé avec VERIFY_EMAIL non vérifié', async () => {
+    const fakeId = 'kc-access-req-uuid';
+    kcAdminFetch
+      .mockResolvedValueOnce(kcResp({}, { status: 201, location: `/users/${fakeId}` })) // POST /users
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }))                                // reset-password
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }));                               // send-verify-email
+    assignRolesToUser.mockResolvedValueOnce(undefined);
+
+    const res = await request(app).post('/api/auth/access-request').send(valid);
+    expect(res.status).toBe(201);
+    expect(res.body.message).toMatch(/vérifiez votre email/i);
+
+    // Le compte Keycloak doit être créé email non vérifié + action VERIFY_EMAIL
+    const createBody = JSON.parse(kcAdminFetch.mock.calls[0][1].body);
+    expect(createBody.emailVerified).toBe(false);
+    expect(createBody.requiredActions).toEqual(['VERIFY_EMAIL']);
+
+    // L'email de vérification doit être déclenché
+    const verifyCall = kcAdminFetch.mock.calls.find(([url]) => url.includes('send-verify-email'));
+    expect(verifyCall).toBeDefined();
+
+    // Seul le rôle hospitalStaff est assigné
+    expect(assignRolesToUser).toHaveBeenCalledWith(fakeId, ['hospitalStaff']);
+
+    // Audit trail central
+    expect(sendLog).toHaveBeenCalledWith(expect.objectContaining({
+      action:      'access_request_account_created',
+      target_type: 'user',
+      target_id:   fakeId,
+    }));
+  });
+
+  test('erreur Keycloak non-409 → 502', async () => {
+    kcAdminFetch.mockResolvedValueOnce(kcResp('Internal error', { status: 500 }));
+    const res = await request(app).post('/api/auth/access-request').send(valid);
     expect(res.status).toBe(502);
   });
 });

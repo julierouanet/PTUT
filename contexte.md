@@ -31,10 +31,12 @@ Permettre au personnel hospitalier de **suivre, surveiller et signaler les probl
 | `hospitalStaff` | Docteurs, infirmiers, techniciens labo | Voir équipements, signaler incidents, suivre ses demandes |
 | `supervisor` | Chefs de département | + Approuver demandes, assigner tâches |
 | `technician` / `technician_biomedical` / `technician_it` / `technician_infra` | Techniciens spécialisés | + Mettre à jour réparations, enregistrer pièces |
-| `admin` | ICT Admin | Toutes les 14 permissions |
+| `admin` | ICT Admin | Toutes les 16 permissions |
 
-**14 permissions applicatives (SQLite)** :
-`viewEquipment`, `reportIssue`, `trackIssues`, `approveRequests`, `assignTasks`, `updateRepairs`, `registerParts`, `manageEquipment`, `manageUsers`, `manageDepartments`, `manageCategories`, `generateReports`, `viewInventory`, `changeDepartment`
+**16 permissions applicatives (SQLite)** :
+`viewEquipment`, `reportIssue`, `trackIssues`, `approveRequests`, `assignTasks`, `updateRepairs`, `registerParts`, `manageEquipment`, `manageUsers`, `manageDepartments`, `manageCategories`, `generateReports`, `viewInventory`, `changeDepartment`, `manageFeatures`, `manageBackups`
+
+> `manageFeatures` et `manageBackups` ajoutées avec les modules Feature Flags et Sauvegardes (constatées dans `flutter-app/lib/main.dart:272-273` — audit 2026-06-10).
 
 ---
 

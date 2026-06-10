@@ -159,8 +159,10 @@ router.post('/forgot-password', (req, res) => {
 });
 
 // ── POST /api/auth/access-request ─────────────────────────────────────────────
-// Endpoint public : crée immédiatement un compte Keycloak avec le rôle hospitalStaff.
-// Aucune validation admin requise — l'utilisateur peut se connecter de suite.
+// Endpoint public : crée un compte Keycloak avec le rôle hospitalStaff.
+// Sécurisé (audit 2026-06-10) : rate-limit 3/h/IP (index.js), email non vérifié
+// à la création (requiredActions VERIFY_EMAIL) + envoi immédiat de l'email de
+// vérification, et trace dans l'audit log central (sendLog).
 router.post('/access-request', async (req, res) => {
   const { first_name, last_name, email, password, department } = req.body;
 
@@ -180,16 +182,19 @@ router.post('/access-request', async (req, res) => {
   const cleanDept  = department ? String(department).trim() : '';
 
   try {
-    // 1. Créer l'utilisateur dans Keycloak
+    // 1. Créer l'utilisateur dans Keycloak — email non vérifié : l'utilisateur
+    //    doit cliquer le lien de vérification avant de pouvoir se connecter
     const createResp = await kcAdminFetch('/users', {
       method: 'POST',
       body: JSON.stringify({
-        username:   cleanEmail,
-        email:      cleanEmail,
-        firstName:  cleanFirst,
-        lastName:   cleanLast,
-        enabled:    true,
-        attributes: { department: [cleanDept] },
+        username:        cleanEmail,
+        email:           cleanEmail,
+        firstName:       cleanFirst,
+        lastName:        cleanLast,
+        enabled:         true,
+        emailVerified:   false,
+        requiredActions: ['VERIFY_EMAIL'],
+        attributes:      { department: [cleanDept] },
       }),
     });
 
@@ -214,15 +219,33 @@ router.post('/access-request', async (req, res) => {
     // 3. Assigner le rôle hospitalStaff uniquement
     await assignRolesToUser(kcId, ['hospitalStaff']);
 
-    // 4. Traçabilité — enregistrement en DB avec statut auto_created
+    // 4. Envoi immédiat de l'email de vérification (fire-and-forget)
+    kcAdminFetch(`/users/${kcId}/send-verify-email`, { method: 'PUT' }).catch((err) => {
+      console.error('[AUTH] Envoi email vérification échoué:', err.message);
+    });
+
+    // 5. Traçabilité — enregistrement en DB avec statut auto_created
     const db = getDb();
     db.prepare(
       `INSERT INTO access_requests (first_name, last_name, email, department, role, status)
        VALUES (?, ?, ?, ?, 'hospitalStaff', 'auto_created')`
     ).run(cleanFirst, cleanLast, cleanEmail, cleanDept || null);
 
+    // 6. Audit trail central (db-service /api/logs/internal)
+    sendLog({
+      user_id:     kcId,
+      user_name:   `${cleanFirst} ${cleanLast}`.trim(),
+      user_role:   'hospitalStaff',
+      action:      'access_request_account_created',
+      target_type: 'user',
+      target_id:   kcId,
+      target_name: `${cleanFirst} ${cleanLast}`.trim(),
+      details:     { email: cleanEmail, department: cleanDept || null },
+      ...reqMeta(req),
+    });
+
     console.log(`[AUTH] Compte auto-créé (hospitalStaff) : ${cleanEmail} (kcId: ${kcId})`);
-    res.status(201).json({ message: 'Compte créé. Vous pouvez maintenant vous connecter.' });
+    res.status(201).json({ message: 'Compte créé. Vérifiez votre email pour activer votre compte avant de vous connecter.' });
   } catch (err) {
     console.error('[AUTH] Erreur création compte access-request:', err.message);
     res.status(500).json({ error: 'Erreur interne du serveur' });

@@ -70,6 +70,17 @@ const forgotPasswordLimiter = rateLimit({
 });
 app.use('/api/auth/forgot-password', forgotPasswordLimiter);
 
+// Rate limiter pour la demande d'accès : max 3 créations de compte par IP par heure
+// (endpoint public qui crée un compte Keycloak — correctif #1 audit 2026-06-10)
+const accessRequestLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 3,
+  message: { error: 'Trop de demandes d\'accès. Réessayez dans une heure.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/access-request', accessRequestLimiter);
+
 // Rate limiter pour les endpoints d'écriture/administration
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute

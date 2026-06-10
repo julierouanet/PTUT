@@ -389,3 +389,18 @@ Tout déclenchement "Signaler un incident" (sidebar, bottom nav, drawer, dashboa
 | Build Flutter sans `--dart-define` | Pointe vers les URLs par défaut (prod) | Toujours passer les 3 `--dart-define` |
 | Email non reçu (vérification/reset) | Mauvais diagnostic → code Node | Vérifier les Events Keycloak (console admin → Events) — pas le code Node |
 | Ajouter une permission sans seed | Permission absente en prod | Mettre à jour `seed.js` auth-service ET penser à relancer `node seed.js` |
+
+---
+
+## 📈 Audit KPI
+
+| Élément | Valeur |
+|---|---|
+| **Dernier audit** | 2026-06-10 |
+| **Score** | **83,5/100 — Bon** (grille KPI à 8 domaines) |
+| **Rapport** | `audit/rapport_audit_2026-06-10.md` |
+| **Skill** | `.claude/skills/audit-gmao-kpi/SKILL.md` |
+
+**Relancer l'audit** : invoquer le skill `/audit-gmao-kpi` (ou demander « audite l'application avec la grille KPI »). Le skill embarque la grille complète, les requêtes SQL de mesure (lecture seule) et la structure du rapport. Outils d'appui : `audit/tools/diff_arb.js` (sync ARB), `audit/tools/kpi_queries.js` (KPIs métier sur `hospital.db`).
+
+Points faibles relevés (voir top 10 du rapport) : ~~`POST /api/auth/access-request` public sans rate-limit créant des comptes actifs~~ (✅ corrigé 2026-06-10 : rate-limit 3/h + VERIFY_EMAIL + sendLog), mutations `roles.js` sans audit trail, documentation `contexte/context.md` en retard sur le code, chaînes UI en dur dans les écrans admin.

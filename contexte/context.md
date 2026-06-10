@@ -149,12 +149,15 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 
 ### Authentification (`/api/auth`)
 
-#### POST /api/auth/access-request *(public, sans authentification)*
-- **Body** : `{ "first_name", "last_name", "email", "department?", "role?" }`
-- Enregistre une demande d'accès en DB (table `access_requests`, statut `pending`) pour traitement admin.
-- Aucun token requis — soumis depuis l'écran de connexion Flutter.
-- **Reponse 201** : `{ "message": "Demande enregistrée. Un administrateur vous contactera." }`
-- **Erreurs** : 400 si champs requis manquants ou email invalide.
+#### POST /api/auth/access-request *(public, rate-limit 3/h/IP)*
+- **Body** : `{ "first_name", "last_name", "email", "password", "department?" }`
+- Crée un compte Keycloak (rôle `hospitalStaff`, mot de passe permanent) avec **email non vérifié** : `requiredActions: ['VERIFY_EMAIL']` + envoi immédiat de l'email de vérification — l'utilisateur doit valider son email avant de pouvoir se connecter (`routes/auth.js`).
+- Traçabilité : ligne insérée dans `access_requests` (statut `auto_created`) + audit trail central `sendLog` (action `access_request_account_created`).
+- **Erreurs** : 400 si champs manquants / email invalide / mot de passe < 8 chars ; 409 si email déjà existant ; 502 si erreur Keycloak.
+- ✅ Correctif #1 de l'audit 2026-06-10 appliqué : rate-limiter dédié (`index.js`), VERIFY_EMAIL, sendLog.
+
+#### POST /api/auth/forgot-password *(public, rate-limit 5/15min)*
+- **Body** : `{ "email" }` — répond toujours 200 (anti-énumération), puis déclenche en asynchrone un email `UPDATE_PASSWORD` via l'Admin API Keycloak si l'email existe.
 
 #### POST /api/auth/register *(public)*
 - Création de compte auto-déclaratif via Admin API Keycloak (hospitalStaff + VERIFY_EMAIL).
@@ -233,6 +236,23 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 - **Body** : `{ type, roles: string[], payload }`
 - Requête Keycloak Admin API pour récupérer les emails, asynchrone (réponse immédiate)
 
+#### Demandes de rôle (`role_change_requests`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| POST | /api/users/role-request | Auth | Demande d'un rôle supplémentaire (whitelist REQUESTABLE_ROLES, 409 si pending existante) |
+| GET | /api/users/role-requests | Admin | Liste (filtre `?status=`) |
+| PUT | /api/users/role-requests/:id | Admin | `{ status: approved\|rejected, admin_note? }` — si approved, assigne le rôle dans Keycloak |
+
+#### Divers utilisateurs
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/users/:id | Admin | Détail d'un utilisateur Keycloak (placé en dernier dans le router) |
+| POST | /api/users/:id/send-verify-email | Admin | Déclenche l'email de vérification Keycloak |
+
+> ⚠️ `GET /api/users?role=X` est accessible à **tout utilisateur authentifié** (seul le listing complet sans `?role` exige admin) — constat d'audit 2026-06-10 (correctif #3).
+
 ### Feature Flags (`/api/feature-flags`) **[NOUVEAU]**
 
 #### GET /api/feature-flags (Auth — tout rôle authentifié)
@@ -256,9 +276,21 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 
 #### PUT /api/roles/:name/permissions (Admin)
 - Uniquement `role_permissions` SQLite (Keycloak ne connaît pas les permissions applicatives)
+- 403 si `name === 'admin'` (rôle protégé)
+
+#### GET /api/roles/:name/permissions (Admin)
+- Permissions SQLite d'un rôle spécifique
+
+#### GET /api/roles/:name/hierarchy (Admin)
+- Parent/enfants depuis la table `role_hierarchy`
+
+#### GET /api/roles/:name/users (Admin)
+- Utilisateurs Keycloak ayant ce rôle, paginé (`?page=&limit=`, max 50)
 
 #### DELETE /api/roles/:name (Admin)
-- DELETE Keycloak + DELETE `role_permissions` SQLite
+- DELETE Keycloak + DELETE `role_permissions` SQLite — 400 si rôle intégré (7 builtin)
+
+> ⚠️ Constat d'audit 2026-06-10 : POST/PUT/DELETE de `/api/roles` n'écrivent **aucun audit trail** (`sendLog` absent — correctif #2 du rapport).
 
 ## 1.5 Middleware et securite
 
@@ -491,6 +523,23 @@ Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, 
 | screen_type | TEXT    | NOT NULL, PK composite             |
 | sort_order  | INTEGER | NOT NULL DEFAULT 0                 |
 
+### Autres tables db-service (ajoutées au fil des features — audit 2026-06-10)
+
+| Table | Création (`src/database.js`) | Rôle |
+|---|---|---|
+| `push_subscriptions` | :381 | Souscriptions Web Push par utilisateur |
+| `features` + `feature_role_overrides` | :395, :402 | Feature flags **locaux db-service** (distincts de `feature_flags` auth-service) |
+| `backup_settings` + `backup_history` | :422, :429 | Configuration et historique des sauvegardes SQLite |
+| `equipment_macro_categories` / `equipment_subcategories` | :454, :467 | Taxonomie GMAO (3 macro-catégories) |
+| `pm_protocols` + `_pm_seeded` | :571, :589 | Protocoles PM par type d'équipement + marqueur de seed |
+| `equipment_documents` | :750 | Documents équipement (soft delete `deleted_at`) |
+| `issue_photos` | :770 | Photos d'incidents (max 5) |
+| `notifications` | :793 | Notifications in-app |
+
+Colonnes `issues` non listées plus haut : `location_text`, `location_tag` (`database.js:148-149`), `taken_at` (`database.js:152`).
+
+Côté **auth-service**, la table `role_hierarchy` (parent/enfant de rôles, cf. `routes/roles.js:138`) existe également.
+
 ## 2.2 Enums de validation
 
 | Contexte         | Valeurs                                                                       |
@@ -652,6 +701,57 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/sidebar/config  | Auth  | Config pour le role (query: ?role=, defaut req.user.role) |
 | PUT     | /api/sidebar/config  | Admin | Modifier l'ordre des ecrans pour un role (transaction) |
 
+### Départements (`/api/departments`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/departments | Auth | Liste des départements |
+| GET | /api/departments/:id/stats | Auth | Statistiques d'un département |
+| GET | /api/departments/:id/check-dependencies | Admin | Vérifie les dépendances avant suppression |
+| POST | /api/departments | Admin | Créer |
+| PUT | /api/departments/:id | Admin | Modifier |
+| DELETE | /api/departments/:id | Admin | Supprimer |
+
+### Analytics (`/api/analytics`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/analytics | Admin | Données agrégées pour AnalyticsScreen |
+
+### Features db-service (`/api/features`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/features | Admin | Liste des features (tables `features` + `feature_role_overrides` locales db-service) |
+| PUT | /api/features/:id | Admin | Mise à jour état global + overrides |
+
+### Sauvegardes (`/api/admin/backups`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/admin/backups | Admin | Historique (`backup_history`) + réglages (`backup_settings`) |
+| POST | /api/admin/backups/trigger | Admin | Sauvegarde immédiate (`db.backup()`) |
+| POST | /api/admin/backups/settings | Admin | Réglages du cron de sauvegarde |
+| GET | /api/admin/backups/download/:id | Admin | Téléchargement d'une sauvegarde |
+
+### Notifications push & in-app (`/api/notifications`)
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/notifications/vapid-key | Public | Clé publique VAPID (Web Push) |
+| POST | /api/notifications/subscribe | Auth | Enregistre une souscription push (`push_subscriptions`) |
+| POST | /api/notifications/unsubscribe | Auth | Supprime la souscription |
+| GET | /api/notifications | Auth | Notifications in-app de l'utilisateur (table `notifications`) |
+| PATCH | /api/notifications/read-all | Auth | Tout marquer lu |
+| PATCH | /api/notifications/:id/read | Auth | Marquer une notification lue |
+
+### Compléments équipements & incidents
+
+| Methode | Route | Auth | Description |
+|---|---|---|---|
+| GET | /api/equipment/by-tag/:tagNumber | Auth | Recherche par numéro de tag physique |
+| GET | /api/issues/:id/assignable-technicians | Admin/Sup/Tech | Techniciens assignables (interroge auth-service) |
+
 ### Debug & Test (`/api/debug`)
 
 | Methode | Route                      | Auth   | Description                                                       |
@@ -664,8 +764,9 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 
 ## 2.5 Middleware
 
-- **verifyToken** : Meme logique que auth-service (JWT_SECRET partage)
-- **requireRole(...roles)** : Verifie req.user.role dans la liste fournie
+- **verifyToken** : validation **JWKS RS256 Keycloak uniquement** (`jwks-rsa`, cache 10 min, `KC_JWKS_URI` surchargeable) — aucun `JWT_SECRET`, aucun fallback HS256 (`src/middleware/auth.js:35`). Normalise `req.user = { id: sub, email, name, roles (filtrés SYSTEM_ROLES), department }`
+- **requireRole(...roles)** : vérifie `req.user.roles.some(...)` → 403 sinon
+- **upload** (`src/middleware/upload.js`) : multer, noms de fichiers UUID, `documentUpload` (JPEG/PNG/PDF, 10 Mo) et `photoUpload` (JPEG/PNG, 5 Mo, max 5 fichiers)
 
 ## 2.6 Configuration (src/config.js)
 
@@ -673,9 +774,13 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 |------------------|-------------------------------------------------------|
 | PORT             | 3002                                                  |
 | DB_PATH          | hospital.db                                           |
-| JWT_SECRET       | kabutare-hospital-secret-key-change-in-production     |
+| KC_ISSUER        | (requis) URL du realm Keycloak                        |
+| KC_JWKS_URI      | (optionnel) surcharge l'URL JWKS                      |
 | AUTH_SERVICE_URL | http://localhost:3001                                 |
-| INTERNAL_SECRET  | kabutare-internal-secret-change-in-production         |
+| INTERNAL_SECRET  | kabutare-internal-secret-change-in-production ⚠️ fallback en dur — correctif #4 audit |
+| UPLOAD_DIR       | Répertoire de stockage des uploads (`/data/uploads/documents`) |
+
+> `JWT_SECRET` n'existe plus dans db-service — la validation est 100 % JWKS RS256 (audit 2026-06-10).
 
 ## 2.7 Dependances (package.json)
 
@@ -869,7 +974,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (15)
+## 3.4 Ecrans (23 fichiers dans `lib/screens/` — audit 2026-06-10)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -889,6 +994,13 @@ status: StockStatus (normal, low, outOfStock)
 | 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe                        |
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
 | 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues) ; section "Tests de Notifications" : 4 boutons (notify-now, auto/minute, auto/heure, stop) + mini-historique des 3 derniers envois |
+| 14 | EquipmentDetailScreen    | viewEquipment           | Détail équipement (historique maintenance, PM, documents) |
+| 15 | IssueStaffDetailScreen   | trackIssues             | Vue lecture seule incidents pour hospitalStaff (timeline) |
+| 16 | UserDetailScreen         | manageUsers             | Fiche utilisateur : profil, demandes dept/rôle, actions admin |
+| 17 | RoleDetailScreen         | manageUsers             | Détail rôle : hiérarchie, permissions, ordre sidebar, utilisateurs |
+| 18 | AnalyticsScreen          | generateReports         | Tableaux de bord analytiques (GET /api/analytics) |
+| 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle |
+| 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
 
 ## 3.5 Navigation
 
