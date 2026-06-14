@@ -15,6 +15,7 @@ import '../services/equipment_filter_state.dart';
 import '../theme/app_theme.dart';
 import '../utils/csv_export.dart';
 import '../widgets/status_badge.dart';
+import '../widgets/replacement_badge.dart';
 import 'equipment_detail_screen.dart';
 import 'equipment_form_screen.dart';
 
@@ -192,6 +193,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ── Contrôleur de recherche (restaure le texte après rebuild) ─────────
   late final TextEditingController _searchCtrl;
 
+  // ── Plan de remplacement biomédical (RA3 S5) ─────────────────────────────
+  // Map equipment.id → item du plan (status_replacement, age, lifespan, …).
+  // Chargé uniquement pour les rôles autorisés (admin/supervisor) ; les badges
+  // n'apparaissent donc que pour ces rôles.
+  Map<String, Map<String, dynamic>> _replacementByEqId = {};
+
   final _auth = AuthService();
 
   // ── RBAC ───────────────────────────────────────────────────────────────
@@ -235,6 +242,28 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     if (widget.initialPmOverdue) _filterPmOverdue = true;
     if (widget.initialMacroCategory != null) {
       _macroCategoryFilter = widget.initialMacroCategory;
+    }
+
+    // 3. Charger le plan de remplacement (badges triangle) — admin/supervisor.
+    if (_auth.canGenerateReports) {
+      _loadReplacementPlan();
+    }
+  }
+
+  /// Récupère le plan de remplacement et indexe les items par equipment.id.
+  /// Échec silencieux : les badges sont une aide, pas une fonction bloquante.
+  Future<void> _loadReplacementPlan() async {
+    try {
+      final plan  = await DbApiService.instance.getReplacementPlan();
+      final items = (plan['items'] as List?) ?? const [];
+      final map = <String, Map<String, dynamic>>{};
+      for (final it in items) {
+        final m = it as Map<String, dynamic>;
+        map[m['id'] as String] = m;
+      }
+      if (mounted) setState(() => _replacementByEqId = map);
+    } catch (_) {
+      // Ignoré : pas de badge si le plan n'est pas disponible.
     }
   }
 
@@ -879,6 +908,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   Widget _buildDesktopRow(Equipment eq, AppLocalizations l10n) {
     final pmBadge = _pmBadge(eq, l10n);
+    final replacementBadge = _replacementBadge(eq, l10n);
     return Card(
       margin: const EdgeInsets.only(bottom: 2),
       child: InkWell(
@@ -887,11 +917,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(children: [
-            // Nom + badge PM inline
+            // Nom + badges (PM + remplacement) inline
             Expanded(
               flex: 3,
               child: Row(children: [
                 if (pmBadge != null) ...[pmBadge, const SizedBox(width: 6)],
+                if (replacementBadge != null) ...[replacementBadge, const SizedBox(width: 6)],
                 Flexible(
                   child: Text(eq.name,
                       style: const TextStyle(fontWeight: FontWeight.w600),
@@ -958,6 +989,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   Widget _buildGridCard(Equipment eq, AppLocalizations l10n) {
     final pmBadge  = _pmBadge(eq, l10n);
+    final replacementBadge = _replacementBadge(eq, l10n);
     final level    = eq.preventiveMaintenanceAlertLevel;
     final hasPm    = level == 'due' || level == 'soon';
 
@@ -989,6 +1021,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     children: [
                       Row(children: [
                         if (pmBadge != null) ...[pmBadge, const SizedBox(width: 4)],
+                        if (replacementBadge != null) ...[replacementBadge, const SizedBox(width: 4)],
                         Expanded(
                           child: Text(eq.name,
                               style: const TextStyle(
@@ -1070,6 +1103,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
 
   Widget _buildMobileCard(Equipment eq, AppLocalizations l10n) {
     final pmBadge  = _pmBadge(eq, l10n);
+    final replacementBadge = _replacementBadge(eq, l10n);
     final level    = eq.preventiveMaintenanceAlertLevel;
     final hasPmAlert = level == 'due' || level == 'soon';
 
@@ -1083,6 +1117,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               if (pmBadge != null) ...[pmBadge, const SizedBox(width: 6)],
+              if (replacementBadge != null) ...[replacementBadge, const SizedBox(width: 6)],
               Expanded(
                 child: Text(eq.name,
                     style: const TextStyle(fontWeight: FontWeight.bold),
@@ -1496,6 +1531,25 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                   fontWeight: FontWeight.w700)),
         ]),
       ),
+    );
+  }
+
+  /// Badge triangle du plan de remplacement (RA3 S5) — affiché inline.
+  /// Retourne null si pas de plan chargé, équipement non biomédical, ou statut `ok`.
+  Widget? _replacementBadge(Equipment eq, AppLocalizations l10n) {
+    final item = _replacementByEqId[eq.id];
+    if (item == null) return null;
+    final status = item['status_replacement'] as String? ?? 'ok';
+    if (ReplacementBadge.colorFor(status) == null) return null;
+
+    final age      = (item['age'] as num?)?.toInt();
+    final lifespan = (item['lifespan'] as num?)?.toInt();
+    final crit     = item['criticality'] as String?;
+
+    return ReplacementBadge(
+      status: status,
+      tooltip: ReplacementBadge.tooltipFor(l10n, status, age, lifespan, crit),
+      onTap: () => _openDetail(eq),
     );
   }
 

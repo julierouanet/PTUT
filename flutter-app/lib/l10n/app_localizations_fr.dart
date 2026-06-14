@@ -4665,4 +4665,111 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get roleDetailMenuHidden => 'Éléments masqués';
+
+  @override
+  String get replacementStatusDue => 'À remplacer';
+
+  @override
+  String get replacementStatusSoon => 'Bientôt à remplacer';
+
+  @override
+  String get replacementStatusUnknown => 'Donnée manquante';
+
+  @override
+  String replacementTooltipDue(
+    Object age,
+    Object lifespan,
+    String criticality,
+  ) {
+    return 'À remplacer — $age ans / réf. $lifespan ans (Crit. $criticality)';
+  }
+
+  @override
+  String replacementTooltipSoon(
+    Object age,
+    Object lifespan,
+    String criticality,
+  ) {
+    return 'Bientôt — $age ans / réf. $lifespan ans (Crit. $criticality)';
+  }
+
+  @override
+  String get replacementTooltipUnknown =>
+      'Durée de vie de référence non définie pour cette sous-catégorie';
+
+  @override
+  String get replacementHorizonThisYear => 'Cette année';
+
+  @override
+  String get replacementHorizon12Years => '1–2 ans';
+
+  @override
+  String get replacementHorizonLater => 'Plus tard';
+
+  @override
+  String get replacementHorizonUnknown => 'Non planifiable';
+
+  @override
+  String get subcategoryLifespanLabel => 'Durée de vie de réf. (ans)';
+
+  @override
+  String get subcategoryLifespanHint => 'Années';
+
+  @override
+  String get subcategoryLifespanUndefinedTooltip =>
+      'Durée de vie de référence non définie';
+
+  @override
+  String get subcategoryLifespanSaved => 'Durée de vie enregistrée';
+
+  @override
+  String get subcategoryLifespanInvalid => 'Saisir un entier positif';
+
+  @override
+  String get subcategoryDetailTitle => 'Détail de la sous-catégorie';
+
+  @override
+  String get subcategoryDetailLifespanSection => 'Durée de vie de référence';
+
+  @override
+  String get subcategoryDetailAlertsSection => 'Notifications';
+
+  @override
+  String get subcategoryDetailNoAlerts => 'Aucune alerte';
+
+  @override
+  String subcategoryDetailEquipmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count équipements',
+      one: '1 équipement',
+      zero: 'Aucun équipement',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get equipmentDetailAlertsTitle => 'Notifications';
+
+  @override
+  String get equipmentDetailNoAlerts => 'Aucune alerte';
+
+  @override
+  String get replacementPlanReportButton => 'Plan de remplacement';
+
+  @override
+  String get replacementPlanReportTooltip =>
+      'Exporter le plan de remplacement des équipements biomédicaux (PDF)';
+
+  @override
+  String get replacementPlanReportProgress => 'Génération…';
+
+  @override
+  String get replacementPlanReportError =>
+      'Erreur lors de la génération du plan de remplacement';
+
+  @override
+  String get replacementPlanReportEmpty =>
+      'Aucun équipement biomédical à planifier';
 }

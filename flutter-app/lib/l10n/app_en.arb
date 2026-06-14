@@ -1842,5 +1842,39 @@
   "@roleDetailInheritedFrom": { "placeholders": { "role": { "type": "String" } } },
   "roleDetailAdminLocked": "Administrator permissions are locked.",
   "roleDetailMenuVisible": "Visible items (drag to reorder)",
-  "roleDetailMenuHidden": "Hidden items"
+  "roleDetailMenuHidden": "Hidden items",
+
+  "replacementStatusDue": "To be replaced",
+  "replacementStatusSoon": "Replacement soon",
+  "replacementStatusUnknown": "Missing data",
+  "replacementTooltipDue": "To be replaced — {age} yrs / ref. {lifespan} yrs (Crit. {criticality})",
+  "@replacementTooltipDue": { "placeholders": { "age": { "type": "Object" }, "lifespan": { "type": "Object" }, "criticality": { "type": "String" } } },
+  "replacementTooltipSoon": "Soon — {age} yrs / ref. {lifespan} yrs (Crit. {criticality})",
+  "@replacementTooltipSoon": { "placeholders": { "age": { "type": "Object" }, "lifespan": { "type": "Object" }, "criticality": { "type": "String" } } },
+  "replacementTooltipUnknown": "Reference lifespan not defined for this subcategory",
+  "replacementHorizonThisYear": "This year",
+  "replacementHorizon12Years": "1–2 years",
+  "replacementHorizonLater": "Later",
+  "replacementHorizonUnknown": "Not plannable",
+
+  "subcategoryLifespanLabel": "Ref. lifespan (yrs)",
+  "subcategoryLifespanHint": "Years",
+  "subcategoryLifespanUndefinedTooltip": "Reference lifespan not defined",
+  "subcategoryLifespanSaved": "Lifespan saved",
+  "subcategoryLifespanInvalid": "Enter a positive integer",
+  "subcategoryDetailTitle": "Subcategory details",
+  "subcategoryDetailLifespanSection": "Reference lifespan",
+  "subcategoryDetailAlertsSection": "Notifications",
+  "subcategoryDetailNoAlerts": "No alerts",
+  "subcategoryDetailEquipmentCount": "{count,plural,=0{No equipment}=1{1 equipment}other{{count} equipment}}",
+  "@subcategoryDetailEquipmentCount": { "placeholders": { "count": { "type": "int" } } },
+
+  "equipmentDetailAlertsTitle": "Notifications",
+  "equipmentDetailNoAlerts": "No alerts",
+
+  "replacementPlanReportButton": "Replacement plan",
+  "replacementPlanReportTooltip": "Export the biomedical equipment replacement plan (PDF)",
+  "replacementPlanReportProgress": "Generating…",
+  "replacementPlanReportError": "Error while generating the replacement plan",
+  "replacementPlanReportEmpty": "No biomedical equipment to plan"
 }

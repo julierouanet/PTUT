@@ -23,6 +23,11 @@ class AppColors {
   static const Color errorLight = Color(0xFFFEE2E2);
   static const Color critical = Color(0xFF7F1D1D);
   static const Color criticalLight = Color(0xFFFECACA);
+
+  // Plan de remplacement biomédical (badges triangle — RA3 S5)
+  static const Color replacementDue   = Color(0xFFF97316); // orange — à remplacer
+  static const Color replacementSoon  = Color(0xFFEAB308); // jaune  — bientôt
+  static const Color replacementUnknown = Color(0xFF9CA3AF); // gris  — donnée manquante
   
   // Neutral colors
   static const Color background = Color(0xFFF9FAFB);

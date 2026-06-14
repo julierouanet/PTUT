@@ -179,7 +179,7 @@ PTUT/
 | `departments` | AUTOINCREMENT | Référentiel départements (~56 entrées en anglais) |
 | `equipment_categories` | AUTOINCREMENT | Référentiel de noms standards (~626 entrées XLSX) |
 | `equipment_macro_categories` | AUTOINCREMENT | **[NOUVEAU]** 3 macro-catégories : `Biomedical`, `Infrastructure`, `IT` |
-| `equipment_subcategories` | AUTOINCREMENT | **[NOUVEAU]** Sous-catégories (migrées depuis equipment_categories, chacune liée à une macro-catégorie) |
+| `equipment_subcategories` | AUTOINCREMENT | **[NOUVEAU]** Sous-catégories (migrées depuis equipment_categories, chacune liée à une macro-catégorie). Colonne `expected_lifespan_years` INTEGER (durée de vie de référence, NULL = non définie) — plan de remplacement biomédical RA3 S5 |
 | `pm_protocols` | AUTOINCREMENT | **[NOUVEAU]** Protocoles de maintenance préventive par type d'équipement (checklist JSON, fréquence en mois) |
 | `maintenance_records` | AUTOINCREMENT | Historique des interventions de maintenance |
 | `preventive_maintenance_plans` | AUTOINCREMENT | Plans de maintenance préventive par équipement (fréquence en mois) |
@@ -200,6 +200,7 @@ PTUT/
 - **Migrations** : inline dans `database.js` via `PRAGMA table_info` + `ALTER TABLE`, idempotentes au démarrage
 - **`equipment.macro_category_id`** : dérivé automatiquement de `subcategory_id` lors de l'insert/update si non fourni
 - **`equipment.criticality`** : valeurs autorisées `'A'`, `'B'`, `'C'` (Matrice ABC GMAO)
+- **`equipment_subcategories.expected_lifespan_years`** : durée de vie de référence (années, INTEGER, NULL = non définie). Source de vérité du plan de remplacement biomédical : `GET /api/equipment/replacement-plan` calcule âge/statut/horizon côté serveur (warranty_end_date et statut 'Out of service' n'interviennent PAS)
 - **`pm_protocols`** : protocoles par *type* d'équipement (≠ `preventive_maintenance_plans` qui est par équipement individuel)
 - **`issues.taken_at`** (TEXT, Nullable) : horodatage ISO 8601 de la prise en charge par le technicien — permet le chronomètre persistant côté Flutter (`DateTime.now().difference(takenAt)` au rechargement)
 

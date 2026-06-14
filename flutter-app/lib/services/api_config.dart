@@ -140,6 +140,10 @@ class ApiConfig {
   static String get categoriesSubUrl => '$dbBaseUrl/api/categories/sub';
   static String categoriesSubByMacroUrl(int macroId) => '$dbBaseUrl/api/categories/sub?macro_category_id=$macroId';
   static String categoriesSubItemUrl(int id) => '$dbBaseUrl/api/categories/sub/$id';
+  static String categoriesSubLifespanUrl(int id) => '$dbBaseUrl/api/categories/sub/$id/lifespan';
+
+  // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────────
+  static String get replacementPlanUrl => '$dbBaseUrl/api/equipment/replacement-plan';
 
   static String equipmentByTagUrl(String tag) =>
       '$dbBaseUrl/api/equipment/by-tag/${Uri.encodeComponent(tag)}';

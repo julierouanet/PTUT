@@ -4,6 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { TECH_ROLES, rolesCsv } = require('../utils/roles');
 const { generateMaintenanceLabelPdf } = require('../services/pdf_label_service');
+const { buildReplacementPlan } = require('../utils/replacement');
 
 const router = express.Router();
 
@@ -66,6 +67,37 @@ router.get('/', verifyToken, (req, res) => {
   }));
 
   res.json(result);
+});
+
+// ── GET /api/equipment/replacement-plan ──────────────────────────────────────
+// Plan de remplacement priorisé des équipements BIOMÉDICAUX (RA3 S5).
+// Calcul serveur (source de vérité unique) du statut de remplacement et de
+// l'horizon budgétaire à partir de l'âge et de la durée de vie de la sous-cat.
+// Lecture réservée admin/supervisor (≈ permission generateReports).
+// NB : route statique placée AVANT /:id pour ne pas être capturée.
+router.get('/replacement-plan', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
+  const db = getDb();
+
+  const rows = db.prepare(`
+    SELECT
+      e.id,
+      e.name,
+      e.criticality,
+      e.manuf_year,
+      e.install_date,
+      e.status,
+      es.name                     AS subcategory,
+      es.expected_lifespan_years  AS expected_lifespan_years
+    FROM equipment e
+    LEFT JOIN equipment_subcategories    es  ON es.id  = e.subcategory_id
+    LEFT JOIN equipment_macro_categories emc ON emc.id = e.macro_category_id
+    WHERE emc.name = 'Biomedical'
+  `).all();
+
+  const currentYear = new Date().getFullYear();
+  const plan = buildReplacementPlan(rows, currentYear);
+
+  res.json(plan);
 });
 
 // ── GET /api/equipment/by-tag/:tagNumber ─────────────────────────────────────

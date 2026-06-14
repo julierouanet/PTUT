@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/replacement_badge.dart';
 import '../widgets/equipment/equipment_critical_banner.dart';
 import '../widgets/equipment/equipment_documents_tab.dart';
 import '../widgets/equipment/equipment_incidents_tab.dart';
@@ -49,6 +50,10 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
   bool _loadingDetails = true;
   String? _error;
 
+  // ── Statut de remplacement (RA3 S5) — admin/supervisor uniquement ─────────
+  Map<String, dynamic>? _replacementItem;
+  bool _replacementLoaded = false;
+
   bool get _isStaffView {
     final primary = AuthService().primaryRole;
     return primary == UserRole.hospitalStaff;
@@ -59,6 +64,96 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
     super.initState();
     _equipment = widget.initialEquipment;
     _fetchDetails();
+    if (AuthService().canGenerateReports) {
+      _loadReplacementStatus();
+    }
+  }
+
+  /// Récupère le statut de remplacement de cet équipement depuis le plan.
+  /// Échec silencieux : la section Notifications reste masquée si indisponible.
+  Future<void> _loadReplacementStatus() async {
+    try {
+      final plan  = await DbApiService.instance.getReplacementPlan();
+      final items = (plan['items'] as List?) ?? const [];
+      Map<String, dynamic>? found;
+      for (final it in items) {
+        final m = it as Map<String, dynamic>;
+        if (m['id'] == widget.equipmentId) { found = m; break; }
+      }
+      if (mounted) setState(() {
+        _replacementItem = found;
+        _replacementLoaded = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _replacementLoaded = true);
+    }
+  }
+
+  /// Section « Notifications » : alerte de remplacement de l'équipement.
+  /// Visible seulement pour les rôles autorisés (admin/supervisor) une fois
+  /// le plan chargé. Affiche « Aucune alerte » si statut `ok` ou absent.
+  Widget _buildNotificationsBanner(AppLocalizations l10n) {
+    if (!AuthService().canGenerateReports || !_replacementLoaded) {
+      return const SizedBox.shrink();
+    }
+
+    final item   = _replacementItem;
+    final status = item?['status_replacement'] as String? ?? 'ok';
+    final hasBadge = ReplacementBadge.colorFor(status) != null;
+
+    final Widget content;
+    if (!hasBadge) {
+      content = Row(children: [
+        const Icon(Icons.check_circle_outline,
+            size: 16, color: AppColors.textMuted),
+        const SizedBox(width: 8),
+        Text(l10n.equipmentDetailNoAlerts,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+      ]);
+    } else {
+      final age      = (item?['age'] as num?)?.toInt();
+      final lifespan = (item?['lifespan'] as num?)?.toInt();
+      final crit     = item?['criticality'] as String?;
+      final tooltip  = ReplacementBadge.tooltipFor(l10n, status, age, lifespan, crit);
+      final label = switch (status) {
+        'a_remplacer'     => l10n.replacementStatusDue,
+        'bientot'         => l10n.replacementStatusSoon,
+        'donnee_manquante' => l10n.replacementStatusUnknown,
+        _                 => '',
+      };
+      content = Row(children: [
+        ReplacementBadge(status: status, tooltip: tooltip),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            tooltip.isEmpty ? label : '$label — $tooltip',
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          ),
+        ),
+      ]);
+    }
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.notifications_outlined,
+                  size: 16, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(l10n.equipmentDetailAlertsTitle,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 14)),
+            ]),
+            const SizedBox(height: 8),
+            content,
+          ],
+        ),
+      ),
+    );
   }
 
   // ── Chargement des données ────────────────────────────────────────────────────
@@ -144,6 +239,7 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
       body: Column(
         children: [
           EquipmentCriticalBanner(equipment: eq),
+          _buildNotificationsBanner(l10n),
           Expanded(
             child: EquipmentStaffView(
               equipment: eq,
@@ -213,6 +309,7 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
           children: [
             // Bannière critique persistante au-dessus des onglets
             EquipmentCriticalBanner(equipment: eq),
+            _buildNotificationsBanner(l10n),
             Expanded(
               child: TabBarView(
                 children: [

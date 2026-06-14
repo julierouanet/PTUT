@@ -321,6 +321,195 @@ class PdfReportService {
     return doc.save();
   }
 
+  // ── Rapport « Plan de remplacement biomédical » (RA3 S5) ────────────────────
+
+  /// Construit le PDF du plan de remplacement à partir de la réponse serveur
+  /// ({ summary, items } de GET /api/equipment/replacement-plan).
+  static Future<Uint8List> generateReplacementPlan({
+    required Map<String, dynamic> summary,
+    required List<Map<String, dynamic>> items,
+    required String generatedByName,
+    required String generatedByRole,
+  }) async {
+    final doc = pw.Document();
+    final now = DateTime.now();
+
+    final biomedicalCount = (summary['biomedical_count'] as num?)?.toInt() ?? 0;
+    final avgAge          = (summary['avg_age_years'] as num?)?.toDouble() ?? 0;
+    final eolCount        = (summary['end_of_life_count'] as num?)?.toInt() ?? 0;
+    final eolPct          = (summary['end_of_life_pct'] as num?)?.toDouble() ?? 0;
+    final byHorizon       = (summary['by_horizon'] as Map?) ?? const {};
+    final byCriticality   = (summary['by_criticality'] as Map?) ?? const {};
+
+    int h(String k) => (byHorizon[k] as num?)?.toInt() ?? 0;
+    int c(String k) => (byCriticality[k] as num?)?.toInt() ?? 0;
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        header: (context) => _buildReplacementHeader(now, generatedByName, generatedByRole),
+        footer: (context) => _buildFooter(context),
+        build: (context) => [
+          // ── Section 1 : KPI de flotte ─────────────────────────────────
+          _sectionTitle('1. SYNTHÈSE DE LA FLOTTE BIOMÉDICALE'),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Équipements biomédicaux', '$biomedicalCount', _primary)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Âge moyen (ans)', avgAge.toStringAsFixed(1), _primary)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('En fin de vie', '$eolCount', eolCount > 0 ? _error : _success)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('% en fin de vie', '${eolPct.toStringAsFixed(1)}%',
+                eolPct >= 20 ? _error : _warning)),
+          ]),
+          pw.SizedBox(height: 10),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _subTitle('Par horizon budgétaire'),
+                    _statLine('Cette année',          h('cette_annee'),      biomedicalCount, _error),
+                    _statLine('1–2 ans',              h('1_2_ans'),          biomedicalCount, _warning),
+                    _statLine('Plus tard',            h('plus_tard'),        biomedicalCount, _success),
+                    _statLine('Donnée manquante',     h('donnee_manquante'), biomedicalCount, _textMuted),
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 14),
+              pw.Expanded(
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    _subTitle('Par criticité (Matrice ABC)'),
+                    _statLine('A — Critique',  c('A'), biomedicalCount, _error),
+                    _statLine('B — Important', c('B'), biomedicalCount, _warning),
+                    _statLine('C — Courant',   c('C'), biomedicalCount, _success),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // ── Section 2 : Tableau détaillé ──────────────────────────────
+          _sectionTitle('2. PLAN DE REMPLACEMENT DÉTAILLÉ'),
+          if (items.isEmpty)
+            _greenBanner('Aucun équipement biomédical à planifier.')
+          else
+            _replacementTable(items),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  // En-tête dédié du plan de remplacement (sans période)
+  static pw.Widget _buildReplacementHeader(DateTime now, String byName, String byRole) {
+    return pw.Column(children: [
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const pw.BoxDecoration(
+          color: _primary,
+          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('PLAN DE REMPLACEMENT — ÉQUIPEMENTS BIOMÉDICAUX',
+                    style: pw.TextStyle(
+                        color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('Hôpital de District de Kabutare — Rwanda — Standard RA3 S5',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Par : $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      pw.SizedBox(height: 6),
+    ]);
+  }
+
+  // Libellés français des statuts / horizons de remplacement
+  static String _replacementStatusLabel(String s) => switch (s) {
+        'a_remplacer'      => 'À remplacer',
+        'bientot'          => 'Bientôt',
+        'donnee_manquante' => 'Donnée manquante',
+        _                  => 'OK',
+      };
+
+  static String _replacementHorizonLabel(String? hz) => switch (hz) {
+        'cette_annee' => 'Cette année',
+        '1_2_ans'     => '1–2 ans',
+        'plus_tard'   => 'Plus tard',
+        _             => '—',
+      };
+
+  // Tableau détaillé du plan de remplacement
+  static pw.Widget _replacementTable(List<Map<String, dynamic>> items) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: _border),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(3),   // Nom
+        1: pw.FlexColumnWidth(2),   // Sous-cat
+        2: pw.FlexColumnWidth(1),   // Criticité
+        3: pw.FlexColumnWidth(1),   // Âge
+        4: pw.FlexColumnWidth(1),   // Durée réf
+        5: pw.FlexColumnWidth(1),   // Dépassement
+        6: pw.FlexColumnWidth(2),   // Statut
+        7: pw.FlexColumnWidth(2),   // Horizon
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: _bgLight),
+          children: [
+            _th('Équipement'), _th('Sous-catégorie'), _th('Crit.'),
+            _th('Âge'), _th('Réf.'), _th('Dépass.'), _th('Statut'), _th('Horizon'),
+          ],
+        ),
+        ...items.map((m) {
+          final status   = m['status_replacement'] as String? ?? 'ok';
+          final age      = (m['age'] as num?)?.toInt();
+          final lifespan = (m['lifespan'] as num?)?.toInt();
+          final over     = (m['overshoot'] as num?)?.toInt();
+          final color = status == 'a_remplacer'
+              ? _error
+              : status == 'bientot'
+                  ? _warning
+                  : status == 'donnee_manquante'
+                      ? _textMuted
+                      : _success;
+          return pw.TableRow(children: [
+            _td(m['name'] as String? ?? '—'),
+            _td(m['subcategory'] as String? ?? '—'),
+            _td(m['criticality'] as String? ?? '—'),
+            _td(age?.toString() ?? '—'),
+            _td(lifespan?.toString() ?? '—'),
+            _td(over == null ? '—' : (over > 0 ? '+$over' : '$over')),
+            _td(_replacementStatusLabel(status), bold: true, color: color),
+            _td(_replacementHorizonLabel(m['horizon'] as String?)),
+          ]);
+        }),
+      ],
+    );
+  }
+
   // ── Helpers de structure PDF ───────────────────────────────────────────────
 
   static pw.Widget _buildHeader(

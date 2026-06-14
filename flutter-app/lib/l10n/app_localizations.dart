@@ -8593,6 +8593,172 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Éléments masqués'**
   String get roleDetailMenuHidden;
+
+  /// No description provided for @replacementStatusDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'À remplacer'**
+  String get replacementStatusDue;
+
+  /// No description provided for @replacementStatusSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bientôt à remplacer'**
+  String get replacementStatusSoon;
+
+  /// No description provided for @replacementStatusUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Donnée manquante'**
+  String get replacementStatusUnknown;
+
+  /// No description provided for @replacementTooltipDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'À remplacer — {age} ans / réf. {lifespan} ans (Crit. {criticality})'**
+  String replacementTooltipDue(Object age, Object lifespan, String criticality);
+
+  /// No description provided for @replacementTooltipSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bientôt — {age} ans / réf. {lifespan} ans (Crit. {criticality})'**
+  String replacementTooltipSoon(
+    Object age,
+    Object lifespan,
+    String criticality,
+  );
+
+  /// No description provided for @replacementTooltipUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie de référence non définie pour cette sous-catégorie'**
+  String get replacementTooltipUnknown;
+
+  /// No description provided for @replacementHorizonThisYear.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette année'**
+  String get replacementHorizonThisYear;
+
+  /// No description provided for @replacementHorizon12Years.
+  ///
+  /// In fr, this message translates to:
+  /// **'1–2 ans'**
+  String get replacementHorizon12Years;
+
+  /// No description provided for @replacementHorizonLater.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plus tard'**
+  String get replacementHorizonLater;
+
+  /// No description provided for @replacementHorizonUnknown.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non planifiable'**
+  String get replacementHorizonUnknown;
+
+  /// No description provided for @subcategoryLifespanLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie de réf. (ans)'**
+  String get subcategoryLifespanLabel;
+
+  /// No description provided for @subcategoryLifespanHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Années'**
+  String get subcategoryLifespanHint;
+
+  /// No description provided for @subcategoryLifespanUndefinedTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie de référence non définie'**
+  String get subcategoryLifespanUndefinedTooltip;
+
+  /// No description provided for @subcategoryLifespanSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie enregistrée'**
+  String get subcategoryLifespanSaved;
+
+  /// No description provided for @subcategoryLifespanInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Saisir un entier positif'**
+  String get subcategoryLifespanInvalid;
+
+  /// No description provided for @subcategoryDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail de la sous-catégorie'**
+  String get subcategoryDetailTitle;
+
+  /// No description provided for @subcategoryDetailLifespanSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie de référence'**
+  String get subcategoryDetailLifespanSection;
+
+  /// No description provided for @subcategoryDetailAlertsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get subcategoryDetailAlertsSection;
+
+  /// No description provided for @subcategoryDetailNoAlerts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune alerte'**
+  String get subcategoryDetailNoAlerts;
+
+  /// No description provided for @subcategoryDetailEquipmentCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count,plural,=0{Aucun équipement}=1{1 équipement}other{{count} équipements}}'**
+  String subcategoryDetailEquipmentCount(int count);
+
+  /// No description provided for @equipmentDetailAlertsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications'**
+  String get equipmentDetailAlertsTitle;
+
+  /// No description provided for @equipmentDetailNoAlerts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune alerte'**
+  String get equipmentDetailNoAlerts;
+
+  /// No description provided for @replacementPlanReportButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plan de remplacement'**
+  String get replacementPlanReportButton;
+
+  /// No description provided for @replacementPlanReportTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exporter le plan de remplacement des équipements biomédicaux (PDF)'**
+  String get replacementPlanReportTooltip;
+
+  /// No description provided for @replacementPlanReportProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'Génération…'**
+  String get replacementPlanReportProgress;
+
+  /// No description provided for @replacementPlanReportError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la génération du plan de remplacement'**
+  String get replacementPlanReportError;
+
+  /// No description provided for @replacementPlanReportEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement biomédical à planifier'**
+  String get replacementPlanReportEmpty;
 }
 
 class _AppLocalizationsDelegate

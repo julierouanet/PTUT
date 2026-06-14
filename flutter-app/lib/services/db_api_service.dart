@@ -400,6 +400,25 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  /// Saisit la durée de vie de référence (en années) d'une sous-catégorie.
+  /// [years] null = durée non définie. Réservé admin côté serveur.
+  Future<void> updateSubCategoryLifespan(int id, int? years) async {
+    final url = ApiConfig.categoriesSubLifespanUrl(id);
+    final response = await ApiClient.put(url, {'expected_lifespan_years': years});
+    _checkStatus(response, url);
+  }
+
+  // ── PLAN DE REMPLACEMENT BIOMÉDICAL (RA3 S5) ───────────────────────────────
+
+  /// Récupère le plan de remplacement { summary, items } des équipements
+  /// biomédicaux (calcul serveur). Réservé admin/supervisor côté serveur.
+  Future<Map<String, dynamic>> getReplacementPlan() async {
+    final url = ApiConfig.replacementPlanUrl;
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── CONFIGURATION SIDEBAR ─────────────────────────────────────────────────
 
   /// Récupère l'ordre de la sidebar pour [role].

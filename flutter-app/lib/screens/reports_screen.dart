@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/pdf_report_service.dart';
+import '../services/db_api_service.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../utils/csv_export.dart';
@@ -36,6 +37,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   DateTimeRange? _customRange;
   bool _isExporting    = false;
   bool _isExportingPdf = false;
+  bool _isExportingReplacement = false;
 
   // ── État de la section Archives ────────────────────────────────────────────
   _ArchiveType _archiveType        = _ArchiveType.monthly;
@@ -298,6 +300,54 @@ class _ReportsScreenState extends State<ReportsScreen> {
       }
     } finally {
       if (mounted) setState(() => _isExportingPdf = false);
+    }
+  }
+
+  // ── Export PDF du plan de remplacement biomédical (RA3 S5) ──────────────────
+
+  Future<void> _exportReplacementPlan(BuildContext context, AppLocalizations l10n) async {
+    setState(() => _isExportingReplacement = true);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final plan  = await DbApiService.instance.getReplacementPlan();
+      final summary = (plan['summary'] as Map?)?.cast<String, dynamic>() ?? {};
+      final items = ((plan['items'] as List?) ?? const [])
+          .map((e) => (e as Map).cast<String, dynamic>())
+          .toList();
+
+      if (items.isEmpty) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.replacementPlanReportEmpty),
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+
+      final user = AuthService().currentUser;
+      final pdfBytes = await PdfReportService.generateReplacementPlan(
+        summary: summary,
+        items: items,
+        generatedByName: user?.name ?? '—',
+        generatedByRole:
+            user?.roles.isNotEmpty == true ? user!.roles.first.name : '—',
+      );
+
+      final dateStr = _fmtDate(DateTime.now()).replaceAll('/', '-');
+      await Printing.layoutPdf(
+        onLayout: (_) async => pdfBytes,
+        name: 'plan_remplacement_kabutare_$dateStr.pdf',
+      );
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(SnackBar(
+          content: Text(l10n.replacementPlanReportError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isExportingReplacement = false);
     }
   }
 
@@ -802,6 +852,28 @@ class _ReportsScreenState extends State<ReportsScreen> {
           )
         : null;
 
+    // Bouton « Plan de remplacement » (RA3 S5) — même condition RBAC que le PDF.
+    final replacementButton = AuthService().canGenerateReports
+        ? Tooltip(
+            message: l10n.replacementPlanReportTooltip,
+            child: TextButton.icon(
+              onPressed: _isExportingReplacement
+                  ? null
+                  : () => _exportReplacementPlan(context, l10n),
+              icon: _isExportingReplacement
+                  ? const SizedBox(
+                      width: 16, height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.autorenew, size: 18),
+              label: Text(_isExportingReplacement
+                  ? l10n.replacementPlanReportProgress
+                  : l10n.replacementPlanReportButton),
+              style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+            ),
+          )
+        : null;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -828,9 +900,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       ),
                     ]),
                     const SizedBox(height: 4),
-                    Row(children: [
+                    Wrap(spacing: 4, children: [
                       csvButton,
-                      if (pdfButton != null) ...[const SizedBox(width: 4), pdfButton],
+                      if (pdfButton != null) pdfButton,
+                      if (replacementButton != null) replacementButton,
                     ]),
                   ],
                 );
@@ -849,6 +922,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const Spacer(),
                 csvButton,
                 if (pdfButton != null) ...[const SizedBox(width: 4), pdfButton],
+                if (replacementButton != null) ...[const SizedBox(width: 4), replacementButton],
               ]);
             }),
             const SizedBox(height: 8),

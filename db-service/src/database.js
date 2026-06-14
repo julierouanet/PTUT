@@ -541,6 +541,12 @@ function initTables() {
   try { db.exec("ALTER TABLE equipment ADD COLUMN warranty_end_date TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE equipment ADD COLUMN criticality TEXT"); } catch (_) {}
 
+  // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────
+  // Durée de vie de référence d'une sous-catégorie (en années). NULL = non
+  // définie (l'admin la saisit ; aucun seed). Sert au calcul serveur du statut
+  // de remplacement et de l'horizon budgétaire des équipements biomédicaux.
+  try { db.exec("ALTER TABLE equipment_subcategories ADD COLUMN expected_lifespan_years INTEGER"); } catch (_) {}
+
   // ── Rétro-remplissage : subcategory_id + macro_category_id pour l'existant.
   // Priorité : cherche dans equipment_subcategories un nom = equipment.category.
   // Idempotent : ne met à jour que les lignes qui n'ont pas encore de subcategory_id.

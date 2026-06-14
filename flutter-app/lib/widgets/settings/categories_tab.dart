@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../l10n/app_localizations.dart';
+import '../../screens/subcategory_detail_screen.dart';
 import '../../services/db_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../replacement_badge.dart';
 
 class CategoriesTab extends StatefulWidget {
   const CategoriesTab({super.key});
@@ -171,7 +173,8 @@ class _CategoriesTabState extends State<CategoriesTab> {
                     ),
                   )
                 else
-                  ...subs.map((sub) => _buildSubTile(l10n, sub, color)),
+                  ...subs.map((sub) => _buildSubTile(
+                      l10n, sub, color, macro['name'] as String)),
                 const Divider(height: 1),
               ],
             ),
@@ -181,9 +184,13 @@ class _CategoriesTabState extends State<CategoriesTab> {
     );
   }
 
-  Widget _buildSubTile(AppLocalizations l10n, Map<String, dynamic> sub, Color macroColor) {
+  Widget _buildSubTile(
+      AppLocalizations l10n, Map<String, dynamic> sub, Color macroColor, String macroName) {
     final name = sub['name'] as String;
     final eqCount = (sub['equipment_count'] as int?) ?? 0;
+    // Le plan de remplacement (RA3 S5) ne concerne que le biomédical.
+    final isBiomedical = macroName.toLowerCase() == 'biomedical';
+    final lifespan = sub['expected_lifespan_years'] as int?;
 
     return ListTile(
       contentPadding: const EdgeInsets.fromLTRB(56, 0, 8, 0),
@@ -191,10 +198,51 @@ class _CategoriesTabState extends State<CategoriesTab> {
         width: 6, height: 6,
         decoration: BoxDecoration(color: macroColor, shape: BoxShape.circle),
       ),
-      title: Text(name, style: const TextStyle(fontSize: 13)),
+      // Clic = page de détail de la sous-catégorie (biomédical uniquement).
+      onTap: isBiomedical
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SubcategoryDetailScreen(
+                    subcategoryId: sub['id'] as int,
+                    subcategoryName: name,
+                    expectedLifespanYears: lifespan,
+                  ),
+                ),
+              )
+          : null,
+      title: Row(children: [
+        Flexible(child: Text(name, style: const TextStyle(fontSize: 13))),
+        // Triangle gris si durée de vie non définie (biomédical).
+        if (isBiomedical && lifespan == null) ...[
+          const SizedBox(width: 6),
+          ReplacementBadge(
+            status: 'donnee_manquante',
+            tooltip: l10n.subcategoryLifespanUndefinedTooltip,
+            size: 13,
+          ),
+        ],
+      ]),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Durée de vie de référence (biomédical) — bouton éditable.
+          if (isBiomedical)
+            TextButton.icon(
+              onPressed: () => _showLifespanDialog(l10n, sub),
+              icon: const Icon(Icons.timelapse, size: 14),
+              label: Text(
+                lifespan == null ? '—' : '$lifespan ${l10n.subcategoryLifespanHint}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: lifespan == null
+                    ? AppColors.replacementUnknown
+                    : AppColors.primary,
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+              ),
+            ),
           if (eqCount > 0)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -393,6 +441,81 @@ class _CategoriesTabState extends State<CategoriesTab> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Dialogue de saisie de la durée de vie de référence (en années) — RA3 S5.
+  /// Champ vide = durée non définie (null). Réservé admin côté serveur.
+  void _showLifespanDialog(AppLocalizations l10n, Map<String, dynamic> sub) {
+    final current = sub['expected_lifespan_years'] as int?;
+    final ctrl = TextEditingController(text: current?.toString() ?? '');
+    String? errorText;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          title: Text(l10n.subcategoryDetailLifespanSection),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(sub['name'] as String,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: ctrl,
+                keyboardType: TextInputType.number,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.subcategoryLifespanLabel,
+                  hintText: l10n.subcategoryLifespanHint,
+                  prefixIcon: const Icon(Icons.timelapse),
+                  errorText: errorText,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final raw = ctrl.text.trim();
+                int? value;
+                if (raw.isNotEmpty) {
+                  final parsed = int.tryParse(raw);
+                  if (parsed == null || parsed < 0) {
+                    setDialog(() => errorText = l10n.subcategoryLifespanInvalid);
+                    return;
+                  }
+                  value = parsed;
+                }
+                Navigator.pop(ctx);
+                try {
+                  await DbApiService.instance
+                      .updateSubCategoryLifespan(sub['id'] as int, value);
+                  await _load();
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.subcategoryLifespanSaved),
+                    backgroundColor: AppColors.success,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                } on ApiException catch (e) {
+                  if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(e.message),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              },
+              child: Text(l10n.commonSave),
+            ),
+          ],
         ),
       ),
     );

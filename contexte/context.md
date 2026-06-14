@@ -632,6 +632,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | POST    | /api/equipment/:id/maintenance  | Admin/Sup/Tech    | **v3** : body `{checklist_snapshot, notes, duration_minutes, parts_used, maintenance_type}`. Si `maintenance_type=preventive` : calcule next_pm, UPSERT plan, dé-stocke pièces, met à jour `last/next_preventive_maintenance`. Réponse: `{maintenance_record_id, next_preventive_maintenance, parts_updated}`. Legacy (corrective) : `{date, intervention, technician, is_future}` |
 | PUT     | /api/equipment/:id/pm-plan      | Admin/Sup/Tech    | UPSERT fréquence PM. Body: `{frequency_months: int}`. Crée ou met à jour `preventive_maintenance_plans` |
 | GET     | /api/equipment/:id/maintenance-label/:record_id | Admin/Sup/Tech | Génère un PDF A6 paysage (pdfkit). `Content-Type: application/pdf`. Inclut équipement, technicien, dates maint. |
+| GET     | /api/equipment/replacement-plan | Admin/Sup         | **[NOUVEAU]** Plan de remplacement biomédical (RA3 S5). Calcul serveur âge/statut/horizon. Retourne `{summary:{biomedical_count, avg_age_years, end_of_life_count, end_of_life_pct, by_horizon, by_criticality}, items:[{id, name, subcategory, criticality, age, lifespan, overshoot, status_replacement, horizon}]}`. Statut: `a_remplacer`/`bientot`/`ok`/`donnee_manquante` ; tri criticité A>B>C puis dépassement |
 | POST    | /api/equipment/restore          | Admin             | Restaurer equipement supprime                     |
 | GET     | /api/equipment/:id/documents    | Auth (non-staff)  | **[NOUVEAU]** Liste des documents actifs. Filtre optionnel: `?type=technical\|intervention\|certification`. Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at}]` |
 | POST    | /api/equipment/:id/documents    | Admin/Sup/Tech    | **[NOUVEAU]** Upload multipart (`file` + `type`). Stockage physique `/data/uploads/documents/` avec nom UUID. Retourne `{id, stored_name, original_name, document_type, mime_type, file_size_kb}` |
@@ -645,6 +646,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/categories/macro    | Auth  | Liste des 3 macro-catégories (Biomedical, Infrastructure, IT) |
 | GET     | /api/categories/sub      | Auth  | Liste sous-catégories (filtre: ?macro_category_id=). Inclut equipment_count |
 | GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + ses protocols PM + equipment_count   |
+| PUT     | /api/categories/sub/:id/lifespan | Admin | **[NOUVEAU]** Durée de vie de référence (RA3 S5). Body `{expected_lifespan_years: int>=0\|null}`. `logAction('update_subcategory_lifespan')` |
 
 ### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**
 
@@ -818,7 +820,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 ```
 lib/
 ├── main.dart              # Point d'entree, navigation, module hub
-├── screens/               # 14 ecrans
+├── screens/               # 15 ecrans
 │   ├── login_screen.dart
 │   ├── dashboard_screen.dart
 │   ├── equipment_list_screen.dart
@@ -832,6 +834,7 @@ lib/
 │   ├── settings_screen.dart
 │   ├── logs_screen.dart
 │   ├── account_settings_screen.dart
+│   ├── subcategory_detail_screen.dart  # [NOUVEAU] Détail sous-catégorie biomédicale (durée de vie + notifications de remplacement, RA3 S5)
 │   └── home_hub_screen.dart
 ├── services/
 │   ├── auth_service.dart        # Singleton, login/logout/session

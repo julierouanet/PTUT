@@ -1864,5 +1864,39 @@
   "@roleDetailInheritedFrom": { "placeholders": { "role": { "type": "String" } } },
   "roleDetailAdminLocked": "Les permissions de l'Administrateur sont verrouillées.",
   "roleDetailMenuVisible": "Éléments visibles (ordre par glisser-déposer)",
-  "roleDetailMenuHidden": "Éléments masqués"
+  "roleDetailMenuHidden": "Éléments masqués",
+
+  "replacementStatusDue": "À remplacer",
+  "replacementStatusSoon": "Bientôt à remplacer",
+  "replacementStatusUnknown": "Donnée manquante",
+  "replacementTooltipDue": "À remplacer — {age} ans / réf. {lifespan} ans (Crit. {criticality})",
+  "@replacementTooltipDue": { "placeholders": { "age": { "type": "Object" }, "lifespan": { "type": "Object" }, "criticality": { "type": "String" } } },
+  "replacementTooltipSoon": "Bientôt — {age} ans / réf. {lifespan} ans (Crit. {criticality})",
+  "@replacementTooltipSoon": { "placeholders": { "age": { "type": "Object" }, "lifespan": { "type": "Object" }, "criticality": { "type": "String" } } },
+  "replacementTooltipUnknown": "Durée de vie de référence non définie pour cette sous-catégorie",
+  "replacementHorizonThisYear": "Cette année",
+  "replacementHorizon12Years": "1–2 ans",
+  "replacementHorizonLater": "Plus tard",
+  "replacementHorizonUnknown": "Non planifiable",
+
+  "subcategoryLifespanLabel": "Durée de vie de réf. (ans)",
+  "subcategoryLifespanHint": "Années",
+  "subcategoryLifespanUndefinedTooltip": "Durée de vie de référence non définie",
+  "subcategoryLifespanSaved": "Durée de vie enregistrée",
+  "subcategoryLifespanInvalid": "Saisir un entier positif",
+  "subcategoryDetailTitle": "Détail de la sous-catégorie",
+  "subcategoryDetailLifespanSection": "Durée de vie de référence",
+  "subcategoryDetailAlertsSection": "Notifications",
+  "subcategoryDetailNoAlerts": "Aucune alerte",
+  "subcategoryDetailEquipmentCount": "{count,plural,=0{Aucun équipement}=1{1 équipement}other{{count} équipements}}",
+  "@subcategoryDetailEquipmentCount": { "placeholders": { "count": { "type": "int" } } },
+
+  "equipmentDetailAlertsTitle": "Notifications",
+  "equipmentDetailNoAlerts": "Aucune alerte",
+
+  "replacementPlanReportButton": "Plan de remplacement",
+  "replacementPlanReportTooltip": "Exporter le plan de remplacement des équipements biomédicaux (PDF)",
+  "replacementPlanReportProgress": "Génération…",
+  "replacementPlanReportError": "Erreur lors de la génération du plan de remplacement",
+  "replacementPlanReportEmpty": "Aucun équipement biomédical à planifier"
 }

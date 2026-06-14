@@ -4620,4 +4620,110 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleDetailMenuHidden => 'Hidden items';
+
+  @override
+  String get replacementStatusDue => 'To be replaced';
+
+  @override
+  String get replacementStatusSoon => 'Replacement soon';
+
+  @override
+  String get replacementStatusUnknown => 'Missing data';
+
+  @override
+  String replacementTooltipDue(
+    Object age,
+    Object lifespan,
+    String criticality,
+  ) {
+    return 'To be replaced — $age yrs / ref. $lifespan yrs (Crit. $criticality)';
+  }
+
+  @override
+  String replacementTooltipSoon(
+    Object age,
+    Object lifespan,
+    String criticality,
+  ) {
+    return 'Soon — $age yrs / ref. $lifespan yrs (Crit. $criticality)';
+  }
+
+  @override
+  String get replacementTooltipUnknown =>
+      'Reference lifespan not defined for this subcategory';
+
+  @override
+  String get replacementHorizonThisYear => 'This year';
+
+  @override
+  String get replacementHorizon12Years => '1–2 years';
+
+  @override
+  String get replacementHorizonLater => 'Later';
+
+  @override
+  String get replacementHorizonUnknown => 'Not plannable';
+
+  @override
+  String get subcategoryLifespanLabel => 'Ref. lifespan (yrs)';
+
+  @override
+  String get subcategoryLifespanHint => 'Years';
+
+  @override
+  String get subcategoryLifespanUndefinedTooltip =>
+      'Reference lifespan not defined';
+
+  @override
+  String get subcategoryLifespanSaved => 'Lifespan saved';
+
+  @override
+  String get subcategoryLifespanInvalid => 'Enter a positive integer';
+
+  @override
+  String get subcategoryDetailTitle => 'Subcategory details';
+
+  @override
+  String get subcategoryDetailLifespanSection => 'Reference lifespan';
+
+  @override
+  String get subcategoryDetailAlertsSection => 'Notifications';
+
+  @override
+  String get subcategoryDetailNoAlerts => 'No alerts';
+
+  @override
+  String subcategoryDetailEquipmentCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count equipment',
+      one: '1 equipment',
+      zero: 'No equipment',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get equipmentDetailAlertsTitle => 'Notifications';
+
+  @override
+  String get equipmentDetailNoAlerts => 'No alerts';
+
+  @override
+  String get replacementPlanReportButton => 'Replacement plan';
+
+  @override
+  String get replacementPlanReportTooltip =>
+      'Export the biomedical equipment replacement plan (PDF)';
+
+  @override
+  String get replacementPlanReportProgress => 'Generating…';
+
+  @override
+  String get replacementPlanReportError =>
+      'Error while generating the replacement plan';
+
+  @override
+  String get replacementPlanReportEmpty => 'No biomedical equipment to plan';
 }

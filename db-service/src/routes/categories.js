@@ -27,6 +27,7 @@ router.get('/sub', verifyToken, (req, res) => {
       s.id,
       s.name,
       s.macro_category_id,
+      s.expected_lifespan_years,
       emc.name AS macro_category_name,
       COUNT(e.id) AS equipment_count
     FROM equipment_subcategories s
@@ -180,6 +181,44 @@ router.delete('/sub/:id', verifyToken, requireRole('admin'), (req, res) => {
   });
 
   res.json({ success: true, message: 'Sous-catégorie supprimée' });
+});
+
+// ── PUT /api/categories/sub/:id/lifespan ──────────────────────────────────────
+// Saisie de la durée de vie de référence (en années) d'une sous-catégorie.
+// Sert au plan de remplacement biomédical (RA3 S5).
+// body : { expected_lifespan_years: number|null } — entier >= 0 ou null.
+router.put('/sub/:id/lifespan', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+
+  const { expected_lifespan_years } = req.body;
+
+  // Validation : null accepté (durée non définie), sinon entier >= 0.
+  let value = null;
+  if (expected_lifespan_years !== null && expected_lifespan_years !== undefined) {
+    if (!Number.isInteger(expected_lifespan_years) || expected_lifespan_years < 0) {
+      return res.status(400).json({ error: 'expected_lifespan_years doit être un entier >= 0 ou null' });
+    }
+    value = expected_lifespan_years;
+  }
+
+  const existing = db.prepare('SELECT * FROM equipment_subcategories WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Sous-catégorie introuvable' });
+
+  db.prepare(
+    'UPDATE equipment_subcategories SET expected_lifespan_years = ? WHERE id = ?'
+  ).run(value, id);
+
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] ?? 'admin',
+    action: 'update_subcategory_lifespan',
+    target_type: 'subcategory', target_id: String(id), target_name: existing.name,
+    details: { old_lifespan: existing.expected_lifespan_years ?? null, new_lifespan: value },
+    ...extractReqMeta(req),
+  });
+
+  res.json({ id, name: existing.name, expected_lifespan_years: value });
 });
 
 module.exports = router;
