@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../widgets/settings/departments_tab.dart';
-import '../widgets/settings/categories_tab.dart';
 import '../widgets/settings/roles_tab.dart';
 import '../widgets/settings/activity_tab.dart';
 
@@ -19,7 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -102,14 +101,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               Tab(
                 height: 34,
                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.category, size: 15),
-                  const SizedBox(width: 6),
-                  Text(l10n.settingsTabCategories, style: const TextStyle(fontSize: 12)),
-                ]),
-              ),
-              Tab(
-                height: 34,
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   const Icon(Icons.admin_panel_settings, size: 15),
                   const SizedBox(width: 6),
                   Text(l10n.settingsTabRoles, style: const TextStyle(fontSize: 12)),
@@ -135,7 +126,6 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             controller: _tabController,
             children: const [
               DepartmentsTab(),
-              CategoriesTab(),
               RolesTab(),
               ActivityTab(),
             ],

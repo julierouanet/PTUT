@@ -645,7 +645,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 |---------|--------------------------|-------|--------------------------------------------------------------|
 | GET     | /api/categories/macro    | Auth  | Liste des 3 macro-catégories (Biomedical, Infrastructure, IT) |
 | GET     | /api/categories/sub      | Auth  | Liste sous-catégories (filtre: ?macro_category_id=). Inclut equipment_count |
-| GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + ses protocols PM + equipment_count   |
+| GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + `protocols` (PM) + `equipment_count` + **[NOUVEAU]** `equipment` (liste) + `brands` (fabricants présents, avec model_count/equipment_count) |
 | PUT     | /api/categories/sub/:id/lifespan | Admin | **[NOUVEAU]** Durée de vie de référence (RA3 S5). Body `{expected_lifespan_years: int>=0\|null}`. `logAction('update_subcategory_lifespan')` |
 
 ### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**
@@ -657,6 +657,31 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | POST    | /api/pm-protocols  | Admin | Créer (required: subcategory_id, name, frequency_months ; optionnel: estimated_duration_hours, checklist[]) |
 | PUT     | /api/pm-protocols/:id | Admin | Modifier (COALESCE partiel) |
 | DELETE  | /api/pm-protocols/:id | Admin | Supprimer |
+
+### Catalogue Fabricant → Modèle (`/api/brands`, `/api/models`) **[NOUVEAU]**
+
+Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `verifyToken`, mutations `requireRole('admin')`. `logAction` sur chaque mutation.
+
+| Methode | Route                                   | Auth  | Description                                                                 |
+|---------|-----------------------------------------|-------|-----------------------------------------------------------------------------|
+| GET     | /api/brands                             | Auth  | Liste fabricants + `model_count`/`equipment_count`. Filtre `?subcategory_id=` (présents dans la sous-cat) |
+| GET     | /api/brands/:id                         | Auth  | Détail fabricant + ses modèles (filtrables `?subcategory_id=`)             |
+| POST    | /api/brands                             | Admin | `{name}` ; 409 doublon (COLLATE NOCASE)                                      |
+| PUT     | /api/brands/:id                         | Admin | Renommage ; 409 doublon                                                      |
+| DELETE  | /api/brands/:id                         | Admin | **409 `BRAND_HAS_MODELS`** si modèles OU équipements rattachés               |
+| GET     | /api/models                             | Auth  | Liste modèles + `equipment_count`. Filtres `?subcategory_id=` `?brand_id=`   |
+| GET     | /api/models/:id                         | Auth  | Fiche : modèle + fabricant + sous-cat + `equipment` + `documents` + `protocols` |
+| POST    | /api/models                             | Admin | `{brand_id, subcategory_id, name}` ; 409 doublon (UNIQUE)                    |
+| PUT     | /api/models/:id                         | Admin | Renommage / rebranchement brand+subcat                                       |
+| DELETE  | /api/models/:id                         | Admin | **409 `MODEL_HAS_EQUIPMENT`** si équipements rattachés                       |
+| GET     | /api/models/:id/documents               | Auth  | Liste documents (filtre `?type=`)                                            |
+| POST    | /api/models/:id/documents               | Admin | Upload multipart (champ `file`, `type` ∈ technical/intervention/certification) |
+| GET     | /api/models/:id/documents/:docId/download | Auth | Téléchargement / aperçu                                                      |
+| DELETE  | /api/models/:id/documents/:docId        | Admin | Soft-delete (`deleted_at`)                                                   |
+| POST    | /api/models/:id/protocols/:protocolId   | Admin | Lier un `pm_protocols` (INSERT OR IGNORE, idempotent)                        |
+| DELETE  | /api/models/:id/protocols/:protocolId   | Admin | Délier un protocole                                                          |
+
+> Filtres ajoutés à `GET /api/equipment` : `?subcategory_id=`, `?brand_id=` (via modèle), `?model_id=`.
 
 ### Incidents (`/api/issues`)
 
@@ -834,7 +859,10 @@ lib/
 │   ├── settings_screen.dart
 │   ├── logs_screen.dart
 │   ├── account_settings_screen.dart
-│   ├── subcategory_detail_screen.dart  # [NOUVEAU] Détail sous-catégorie biomédicale (durée de vie + notifications de remplacement, RA3 S5)
+│   ├── subcategory_detail_screen.dart  # Détail sous-catégorie : durée de vie/alertes (biomédical) + équipements + fabricants (toutes macro-cat)
+│   ├── equipment_hub_screen.dart       # [NOUVEAU] Conteneur Équipements : onglets « Liste » | « Catégories » (Catégories si permission manageCategories)
+│   ├── brand_detail_screen.dart        # [NOUVEAU] Détail fabricant : modèles (CRUD admin) dans le contexte de la sous-catégorie
+│   ├── model_detail_screen.dart        # [NOUVEAU] Fiche modèle : équipements + documents (upload/delete) + protocoles PM (lier/délier)
 │   └── home_hub_screen.dart
 ├── services/
 │   ├── auth_service.dart        # Singleton, login/logout/session

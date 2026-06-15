@@ -1876,5 +1876,49 @@
   "replacementPlanReportTooltip": "Export the biomedical equipment replacement plan (PDF)",
   "replacementPlanReportProgress": "Generating…",
   "replacementPlanReportError": "Error while generating the replacement plan",
-  "replacementPlanReportEmpty": "No biomedical equipment to plan"
+  "replacementPlanReportEmpty": "No biomedical equipment to plan",
+
+  "commonOpen": "Open",
+  "docOpenNativeUnsupported": "PDF opening not supported on this platform",
+
+  "equipmentTabList": "List",
+  "equipmentTabCategories": "Categories",
+
+  "subcategoryEquipmentSection": "Equipment",
+  "subcategoryBrandsSection": "Manufacturers",
+  "subcategoryNoBrands": "No manufacturer for this subcategory",
+
+  "brandDetailTitle": "Manufacturer details",
+  "brandModelsSection": "Models",
+  "brandNoModels": "No model for this manufacturer",
+
+  "modelDetailTitle": "Model sheet",
+  "modelEquipmentSection": "Equipment",
+  "modelDocumentsSection": "Documents",
+  "modelProtocolsSection": "PM protocols",
+  "modelNoProtocols": "No linked protocol",
+
+  "catalogBrandCounts": "{models} model(s) · {equipment} equipment",
+  "@catalogBrandCounts": { "placeholders": { "models": { "type": "int" }, "equipment": { "type": "int" } } },
+  "catalogProtocolFrequency": "Every {months} months",
+  "@catalogProtocolFrequency": { "placeholders": { "months": { "type": "int" } } },
+
+  "catalogAddBrand": "Add manufacturer",
+  "catalogRenameBrand": "Rename manufacturer",
+  "catalogBrandName": "Manufacturer name",
+  "catalogBrandRenamed": "Manufacturer renamed",
+  "catalogAddModel": "Add model",
+  "catalogRenameModel": "Rename model",
+  "catalogModelName": "Model name",
+  "catalogModelAdded": "Model added",
+  "catalogModelRenamed": "Model renamed",
+  "catalogDeleteModel": "Delete model",
+  "catalogModelDeleted": "Model deleted",
+  "catalogDeleteBlockedTooltip": "Cannot delete: equipment is attached",
+
+  "catalogLinkProtocol": "Link a protocol",
+  "catalogUnlinkProtocol": "Unlink protocol",
+  "catalogProtocolLinked": "Protocol linked",
+  "catalogProtocolUnlinked": "Protocol unlinked",
+  "catalogNoProtocolToLink": "No protocol available to link"
 }

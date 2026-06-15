@@ -8759,6 +8759,210 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun équipement biomédical à planifier'**
   String get replacementPlanReportEmpty;
+
+  /// No description provided for @commonOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ouvrir'**
+  String get commonOpen;
+
+  /// No description provided for @docOpenNativeUnsupported.
+  ///
+  /// In fr, this message translates to:
+  /// **'ouverture PDF non supportée sur cette plateforme'**
+  String get docOpenNativeUnsupported;
+
+  /// No description provided for @equipmentTabList.
+  ///
+  /// In fr, this message translates to:
+  /// **'Liste'**
+  String get equipmentTabList;
+
+  /// No description provided for @equipmentTabCategories.
+  ///
+  /// In fr, this message translates to:
+  /// **'Catégories'**
+  String get equipmentTabCategories;
+
+  /// No description provided for @subcategoryEquipmentSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements'**
+  String get subcategoryEquipmentSection;
+
+  /// No description provided for @subcategoryBrandsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricants'**
+  String get subcategoryBrandsSection;
+
+  /// No description provided for @subcategoryNoBrands.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun fabricant pour cette sous-catégorie'**
+  String get subcategoryNoBrands;
+
+  /// No description provided for @brandDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail du fabricant'**
+  String get brandDetailTitle;
+
+  /// No description provided for @brandModelsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèles'**
+  String get brandModelsSection;
+
+  /// No description provided for @brandNoModels.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun modèle pour ce fabricant'**
+  String get brandNoModels;
+
+  /// No description provided for @modelDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fiche du modèle'**
+  String get modelDetailTitle;
+
+  /// No description provided for @modelEquipmentSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipements'**
+  String get modelEquipmentSection;
+
+  /// No description provided for @modelDocumentsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents'**
+  String get modelDocumentsSection;
+
+  /// No description provided for @modelProtocolsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocoles PM'**
+  String get modelProtocolsSection;
+
+  /// No description provided for @modelNoProtocols.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun protocole lié'**
+  String get modelNoProtocols;
+
+  /// No description provided for @catalogBrandCounts.
+  ///
+  /// In fr, this message translates to:
+  /// **'{models} modèle(s) · {equipment} équipement(s)'**
+  String catalogBrandCounts(int models, int equipment);
+
+  /// No description provided for @catalogProtocolFrequency.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les {months} mois'**
+  String catalogProtocolFrequency(int months);
+
+  /// No description provided for @catalogAddBrand.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un fabricant'**
+  String get catalogAddBrand;
+
+  /// No description provided for @catalogRenameBrand.
+  ///
+  /// In fr, this message translates to:
+  /// **'Renommer le fabricant'**
+  String get catalogRenameBrand;
+
+  /// No description provided for @catalogBrandName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom du fabricant'**
+  String get catalogBrandName;
+
+  /// No description provided for @catalogBrandRenamed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricant renommé'**
+  String get catalogBrandRenamed;
+
+  /// No description provided for @catalogAddModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un modèle'**
+  String get catalogAddModel;
+
+  /// No description provided for @catalogRenameModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Renommer le modèle'**
+  String get catalogRenameModel;
+
+  /// No description provided for @catalogModelName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom du modèle'**
+  String get catalogModelName;
+
+  /// No description provided for @catalogModelAdded.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèle ajouté'**
+  String get catalogModelAdded;
+
+  /// No description provided for @catalogModelRenamed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèle renommé'**
+  String get catalogModelRenamed;
+
+  /// No description provided for @catalogDeleteModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer le modèle'**
+  String get catalogDeleteModel;
+
+  /// No description provided for @catalogModelDeleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèle supprimé'**
+  String get catalogModelDeleted;
+
+  /// No description provided for @catalogDeleteBlockedTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppression impossible : des équipements sont rattachés'**
+  String get catalogDeleteBlockedTooltip;
+
+  /// No description provided for @catalogLinkProtocol.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lier un protocole'**
+  String get catalogLinkProtocol;
+
+  /// No description provided for @catalogUnlinkProtocol.
+  ///
+  /// In fr, this message translates to:
+  /// **'Délier le protocole'**
+  String get catalogUnlinkProtocol;
+
+  /// No description provided for @catalogProtocolLinked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocole lié'**
+  String get catalogProtocolLinked;
+
+  /// No description provided for @catalogProtocolUnlinked.
+  ///
+  /// In fr, this message translates to:
+  /// **'Protocole délié'**
+  String get catalogProtocolUnlinked;
+
+  /// No description provided for @catalogNoProtocolToLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun protocole disponible à lier'**
+  String get catalogNoProtocolToLink;
 }
 
 class _AppLocalizationsDelegate

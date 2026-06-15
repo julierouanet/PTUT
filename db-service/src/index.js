@@ -16,6 +16,7 @@ const categoriesRoutes     = require('./routes/categories');
 const departmentsRoutes    = require('./routes/departments');
 const pmProtocolsRoutes    = require('./routes/pm_protocols');
 const documentsRoutes      = require('./routes/documents');
+const catalogRoutes        = require('./routes/catalog');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 const { startPmReminderJob } = require('./jobs/pm_reminder_job');
@@ -68,6 +69,7 @@ app.use('/api/categories',     categoriesRoutes);
 app.use('/api/departments',    departmentsRoutes);
 app.use('/api/pm-protocols',   pmProtocolsRoutes);
 app.use('/api/equipment',      documentsRoutes);
+app.use('/api',                catalogRoutes);
 app.use('/api/debug',          debugRoutes);
 app.use('/',                   debugRoutes);
 

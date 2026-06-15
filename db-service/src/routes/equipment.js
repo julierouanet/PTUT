@@ -40,7 +40,10 @@ function resolveMacroCategoryId(db, subcategoryId, explicitMacroCategoryId) {
 // ── GET /api/equipment ────────────────────────────────────────────────────────
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { department, status, category, macro_category, macro_category_id } = req.query;
+  const {
+    department, status, category, macro_category, macro_category_id,
+    subcategory_id, brand_id, model_id,
+  } = req.query;
 
   let query = `${BASE_SELECT} WHERE 1=1`;
   const params = [];
@@ -50,6 +53,13 @@ router.get('/', verifyToken, (req, res) => {
   if (category)          { query += ' AND e.category = ?';           params.push(category); }
   if (macro_category)    { query += ' AND emc.name = ?';             params.push(macro_category); }
   if (macro_category_id) { query += ' AND e.macro_category_id = ?';  params.push(parseInt(macro_category_id, 10)); }
+  if (subcategory_id)    { query += ' AND e.subcategory_id = ?';     params.push(parseInt(subcategory_id, 10)); }
+  if (model_id)          { query += ' AND e.model_id = ?';           params.push(parseInt(model_id, 10)); }
+  // Filtre par fabricant : via le modèle rattaché à l'équipement.
+  if (brand_id) {
+    query += ' AND e.model_id IN (SELECT id FROM equipment_models WHERE brand_id = ?)';
+    params.push(parseInt(brand_id, 10));
+  }
 
   query += ' ORDER BY e.name ASC';
 

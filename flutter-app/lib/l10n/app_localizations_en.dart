@@ -4726,4 +4726,112 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get replacementPlanReportEmpty => 'No biomedical equipment to plan';
+
+  @override
+  String get commonOpen => 'Open';
+
+  @override
+  String get docOpenNativeUnsupported =>
+      'PDF opening not supported on this platform';
+
+  @override
+  String get equipmentTabList => 'List';
+
+  @override
+  String get equipmentTabCategories => 'Categories';
+
+  @override
+  String get subcategoryEquipmentSection => 'Equipment';
+
+  @override
+  String get subcategoryBrandsSection => 'Manufacturers';
+
+  @override
+  String get subcategoryNoBrands => 'No manufacturer for this subcategory';
+
+  @override
+  String get brandDetailTitle => 'Manufacturer details';
+
+  @override
+  String get brandModelsSection => 'Models';
+
+  @override
+  String get brandNoModels => 'No model for this manufacturer';
+
+  @override
+  String get modelDetailTitle => 'Model sheet';
+
+  @override
+  String get modelEquipmentSection => 'Equipment';
+
+  @override
+  String get modelDocumentsSection => 'Documents';
+
+  @override
+  String get modelProtocolsSection => 'PM protocols';
+
+  @override
+  String get modelNoProtocols => 'No linked protocol';
+
+  @override
+  String catalogBrandCounts(int models, int equipment) {
+    return '$models model(s) · $equipment equipment';
+  }
+
+  @override
+  String catalogProtocolFrequency(int months) {
+    return 'Every $months months';
+  }
+
+  @override
+  String get catalogAddBrand => 'Add manufacturer';
+
+  @override
+  String get catalogRenameBrand => 'Rename manufacturer';
+
+  @override
+  String get catalogBrandName => 'Manufacturer name';
+
+  @override
+  String get catalogBrandRenamed => 'Manufacturer renamed';
+
+  @override
+  String get catalogAddModel => 'Add model';
+
+  @override
+  String get catalogRenameModel => 'Rename model';
+
+  @override
+  String get catalogModelName => 'Model name';
+
+  @override
+  String get catalogModelAdded => 'Model added';
+
+  @override
+  String get catalogModelRenamed => 'Model renamed';
+
+  @override
+  String get catalogDeleteModel => 'Delete model';
+
+  @override
+  String get catalogModelDeleted => 'Model deleted';
+
+  @override
+  String get catalogDeleteBlockedTooltip =>
+      'Cannot delete: equipment is attached';
+
+  @override
+  String get catalogLinkProtocol => 'Link a protocol';
+
+  @override
+  String get catalogUnlinkProtocol => 'Unlink protocol';
+
+  @override
+  String get catalogProtocolLinked => 'Protocol linked';
+
+  @override
+  String get catalogProtocolUnlinked => 'Protocol unlinked';
+
+  @override
+  String get catalogNoProtocolToLink => 'No protocol available to link';
 }

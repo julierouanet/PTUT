@@ -190,6 +190,10 @@ PTUT/
 | `sidebar_config` | `(role, screen_type)` | Ordre et visibilité de la sidebar par rôle |
 | `equipment_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents liés aux équipements (manuels, rapports, certificats) — 3 types : `technical`, `intervention`, `certification` — soft delete via `deleted_at` |
 | `issue_photos` | AUTOINCREMENT | **[NOUVEAU]** Photos liées aux incidents — max 5 par incident — stockées sur le filesystem (`/data/uploads/documents`) |
+| `equipment_brands` | AUTOINCREMENT | **[NOUVEAU]** Fabricants (marques) — `name` UNIQUE COLLATE NOCASE. Auto-seedé depuis `equipment.manufacturer` |
+| `equipment_models` | AUTOINCREMENT | **[NOUVEAU]** Modèles = couple (fabricant + sous-catégorie + nom). `UNIQUE(brand_id, subcategory_id, name)`. Auto-seedé depuis `equipment.manufacturer`/`model` ; `equipment.model_id` backfillé |
+| `model_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents de fiche technique d'un modèle — mêmes 3 types que `equipment_documents` — soft delete via `deleted_at` |
+| `model_pm_protocols` | `(model_id, protocol_id)` | **[NOUVEAU]** Liaison N-N modèle ↔ protocoles PM (en plus de ceux de la sous-catégorie) |
 
 ### Points critiques
 

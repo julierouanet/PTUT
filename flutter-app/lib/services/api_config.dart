@@ -142,6 +142,27 @@ class ApiConfig {
   static String categoriesSubItemUrl(int id) => '$dbBaseUrl/api/categories/sub/$id';
   static String categoriesSubLifespanUrl(int id) => '$dbBaseUrl/api/categories/sub/$id/lifespan';
 
+  // ── Catalogue Fabricant → Modèle (db-service) ─────────────────────────────────
+  static String get brandsUrl => '$dbBaseUrl/api/brands';
+  static String brandsBySubUrl(int subcategoryId) => '$dbBaseUrl/api/brands?subcategory_id=$subcategoryId';
+  static String brandItemUrl(int id) => '$dbBaseUrl/api/brands/$id';
+  static String brandItemBySubUrl(int id, int subcategoryId) =>
+      '$dbBaseUrl/api/brands/$id?subcategory_id=$subcategoryId';
+
+  static String get modelsUrl => '$dbBaseUrl/api/models';
+  static String modelsFilteredUrl({int? subcategoryId, int? brandId}) {
+    final params = <String>[];
+    if (subcategoryId != null) params.add('subcategory_id=$subcategoryId');
+    if (brandId != null) params.add('brand_id=$brandId');
+    return params.isEmpty ? '$dbBaseUrl/api/models' : '$dbBaseUrl/api/models?${params.join('&')}';
+  }
+  static String modelItemUrl(int id) => '$dbBaseUrl/api/models/$id';
+  static String modelDocumentsUrl(int id) => '$dbBaseUrl/api/models/$id/documents';
+  static String modelDocumentItemUrl(int id, int docId) => '$dbBaseUrl/api/models/$id/documents/$docId';
+  static String modelDocumentDownloadUrl(int id, int docId) =>
+      '$dbBaseUrl/api/models/$id/documents/$docId/download';
+  static String modelProtocolUrl(int id, int protocolId) => '$dbBaseUrl/api/models/$id/protocols/$protocolId';
+
   // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────────
   static String get replacementPlanUrl => '$dbBaseUrl/api/equipment/replacement-plan';
 

@@ -1898,5 +1898,49 @@
   "replacementPlanReportTooltip": "Exporter le plan de remplacement des équipements biomédicaux (PDF)",
   "replacementPlanReportProgress": "Génération…",
   "replacementPlanReportError": "Erreur lors de la génération du plan de remplacement",
-  "replacementPlanReportEmpty": "Aucun équipement biomédical à planifier"
+  "replacementPlanReportEmpty": "Aucun équipement biomédical à planifier",
+
+  "commonOpen": "Ouvrir",
+  "docOpenNativeUnsupported": "ouverture PDF non supportée sur cette plateforme",
+
+  "equipmentTabList": "Liste",
+  "equipmentTabCategories": "Catégories",
+
+  "subcategoryEquipmentSection": "Équipements",
+  "subcategoryBrandsSection": "Fabricants",
+  "subcategoryNoBrands": "Aucun fabricant pour cette sous-catégorie",
+
+  "brandDetailTitle": "Détail du fabricant",
+  "brandModelsSection": "Modèles",
+  "brandNoModels": "Aucun modèle pour ce fabricant",
+
+  "modelDetailTitle": "Fiche du modèle",
+  "modelEquipmentSection": "Équipements",
+  "modelDocumentsSection": "Documents",
+  "modelProtocolsSection": "Protocoles PM",
+  "modelNoProtocols": "Aucun protocole lié",
+
+  "catalogBrandCounts": "{models} modèle(s) · {equipment} équipement(s)",
+  "@catalogBrandCounts": { "placeholders": { "models": { "type": "int" }, "equipment": { "type": "int" } } },
+  "catalogProtocolFrequency": "Tous les {months} mois",
+  "@catalogProtocolFrequency": { "placeholders": { "months": { "type": "int" } } },
+
+  "catalogAddBrand": "Ajouter un fabricant",
+  "catalogRenameBrand": "Renommer le fabricant",
+  "catalogBrandName": "Nom du fabricant",
+  "catalogBrandRenamed": "Fabricant renommé",
+  "catalogAddModel": "Ajouter un modèle",
+  "catalogRenameModel": "Renommer le modèle",
+  "catalogModelName": "Nom du modèle",
+  "catalogModelAdded": "Modèle ajouté",
+  "catalogModelRenamed": "Modèle renommé",
+  "catalogDeleteModel": "Supprimer le modèle",
+  "catalogModelDeleted": "Modèle supprimé",
+  "catalogDeleteBlockedTooltip": "Suppression impossible : des équipements sont rattachés",
+
+  "catalogLinkProtocol": "Lier un protocole",
+  "catalogUnlinkProtocol": "Délier le protocole",
+  "catalogProtocolLinked": "Protocole lié",
+  "catalogProtocolUnlinked": "Protocole délié",
+  "catalogNoProtocolToLink": "Aucun protocole disponible à lier"
 }

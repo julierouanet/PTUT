@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
@@ -405,6 +406,145 @@ class DbApiService {
   Future<void> updateSubCategoryLifespan(int id, int? years) async {
     final url = ApiConfig.categoriesSubLifespanUrl(id);
     final response = await ApiClient.put(url, {'expected_lifespan_years': years});
+    _checkStatus(response, url);
+  }
+
+  /// Détail complet d'une sous-catégorie (protocoles + équipements + fabricants).
+  Future<Map<String, dynamic>> getSubCategoryDetail(int id) async {
+    final url = ApiConfig.categoriesSubItemUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  // ── CATALOGUE FABRICANT → MODÈLE ───────────────────────────────────────────
+
+  /// Liste des fabricants. [subcategoryId] : restreint à ceux présents dans la sous-cat.
+  Future<List<Map<String, dynamic>>> getBrands({int? subcategoryId}) async {
+    final url = subcategoryId != null
+        ? ApiConfig.brandsBySubUrl(subcategoryId)
+        : ApiConfig.brandsUrl;
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Détail d'un fabricant + ses modèles (filtrables par sous-catégorie).
+  Future<Map<String, dynamic>> getBrandDetail(int id, {int? subcategoryId}) async {
+    final url = subcategoryId != null
+        ? ApiConfig.brandItemBySubUrl(id, subcategoryId)
+        : ApiConfig.brandItemUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createBrand(String name) async {
+    final response = await ApiClient.post(ApiConfig.brandsUrl, {'name': name});
+    _checkStatus(response, ApiConfig.brandsUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateBrand(int id, String name) async {
+    final url = ApiConfig.brandItemUrl(id);
+    final response = await ApiClient.put(url, {'name': name});
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteBrand(int id) async {
+    final url = ApiConfig.brandItemUrl(id);
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  /// Liste des modèles (filtrables par sous-catégorie et/ou fabricant).
+  Future<List<Map<String, dynamic>>> getModels({int? subcategoryId, int? brandId}) async {
+    final url = ApiConfig.modelsFilteredUrl(subcategoryId: subcategoryId, brandId: brandId);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Fiche complète d'un modèle (équipements + documents + protocoles PM).
+  Future<Map<String, dynamic>> getModelDetail(int id) async {
+    final url = ApiConfig.modelItemUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createModel({
+    required int brandId,
+    int? subcategoryId,
+    required String name,
+  }) async {
+    final response = await ApiClient.post(ApiConfig.modelsUrl, {
+      'brand_id': brandId,
+      'subcategory_id': subcategoryId,
+      'name': name,
+    });
+    _checkStatus(response, ApiConfig.modelsUrl);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<void> updateModel(int id, {int? brandId, int? subcategoryId, String? name}) async {
+    final url = ApiConfig.modelItemUrl(id);
+    final body = <String, dynamic>{};
+    if (brandId != null) body['brand_id'] = brandId;
+    if (subcategoryId != null) body['subcategory_id'] = subcategoryId;
+    if (name != null) body['name'] = name;
+    final response = await ApiClient.put(url, body);
+    _checkStatus(response, url);
+  }
+
+  Future<void> deleteModel(int id) async {
+    final url = ApiConfig.modelItemUrl(id);
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  /// Documents d'un modèle (liste). [type] optionnel filtre par type de document.
+  Future<List<Map<String, dynamic>>> getModelDocuments(int modelId, {String? type}) async {
+    final base = ApiConfig.modelDocumentsUrl(modelId);
+    final url = type != null ? '$base?type=$type' : base;
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Upload d'un document de modèle (multipart). [type] : technical/intervention/certification.
+  Future<Map<String, dynamic>> uploadModelDocument(
+    int modelId,
+    Uint8List bytes,
+    String fileName,
+    String mimeType, {
+    String type = 'technical',
+  }) async {
+    return ApiClient.postMultipart(
+      ApiConfig.modelDocumentsUrl(modelId),
+      bytes,
+      fileName,
+      mimeType,
+      {'type': type},
+    );
+  }
+
+  Future<void> deleteModelDocument(int modelId, int docId) async {
+    final url = ApiConfig.modelDocumentItemUrl(modelId, docId);
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  /// Lie un protocole PM existant à un modèle.
+  Future<void> linkModelProtocol(int modelId, int protocolId) async {
+    final url = ApiConfig.modelProtocolUrl(modelId, protocolId);
+    final response = await ApiClient.post(url, {});
+    _checkStatus(response, url);
+  }
+
+  Future<void> unlinkModelProtocol(int modelId, int protocolId) async {
+    final url = ApiConfig.modelProtocolUrl(modelId, protocolId);
+    final response = await ApiClient.delete(url);
     _checkStatus(response, url);
   }
 

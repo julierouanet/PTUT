@@ -198,19 +198,19 @@ class _CategoriesTabState extends State<CategoriesTab> {
         width: 6, height: 6,
         decoration: BoxDecoration(color: macroColor, shape: BoxShape.circle),
       ),
-      // Clic = page de détail de la sous-catégorie (biomédical uniquement).
-      onTap: isBiomedical
-          ? () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SubcategoryDetailScreen(
-                    subcategoryId: sub['id'] as int,
-                    subcategoryName: name,
-                    expectedLifespanYears: lifespan,
-                  ),
-                ),
-              )
-          : null,
+      // Clic = page de détail de la sous-catégorie (toutes macro-catégories).
+      // La section durée de vie / alertes reste réservée au biomédical via [isBiomedical].
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SubcategoryDetailScreen(
+            subcategoryId: sub['id'] as int,
+            subcategoryName: name,
+            expectedLifespanYears: lifespan,
+            isBiomedical: isBiomedical,
+          ),
+        ),
+      ),
       title: Row(children: [
         Flexible(child: Text(name, style: const TextStyle(fontSize: 13))),
         // Triangle gris si durée de vie non définie (biomédical).

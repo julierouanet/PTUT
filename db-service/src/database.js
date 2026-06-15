@@ -771,6 +771,105 @@ function initTables() {
       WHERE deleted_at IS NULL;
   `);
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // CATALOGUE FABRICANT → MODÈLE (fiche technique partagée)
+  // Aligne l'app sur les GMAO du marché : la fiche technique appartient au couple
+  // (fabricant + modèle). Tables auto-seedées depuis equipment.manufacturer/model.
+  // ════════════════════════════════════════════════════════════════════════════
+
+  // ── Fabricants (marques) ──────────────────────────────────────────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment_brands (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      name        TEXT NOT NULL COLLATE NOCASE UNIQUE,
+      created_at  TEXT DEFAULT (datetime('now','localtime')),
+      updated_at  TEXT
+    );
+  `);
+
+  // ── Modèles (couple fabricant + référence, rattaché à une sous-catégorie) ──
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS equipment_models (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      brand_id        INTEGER NOT NULL REFERENCES equipment_brands(id) ON DELETE CASCADE,
+      subcategory_id  INTEGER REFERENCES equipment_subcategories(id),
+      name            TEXT NOT NULL,
+      created_at      TEXT DEFAULT (datetime('now','localtime')),
+      updated_at      TEXT,
+      UNIQUE(brand_id, subcategory_id, name COLLATE NOCASE)
+    );
+    CREATE INDEX IF NOT EXISTS idx_models_brand ON equipment_models(brand_id);
+    CREATE INDEX IF NOT EXISTS idx_models_subcat ON equipment_models(subcategory_id);
+  `);
+
+  // ── Documents de modèle (mêmes 3 types que equipment_documents) ────────────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS model_documents (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      model_id      INTEGER NOT NULL REFERENCES equipment_models(id) ON DELETE CASCADE,
+      document_type TEXT NOT NULL,
+      original_name TEXT NOT NULL,
+      stored_name   TEXT NOT NULL UNIQUE,
+      mime_type     TEXT,
+      file_size_kb  INTEGER,
+      uploaded_by   TEXT,
+      uploader_name TEXT,
+      uploaded_at   TEXT,
+      deleted_at    TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_model_documents_model ON model_documents(model_id);
+  `);
+
+  // ── Liaison N-N modèle ↔ protocoles PM (en plus de ceux de la sous-cat) ────
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS model_pm_protocols (
+      model_id    INTEGER NOT NULL REFERENCES equipment_models(id) ON DELETE CASCADE,
+      protocol_id INTEGER NOT NULL REFERENCES pm_protocols(id) ON DELETE CASCADE,
+      PRIMARY KEY (model_id, protocol_id)
+    );
+  `);
+
+  // ── Colonne de rattachement modèle sur equipment (idempotent, nullable) ────
+  try { db.exec('ALTER TABLE equipment ADD COLUMN model_id INTEGER REFERENCES equipment_models(id)'); } catch (_) {}
+
+  // ── Auto-seed + backfill idempotent du catalogue ──────────────────────────
+  // 1. Fabricants distincts présents dans equipment.manufacturer.
+  // 2. Modèles distincts (fabricant + modèle + sous-cat).
+  // 3. Backfill equipment.model_id pour les lignes encore non rattachées.
+  // Idempotent : INSERT OR IGNORE + WHERE model_id IS NULL. Rejouable sans effet.
+  try {
+    db.exec(`
+      INSERT OR IGNORE INTO equipment_brands(name)
+      SELECT DISTINCT TRIM(manufacturer)
+      FROM   equipment
+      WHERE  manufacturer IS NOT NULL AND TRIM(manufacturer) <> ''
+    `);
+
+    db.exec(`
+      INSERT OR IGNORE INTO equipment_models(brand_id, subcategory_id, name)
+      SELECT DISTINCT b.id, e.subcategory_id, TRIM(e.model)
+      FROM   equipment e
+      JOIN   equipment_brands b ON b.name = TRIM(e.manufacturer)
+      WHERE  e.model IS NOT NULL AND TRIM(e.model) <> ''
+    `);
+
+    db.exec(`
+      UPDATE equipment
+      SET    model_id = (
+        SELECT m.id
+        FROM   equipment_models m
+        JOIN   equipment_brands b ON b.id = m.brand_id
+        WHERE  b.name = TRIM(equipment.manufacturer)
+          AND  m.name = TRIM(equipment.model)
+          AND  (m.subcategory_id IS equipment.subcategory_id)
+        LIMIT  1
+      )
+      WHERE  model_id IS NULL
+        AND  manufacturer IS NOT NULL AND TRIM(manufacturer) <> ''
+        AND  model IS NOT NULL AND TRIM(model) <> ''
+    `);
+  } catch (_) {}
+
   // ── Photos d'incidents ─────────────────────────────────────────────────────
   db.exec(`
     CREATE TABLE IF NOT EXISTS issue_photos (

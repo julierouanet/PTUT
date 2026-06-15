@@ -72,7 +72,29 @@ router.get('/sub/:id', verifyToken, (req, res) => {
     'SELECT COUNT(*) AS cnt FROM equipment WHERE subcategory_id = ?'
   ).get(id).cnt;
 
-  res.json({ ...sub, protocols, equipment_count: equipmentCount });
+  // Liste des équipements de la sous-catégorie (pour la page détail enrichie).
+  const equipment = db.prepare(`
+    SELECT id, name, status, manufacturer, model, model_id
+    FROM equipment
+    WHERE subcategory_id = ?
+    ORDER BY name ASC
+  `).all(id);
+
+  // Fabricants présents dans la sous-catégorie (via leurs modèles), avec compteurs.
+  const brands = db.prepare(`
+    SELECT
+      b.id,
+      b.name,
+      COUNT(DISTINCT m.id) AS model_count,
+      COUNT(DISTINCT e.id) AS equipment_count
+    FROM equipment_brands b
+    JOIN equipment_models m ON m.brand_id = b.id AND m.subcategory_id = ?
+    LEFT JOIN equipment e ON e.model_id = m.id
+    GROUP BY b.id
+    ORDER BY b.name ASC
+  `).all(id);
+
+  res.json({ ...sub, protocols, equipment_count: equipmentCount, equipment, brands });
 });
 
 // ── POST /api/categories/sub ──────────────────────────────────────────────────

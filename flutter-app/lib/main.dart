@@ -4,7 +4,7 @@ import 'l10n/app_localizations.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
 import 'screens/dashboard_screen.dart';
-import 'screens/equipment_list_screen.dart';
+import 'screens/equipment_hub_screen.dart';
 import 'screens/issue_tracking_screen.dart';
 import 'screens/issue_form_screen.dart';
 import 'screens/technician_update_screen.dart';
@@ -366,7 +366,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     final currentItem = navItems[_currentIndex];
     switch (currentItem.screenType) {
       case ScreenType.dashboard:       return DashboardScreen(onNavigate: _navigateByScreenType);
-      case ScreenType.equipment:       return EquipmentListScreen(onNavigate: _navigateByScreenType);
+      case ScreenType.equipment:       return EquipmentHubScreen(onNavigate: _navigateByScreenType);
       case ScreenType.issueTracking:   return IssueTrackingScreen(onNavigate: _navigateByScreenType);
       case ScreenType.issueForm:       return IssueFormScreen(key: _issueFormKey, equipmentId: _selectedEquipmentId, onCancel: _goBack);
       case ScreenType.technician:      return TechnicianUpdateScreen(issueId: _selectedIssueId);
