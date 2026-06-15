@@ -541,6 +541,23 @@ function initTables() {
   try { db.exec("ALTER TABLE equipment ADD COLUMN warranty_end_date TEXT"); } catch (_) {}
   try { db.exec("ALTER TABLE equipment ADD COLUMN criticality TEXT"); } catch (_) {}
 
+  // ── Cycle de vie : réforme / décommissionnement (soft delete) ─────────────
+  // Un équipement réformé passe status='Disposed' mais n'est jamais effacé :
+  // il conserve son historique pour l'audit d'accréditation. Ces colonnes
+  // tracent le qui/quand/pourquoi/comment et le lien vers le remplaçant.
+  // Pas de FK SQL sur replaced_by_id (ALTER ne permet pas d'ajouter une FK en
+  // SQLite) → l'existence de l'équipement cible est validée côté Node.
+  try { db.exec("ALTER TABLE equipment ADD COLUMN decommissioned_at TEXT");        } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN decommission_reason TEXT");      } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN disposal_method TEXT");          } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN decommissioned_by_id TEXT");     } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN decommissioned_by_name TEXT");   } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN decommission_notes TEXT");       } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN replaced_by_id TEXT");           } catch (_) {}
+  // Index : les sous-requêtes corrélées du lien inverse « remplace » (BASE_SELECT)
+  // filtrent sur replaced_by_id pour chaque ligne ; sans index → full scan.
+  try { db.exec("CREATE INDEX IF NOT EXISTS idx_equipment_replaced_by ON equipment(replaced_by_id)"); } catch (_) {}
+
   // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────
   // Durée de vie de référence d'une sous-catégorie (en années). NULL = non
   // définie (l'admin la saisit ; aucun seed). Sert au calcul serveur du statut
@@ -769,6 +786,34 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_eq_docs_equipment
       ON equipment_documents(equipment_id)
       WHERE deleted_at IS NULL;
+  `);
+
+  // ── Rapports d'intervention par incident (1:1 avec issues) ─────────────────
+  // Construit tout au long de l'intervention puis figé à la clôture.
+  // Ne duplique PAS diagnosis/actions/parts_replaced : ces champs sont lus en
+  // direct depuis la table `issues`.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS issue_intervention_reports (
+      id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id                TEXT    NOT NULL UNIQUE REFERENCES issues(id) ON DELETE CASCADE,
+      summary                 TEXT,
+      root_cause              TEXT,
+      recommendations         TEXT,
+      duration_hours          REAL,
+      returned_to_service_at  TEXT,
+      estimated_cost          REAL,
+      final_equipment_status  TEXT,
+      author_id               TEXT,
+      author_name             TEXT,
+      validated_by_id         TEXT,
+      validated_by_name       TEXT,
+      validated_at            TEXT,
+      report_status           TEXT NOT NULL DEFAULT 'draft',
+      created_at              TEXT DEFAULT (datetime('now','localtime')),
+      updated_at              TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_intervention_reports_issue
+      ON issue_intervention_reports(issue_id);
   `);
 
   // ════════════════════════════════════════════════════════════════════════════

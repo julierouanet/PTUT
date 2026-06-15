@@ -3475,6 +3475,100 @@ class AppLocalizationsEn extends AppLocalizations {
       'E.g. Permanently out of service, replaced…';
 
   @override
+  String get decommissionButton => 'Decommission / Dispose';
+
+  @override
+  String get decommissionDialogTitle => 'Decommission equipment';
+
+  @override
+  String get decommissionDialogBody =>
+      'The equipment will leave the active lists but keep its full history for audit.';
+
+  @override
+  String get decommissionReasonLabel => 'Decommission reason';
+
+  @override
+  String get decommissionMethodLabel => 'Disposal method';
+
+  @override
+  String get decommissionReplacementLabel => 'Replacement equipment';
+
+  @override
+  String get decommissionReplacementHint => 'Select the new equipment';
+
+  @override
+  String get decommissionReplacementRequired =>
+      'A replacement is required for the \"Replaced\" reason';
+
+  @override
+  String get decommissionNotesLabel => 'Notes (optional)';
+
+  @override
+  String get decommissionConfirmButton => 'Decommission';
+
+  @override
+  String get decommissionSuccess => 'Equipment decommissioned';
+
+  @override
+  String get decommissionBadge => 'Decommissioned';
+
+  @override
+  String get decommissionReplacedBy => 'Replaced by';
+
+  @override
+  String get decommissionReplaces => 'Replaces';
+
+  @override
+  String get decommissionInfoTitle => 'Decommissioning';
+
+  @override
+  String get decommissionReasonValueIrreparable => 'Irreparable';
+
+  @override
+  String get decommissionReasonValueObsolete => 'Obsolete';
+
+  @override
+  String get decommissionReasonValueReplaced => 'Replaced';
+
+  @override
+  String get decommissionReasonValueLost => 'Lost / Stolen';
+
+  @override
+  String get decommissionReasonValueDonatedOut => 'Donated (out)';
+
+  @override
+  String get decommissionMethodValueDestroyed => 'Destroyed';
+
+  @override
+  String get decommissionMethodValueSold => 'Sold';
+
+  @override
+  String get decommissionMethodValueDonated => 'Donated';
+
+  @override
+  String get decommissionMethodValueReturned => 'Returned to supplier';
+
+  @override
+  String get decommissionMethodValueCannibalized => 'Parts salvaged';
+
+  @override
+  String get decommissionDeleteBlockedTitle => 'Deletion not allowed';
+
+  @override
+  String get decommissionDeleteBlockedBody =>
+      'This equipment has history (incidents, maintenance). Decommission it instead of deleting to preserve traceability.';
+
+  @override
+  String get decommissionForceDeleteButton => 'Delete permanently (admin)';
+
+  @override
+  String get decommissionForceDeleteWarning =>
+      'This also destroys all history (incidents, maintenance, tags, documents). Irreversible action.';
+
+  @override
+  String get equipmentFilterShowDisposed => 'Show decommissioned';
+
+  @override
   String equipDetailMaintenanceCount(int count) {
     return '$count intervention(s)';
   }

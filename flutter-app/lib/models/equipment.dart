@@ -154,6 +154,26 @@ class Equipment {
   /// Criticité selon la matrice ABC
   final EquipmentCriticality? criticality;
 
+  // ── Cycle de vie : réforme / décommissionnement ───────────────────────
+  /// Date/heure ISO de la réforme (NULL si actif)
+  final String? decommissionedAt;
+  /// Motif de réforme (whitelist serveur : irreparable, obsolete, replaced, lost, donated_out)
+  final String? decommissionReason;
+  /// Méthode d'élimination (whitelist serveur : destroyed, sold, donated, returned, cannibalized)
+  final String? disposalMethod;
+  /// Nom de l'agent ayant réformé l'équipement
+  final String? decommissionedByName;
+  /// Notes libres saisies à la réforme
+  final String? decommissionNotes;
+  /// ID de l'équipement remplaçant (lien « remplacé par → »)
+  final String? replacedById;
+  /// Nom du remplaçant (dénormalisé depuis le JOIN API)
+  final String? replacedByName;
+  /// ID de l'équipement réformé que CET équipement remplace (lien inverse « remplace → »)
+  final String? replacesId;
+  /// Nom de l'équipement réformé que CET équipement remplace
+  final String? replacesName;
+
   // ── Métadonnées système (lecture seule) ───────────────────────────────
   final String? createdAt;
   final String? updatedAt;
@@ -192,6 +212,15 @@ class Equipment {
     this.macroCategory,
     this.warrantyEndDate,
     this.criticality,
+    this.decommissionedAt,
+    this.decommissionReason,
+    this.disposalMethod,
+    this.decommissionedByName,
+    this.decommissionNotes,
+    this.replacedById,
+    this.replacedByName,
+    this.replacesId,
+    this.replacesName,
     this.createdAt,
     this.updatedAt,
     this.tags = const [],
@@ -275,6 +304,15 @@ class Equipment {
       macroCategory:      json['macro_category']       as String?,
       warrantyEndDate:    json['warranty_end_date']    as String?,
       criticality:        EquipmentCriticality.fromString(json['criticality'] as String?),
+      decommissionedAt:    json['decommissioned_at']      as String?,
+      decommissionReason:  json['decommission_reason']    as String?,
+      disposalMethod:      json['disposal_method']        as String?,
+      decommissionedByName:json['decommissioned_by_name'] as String?,
+      decommissionNotes:   json['decommission_notes']     as String?,
+      replacedById:        json['replaced_by_id']         as String?,
+      replacedByName:      json['replaced_by_name']       as String?,
+      replacesId:          json['replaces_id']            as String?,
+      replacesName:        json['replaces_name']          as String?,
       createdAt:          json['created_at']           as String?,
       updatedAt:          json['updated_at']           as String?,
       tags:               tags,
@@ -346,6 +384,15 @@ class Equipment {
     String? macroCategory,
     String? warrantyEndDate,
     EquipmentCriticality? criticality,
+    String? decommissionedAt,
+    String? decommissionReason,
+    String? disposalMethod,
+    String? decommissionedByName,
+    String? decommissionNotes,
+    String? replacedById,
+    String? replacedByName,
+    String? replacesId,
+    String? replacesName,
     String? createdAt,
     String? updatedAt,
     List<String>? tags,
@@ -375,6 +422,15 @@ class Equipment {
       macroCategory: macroCategory ?? this.macroCategory,
       warrantyEndDate: warrantyEndDate ?? this.warrantyEndDate,
       criticality: criticality ?? this.criticality,
+      decommissionedAt: decommissionedAt ?? this.decommissionedAt,
+      decommissionReason: decommissionReason ?? this.decommissionReason,
+      disposalMethod: disposalMethod ?? this.disposalMethod,
+      decommissionedByName: decommissionedByName ?? this.decommissionedByName,
+      decommissionNotes: decommissionNotes ?? this.decommissionNotes,
+      replacedById: replacedById ?? this.replacedById,
+      replacedByName: replacedByName ?? this.replacedByName,
+      replacesId: replacesId ?? this.replacesId,
+      replacesName: replacesName ?? this.replacesName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,

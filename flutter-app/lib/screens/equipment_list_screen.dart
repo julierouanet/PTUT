@@ -179,6 +179,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   bool _filterPmOverdue = false;
   bool _filterPmSoon    = false;
 
+  // ── Cycle de vie : affichage des équipements réformés (Disposed) ─────────
+  // Exclus du cache DataService par défaut (filtre serveur) ; chargés à la
+  // demande lorsque l'utilisateur active la chip « Afficher les réformés ».
+  bool _showDisposed = false;
+  List<Equipment> _disposedEquipment = [];
+
   // ── Tri ────────────────────────────────────────────────────────────────
   _SortCol _sortCol = _SortCol.name;
   bool     _sortAsc = true;
@@ -247,6 +253,22 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     // 3. Charger le plan de remplacement (badges triangle) — admin/supervisor.
     if (_auth.canGenerateReports) {
       _loadReplacementPlan();
+    }
+  }
+
+  /// Charge les équipements réformés (Disposed) à la demande pour la chip.
+  /// Échec silencieux : la chip reste active mais sans données supplémentaires.
+  Future<void> _loadDisposed() async {
+    try {
+      // status=Disposed cible directement les réformés (le serveur lève alors
+      // l'exclusion par défaut) → pas de refetch des actifs, pas de filtre client.
+      final raw = await DbApiService.instance.getEquipment(status: 'Disposed');
+      if (mounted) {
+        setState(() =>
+            _disposedEquipment = raw.map(Equipment.fromApiJson).toList());
+      }
+    } catch (_) {
+      // Ignoré : pas de réformés affichés si l'appel échoue.
     }
   }
 
@@ -336,7 +358,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     final term = _searchTerm.toLowerCase();
     final all  = l10n.commonAll;
 
-    var list = DataService().equipment.where((eq) {
+    // Source : cache actif + réformés chargés à la demande si la chip est active.
+    final source = _showDisposed
+        ? [...DataService().equipment, ..._disposedEquipment]
+        : DataService().equipment;
+
+    var list = source.where((eq) {
       final matchSearch = term.isEmpty ||
           eq.name.toLowerCase().contains(term) ||
           eq.serialNumber.toLowerCase().contains(term) ||
@@ -663,6 +690,21 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               _filterPmSoon = v;
               _saveFilters(resetPage: true);
             }),
+          ),
+          // Afficher les équipements réformés (charge la liste à la demande)
+          FilterChip(
+            label: Text(l10n.equipmentFilterShowDisposed),
+            avatar: const Icon(Icons.delete_sweep_outlined, size: 16),
+            selected: _showDisposed,
+            selectedColor: AppColors.textMuted.withValues(alpha: 0.2),
+            checkmarkColor: AppColors.textSecondary,
+            onSelected: (v) {
+              setState(() {
+                _showDisposed = v;
+                _visibleCount = _pageSize;
+              });
+              if (v && _disposedEquipment.isEmpty) _loadDisposed();
+            },
           ),
         ],
       ],

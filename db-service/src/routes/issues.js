@@ -47,6 +47,13 @@ const router = express.Router();
 
 const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected'];
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
+
+// ── Rapport d'intervention ─────────────────────────────────────────────────
+const REPORT_STATUSES        = ['draft', 'finalized'];
+// Whitelist alignée sur equipment.status (cf. routes/equipment.js VALID_STATUSES_EQ)
+const VALID_EQUIPMENT_STATUS = ['Operational', 'Maintenance', 'Out of service', 'To be disposal', 'Disposed'];
+// Statuts d'incident autorisant la finalisation du rapport
+const REPORT_FINALIZABLE_STATUSES = ['Completed', 'Verified', 'Closed'];
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
 
@@ -569,6 +576,170 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
     target_name: existing?.equipment_name, ...extractReqMeta(req) });
 
   res.json({ message: 'Incident supprimé' });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// RAPPORT D'INTERVENTION (1:1 avec issue)
+// ════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Construit la réponse rapport enrichie : champs du rapport (ou brouillon vide)
+ * + champs de pré-remplissage lus EN DIRECT depuis l'incident (jamais dupliqués).
+ */
+function _buildReportResponse(issue, report) {
+  const base = report || { issue_id: issue.id, report_status: 'draft' };
+  return {
+    ...base,
+    // Pré-remplissage live depuis l'incident
+    diagnosis:      issue.diagnosis,
+    actions:        issue.actions,
+    parts_replaced: issue.parts_replaced,
+    equipment_id:   issue.equipment_id,
+    equipment_name: issue.equipment_name,
+    issue_status:   issue.status,
+  };
+}
+
+// ── GET /api/issues/:id/report ─────────────────────────────────────────────
+router.get('/:id/report', verifyToken, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare(
+    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  res.json(_buildReportResponse(issue, report));
+});
+
+// ── PUT /api/issues/:id/report (UPSERT) ────────────────────────────────────
+router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const issue = db.prepare(
+    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const {
+    summary, root_cause, recommendations, duration_hours,
+    returned_to_service_at, estimated_cost, final_equipment_status,
+  } = req.body;
+
+  // Validation : statut final équipement
+  if (final_equipment_status && !VALID_EQUIPMENT_STATUS.includes(final_equipment_status)) {
+    return res.status(400).json({ error: `Statut équipement invalide. Valeurs acceptées : ${VALID_EQUIPMENT_STATUS.join(', ')}` });
+  }
+  // Validation : valeurs numériques positives si fournies
+  if (duration_hours != null && (typeof duration_hours !== 'number' || duration_hours < 0)) {
+    return res.status(400).json({ error: 'duration_hours doit être un nombre positif' });
+  }
+  if (estimated_cost != null && (typeof estimated_cost !== 'number' || estimated_cost < 0)) {
+    return res.status(400).json({ error: 'estimated_cost doit être un nombre positif' });
+  }
+
+  const isAdmin = req.user.roles.includes('admin');
+  const existing = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+
+  // Garde-fou : rapport figé non modifiable sauf admin
+  if (existing && existing.report_status === 'finalized' && !isAdmin) {
+    return res.status(409).json({ error: 'Rapport finalisé : modification réservée aux administrateurs (rouvrir le rapport au préalable)' });
+  }
+
+  // L'auteur est renseigné au premier enregistrement uniquement
+  const authorId   = existing?.author_id   || req.user.id;
+  const authorName = existing?.author_name || req.user.name;
+
+  db.prepare(`
+    INSERT INTO issue_intervention_reports
+      (issue_id, summary, root_cause, recommendations, duration_hours,
+       returned_to_service_at, estimated_cost, final_equipment_status,
+       author_id, author_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(issue_id) DO UPDATE SET
+      summary                = excluded.summary,
+      root_cause             = excluded.root_cause,
+      recommendations        = excluded.recommendations,
+      duration_hours         = excluded.duration_hours,
+      returned_to_service_at = excluded.returned_to_service_at,
+      estimated_cost         = excluded.estimated_cost,
+      final_equipment_status = excluded.final_equipment_status,
+      updated_at             = datetime('now','localtime')
+  `).run(
+    req.params.id, summary || null, root_cause || null, recommendations || null,
+    duration_hours ?? null, returned_to_service_at || null, estimated_cost ?? null,
+    final_equipment_status || null, authorId, authorName
+  );
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'update_intervention_report', target_type: 'issue', target_id: req.params.id,
+    target_name: issue.equipment_name || issue.id,
+    details: { final_equipment_status, duration_hours, estimated_cost },
+    ...extractReqMeta(req) });
+
+  const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  res.json(_buildReportResponse(issue, report));
+});
+
+// ── POST /api/issues/:id/report/finalize ───────────────────────────────────
+router.post('/:id/report/finalize', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const issue = db.prepare(
+    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // L'incident doit être résolu pour figer le rapport
+  if (!REPORT_FINALIZABLE_STATUSES.includes(issue.status)) {
+    return res.status(409).json({ error: `Rapport finalisable uniquement si l'incident est résolu (${REPORT_FINALIZABLE_STATUSES.join(', ')})` });
+  }
+
+  const existing = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Aucun rapport à finaliser pour cet incident' });
+  if (existing.report_status === 'finalized') {
+    return res.status(409).json({ error: 'Rapport déjà finalisé' });
+  }
+
+  db.prepare(`
+    UPDATE issue_intervention_reports
+    SET report_status     = 'finalized',
+        validated_by_id   = ?,
+        validated_by_name = ?,
+        validated_at      = datetime('now','localtime'),
+        updated_at        = datetime('now','localtime')
+    WHERE issue_id = ?
+  `).run(req.user.id, req.user.name, req.params.id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'finalize_intervention_report', target_type: 'issue', target_id: req.params.id,
+    target_name: issue.equipment_name || issue.id, ...extractReqMeta(req) });
+
+  const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  res.json(_buildReportResponse(issue, report));
+});
+
+// ── PATCH /api/issues/:id/report/reopen (admin uniquement) ─────────────────
+router.patch('/:id/report/reopen', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const issue = db.prepare(
+    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const existing = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Aucun rapport pour cet incident' });
+
+  db.prepare(`
+    UPDATE issue_intervention_reports
+    SET report_status = 'draft', updated_at = datetime('now','localtime')
+    WHERE issue_id = ?
+  `).run(req.params.id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'reopen_intervention_report', target_type: 'issue', target_id: req.params.id,
+    target_name: issue.equipment_name || issue.id, ...extractReqMeta(req) });
+
+  const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
+  res.json(_buildReportResponse(issue, report));
 });
 
 module.exports = router;

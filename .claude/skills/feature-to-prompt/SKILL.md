@@ -100,7 +100,14 @@ i18n FR+EN, pas de secret en dur, pièges critiques pertinents>
 - npm test (service concerné) OU flutter analyze --no-fatal-infos passe
 - python -X utf8 scripts/log_feature.py --nom "..." --desc "..."
 - mise à jour de contexte.md / contexte/context.md si feature majeure
+
+## Étape finale obligatoire
+Une fois la feature implémentée et vérifiée, lancer `/simplify` sur le code créé/modifié
+pour nettoyer (réutilisation, simplification, efficacité, altitude) avant de clore la tâche.
 ```
+
+> ⚠️ La section **« Étape finale obligatoire »** demandant de lancer `/simplify` sur le code
+> créé doit **toujours** figurer à la fin de chaque prompt produit (v1, v2 et v3).
 
 Afficher v1 dans le chat. Ne pas encore l'écrire sur disque.
 

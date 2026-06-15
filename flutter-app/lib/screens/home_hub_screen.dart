@@ -837,33 +837,56 @@ class HomeHubScreen extends StatelessWidget {
         features.isModuleEnabled('inventory', role);
     final canGoEquipment = features.isModuleEnabled('equipment', role);
 
+    // Tuiles construites conditionnellement : une tuile n'est ajoutée que si son
+    // module est actif. Désactiver un module retire donc ses tuiles KPI (cohérence
+    // UI aval) au lieu de les afficher avec un compteur à 0.
     final tiles = <_KpiTile>[
-      _KpiTile(
-        label: l10n.hubKpiCriticalUrgentLabel,
-        count: criticalCount,
-        icon: Icons.warning_amber_rounded,
-        color: criticalCount > 0 ? AppColors.error : AppColors.success,
-        subtitle: criticalCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOpenIssues,
-        onTap: canGoEquipment ? onEquipmentModule : null,
-      ),
-      _KpiTile(
-        label: l10n.hubKpiStockAlertsLabel,
-        count: stockAlertCount,
-        icon: Icons.inventory_outlined,
-        color: stockAlertCount > 0 ? AppColors.warning : AppColors.success,
-        subtitle: stockAlertCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiStockAlertsSubtitle,
-        onTap: canGoInventory ? onInventoryModule : null,
-      ),
-      _KpiTile(
-        label: l10n.hubKpiOutOfServiceLabel,
-        count: outOfServiceCount,
-        icon: Icons.power_off_outlined,
-        color: outOfServiceCount > 0 ? AppColors.warning : AppColors.success,
-        subtitle: outOfServiceCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOutOfServiceSubtitle,
-        onTap: canGoEquipment ? onEquipmentModule : null,
-      ),
+      if (canGoEquipment)
+        _KpiTile(
+          label: l10n.hubKpiCriticalUrgentLabel,
+          count: criticalCount,
+          icon: Icons.warning_amber_rounded,
+          color: criticalCount > 0 ? AppColors.error : AppColors.success,
+          subtitle: criticalCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOpenIssues,
+          onTap: onEquipmentModule,
+        ),
+      if (canGoInventory)
+        _KpiTile(
+          label: l10n.hubKpiStockAlertsLabel,
+          count: stockAlertCount,
+          icon: Icons.inventory_outlined,
+          color: stockAlertCount > 0 ? AppColors.warning : AppColors.success,
+          subtitle: stockAlertCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiStockAlertsSubtitle,
+          onTap: onInventoryModule,
+        ),
+      if (canGoEquipment)
+        _KpiTile(
+          label: l10n.hubKpiOutOfServiceLabel,
+          count: outOfServiceCount,
+          icon: Icons.power_off_outlined,
+          color: outOfServiceCount > 0 ? AppColors.warning : AppColors.success,
+          subtitle: outOfServiceCount == 0 ? l10n.hubKpiNoAlert : l10n.hubKpiOutOfServiceSubtitle,
+          onTap: onEquipmentModule,
+        ),
     ];
 
+    // Aucun module actif → pas de rangée KPI (évite un cadre vide).
+    if (tiles.isEmpty) return const SizedBox.shrink();
+
+    // Tuile unique en mobile : ne pas l'étirer plein écran, l'aligner à gauche
+    // avec une largeur bornée. Sur écran large ou ≥ 2 tuiles, on garde Expanded.
+    if (!isWide && tiles.length == 1) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 220),
+          child: tiles.first,
+        ),
+      );
+    }
+
+    // Rangée recomposée dynamiquement sur le nombre réel de tuiles restantes ;
+    // espacement uniquement ENTRE les tuiles.
     return Row(
       children: [
         for (int i = 0; i < tiles.length; i++) ...[

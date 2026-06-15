@@ -17,13 +17,25 @@ const VALID_STATUSES_EQ = [
 ];
 const VALID_CRITICALITIES = ['A', 'B', 'C'];
 
+// Cycle de vie : motifs de réforme et méthodes d'élimination (whitelists serveur).
+// Toute valeur hors liste est rejetée en 400. disposal_method reste extensible
+// (ex. 'recycled' futur) mais on ne l'ajoute pas tant que le module déchets
+// biomédicaux n'est pas implémenté.
+const DECOMMISSION_REASONS = ['irreparable', 'obsolete', 'replaced', 'lost', 'donated_out'];
+const DISPOSAL_METHODS     = ['destroyed', 'sold', 'donated', 'returned', 'cannibalized'];
+
 // Requête de base pour récupérer un équipement avec ses relations
 const BASE_SELECT = `
   SELECT
     e.*,
     es.name   AS subcategory_name,
     emc.name  AS macro_category,
-    emc.id    AS macro_category_id_resolved
+    emc.id    AS macro_category_id_resolved,
+    -- Nom du remplaçant pointé par e.replaced_by_id (lien « remplacé par → »)
+    (SELECT r.name FROM equipment r WHERE r.id = e.replaced_by_id)                 AS replaced_by_name,
+    -- Lien inverse : l'équipement réformé que CET équipement remplace
+    (SELECT o.id   FROM equipment o WHERE o.replaced_by_id = e.id LIMIT 1)         AS replaces_id,
+    (SELECT o.name FROM equipment o WHERE o.replaced_by_id = e.id LIMIT 1)         AS replaces_name
   FROM equipment e
   LEFT JOIN equipment_subcategories        es  ON es.id  = e.subcategory_id
   LEFT JOIN equipment_macro_categories     emc ON emc.id = e.macro_category_id
@@ -42,11 +54,18 @@ router.get('/', verifyToken, (req, res) => {
   const db = getDb();
   const {
     department, status, category, macro_category, macro_category_id,
-    subcategory_id, brand_id, model_id,
+    subcategory_id, brand_id, model_id, include_disposed,
   } = req.query;
 
   let query = `${BASE_SELECT} WHERE 1=1`;
   const params = [];
+
+  // Les équipements réformés (Disposed) sortent des listes actives par défaut.
+  // ?include_disposed=true pour les inclure (vue « équipements réformés »).
+  // Un filtre status explicite a priorité (permet de cibler les Disposed).
+  if (include_disposed !== 'true' && status !== 'Disposed') {
+    query += " AND e.status != 'Disposed'";
+  }
 
   if (department)        { query += ' AND e.department = ?';         params.push(department); }
   if (status)            { query += ' AND e.status = ?';             params.push(status); }
@@ -379,20 +398,153 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
   res.json({ message: 'Équipement mis à jour' });
 });
 
-// ── DELETE /api/equipment/:id ─────────────────────────────────────────────────
-router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
+// ── POST /api/equipment/:id/propose-disposal ──────────────────────────────────
+// Étape 1 du workflow de réforme : un technicien/superviseur PROPOSE la mise au
+// rebut. L'équipement passe 'To be disposal' (reste visible dans les listes
+// actives), motif pré-rempli mais modifiable à la validation par l'admin.
+router.post('/:id/propose-disposal', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
+  const { id } = req.params;
+  const { decommission_reason } = req.body;
+
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
 
-  db.prepare('DELETE FROM equipment WHERE id = ?').run(req.params.id);
+  if (existing.status === 'Disposed') {
+    return res.status(400).json({ error: 'Équipement déjà réformé' });
+  }
+  if (!DECOMMISSION_REASONS.includes(decommission_reason)) {
+    return res.status(400).json({ error: `Motif invalide. Valeurs acceptées : ${DECOMMISSION_REASONS.join(', ')}` });
+  }
+
+  db.prepare(`
+    UPDATE equipment
+    SET status = 'To be disposal', decommission_reason = ?, updated_at = datetime('now','localtime')
+    WHERE id = ?
+  `).run(decommission_reason, id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'propose_disposal_equipment', target_type: 'equipment', target_id: id,
+    target_name: existing.name,
+    details: { decommission_reason, status_before: existing.status },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Mise au rebut proposée' });
+});
+
+// ── POST /api/equipment/:id/decommission ──────────────────────────────────────
+// Étape 2 (validation finale, admin only) : réforme effective (soft delete).
+// L'équipement passe 'Disposed' et conserve tout son historique pour l'audit.
+router.post('/:id/decommission', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+  const { decommission_reason, disposal_method, decommission_notes, replaced_by_id } = req.body;
+
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  // 1. Validation des whitelists
+  if (!DECOMMISSION_REASONS.includes(decommission_reason)) {
+    return res.status(400).json({ error: `Motif invalide. Valeurs acceptées : ${DECOMMISSION_REASONS.join(', ')}` });
+  }
+  if (!DISPOSAL_METHODS.includes(disposal_method)) {
+    return res.status(400).json({ error: `Méthode d'élimination invalide. Valeurs acceptées : ${DISPOSAL_METHODS.join(', ')}` });
+  }
+
+  // 2. Validation du lien remplaçant
+  const replacedById = replaced_by_id || null;
+  if (replacedById) {
+    if (replacedById === id) {
+      return res.status(400).json({ error: 'Un équipement ne peut pas se remplacer lui-même' });
+    }
+    const replacement = db.prepare('SELECT id FROM equipment WHERE id = ?').get(replacedById);
+    if (!replacement) return res.status(404).json({ error: 'Équipement remplaçant introuvable' });
+  }
+  // Motif 'replaced' → le remplaçant est obligatoire
+  if (decommission_reason === 'replaced' && !replacedById) {
+    return res.status(400).json({ error: "replaced_by_id requis lorsque le motif est 'replaced'" });
+  }
+
+  const notes = decommission_notes && typeof decommission_notes === 'string'
+    ? decommission_notes.substring(0, 1000)
+    : null;
+
+  // 3. Soft delete : on ne supprime jamais la ligne
+  db.prepare(`
+    UPDATE equipment
+    SET status                  = 'Disposed',
+        decommissioned_at       = datetime('now','localtime'),
+        decommission_reason     = ?,
+        disposal_method         = ?,
+        decommission_notes      = ?,
+        decommissioned_by_id    = ?,
+        decommissioned_by_name  = ?,
+        replaced_by_id          = ?,
+        updated_at              = datetime('now','localtime')
+    WHERE id = ?
+  `).run(decommission_reason, disposal_method, notes, req.user.id, req.user.name, replacedById, id);
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'decommission_equipment', target_type: 'equipment', target_id: id,
+    target_name: existing.name,
+    details: {
+      decommission_reason, disposal_method, notes, replaced_by_id: replacedById,
+      status_before: existing.status,
+    },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Équipement réformé' });
+});
+
+// ── DELETE /api/equipment/:id ─────────────────────────────────────────────────
+// Suppression DÉFINITIVE (hard delete) réservée aux erreurs de saisie.
+// Garde-fou type Fiix : un équipement avec historique ne peut pas être effacé
+// sans ?force=true (admin only) — il faut le réformer (POST /decommission).
+router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const id = req.params.id;
+  const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  // Décompte de l'historique lié en une seule requête (issues n'a PAS de FK).
+  const hist = db.prepare(`
+    SELECT
+      (SELECT COUNT(*) FROM issues               WHERE equipment_id = @id) +
+      (SELECT COUNT(*) FROM maintenance_records  WHERE equipment_id = @id) +
+      (SELECT COUNT(*) FROM equipment_tags       WHERE equipment_id = @id) +
+      (SELECT COUNT(*) FROM equipment_documents  WHERE equipment_id = @id AND deleted_at IS NULL) AS total
+  `).get({ id });
+  const hasHistory = hist.total > 0;
+
+  const forced = req.query.force === 'true';
+
+  // Garde-fou : refuse la purge d'un équipement avec historique sans force
+  if (hasHistory && !forced) {
+    return res.status(409).json({
+      error: 'Équipement avec historique : réformer au lieu de supprimer',
+      hasHistory: true,
+    });
+  }
+
+  // Purge : issues/equipment_tags/equipment_documents sans CASCADE → manuel ;
+  // maintenance_records part en CASCADE (FK ON DELETE CASCADE).
+  const purge = db.transaction(() => {
+    if (forced) {
+      db.prepare('DELETE FROM issues WHERE equipment_id = ?').run(id);
+      db.prepare('DELETE FROM equipment_tags WHERE equipment_id = ?').run(id);
+      db.prepare('DELETE FROM equipment_documents WHERE equipment_id = ?').run(id);
+    }
+    db.prepare('DELETE FROM equipment WHERE id = ?').run(id);
+  });
+  purge();
+
   const rawReason = req.query.reason;
   const reason = rawReason && typeof rawReason === 'string'
     ? rawReason.replace(/[<>'"]/g, '').substring(0, 200)
     : undefined;
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
-    action: 'delete_equipment', target_type: 'equipment', target_id: req.params.id,
+    action: 'delete_equipment', target_type: 'equipment', target_id: id,
     target_name: existing.name,
     details: {
       snapshot: {
@@ -400,6 +552,7 @@ router.delete('/:id', verifyToken, requireRole('admin'), (req, res) => {
         category: existing.category, status: existing.status,
         criticality: existing.criticality, warranty_end_date: existing.warranty_end_date,
       },
+      ...(forced ? { forced: true } : {}),
       ...(reason ? { reason } : {}),
     },
     ...extractReqMeta(req) });

@@ -19,12 +19,15 @@ class DbApiService {
     String? department,
     String? status,
     String? category,
+    bool includeDisposed = false,
   }) async {
     var url = ApiConfig.equipmentUrl;
     final params = <String>[];
     if (department != null) params.add('department=${Uri.encodeComponent(department)}');
     if (status     != null) params.add('status=${Uri.encodeComponent(status)}');
     if (category   != null) params.add('category=${Uri.encodeComponent(category)}');
+    // Par défaut le serveur masque les équipements réformés (Disposed).
+    if (includeDisposed)    params.add('include_disposed=true');
     if (params.isNotEmpty)  url += '?${params.join('&')}';
 
     final response = await ApiClient.get(url);
@@ -65,10 +68,43 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
-  Future<void> deleteEquipment(String id, {String? reason}) async {
+  /// Suppression définitive (hard delete). Lève une ApiException 409 si
+  /// l'équipement a un historique et que [force] est false → l'UI propose
+  /// alors la réforme. [force] (admin only) purge l'équipement et son historique.
+  Future<void> deleteEquipment(String id, {String? reason, bool force = false}) async {
     var url = '${ApiConfig.equipmentUrl}/$id';
-    if (reason != null && reason.isNotEmpty) url += '?reason=${Uri.encodeComponent(reason)}';
+    final params = <String>[];
+    if (reason != null && reason.isNotEmpty) params.add('reason=${Uri.encodeComponent(reason)}');
+    if (force) params.add('force=true');
+    if (params.isNotEmpty) url += '?${params.join('&')}';
     final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
+  }
+
+  /// Étape 1 du workflow de réforme : proposition de mise au rebut.
+  /// Passe l'équipement en 'To be disposal' (reste visible en liste active).
+  Future<void> proposeDisposal(String id, String reason) async {
+    final url = '${ApiConfig.equipmentUrl}/$id/propose-disposal';
+    final response = await ApiClient.post(url, {'decommission_reason': reason});
+    _checkStatus(response, url);
+  }
+
+  /// Étape 2 (admin) : réforme effective (soft delete → status 'Disposed').
+  /// L'équipement conserve tout son historique pour l'audit.
+  Future<void> decommissionEquipment(
+    String id, {
+    required String reason,
+    required String method,
+    String? notes,
+    String? replacedById,
+  }) async {
+    final url = '${ApiConfig.equipmentUrl}/$id/decommission';
+    final response = await ApiClient.post(url, {
+      'decommission_reason': reason,
+      'disposal_method': method,
+      if (notes != null && notes.isNotEmpty) 'decommission_notes': notes,
+      if (replacedById != null && replacedById.isNotEmpty) 'replaced_by_id': replacedById,
+    });
     _checkStatus(response, url);
   }
 

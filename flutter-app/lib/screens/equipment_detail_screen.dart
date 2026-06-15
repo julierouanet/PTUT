@@ -8,6 +8,7 @@ import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/replacement_badge.dart';
+import '../widgets/equipment/equipment_decommission_dialog.dart';
 import '../widgets/equipment/equipment_critical_banner.dart';
 import '../widgets/equipment/equipment_documents_tab.dart';
 import '../widgets/equipment/equipment_incidents_tab.dart';
@@ -58,6 +59,9 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
     final primary = AuthService().primaryRole;
     return primary == UserRole.hospitalStaff;
   }
+
+  // La réforme finale et le hard delete forcé sont réservés à l'admin (miroir RBAC backend).
+  bool get _isAdmin => AuthService().primaryRole == UserRole.admin;
 
   @override
   void initState() {
@@ -239,6 +243,7 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
       body: Column(
         children: [
           EquipmentCriticalBanner(equipment: eq),
+          _buildLifecycleBanner(l10n, eq),
           _buildNotificationsBanner(l10n),
           Expanded(
             child: EquipmentStaffView(
@@ -272,6 +277,13 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                   Navigator.pop(context);
                   widget.onEdit!();
                 },
+              ),
+            // Réforme (soft delete) — admin only, masquée si déjà réformé
+            if (_isAdmin && eq.status != EquipmentStatus.disposed)
+              IconButton(
+                icon: const Icon(Icons.delete_sweep_outlined),
+                tooltip: l10n.decommissionButton,
+                onPressed: () => _showDecommissionDialog(eq),
               ),
             if (auth.canManageEquipment)
               IconButton(
@@ -349,6 +361,168 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
   void _handleReport() {
     Navigator.pop(context);
     widget.onReport?.call();
+  }
+
+  // ── Bannière cycle de vie : badge « Réformé » + liens remplaçant ──────────────
+  // Affichée si l'équipement est réformé OU s'il participe à un lien de
+  // remplacement (dans un sens ou l'autre). Les liens sont cliquables.
+  Widget _buildLifecycleBanner(AppLocalizations l10n, Equipment eq) {
+    final isDisposed = eq.status == EquipmentStatus.disposed;
+    final hasReplacedBy = (eq.replacedById ?? '').isNotEmpty;
+    final hasReplaces = (eq.replacesId ?? '').isNotEmpty;
+    if (!isDisposed && !hasReplacedBy && !hasReplaces) {
+      return const SizedBox.shrink();
+    }
+
+    final children = <Widget>[];
+
+    if (isDisposed) {
+      final reason = eq.decommissionReason;
+      final method = eq.disposalMethod;
+      final detail = [
+        if (reason != null) decommissionReasonLabel(l10n, reason),
+        if (method != null) disposalMethodLabel(l10n, method),
+      ].join(' · ');
+      children.add(Row(children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.textMuted.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(l10n.decommissionBadge,
+              style: const TextStyle(
+                  fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(detail,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        ),
+      ]));
+    }
+
+    if (hasReplacedBy) {
+      children.add(_replacementLink(
+        l10n.decommissionReplacedBy, eq.replacedByName ?? eq.replacedById!, eq.replacedById!));
+    }
+    if (hasReplaces) {
+      children.add(_replacementLink(
+        l10n.decommissionReplaces, eq.replacesName ?? eq.replacesId!, eq.replacesId!));
+    }
+
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (int i = 0; i < children.length; i++) ...[
+              if (i > 0) const SizedBox(height: 8),
+              children[i],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Lien cliquable vers un équipement lié (remplaçant ou remplacé).
+  Widget _replacementLink(String label, String name, String targetId) {
+    return Row(children: [
+      const Icon(Icons.sync_alt, size: 16, color: AppColors.primary),
+      const SizedBox(width: 8),
+      Text('$label : ', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      Expanded(
+        child: InkWell(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EquipmentDetailScreen(equipmentId: targetId),
+              ),
+            );
+          },
+          child: Text(name,
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.primary,
+                  decoration: TextDecoration.underline)),
+        ),
+      ),
+    ]);
+  }
+
+  // ── Réforme (soft delete) — admin only ────────────────────────────────────────
+  Future<void> _showDecommissionDialog(Equipment eq) async {
+    final result = await showDecommissionDialog(context, eq);
+    if (result == null || !mounted) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      await DbApiService.instance.decommissionEquipment(
+        eq.id,
+        reason: result.reason,
+        method: result.method,
+        notes: result.notes,
+        replacedById: result.replacedById,
+      );
+      await DataService().reloadEquipment();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.decommissionSuccess),
+        behavior: SnackBarBehavior.floating,
+      ));
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      final msg = e is ApiException ? e.message : l10n.commonApiError;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  // Dialog expliquant qu'un équipement avec historique doit être réformé.
+  // Propose le hard delete forcé uniquement à l'admin (avec avertissement).
+  void _showDeleteBlockedDialog(Equipment eq) {
+    final l10n = AppLocalizations.of(context)!;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.decommissionDeleteBlockedTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.decommissionDeleteBlockedBody),
+            if (_isAdmin) ...[
+              const SizedBox(height: 16),
+              Text(l10n.decommissionForceDeleteWarning,
+                  style: const TextStyle(fontSize: 12, color: AppColors.error)),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          if (_isAdmin)
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _deleteEquipment(eq, null, force: true);
+              },
+              child: Text(l10n.decommissionForceDeleteButton),
+            ),
+        ],
+      ),
+    );
   }
 
   // ── Dialogue de suppression avec double confirmation ─────────────────────────
@@ -484,13 +658,25 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
     );
   }
 
-  Future<void> _deleteEquipment(Equipment eq, String? reason) async {
+  Future<void> _deleteEquipment(Equipment eq, String? reason, {bool force = false}) async {
     final l10n = AppLocalizations.of(context)!;
     try {
       await DbApiService.instance
-          .deleteEquipment(eq.id, reason: reason);
+          .deleteEquipment(eq.id, reason: reason, force: force);
       await DataService().reloadEquipment();
       if (mounted) Navigator.pop(context);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      // 409 : équipement avec historique → on oriente vers la réforme.
+      if (e.statusCode == 409) {
+        _showDeleteBlockedDialog(eq);
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

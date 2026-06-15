@@ -3506,6 +3506,101 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ex : Hors service définitif, remplacé…';
 
   @override
+  String get decommissionButton => 'Réformer / Mettre au rebut';
+
+  @override
+  String get decommissionDialogTitle => 'Réformer l\'équipement';
+
+  @override
+  String get decommissionDialogBody =>
+      'L\'équipement sortira des listes actives mais conservera tout son historique pour l\'audit.';
+
+  @override
+  String get decommissionReasonLabel => 'Motif de réforme';
+
+  @override
+  String get decommissionMethodLabel => 'Méthode d\'élimination';
+
+  @override
+  String get decommissionReplacementLabel => 'Équipement remplaçant';
+
+  @override
+  String get decommissionReplacementHint => 'Sélectionner l\'équipement neuf';
+
+  @override
+  String get decommissionReplacementRequired =>
+      'Un remplaçant est requis pour le motif « Remplacé »';
+
+  @override
+  String get decommissionNotesLabel => 'Notes (optionnel)';
+
+  @override
+  String get decommissionConfirmButton => 'Réformer';
+
+  @override
+  String get decommissionSuccess => 'Équipement réformé';
+
+  @override
+  String get decommissionBadge => 'Réformé';
+
+  @override
+  String get decommissionReplacedBy => 'Remplacé par';
+
+  @override
+  String get decommissionReplaces => 'Remplace';
+
+  @override
+  String get decommissionInfoTitle => 'Réforme';
+
+  @override
+  String get decommissionReasonValueIrreparable => 'Irréparable';
+
+  @override
+  String get decommissionReasonValueObsolete => 'Obsolète';
+
+  @override
+  String get decommissionReasonValueReplaced => 'Remplacé';
+
+  @override
+  String get decommissionReasonValueLost => 'Perdu / Volé';
+
+  @override
+  String get decommissionReasonValueDonatedOut => 'Donné (sortie)';
+
+  @override
+  String get decommissionMethodValueDestroyed => 'Détruit';
+
+  @override
+  String get decommissionMethodValueSold => 'Vendu';
+
+  @override
+  String get decommissionMethodValueDonated => 'Donné';
+
+  @override
+  String get decommissionMethodValueReturned => 'Retourné au fournisseur';
+
+  @override
+  String get decommissionMethodValueCannibalized => 'Pièces récupérées';
+
+  @override
+  String get decommissionDeleteBlockedTitle => 'Suppression impossible';
+
+  @override
+  String get decommissionDeleteBlockedBody =>
+      'Cet équipement possède un historique (incidents, maintenances). Réformez-le plutôt que de le supprimer pour conserver la traçabilité.';
+
+  @override
+  String get decommissionForceDeleteButton =>
+      'Supprimer définitivement (admin)';
+
+  @override
+  String get decommissionForceDeleteWarning =>
+      'Ceci détruit aussi tout l\'historique (incidents, maintenances, tags, documents). Action irréversible.';
+
+  @override
+  String get equipmentFilterShowDisposed => 'Afficher les réformés';
+
+  @override
   String equipDetailMaintenanceCount(int count) {
     return '$count intervention(s)';
   }

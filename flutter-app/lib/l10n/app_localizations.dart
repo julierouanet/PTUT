@@ -6548,6 +6548,186 @@ abstract class AppLocalizations {
   /// **'Ex : Hors service définitif, remplacé…'**
   String get equipDetailDeleteReasonHint;
 
+  /// No description provided for @decommissionButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réformer / Mettre au rebut'**
+  String get decommissionButton;
+
+  /// No description provided for @decommissionDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réformer l\'équipement'**
+  String get decommissionDialogTitle;
+
+  /// No description provided for @decommissionDialogBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'équipement sortira des listes actives mais conservera tout son historique pour l\'audit.'**
+  String get decommissionDialogBody;
+
+  /// No description provided for @decommissionReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif de réforme'**
+  String get decommissionReasonLabel;
+
+  /// No description provided for @decommissionMethodLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Méthode d\'élimination'**
+  String get decommissionMethodLabel;
+
+  /// No description provided for @decommissionReplacementLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement remplaçant'**
+  String get decommissionReplacementLabel;
+
+  /// No description provided for @decommissionReplacementHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionner l\'équipement neuf'**
+  String get decommissionReplacementHint;
+
+  /// No description provided for @decommissionReplacementRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un remplaçant est requis pour le motif « Remplacé »'**
+  String get decommissionReplacementRequired;
+
+  /// No description provided for @decommissionNotesLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notes (optionnel)'**
+  String get decommissionNotesLabel;
+
+  /// No description provided for @decommissionConfirmButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réformer'**
+  String get decommissionConfirmButton;
+
+  /// No description provided for @decommissionSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement réformé'**
+  String get decommissionSuccess;
+
+  /// No description provided for @decommissionBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réformé'**
+  String get decommissionBadge;
+
+  /// No description provided for @decommissionReplacedBy.
+  ///
+  /// In fr, this message translates to:
+  /// **'Remplacé par'**
+  String get decommissionReplacedBy;
+
+  /// No description provided for @decommissionReplaces.
+  ///
+  /// In fr, this message translates to:
+  /// **'Remplace'**
+  String get decommissionReplaces;
+
+  /// No description provided for @decommissionInfoTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réforme'**
+  String get decommissionInfoTitle;
+
+  /// No description provided for @decommissionReasonValueIrreparable.
+  ///
+  /// In fr, this message translates to:
+  /// **'Irréparable'**
+  String get decommissionReasonValueIrreparable;
+
+  /// No description provided for @decommissionReasonValueObsolete.
+  ///
+  /// In fr, this message translates to:
+  /// **'Obsolète'**
+  String get decommissionReasonValueObsolete;
+
+  /// No description provided for @decommissionReasonValueReplaced.
+  ///
+  /// In fr, this message translates to:
+  /// **'Remplacé'**
+  String get decommissionReasonValueReplaced;
+
+  /// No description provided for @decommissionReasonValueLost.
+  ///
+  /// In fr, this message translates to:
+  /// **'Perdu / Volé'**
+  String get decommissionReasonValueLost;
+
+  /// No description provided for @decommissionReasonValueDonatedOut.
+  ///
+  /// In fr, this message translates to:
+  /// **'Donné (sortie)'**
+  String get decommissionReasonValueDonatedOut;
+
+  /// No description provided for @decommissionMethodValueDestroyed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détruit'**
+  String get decommissionMethodValueDestroyed;
+
+  /// No description provided for @decommissionMethodValueSold.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vendu'**
+  String get decommissionMethodValueSold;
+
+  /// No description provided for @decommissionMethodValueDonated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Donné'**
+  String get decommissionMethodValueDonated;
+
+  /// No description provided for @decommissionMethodValueReturned.
+  ///
+  /// In fr, this message translates to:
+  /// **'Retourné au fournisseur'**
+  String get decommissionMethodValueReturned;
+
+  /// No description provided for @decommissionMethodValueCannibalized.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pièces récupérées'**
+  String get decommissionMethodValueCannibalized;
+
+  /// No description provided for @decommissionDeleteBlockedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suppression impossible'**
+  String get decommissionDeleteBlockedTitle;
+
+  /// No description provided for @decommissionDeleteBlockedBody.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet équipement possède un historique (incidents, maintenances). Réformez-le plutôt que de le supprimer pour conserver la traçabilité.'**
+  String get decommissionDeleteBlockedBody;
+
+  /// No description provided for @decommissionForceDeleteButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprimer définitivement (admin)'**
+  String get decommissionForceDeleteButton;
+
+  /// No description provided for @decommissionForceDeleteWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ceci détruit aussi tout l\'historique (incidents, maintenances, tags, documents). Action irréversible.'**
+  String get decommissionForceDeleteWarning;
+
+  /// No description provided for @equipmentFilterShowDisposed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Afficher les réformés'**
+  String get equipmentFilterShowDisposed;
+
   /// No description provided for @equipDetailMaintenanceCount.
   ///
   /// In fr, this message translates to:
