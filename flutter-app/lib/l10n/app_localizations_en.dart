@@ -4853,6 +4853,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get brandNoModels => 'No model for this manufacturer';
 
   @override
+  String get categoryDetailTitle => 'Category details';
+
+  @override
+  String get departmentDetailTitle => 'Department details';
+
+  @override
+  String get departmentOpenIssuesSection => 'Open issues';
+
+  @override
   String get modelDetailTitle => 'Model sheet';
 
   @override

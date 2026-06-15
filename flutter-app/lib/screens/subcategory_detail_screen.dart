@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/detail_breadcrumb.dart';
 import '../widgets/replacement_badge.dart';
 import '../widgets/status_badge.dart';
 import 'brand_detail_screen.dart';
+import 'detail_screen_helpers.dart';
 
 /// Page de détail d'une sous-catégorie.
 ///
@@ -94,6 +96,12 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // Fil d'Ariane (la macro-catégorie parente n'est pas chargée
+                    // ici → segment unique masqué par DetailBreadcrumb).
+                    DetailBreadcrumb(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      segments: [BreadcrumbSegment(widget.subcategoryName)],
+                    ),
                     // ── En-tête sous-catégorie ──────────────────────────────
                     Text(widget.subcategoryName,
                         style: const TextStyle(
@@ -132,12 +140,8 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
         ),
       );
 
-  Widget _buildSectionHeader(IconData icon, String label) => Row(children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(label,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-      ]);
+  Widget _buildSectionHeader(IconData icon, String label) =>
+      detailSectionHeader(icon, label);
 
   Widget _buildLifespanCard(AppLocalizations l10n) => Card(
         child: Padding(
@@ -256,11 +260,5 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
     );
   }
 
-  Widget _emptyCard(String message) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(message,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-        ),
-      );
+  Widget _emptyCard(String message) => detailEmptyCard(message);
 }

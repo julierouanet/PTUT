@@ -96,13 +96,18 @@ int? computeMttr(List<Issue> issues) {
 
 // ── Widgets partagés ──────────────────────────────────────────────────────────
 
-/// Ligne label / valeur standard du détail équipement
+/// Ligne label / valeur standard du détail équipement.
+///
+/// Si [onTap] est fourni, la valeur devient un lien cliquable (style primary
+/// souligné, cf. fiche équipement → drill-down). Ne jamais passer [onTap] si
+/// l'id cible est null : la ligne doit rester un texte simple non cliquable.
 class DetailInfoRow extends StatelessWidget {
   final String label;
   final String value;
   final IconData? icon;
   final Color? color;
   final bool mono;
+  final VoidCallback? onTap;
 
   const DetailInfoRow(
     this.label,
@@ -111,10 +116,35 @@ class DetailInfoRow extends StatelessWidget {
     this.icon,
     this.color,
     this.mono = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Valeur cliquable (lien) ou texte simple selon la présence de onTap.
+    final Widget valueWidget = onTap != null
+        ? InkWell(
+            onTap: onTap,
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontWeight: FontWeight.w500,
+                fontSize: 13,
+                color: AppColors.primary,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          )
+        : Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: color ?? AppColors.textPrimary,
+              fontFamily: mono ? 'monospace' : null,
+            ),
+          );
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -139,17 +169,7 @@ class DetailInfoRow extends StatelessWidget {
               ],
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-                color: color ?? AppColors.textPrimary,
-                fontFamily: mono ? 'monospace' : null,
-              ),
-            ),
-          ),
+          Expanded(child: valueWidget),
         ],
       ),
     );

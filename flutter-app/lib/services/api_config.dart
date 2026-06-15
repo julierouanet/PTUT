@@ -133,6 +133,7 @@ class ApiConfig {
   // ── Départements (db-service) ─────────────────────────────────────────────────
   static String get departmentsUrl => '$dbBaseUrl/api/departments';
   static String departmentStatsUrl(int id) => '$dbBaseUrl/api/departments/$id/stats';
+  static String departmentDetailUrl(int id) => '$dbBaseUrl/api/departments/$id/detail';
   static String departmentCheckDepsUrl(int id) => '$dbBaseUrl/api/departments/$id/check-dependencies';
 
   // ── Catégories (db-service) ───────────────────────────────────────────────────
@@ -141,6 +142,8 @@ class ApiConfig {
   static String categoriesSubByMacroUrl(int macroId) => '$dbBaseUrl/api/categories/sub?macro_category_id=$macroId';
   static String categoriesSubItemUrl(int id) => '$dbBaseUrl/api/categories/sub/$id';
   static String categoriesSubLifespanUrl(int id) => '$dbBaseUrl/api/categories/sub/$id/lifespan';
+  static String categoryDetailUrl(String name) =>
+      '$dbBaseUrl/api/categories/detail?name=${Uri.encodeComponent(name)}';
 
   // ── Catalogue Fabricant → Modèle (db-service) ─────────────────────────────────
   static String get brandsUrl => '$dbBaseUrl/api/brands';

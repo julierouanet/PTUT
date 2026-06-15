@@ -31,6 +31,9 @@ const BASE_SELECT = `
     es.name   AS subcategory_name,
     emc.name  AS macro_category,
     emc.id    AS macro_category_id_resolved,
+    -- Fabricant rattaché via le modèle catalogue (pour le drill-down fiche équipement)
+    m.brand_id AS brand_id,
+    b.name     AS brand_name,
     -- Nom du remplaçant pointé par e.replaced_by_id (lien « remplacé par → »)
     (SELECT r.name FROM equipment r WHERE r.id = e.replaced_by_id)                 AS replaced_by_name,
     -- Lien inverse : l'équipement réformé que CET équipement remplace
@@ -39,6 +42,8 @@ const BASE_SELECT = `
   FROM equipment e
   LEFT JOIN equipment_subcategories        es  ON es.id  = e.subcategory_id
   LEFT JOIN equipment_macro_categories     emc ON emc.id = e.macro_category_id
+  LEFT JOIN equipment_models               m   ON m.id   = e.model_id
+  LEFT JOIN equipment_brands               b   ON b.id   = m.brand_id
 `;
 
 // Résout macro_category_id à partir de subcategory_id si non fourni explicitement

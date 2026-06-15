@@ -97,6 +97,41 @@ router.get('/sub/:id', verifyToken, (req, res) => {
   res.json({ ...sub, protocols, equipment_count: equipmentCount, equipment, brands });
 });
 
+// ── GET /api/categories/detail?name=<nom> ─────────────────────────────────────
+// Détail d'une catégorie standard (champ texte equipment.category).
+// Lecture seule : équipements de la catégorie + fabricants présents (via modèle).
+// Filtrage par NOM car equipment ne porte pas d'id de catégorie standard.
+router.get('/detail', verifyToken, (req, res) => {
+  const db = getDb();
+  const name = (req.query.name || '').trim();
+  if (!name) return res.status(400).json({ error: 'name requis' });
+
+  // Équipements de la catégorie (tous statuts, comme la fiche sous-catégorie).
+  const equipment = db.prepare(`
+    SELECT id, name, status, department
+    FROM equipment
+    WHERE category = ?
+    ORDER BY name ASC
+  `).all(name);
+
+  // Fabricants présents dans la catégorie via le modèle rattaché aux équipements.
+  const brands = db.prepare(`
+    SELECT
+      b.id,
+      b.name,
+      COUNT(DISTINCT m.id) AS model_count,
+      COUNT(DISTINCT e.id) AS equipment_count
+    FROM equipment e
+    JOIN equipment_models m ON m.id = e.model_id
+    JOIN equipment_brands b ON b.id = m.brand_id
+    WHERE e.category = ?
+    GROUP BY b.id
+    ORDER BY b.name ASC
+  `).all(name);
+
+  res.json({ name, equipment, brands });
+});
+
 // ── POST /api/categories/sub ──────────────────────────────────────────────────
 router.post('/sub', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();

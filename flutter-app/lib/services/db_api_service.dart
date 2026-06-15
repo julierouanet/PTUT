@@ -456,6 +456,14 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Dashboard d'un département : KPIs parc + équipements + incidents ouverts.
+  Future<Map<String, dynamic>> getDepartmentDetail(int id) async {
+    final url = ApiConfig.departmentDetailUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── CATÉGORIES (macro + sous) ──────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getMacroCategories() async {
@@ -502,6 +510,14 @@ class DbApiService {
   /// Détail complet d'une sous-catégorie (protocoles + équipements + fabricants).
   Future<Map<String, dynamic>> getSubCategoryDetail(int id) async {
     final url = ApiConfig.categoriesSubItemUrl(id);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Détail d'une catégorie standard (par nom) : équipements + fabricants présents.
+  Future<Map<String, dynamic>> getCategoryDetail(String name) async {
+    final url = ApiConfig.categoryDetailUrl(name);
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;

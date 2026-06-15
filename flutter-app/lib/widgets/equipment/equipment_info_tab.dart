@@ -6,11 +6,46 @@ import '../status_badge.dart';
 import 'equipment_detail_helpers.dart';
 import 'equipment_qr_dialog.dart';
 
+/// Callbacks de drill-down depuis les métadonnées de la fiche équipement.
+///
+/// Chaque callback est `null` si la cible n'est pas navigable (id absent) :
+/// la ligne correspondante reste alors un texte simple non cliquable.
+class EquipmentLinkHandlers {
+  final VoidCallback? onDepartment;
+  final VoidCallback? onCategory;
+  final VoidCallback? onSubcategory;
+  final VoidCallback? onManufacturer;
+  final VoidCallback? onModel;
+
+  const EquipmentLinkHandlers({
+    this.onDepartment,
+    this.onCategory,
+    this.onSubcategory,
+    this.onManufacturer,
+    this.onModel,
+  });
+}
+
 /// Onglet Informations — vue complète des métadonnées de l'équipement.
+///
+/// En vue complète ([linksEnabled] = true), les métadonnées (département,
+/// catégorie, sous-catégorie, fabricant, modèle) deviennent des liens de
+/// drill-down via [handlers]. En vue staff, [linksEnabled] reste false.
 class EquipmentInfoTab extends StatelessWidget {
   final Equipment equipment;
+  final bool linksEnabled;
+  final EquipmentLinkHandlers handlers;
 
-  const EquipmentInfoTab({super.key, required this.equipment});
+  const EquipmentInfoTab({
+    super.key,
+    required this.equipment,
+    this.linksEnabled = false,
+    this.handlers = const EquipmentLinkHandlers(),
+  });
+
+  /// Retourne le callback à brancher sur une ligne : null si les liens sont
+  /// désactivés (vue staff) ou si la cible n'est pas navigable.
+  VoidCallback? _link(VoidCallback? handler) => linksEnabled ? handler : null;
 
   @override
   Widget build(BuildContext context) {
@@ -80,12 +115,15 @@ class EquipmentInfoTab extends StatelessWidget {
 
             // ── Informations générales ────────────────────────────────
             DetailSectionTitle(l10n.equipmentGeneralSection),
-            DetailInfoRow(l10n.commonDepartment, eq.department),
-            DetailInfoRow(l10n.commonCategory, eq.category),
+            DetailInfoRow(l10n.commonDepartment, eq.department,
+                onTap: _link(handlers.onDepartment)),
+            DetailInfoRow(l10n.commonCategory, eq.category,
+                onTap: _link(handlers.onCategory)),
             if (eq.macroCategory != null && eq.macroCategory!.isNotEmpty)
               DetailInfoRow(l10n.macroCategoryLabel, eq.macroCategory!),
             if (eq.subcategoryName != null && eq.subcategoryName!.isNotEmpty)
-              DetailInfoRow(l10n.subcategoryLabel, eq.subcategoryName!),
+              DetailInfoRow(l10n.subcategoryLabel, eq.subcategoryName!,
+                  onTap: _link(handlers.onSubcategory)),
             if (eq.serialNumber.isNotEmpty)
               DetailInfoRow(l10n.equipmentSerialNumber, eq.serialNumber),
             if (eq.location.isNotEmpty)
@@ -133,9 +171,11 @@ class EquipmentInfoTab extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             if (eq.manufacturer != null && eq.manufacturer!.isNotEmpty)
-              DetailInfoRow(l10n.equipmentManufacturer, eq.manufacturer!),
+              DetailInfoRow(l10n.equipmentManufacturer, eq.manufacturer!,
+                  onTap: _link(handlers.onManufacturer)),
             if (eq.model != null && eq.model!.isNotEmpty)
-              DetailInfoRow(l10n.equipmentModel, eq.model!),
+              DetailInfoRow(l10n.equipmentModel, eq.model!,
+                  onTap: _link(handlers.onModel)),
             if (eq.manufYear != null)
               DetailInfoRow(
                   l10n.equipmentManufYear, eq.manufYear!.toString()),

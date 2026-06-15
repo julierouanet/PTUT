@@ -136,6 +136,14 @@ class Equipment {
   final int? manufYear;
   final String? installDate;
 
+  // ── Rattachement catalogue (Fabricant → Modèle) ────────────────────────
+  /// ID du modèle catalogue (table equipment_models) — null si non rattaché
+  final int? modelId;
+  /// ID du fabricant catalogue (résolu via le modèle) — null si non rattaché
+  final int? brandId;
+  /// Nom du fabricant catalogue (dénormalisé depuis le JOIN API)
+  final String? brandName;
+
   // ── Maintenance préventive (dates ISO YYYY-MM-DD) ──────────────────────
   final String? lastPreventiveMaintenance;
   final String? nextPreventiveMaintenance;
@@ -204,6 +212,9 @@ class Equipment {
     this.model,
     this.manufYear,
     this.installDate,
+    this.modelId,
+    this.brandId,
+    this.brandName,
     this.lastPreventiveMaintenance,
     this.nextPreventiveMaintenance,
     this.subcategoryId,
@@ -280,6 +291,12 @@ class Equipment {
     final rawSubId = json['subcategory_id'];
     final subcategoryId = rawSubId is int ? rawSubId : (rawSubId is String ? int.tryParse(rawSubId) : null);
 
+    // model_id / brand_id : int ou String (typage faible SQLite), null si non rattaché
+    final rawModelId = json['model_id'];
+    final modelId = rawModelId is int ? rawModelId : (rawModelId is String ? int.tryParse(rawModelId) : null);
+    final rawBrandId = json['brand_id'];
+    final brandId = rawBrandId is int ? rawBrandId : (rawBrandId is String ? int.tryParse(rawBrandId) : null);
+
     final rawMacroId = json['macro_category_id'] ?? json['macro_category_id_resolved'];
     final macroCategoryId = rawMacroId is int ? rawMacroId : (rawMacroId is String ? int.tryParse(rawMacroId) : null);
 
@@ -296,6 +313,9 @@ class Equipment {
       model:              json['model']                as String?,
       manufYear:          manufYear,
       installDate:        json['install_date']         as String?,
+      modelId:            modelId,
+      brandId:            brandId,
+      brandName:          json['brand_name']           as String?,
       lastPreventiveMaintenance: json['last_preventive_maintenance'] as String?,
       nextPreventiveMaintenance: json['next_preventive_maintenance'] as String?,
       subcategoryId:      subcategoryId,
@@ -376,6 +396,9 @@ class Equipment {
     String? model,
     int? manufYear,
     String? installDate,
+    int? modelId,
+    int? brandId,
+    String? brandName,
     String? lastPreventiveMaintenance,
     String? nextPreventiveMaintenance,
     int? subcategoryId,
@@ -414,6 +437,9 @@ class Equipment {
       model: model ?? this.model,
       manufYear: manufYear ?? this.manufYear,
       installDate: installDate ?? this.installDate,
+      modelId: modelId ?? this.modelId,
+      brandId: brandId ?? this.brandId,
+      brandName: brandName ?? this.brandName,
       lastPreventiveMaintenance: lastPreventiveMaintenance ?? this.lastPreventiveMaintenance,
       nextPreventiveMaintenance: nextPreventiveMaintenance ?? this.nextPreventiveMaintenance,
       subcategoryId: subcategoryId ?? this.subcategoryId,

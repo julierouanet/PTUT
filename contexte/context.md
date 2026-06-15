@@ -625,7 +625,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | Methode | Route                           | Auth              | Description                                      |
 |---------|---------------------------------|-------------------|--------------------------------------------------|
 | GET     | /api/equipment                  | Auth              | Liste (filtres: department, status, category, **macro_category**, **macro_category_id**). **Exclut `status='Disposed'` par défaut** (sauf `?include_disposed=true` ou `?status=Disposed`). Retourne maintenanceHistory + futureMaintenance + **macro_category** + **subcategory_name** + **replaced_by_name**/**replaces_id**/**replaces_name** (liens de remplacement) |
-| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** + **pmPlan** (fréquence + dernière date) |
+| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** + **pmPlan** (fréquence + dernière date). **[NOUVEAU]** Expose `model_id`, `brand_id`, `brand_name`, `subcategory_id`, `subcategory_name` (LEFT JOIN catalogue, `null` si non rattaché) pour le drill-down de la fiche |
 | POST    | /api/equipment                  | Admin/Supervisor  | Creer (required: id, name, department, category) + optionnel: **subcategory_id**, **warranty_end_date**, **criticality** |
 | PUT     | /api/equipment/:id              | Admin/Sup/Tech    | Modifier (COALESCE, partial update) + nouveaux champs GMAO |
 | DELETE  | /api/equipment/:id              | Admin             | Supprimer (snapshot audit, ?reason=). **[GARDE-FOU]** Si historique (issues/maintenance/tags/documents) → `409 {hasHistory:true}` sauf `?force=true` (purge l'équipement + son historique, `details.forced=true`) |
@@ -648,6 +648,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/categories/macro    | Auth  | Liste des 3 macro-catégories (Biomedical, Infrastructure, IT) |
 | GET     | /api/categories/sub      | Auth  | Liste sous-catégories (filtre: ?macro_category_id=). Inclut equipment_count |
 | GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + `protocols` (PM) + `equipment_count` + **[NOUVEAU]** `equipment` (liste) + `brands` (fabricants présents, avec model_count/equipment_count) |
+| GET     | /api/categories/detail   | Auth  | **[NOUVEAU]** Détail d'une catégorie standard par nom (`?name=`). Retourne `{name, equipment:[{id,name,status,department}], brands:[{id,name,model_count,equipment_count}]}`. Lecture seule (drill-down fiche équipement) |
 | PUT     | /api/categories/sub/:id/lifespan | Admin | **[NOUVEAU]** Durée de vie de référence (RA3 S5). Body `{expected_lifespan_years: int>=0\|null}`. `logAction('update_subcategory_lifespan')` |
 
 ### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**
@@ -740,6 +741,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 |---|---|---|---|
 | GET | /api/departments | Auth | Liste des départements |
 | GET | /api/departments/:id/stats | Auth | Statistiques d'un département |
+| GET | /api/departments/:id/detail | Auth | **[NOUVEAU]** Dashboard département (lecture seule). Retourne `{id, name, kpis:{total,operational,maintenance,outOfService,pmOverdue}, equipment:[{id,name,status,category}], openIssues:[{id,type,description,status,urgency}]}`. KPIs/équipements via `department_id` ; incidents via `department=name` |
 | GET | /api/departments/:id/check-dependencies | Admin | Vérifie les dépendances avant suppression |
 | POST | /api/departments | Admin | Créer |
 | PUT | /api/departments/:id | Admin | Modifier |
@@ -851,7 +853,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 ```
 lib/
 ├── main.dart              # Point d'entree, navigation, module hub
-├── screens/               # 15 ecrans
+├── screens/               # 25 ecrans
 │   ├── login_screen.dart
 │   ├── dashboard_screen.dart
 │   ├── equipment_list_screen.dart
@@ -869,6 +871,8 @@ lib/
 │   ├── equipment_hub_screen.dart       # [NOUVEAU] Conteneur Équipements : onglets « Liste » | « Catégories » (Catégories si permission manageCategories)
 │   ├── brand_detail_screen.dart        # [NOUVEAU] Détail fabricant : modèles (CRUD admin) dans le contexte de la sous-catégorie
 │   ├── model_detail_screen.dart        # [NOUVEAU] Fiche modèle : équipements + documents (upload/delete) + protocoles PM (lier/délier)
+│   ├── category_detail_screen.dart     # [NOUVEAU] Fiche catégorie standard : équipements (→ détail) + fabricants présents (lecture seule, drill-down)
+│   ├── department_detail_screen.dart   # [NOUVEAU] Dashboard département : KPIs parc + équipements (→ détail) + incidents ouverts (lecture seule)
 │   └── home_hub_screen.dart
 ├── services/
 │   ├── auth_service.dart        # Singleton, login/logout/session
@@ -1011,7 +1015,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (23 fichiers dans `lib/screens/` — audit 2026-06-10)
+## 3.4 Ecrans (25 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|

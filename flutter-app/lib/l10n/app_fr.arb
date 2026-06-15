@@ -1945,6 +1945,10 @@
   "brandModelsSection": "Modèles",
   "brandNoModels": "Aucun modèle pour ce fabricant",
 
+  "categoryDetailTitle": "Détail de la catégorie",
+  "departmentDetailTitle": "Détail du département",
+  "departmentOpenIssuesSection": "Incidents ouverts",
+
   "modelDetailTitle": "Fiche du modèle",
   "modelEquipmentSection": "Équipements",
   "modelDocumentsSection": "Documents",

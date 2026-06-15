@@ -4900,6 +4900,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get brandNoModels => 'Aucun modèle pour ce fabricant';
 
   @override
+  String get categoryDetailTitle => 'Détail de la catégorie';
+
+  @override
+  String get departmentDetailTitle => 'Détail du département';
+
+  @override
+  String get departmentOpenIssuesSection => 'Incidents ouverts';
+
+  @override
   String get modelDetailTitle => 'Fiche du modèle';
 
   @override

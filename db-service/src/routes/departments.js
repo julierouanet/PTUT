@@ -45,6 +45,66 @@ router.get('/:id/stats', verifyToken, (req, res) => {
   res.json({ equipment_count, open_issues_count });
 });
 
+// ── GET /api/departments/:id/detail ───────────────────────────────────────────
+// Dashboard d'un département (lecture seule) : KPIs parc + équipements + incidents
+// ouverts. Les KPIs/équipements filtrent par department_id ; les incidents par
+// nom (issues.department est un texte, comme dans /stats et la liste).
+router.get('/:id/detail', verifyToken, (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
+
+  const dept = db.prepare('SELECT id, name FROM departments WHERE id = ?').get(id);
+  if (!dept) return res.status(404).json({ error: 'Département introuvable' });
+
+  // KPIs parc : compteurs par statut (hors réformés pour le total actif) + PM en retard.
+  // pmOverdue = même logique que l'alerte PM « due » (échéance dépassée), hors réformés.
+  const kpis = db.prepare(`
+    SELECT
+      COUNT(*)                                                              AS total,
+      SUM(CASE WHEN status = 'Operational'    THEN 1 ELSE 0 END)            AS operational,
+      SUM(CASE WHEN status = 'Maintenance'    THEN 1 ELSE 0 END)            AS maintenance,
+      SUM(CASE WHEN status = 'Out of service' THEN 1 ELSE 0 END)            AS outOfService,
+      SUM(CASE
+            WHEN next_preventive_maintenance IS NOT NULL
+             AND date(next_preventive_maintenance) < date('now','localtime')
+            THEN 1 ELSE 0 END)                                              AS pmOverdue
+    FROM equipment
+    WHERE department_id = ? AND status != 'Disposed'
+  `).get(id);
+
+  // Équipements actifs du département.
+  const equipment = db.prepare(`
+    SELECT id, name, status, category
+    FROM equipment
+    WHERE department_id = ? AND status != 'Disposed'
+    ORDER BY name ASC
+  `).all(id);
+
+  // Incidents ouverts (statuts non terminaux).
+  const openIssues = db.prepare(`
+    SELECT id, type, description, status, urgency
+    FROM issues
+    WHERE department = ?
+      AND status IN ('Reported','Acknowledged','Assigned','In Progress','Waiting Materials','Redirected')
+    ORDER BY created_at DESC
+  `).all(dept.name);
+
+  res.json({
+    id: dept.id,
+    name: dept.name,
+    kpis: {
+      total:        kpis.total        || 0,
+      operational:  kpis.operational  || 0,
+      maintenance:  kpis.maintenance  || 0,
+      outOfService: kpis.outOfService || 0,
+      pmOverdue:    kpis.pmOverdue    || 0,
+    },
+    equipment,
+    openIssues,
+  });
+});
+
 // ── GET /api/departments/:id/check-dependencies ───────────────────────────────
 router.get('/:id/check-dependencies', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();

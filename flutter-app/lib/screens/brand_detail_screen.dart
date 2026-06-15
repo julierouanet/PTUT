@@ -5,7 +5,9 @@ import '../models/user_role.dart';
 import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/detail_breadcrumb.dart';
 import 'model_detail_screen.dart';
+import 'subcategory_detail_screen.dart';
 
 /// Page de détail d'un fabricant, dans le contexte d'une sous-catégorie.
 ///
@@ -102,6 +104,22 @@ class _BrandDetailScreenState extends State<BrandDetailScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // Fil d'Ariane : Sous-catégorie (cliquable) › Fabricant courant.
+                    DetailBreadcrumb(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      segments: [
+                        BreadcrumbSegment(widget.subcategoryName, onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SubcategoryDetailScreen(
+                              subcategoryId: widget.subcategoryId,
+                              subcategoryName: widget.subcategoryName,
+                            ),
+                          ),
+                        )),
+                        BreadcrumbSegment(_brandName),
+                      ],
+                    ),
                     Text(_brandName,
                         style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold,

@@ -1923,6 +1923,10 @@
   "brandModelsSection": "Models",
   "brandNoModels": "No model for this manufacturer",
 
+  "categoryDetailTitle": "Category details",
+  "departmentDetailTitle": "Department details",
+  "departmentOpenIssuesSection": "Open issues",
+
   "modelDetailTitle": "Model sheet",
   "modelEquipmentSection": "Equipment",
   "modelDocumentsSection": "Documents",

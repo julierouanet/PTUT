@@ -11,7 +11,10 @@ import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/open_blob_url.dart';
+import '../widgets/detail_breadcrumb.dart';
 import '../widgets/status_badge.dart';
+import 'detail_screen_helpers.dart';
+import 'subcategory_detail_screen.dart';
 
 /// Fiche technique d'un modèle (couple fabricant + modèle).
 ///
@@ -96,6 +99,23 @@ class _ModelDetailScreenState extends State<ModelDetailScreen> {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    // Fil d'Ariane : Sous-catégorie (cliquable) › Modèle courant.
+                    // Le fabricant est omis (pas d'id fabricant dans ce contexte).
+                    DetailBreadcrumb(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      segments: [
+                        BreadcrumbSegment(widget.subcategoryName, onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SubcategoryDetailScreen(
+                              subcategoryId: widget.subcategoryId,
+                              subcategoryName: widget.subcategoryName,
+                            ),
+                          ),
+                        )),
+                        BreadcrumbSegment(widget.modelName),
+                      ],
+                    ),
                     // ── En-tête ─────────────────────────────────────────────
                     Text(widget.modelName,
                         style: const TextStyle(
@@ -143,19 +163,10 @@ class _ModelDetailScreenState extends State<ModelDetailScreen> {
     );
   }
 
-  Widget _sectionHeader(IconData icon, String label) => Row(children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-      ]);
+  Widget _sectionHeader(IconData icon, String label) =>
+      detailSectionHeader(icon, label);
 
-  Widget _emptyCard(String message) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(message,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-        ),
-      );
+  Widget _emptyCard(String message) => detailEmptyCard(message);
 
   Widget _buildEquipment(AppLocalizations l10n) {
     if (_equipment.isEmpty) return _emptyCard(l10n.settingsEmptyList);

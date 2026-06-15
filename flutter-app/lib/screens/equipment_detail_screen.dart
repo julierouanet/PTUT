@@ -7,7 +7,13 @@ import '../services/auth_service.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/detail_breadcrumb.dart';
 import '../widgets/replacement_badge.dart';
+import 'brand_detail_screen.dart';
+import 'category_detail_screen.dart';
+import 'department_detail_screen.dart';
+import 'model_detail_screen.dart';
+import 'subcategory_detail_screen.dart';
 import '../widgets/equipment/equipment_decommission_dialog.dart';
 import '../widgets/equipment/equipment_critical_banner.dart';
 import '../widgets/equipment/equipment_documents_tab.dart';
@@ -319,6 +325,8 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
         ),
         body: Column(
           children: [
+            // Fil d'Ariane cliquable (vue complète) en tête du body
+            _buildBreadcrumb(eq),
             // Bannière critique persistante au-dessus des onglets
             EquipmentCriticalBanner(equipment: eq),
             _buildNotificationsBanner(l10n),
@@ -326,7 +334,11 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
               child: TabBarView(
                 children: [
                   // ── Onglet 1 : Informations ──────────────────────
-                  EquipmentInfoTab(equipment: eq),
+                  EquipmentInfoTab(
+                    equipment: eq,
+                    linksEnabled: true,
+                    handlers: _buildLinkHandlers(eq),
+                  ),
 
                   // ── Onglet 2 : Maintenance ───────────────────────
                   EquipmentMaintenanceTab(
@@ -452,6 +464,96 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
         ),
       ),
     ]);
+  }
+
+  // ── Métadonnées cliquables : drill-down (vue complète uniquement) ─────────────
+
+  /// Construit les callbacks de navigation. Chaque callback est null si la cible
+  /// n'est pas navigable (id absent) → la ligne reste un texte simple.
+  EquipmentLinkHandlers _buildLinkHandlers(Equipment eq) {
+    final hasSub = eq.subcategoryId != null && (eq.subcategoryName ?? '').isNotEmpty;
+    return EquipmentLinkHandlers(
+      onDepartment: eq.department.isNotEmpty ? () => _openDepartment(eq.department) : null,
+      onCategory: eq.category.isNotEmpty
+          ? () => _push(CategoryDetailScreen(categoryName: eq.category))
+          : null,
+      onSubcategory: hasSub ? () => _openSubcategory(eq) : null,
+      // Fabricant / modèle : nécessitent le contexte sous-catégorie (ctor des fiches).
+      onManufacturer: (eq.brandId != null && (eq.brandName ?? '').isNotEmpty && hasSub)
+          ? () => _openBrand(eq)
+          : null,
+      onModel: (eq.modelId != null && hasSub) ? () => _openModel(eq) : null,
+    );
+  }
+
+  /// Fil d'Ariane de la fiche équipement : [Département, Sous-catégorie, Équipement].
+  /// Les segments dont le parent est inconnu sont omis.
+  Widget _buildBreadcrumb(Equipment eq) {
+    final segments = <BreadcrumbSegment>[];
+    if (eq.department.isNotEmpty) {
+      segments.add(BreadcrumbSegment(eq.department, onTap: () => _openDepartment(eq.department)));
+    }
+    if (eq.subcategoryId != null && (eq.subcategoryName ?? '').isNotEmpty) {
+      segments.add(BreadcrumbSegment(eq.subcategoryName!, onTap: () => _openSubcategory(eq)));
+    }
+    segments.add(BreadcrumbSegment(eq.name));
+    return DetailBreadcrumb(segments: segments);
+  }
+
+  void _push(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _openSubcategory(Equipment eq) => _push(SubcategoryDetailScreen(
+        subcategoryId: eq.subcategoryId!,
+        subcategoryName: eq.subcategoryName!,
+        isBiomedical: eq.macroCategory == 'Biomedical',
+      ));
+
+  void _openBrand(Equipment eq) => _push(BrandDetailScreen(
+        brandId: eq.brandId!,
+        brandName: eq.brandName!,
+        subcategoryId: eq.subcategoryId!,
+        subcategoryName: eq.subcategoryName!,
+      ));
+
+  void _openModel(Equipment eq) => _push(ModelDetailScreen(
+        modelId: eq.modelId!,
+        modelName: eq.model ?? '',
+        brandName: eq.brandName ?? '',
+        subcategoryId: eq.subcategoryId!,
+        subcategoryName: eq.subcategoryName!,
+      ));
+
+  /// Résout l'id du département à partir de son nom (côté client) puis ouvre
+  /// son dashboard. Échec silencieux (snackbar) si le nom n'a pas d'entrée.
+  Future<void> _openDepartment(String name) async {
+    final l10n = AppLocalizations.of(context)!;
+    try {
+      final depts = await DbApiService.instance.getDepartments();
+      final match = depts.firstWhere(
+        (d) => (d['name'] as String?) == name,
+        orElse: () => const {},
+      );
+      final id = (match['id'] as num?)?.toInt();
+      if (!mounted) return;
+      if (id == null) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.commonApiError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+        return;
+      }
+      _push(DepartmentDetailScreen(departmentId: id, departmentName: name));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.commonApiError),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   // ── Réforme (soft delete) — admin only ────────────────────────────────────────

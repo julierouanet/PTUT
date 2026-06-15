@@ -9000,6 +9000,24 @@ abstract class AppLocalizations {
   /// **'Aucun modèle pour ce fabricant'**
   String get brandNoModels;
 
+  /// No description provided for @categoryDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail de la catégorie'**
+  String get categoryDetailTitle;
+
+  /// No description provided for @departmentDetailTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail du département'**
+  String get departmentDetailTitle;
+
+  /// No description provided for @departmentOpenIssuesSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents ouverts'**
+  String get departmentOpenIssuesSection;
+
   /// No description provided for @modelDetailTitle.
   ///
   /// In fr, this message translates to:
