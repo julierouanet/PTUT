@@ -91,17 +91,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // ── KPIs GMAO ─────────────────────────────────────────────────────────────
 
-  /// MTTR approximé : délai moyen entre `created_at` et `taken_at` pour les
-  /// incidents clôturés (completed / verified / closed) ayant un `taken_at`.
+  /// MTTR : temps moyen de réparation des incidents clôturés
+  /// (completed / verified / closed), en JOURS (null = données insuffisantes).
   ///
-  /// Un MTTR strict nécessiterait un champ `resolved_at` côté backend.
-  /// La valeur retournée est en JOURS (null = données insuffisantes).
+  /// Priorité à la donnée réelle : si un rapport d'intervention finalisé existe
+  /// avec `reportDurationHours`, c'est le temps de réparation effectif saisi par
+  /// le technicien. À défaut, on retombe sur l'approximation `created_at →
+  /// taken_at` (délai de prise en charge), faute de `resolved_at` en base.
   double? _computeMttr(List<Issue> issues) {
     final resolved = issues.where((i) {
       final done = i.status == IssueStatus.completed ||
                    i.status == IssueStatus.verified  ||
                    i.status == IssueStatus.closed;
-      return done && (i.takenAt?.isNotEmpty ?? false);
+      // Conserver si on a une durée réelle OU un taken_at exploitable.
+      return done &&
+          ((i.reportDurationHours != null) || (i.takenAt?.isNotEmpty ?? false));
     }).toList();
 
     if (resolved.isEmpty) return null;
@@ -110,6 +114,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
     int    count      = 0;
 
     for (final issue in resolved) {
+      // 1) Durée réelle issue du rapport finalisé (prioritaire).
+      if (issue.reportDurationHours != null && issue.reportDurationHours! >= 0) {
+        totalHours += issue.reportDurationHours!;
+        count++;
+        continue;
+      }
+      // 2) Fallback : délai created_at → taken_at (en heures).
       try {
         final created = DateTime.parse(issue.createdAt.substring(0, 10));
         final taken   = DateTime.parse(issue.takenAt!.substring(0, 10));
@@ -122,6 +133,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     return count == 0 ? null : totalHours / count / 24.0;
+  }
+
+  /// Coût de maintenance de la période : somme des `estimated_cost` des rapports
+  /// d'intervention finalisés sur les incidents fournis (RWF). 0 si aucun.
+  double _computeMaintenanceCost(List<Issue> issues) {
+    double total = 0;
+    for (final i in issues) {
+      if (i.reportEstimatedCost != null && i.reportEstimatedCost! > 0) {
+        total += i.reportEstimatedCost!;
+      }
+    }
+    return total;
   }
 
   /// Conformité PM : ratio d'équipements avec PM planifiée dont la date
@@ -175,6 +198,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final range  = _effectiveRange();
       final issues = _issuesInPeriod(range);
       final mttr   = _computeMttr(issues);
+      final cost   = _computeMaintenanceCost(issues);
       final (pmCompliant, pmTotal) = _computePmCompliance();
 
       final startStr = _fmtDate(range.start);
@@ -207,6 +231,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         ..writeln('INDICATEURS GMAO')
         ..writeln('Indicateur;Valeur')
         ..writeln('${l10n.reportsMttr};$mttrStr')
+        ..writeln('${l10n.reportsMaintenanceCost};${cost.toStringAsFixed(0)} RWF')
         ..writeln('${l10n.reportsPmCompliance};$pmStr')
         ..writeln('${l10n.reportsResolutionRate};$resolutionStr')
         ..writeln('')
@@ -256,6 +281,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final range        = _effectiveRange();
       final issues       = _issuesInPeriod(range);
       final mttr         = _computeMttr(issues);
+      final cost         = _computeMaintenanceCost(issues);
       final (compliant, total) = _computePmCompliance();
       final topDepts     = _topDepartments(issues);
       final user         = AuthService().currentUser;
@@ -270,6 +296,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         allEquipment:    DataService().equipment,
         periodIssues:    issues,
         mttrDays:        mttr,
+        maintenanceCost: cost,
         pmCompliant:     compliant,
         pmTotal:         total,
         topDepartments:  topDepts,
@@ -441,6 +468,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
       final issues                = _issuesInPeriod(range);
       final mttr                  = _computeMttr(issues);
+      final cost                  = _computeMaintenanceCost(issues);
       final (pmCompliant, pmTotal) = _computePmCompliance();
       final topDepts              = _topDepartments(issues);
       final user                  = AuthService().currentUser;
@@ -455,6 +483,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         allEquipment:    DataService().equipment,
         periodIssues:    issues,
         mttrDays:        mttr,
+        maintenanceCost: cost,
         pmCompliant:     pmCompliant,
         pmTotal:         pmTotal,
         topDepartments:  topDepts,
@@ -709,6 +738,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
         // KPIs GMAO
         final mttrDays                  = _computeMttr(periodIssues);
+        final maintenanceCost           = _computeMaintenanceCost(periodIssues);
         final (pmCompliant, pmTotal)    = _computePmCompliance();
         final topDepts                  = _topDepartments(periodIssues);
 
@@ -742,10 +772,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               _buildSectionHeader(l10n.reportsKpiSectionTitle, Icons.analytics_outlined),
               const SizedBox(height: 12),
               ReportKpiSection(
-                mttrDays:       mttrDays,
-                pmCompliant:    pmCompliant,
-                pmTotal:        pmTotal,
-                topDepartments: topDepts,
+                mttrDays:        mttrDays,
+                maintenanceCost: maintenanceCost,
+                pmCompliant:     pmCompliant,
+                pmTotal:         pmTotal,
+                topDepartments:  topDepts,
               ),
               const SizedBox(height: 24),
 

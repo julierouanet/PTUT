@@ -4975,4 +4975,114 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get catalogNoProtocolToLink => 'Aucun protocole disponible à lier';
+
+  @override
+  String get interventionReportSection => 'Rapport d\'intervention';
+
+  @override
+  String get interventionReportDraftBadge => 'Brouillon';
+
+  @override
+  String get interventionReportFinalizedBadge => 'Finalisé';
+
+  @override
+  String get interventionReportLoadError =>
+      'Erreur lors du chargement du rapport';
+
+  @override
+  String get interventionReportPrefillTitle =>
+      'Données de l\'incident (lecture seule)';
+
+  @override
+  String get interventionReportSummaryLabel => 'Résumé de l\'intervention';
+
+  @override
+  String get interventionReportSummaryHint =>
+      'Décrivez ce qui a été réalisé sur l\'équipement';
+
+  @override
+  String get interventionReportRootCauseLabel => 'Cause racine';
+
+  @override
+  String get interventionReportRootCauseHint => 'Origine du problème';
+
+  @override
+  String get interventionReportRecommendationsLabel => 'Recommandations';
+
+  @override
+  String get interventionReportRecommendationsHint =>
+      'Mesures préventives, pièces à prévoir…';
+
+  @override
+  String get interventionReportDurationLabel => 'Durée (heures)';
+
+  @override
+  String get interventionReportReturnedAtLabel => 'Remise en service le';
+
+  @override
+  String get interventionReportCostLabel => 'Coût estimé (RWF)';
+
+  @override
+  String get interventionReportFinalStatusLabel =>
+      'État final de l\'équipement';
+
+  @override
+  String get interventionReportAuthorLabel => 'Rédigé par';
+
+  @override
+  String get interventionReportValidatedByLabel => 'Validé par';
+
+  @override
+  String get interventionReportSaveButton => 'Enregistrer';
+
+  @override
+  String get interventionReportSaved => 'Rapport enregistré';
+
+  @override
+  String get interventionReportSaveError => 'Erreur lors de l\'enregistrement';
+
+  @override
+  String get interventionReportFinalizeButton => 'Finaliser';
+
+  @override
+  String get interventionReportFinalized => 'Rapport finalisé et archivé';
+
+  @override
+  String get interventionReportFinalizeError =>
+      'Finalisation impossible (incident non résolu ?)';
+
+  @override
+  String get interventionReportReopenButton => 'Rouvrir';
+
+  @override
+  String get interventionReportReopened => 'Rapport rouvert';
+
+  @override
+  String get interventionReportReopenError => 'Réouverture impossible';
+
+  @override
+  String get interventionReportExportButton => 'Exporter PDF';
+
+  @override
+  String get interventionReportExportError =>
+      'Erreur lors de la génération du PDF';
+
+  @override
+  String get interventionReportArchived =>
+      'PDF archivé dans la fiche équipement';
+
+  @override
+  String get interventionReportLockedHint =>
+      'Rapport finalisé : modification réservée aux administrateurs';
+
+  @override
+  String get interventionReportEmptyReadonly =>
+      'Aucun rapport d\'intervention n\'a encore été rédigé';
+
+  @override
+  String get reportsMaintenanceCost => 'Coût de maintenance';
+
+  @override
+  String get reportsMaintenanceCostHint =>
+      'Somme des rapports finalisés (période)';
 }

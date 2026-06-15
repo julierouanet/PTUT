@@ -164,6 +164,9 @@ class Issue {
   final String? diagnosis;
   final String? actions;
   final String? partsReplaced;
+  // Données du rapport d'intervention finalisé (LEFT JOIN serveur — KPIs).
+  final double? reportDurationHours;
+  final double? reportEstimatedCost;
 
   const Issue({
     required this.id,
@@ -187,10 +190,23 @@ class Issue {
     this.diagnosis,
     this.actions,
     this.partsReplaced,
+    this.reportDurationHours,
+    this.reportEstimatedCost,
   });
 
   /// Meilleur libellé disponible pour cet incident (équipement, lieu, ou département).
   String get displayName => equipmentName ?? locationId ?? department;
+
+  /// Vrai si l'incident est pris en charge : un technicien est assigné OU le
+  /// statut a dépassé le simple signalement.
+  bool get isHandled =>
+      (assignedTechnician?.isNotEmpty ?? false) ||
+      status == IssueStatus.inProgress ||
+      status == IssueStatus.assigned ||
+      status == IssueStatus.waitingMaterials ||
+      status == IssueStatus.completed ||
+      status == IssueStatus.verified ||
+      status == IssueStatus.closed;
 
   factory Issue.fromApiJson(Map<String, dynamic> json) {
     return Issue(
@@ -215,6 +231,8 @@ class Issue {
       diagnosis:          json['diagnosis']            as String?,
       actions:            json['actions']              as String?,
       partsReplaced:      json['parts_replaced']       as String?,
+      reportDurationHours: (json['report_duration_hours'] as num?)?.toDouble(),
+      reportEstimatedCost: (json['report_estimated_cost'] as num?)?.toDouble(),
     );
   }
 
@@ -240,6 +258,8 @@ class Issue {
     String? diagnosis,
     String? actions,
     String? partsReplaced,
+    double? reportDurationHours,
+    double? reportEstimatedCost,
   }) {
     return Issue(
       id:                 id                ?? this.id,
@@ -263,6 +283,8 @@ class Issue {
       diagnosis:          diagnosis         ?? this.diagnosis,
       actions:            actions           ?? this.actions,
       partsReplaced:      partsReplaced     ?? this.partsReplaced,
+      reportDurationHours: reportDurationHours ?? this.reportDurationHours,
+      reportEstimatedCost: reportEstimatedCost ?? this.reportEstimatedCost,
     );
   }
 }

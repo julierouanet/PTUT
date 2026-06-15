@@ -36,6 +36,7 @@ class PdfReportService {
     required int pmTotal,
     required List<MapEntry<String, int>> topDepartments,
     required List<InventoryItem> inventory,
+    double maintenanceCost = 0,
   }) async {
     final doc  = pw.Document();
     final now  = DateTime.now();
@@ -271,10 +272,24 @@ class PdfReportService {
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'Calculé sur les incidents clôturés (Completed / Verified / Closed) '
-                  'ayant une date de prise en charge (taken_at) enregistrée. '
-                  'Délai = taken_at − created_at. '
-                  'Un MTTR strict nécessiterait un champ resolved_at côté backend.',
+                  'Priorité à la durée réelle saisie dans les rapports d\'intervention '
+                  'finalisés (duration_hours). À défaut : délai taken_at − created_at '
+                  'sur les incidents clôturés (Completed / Verified / Closed).',
+                  style: const pw.TextStyle(fontSize: 7, color: _textMuted),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  'Coût de maintenance (période) : ${maintenanceCost.toStringAsFixed(0)} RWF',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    color: maintenanceCost > 0 ? _primary : _textMuted,
+                  ),
+                ),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Somme des coûts estimés (estimated_cost) des rapports d\'intervention '
+                  'finalisés sur la période.',
                   style: const pw.TextStyle(fontSize: 7, color: _textMuted),
                 ),
               ],
@@ -405,6 +420,177 @@ class PdfReportService {
     );
 
     return doc.save();
+  }
+
+  // ── Rapport d'intervention par incident ─────────────────────────────────────
+
+  /// Construit le PDF d'un rapport d'intervention pour un incident donné.
+  /// Reçoit le rapport (champs structurés + pré-remplissage live de l'incident)
+  /// déjà chargé par l'écran — aucun appel API ici (génération 100% client).
+  static Future<Uint8List> generateInterventionReport({
+    required Map<String, dynamic> report,
+    required String issueId,
+    required String generatedByName,
+    required String generatedByRole,
+  }) async {
+    final doc = pw.Document();
+    final now = DateTime.now();
+
+    String s(dynamic v) => (v == null || v.toString().isEmpty) ? '—' : v.toString();
+    double? n(dynamic v) =>
+        v == null ? null : (v is num ? v.toDouble() : double.tryParse(v.toString()));
+
+    final equipmentName = s(report['equipment_name']);
+    final equipmentId   = report['equipment_id'] as String?;
+    final issueStatus   = s(report['issue_status']);
+    final isFinalized   = (report['report_status'] as String?) == 'finalized';
+
+    final durationHours = n(report['duration_hours']);
+    final estimatedCost = n(report['estimated_cost']);
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        header: (context) => _buildInterventionHeader(now, generatedByName, generatedByRole, isFinalized),
+        footer: (context) => _buildFooter(context),
+        build: (context) => [
+          // ── Section 1 : Identité incident + équipement ─────────────────
+          _sectionTitle('1. INCIDENT & ÉQUIPEMENT'),
+          _twoColTextTable([
+            MapEntry('Référence incident', issueId),
+            MapEntry('Équipement', equipmentName),
+            if (equipmentId != null) MapEntry('Identifiant équipement', equipmentId),
+            MapEntry('Statut incident', issueStatus),
+          ]),
+
+          // ── Section 2 : Diagnostic & actions (live incident) ────────────
+          _sectionTitle('2. DIAGNOSTIC, ACTIONS & PIÈCES'),
+          _labelledBlock('Diagnostic', s(report['diagnosis'])),
+          _labelledBlock('Actions réalisées', s(report['actions'])),
+          _labelledBlock('Pièces remplacées', s(report['parts_replaced'])),
+
+          // ── Section 3 : Rapport structuré ──────────────────────────────
+          _sectionTitle('3. RAPPORT D\'INTERVENTION'),
+          _labelledBlock('Résumé', s(report['summary'])),
+          _labelledBlock('Cause racine', s(report['root_cause'])),
+          _labelledBlock('Recommandations', s(report['recommendations'])),
+          pw.SizedBox(height: 6),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Durée (heures)',
+                durationHours == null ? 'N/A' : durationHours.toStringAsFixed(1), _primary)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Coût estimé (RWF)',
+                estimatedCost == null ? 'N/A' : estimatedCost.toStringAsFixed(0), _warning)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('État final équipement',
+                s(report['final_equipment_status']), _success)),
+          ]),
+          pw.SizedBox(height: 6),
+          _twoColTextTable([
+            MapEntry('Remise en service le', s(report['returned_to_service_at'])),
+          ]),
+
+          // ── Section 4 : Signatures ─────────────────────────────────────
+          _sectionTitle('4. VALIDATION'),
+          _twoColTextTable([
+            MapEntry('Rédigé par', s(report['author_name'])),
+            MapEntry('Validé par', s(report['validated_by_name'])),
+            MapEntry('Date de validation', s(report['validated_at'])),
+            MapEntry('Statut du rapport', isFinalized ? 'Finalisé' : 'Brouillon'),
+          ]),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  // En-tête dédié du rapport d'intervention
+  static pw.Widget _buildInterventionHeader(DateTime now, String byName, String byRole, bool isFinalized) {
+    return pw.Column(children: [
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const pw.BoxDecoration(
+          color: _primary,
+          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('RAPPORT D\'INTERVENTION',
+                    style: pw.TextStyle(
+                        color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('Hôpital de District de Kabutare — Rwanda',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Par : $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text(isFinalized ? 'Statut : FINALISÉ' : 'Statut : BROUILLON',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      pw.SizedBox(height: 6),
+    ]);
+  }
+
+  // Tableau libellé / valeur texte (2 colonnes)
+  static pw.Widget _twoColTextTable(List<MapEntry<String, String>> rows) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: _border),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(2),
+        1: pw.FlexColumnWidth(4),
+      },
+      children: rows
+          .map((e) => pw.TableRow(children: [
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                  child: pw.Text(e.key,
+                      style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                ),
+                pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+                  child: pw.Text(e.value, style: const pw.TextStyle(fontSize: 8)),
+                ),
+              ]))
+          .toList(),
+    );
+  }
+
+  // Bloc « libellé + texte multi-ligne »
+  static pw.Widget _labelledBlock(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 6),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          _subTitle(label),
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(6),
+            decoration: pw.BoxDecoration(
+              color: _bgLight,
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.Text(value, style: const pw.TextStyle(fontSize: 8)),
+          ),
+        ],
+      ),
+    );
   }
 
   // En-tête dédié du plan de remplacement (sans période)

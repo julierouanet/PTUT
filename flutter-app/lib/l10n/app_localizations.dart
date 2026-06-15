@@ -9143,6 +9143,204 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun protocole disponible à lier'**
   String get catalogNoProtocolToLink;
+
+  /// No description provided for @interventionReportSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport d\'intervention'**
+  String get interventionReportSection;
+
+  /// No description provided for @interventionReportDraftBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Brouillon'**
+  String get interventionReportDraftBadge;
+
+  /// No description provided for @interventionReportFinalizedBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Finalisé'**
+  String get interventionReportFinalizedBadge;
+
+  /// No description provided for @interventionReportLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du chargement du rapport'**
+  String get interventionReportLoadError;
+
+  /// No description provided for @interventionReportPrefillTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données de l\'incident (lecture seule)'**
+  String get interventionReportPrefillTitle;
+
+  /// No description provided for @interventionReportSummaryLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résumé de l\'intervention'**
+  String get interventionReportSummaryLabel;
+
+  /// No description provided for @interventionReportSummaryHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez ce qui a été réalisé sur l\'équipement'**
+  String get interventionReportSummaryHint;
+
+  /// No description provided for @interventionReportRootCauseLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cause racine'**
+  String get interventionReportRootCauseLabel;
+
+  /// No description provided for @interventionReportRootCauseHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Origine du problème'**
+  String get interventionReportRootCauseHint;
+
+  /// No description provided for @interventionReportRecommendationsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Recommandations'**
+  String get interventionReportRecommendationsLabel;
+
+  /// No description provided for @interventionReportRecommendationsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mesures préventives, pièces à prévoir…'**
+  String get interventionReportRecommendationsHint;
+
+  /// No description provided for @interventionReportDurationLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée (heures)'**
+  String get interventionReportDurationLabel;
+
+  /// No description provided for @interventionReportReturnedAtLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Remise en service le'**
+  String get interventionReportReturnedAtLabel;
+
+  /// No description provided for @interventionReportCostLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Coût estimé (RWF)'**
+  String get interventionReportCostLabel;
+
+  /// No description provided for @interventionReportFinalStatusLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'État final de l\'équipement'**
+  String get interventionReportFinalStatusLabel;
+
+  /// No description provided for @interventionReportAuthorLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rédigé par'**
+  String get interventionReportAuthorLabel;
+
+  /// No description provided for @interventionReportValidatedByLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validé par'**
+  String get interventionReportValidatedByLabel;
+
+  /// No description provided for @interventionReportSaveButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer'**
+  String get interventionReportSaveButton;
+
+  /// No description provided for @interventionReportSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport enregistré'**
+  String get interventionReportSaved;
+
+  /// No description provided for @interventionReportSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de l\'enregistrement'**
+  String get interventionReportSaveError;
+
+  /// No description provided for @interventionReportFinalizeButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Finaliser'**
+  String get interventionReportFinalizeButton;
+
+  /// No description provided for @interventionReportFinalized.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport finalisé et archivé'**
+  String get interventionReportFinalized;
+
+  /// No description provided for @interventionReportFinalizeError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Finalisation impossible (incident non résolu ?)'**
+  String get interventionReportFinalizeError;
+
+  /// No description provided for @interventionReportReopenButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rouvrir'**
+  String get interventionReportReopenButton;
+
+  /// No description provided for @interventionReportReopened.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport rouvert'**
+  String get interventionReportReopened;
+
+  /// No description provided for @interventionReportReopenError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réouverture impossible'**
+  String get interventionReportReopenError;
+
+  /// No description provided for @interventionReportExportButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Exporter PDF'**
+  String get interventionReportExportButton;
+
+  /// No description provided for @interventionReportExportError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la génération du PDF'**
+  String get interventionReportExportError;
+
+  /// No description provided for @interventionReportArchived.
+  ///
+  /// In fr, this message translates to:
+  /// **'PDF archivé dans la fiche équipement'**
+  String get interventionReportArchived;
+
+  /// No description provided for @interventionReportLockedHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport finalisé : modification réservée aux administrateurs'**
+  String get interventionReportLockedHint;
+
+  /// No description provided for @interventionReportEmptyReadonly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun rapport d\'intervention n\'a encore été rédigé'**
+  String get interventionReportEmptyReadonly;
+
+  /// No description provided for @reportsMaintenanceCost.
+  ///
+  /// In fr, this message translates to:
+  /// **'Coût de maintenance'**
+  String get reportsMaintenanceCost;
+
+  /// No description provided for @reportsMaintenanceCostHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Somme des rapports finalisés (période)'**
+  String get reportsMaintenanceCostHint;
 }
 
 class _AppLocalizationsDelegate

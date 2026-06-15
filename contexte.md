@@ -194,6 +194,7 @@ PTUT/
 | `equipment_models` | AUTOINCREMENT | **[NOUVEAU]** Modèles = couple (fabricant + sous-catégorie + nom). `UNIQUE(brand_id, subcategory_id, name)`. Auto-seedé depuis `equipment.manufacturer`/`model` ; `equipment.model_id` backfillé |
 | `model_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents de fiche technique d'un modèle — mêmes 3 types que `equipment_documents` — soft delete via `deleted_at` |
 | `model_pm_protocols` | `(model_id, protocol_id)` | **[NOUVEAU]** Liaison N-N modèle ↔ protocoles PM (en plus de ceux de la sous-catégorie) |
+| `issue_intervention_reports` | AUTOINCREMENT | **[NOUVEAU]** Rapport d'intervention 1:1 avec un incident (`issue_id` UNIQUE). Champs : `summary`, `root_cause`, `recommendations`, `duration_hours`, `returned_to_service_at`, `estimated_cost`, `final_equipment_status`, auteur + validateur, `report_status` (`draft`/`finalized`). Diagnostic/actions/pièces NON dupliqués (lus en direct depuis `issues`). PDF archivé dans `equipment_documents` (type `intervention`) à la finalisation |
 
 ### Points critiques
 

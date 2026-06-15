@@ -49,11 +49,13 @@ const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress'
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
 
 // ── Rapport d'intervention ─────────────────────────────────────────────────
-const REPORT_STATUSES        = ['draft', 'finalized'];
 // Whitelist alignée sur equipment.status (cf. routes/equipment.js VALID_STATUSES_EQ)
 const VALID_EQUIPMENT_STATUS = ['Operational', 'Maintenance', 'Out of service', 'To be disposal', 'Disposed'];
 // Statuts d'incident autorisant la finalisation du rapport
 const REPORT_FINALIZABLE_STATUSES = ['Completed', 'Verified', 'Closed'];
+// Colonnes de l'incident nécessaires aux routes du rapport (pré-remplissage live)
+const ISSUE_REPORT_SELECT =
+  'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?';
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
 
@@ -70,14 +72,23 @@ router.get('/', verifyToken, (req, res) => {
   const db = getDb();
   const { status, department, equipment_id } = req.query;
 
-  let query = 'SELECT * FROM issues WHERE 1=1';
+  // LEFT JOIN du rapport d'intervention finalisé : alimente les KPIs (MTTR réel,
+  // coût de maintenance) côté Flutter sans appel supplémentaire.
+  let query = `
+    SELECT i.*,
+           r.duration_hours AS report_duration_hours,
+           r.estimated_cost AS report_estimated_cost
+    FROM issues i
+    LEFT JOIN issue_intervention_reports r
+      ON r.issue_id = i.id AND r.report_status = 'finalized'
+    WHERE 1=1`;
   const params = [];
 
-  if (status)       { query += ' AND status = ?';       params.push(status); }
-  if (department)   { query += ' AND department = ?';   params.push(department); }
-  if (equipment_id) { query += ' AND equipment_id = ?'; params.push(equipment_id); }
+  if (status)       { query += ' AND i.status = ?';       params.push(status); }
+  if (department)   { query += ' AND i.department = ?';   params.push(department); }
+  if (equipment_id) { query += ' AND i.equipment_id = ?'; params.push(equipment_id); }
 
-  query += ' ORDER BY created_at DESC';
+  query += ' ORDER BY i.created_at DESC';
 
   res.json(db.prepare(query).all(...params));
 });
@@ -603,9 +614,7 @@ function _buildReportResponse(issue, report) {
 // ── GET /api/issues/:id/report ─────────────────────────────────────────────
 router.get('/:id/report', verifyToken, (req, res) => {
   const db = getDb();
-  const issue = db.prepare(
-    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
-  ).get(req.params.id);
+  const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
@@ -615,9 +624,7 @@ router.get('/:id/report', verifyToken, (req, res) => {
 // ── PUT /api/issues/:id/report (UPSERT) ────────────────────────────────────
 router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const issue = db.prepare(
-    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
-  ).get(req.params.id);
+  const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   const {
@@ -683,9 +690,7 @@ router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TEC
 // ── POST /api/issues/:id/report/finalize ───────────────────────────────────
 router.post('/:id/report/finalize', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const issue = db.prepare(
-    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
-  ).get(req.params.id);
+  const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   // L'incident doit être résolu pour figer le rapport
@@ -720,9 +725,7 @@ router.post('/:id/report/finalize', verifyToken, requireRole('admin', 'superviso
 // ── PATCH /api/issues/:id/report/reopen (admin uniquement) ─────────────────
 router.patch('/:id/report/reopen', verifyToken, requireRole('admin'), (req, res) => {
   const db = getDb();
-  const issue = db.prepare(
-    'SELECT id, status, diagnosis, actions, parts_replaced, equipment_id, equipment_name FROM issues WHERE id = ?'
-  ).get(req.params.id);
+  const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   const existing = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);

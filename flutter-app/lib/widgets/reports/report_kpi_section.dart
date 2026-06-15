@@ -20,12 +20,16 @@ class ReportKpiSection extends StatelessWidget {
   /// Top départements classés par nombre d'incidents (max 3).
   final List<MapEntry<String, int>> topDepartments;
 
+  /// Coût de maintenance de la période (somme des rapports finalisés, RWF).
+  final double maintenanceCost;
+
   const ReportKpiSection({
     super.key,
     required this.mttrDays,
     required this.pmCompliant,
     required this.pmTotal,
     required this.topDepartments,
+    this.maintenanceCost = 0,
   });
 
   @override
@@ -37,6 +41,8 @@ class ReportKpiSection extends StatelessWidget {
       return Column(
         children: [
           _buildMttrCard(l10n),
+          const SizedBox(height: 16),
+          _buildCostCard(l10n),
           const SizedBox(height: 16),
           _buildPmCard(l10n),
           const SizedBox(height: 16),
@@ -50,10 +56,25 @@ class ReportKpiSection extends StatelessWidget {
       children: [
         Expanded(child: _buildMttrCard(l10n)),
         const SizedBox(width: 16),
+        Expanded(child: _buildCostCard(l10n)),
+        const SizedBox(width: 16),
         Expanded(child: _buildPmCard(l10n)),
         const SizedBox(width: 16),
         Expanded(flex: 2, child: _buildTopDeptsCard(l10n)),
       ],
+    );
+  }
+
+  // ── Coût de maintenance ────────────────────────────────────────────────────
+
+  Widget _buildCostCard(AppLocalizations l10n) {
+    final hasData = maintenanceCost > 0;
+    return _KpiCard(
+      icon: Icons.payments_outlined,
+      color: hasData ? AppColors.primary : AppColors.textSecondary,
+      title: l10n.reportsMaintenanceCost,
+      value: hasData ? '${maintenanceCost.toStringAsFixed(0)} RWF' : l10n.reportsMttrNoData,
+      subtitle: hasData ? l10n.reportsMaintenanceCostHint : '',
     );
   }
 

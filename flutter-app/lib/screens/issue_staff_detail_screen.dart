@@ -4,6 +4,7 @@ import '../models/issue.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
+import '../widgets/issue/intervention_report_section.dart';
 
 /// Vue lecture seule d'un incident pour le personnel hospitalier (hospitalStaff).
 /// Masque le diagnostic, les actions et les pièces — affiche le statut et la timeline.
@@ -104,6 +105,14 @@ class IssueStaffDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _IssueTimeline(issue: issue, l10n: l10n),
+
+            // ── Rapport d'intervention finalisé (lecture seule) ──────────
+            const SizedBox(height: 24),
+            InterventionReportSection(
+              key: ValueKey('staff-report-${issue.id}'),
+              issueId: issue.id,
+              readOnly: true,
+            ),
           ],
         ),
       ),

@@ -4928,4 +4928,109 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogNoProtocolToLink => 'No protocol available to link';
+
+  @override
+  String get interventionReportSection => 'Intervention report';
+
+  @override
+  String get interventionReportDraftBadge => 'Draft';
+
+  @override
+  String get interventionReportFinalizedBadge => 'Finalized';
+
+  @override
+  String get interventionReportLoadError => 'Failed to load the report';
+
+  @override
+  String get interventionReportPrefillTitle => 'Incident data (read-only)';
+
+  @override
+  String get interventionReportSummaryLabel => 'Intervention summary';
+
+  @override
+  String get interventionReportSummaryHint =>
+      'Describe what was done on the equipment';
+
+  @override
+  String get interventionReportRootCauseLabel => 'Root cause';
+
+  @override
+  String get interventionReportRootCauseHint => 'Origin of the problem';
+
+  @override
+  String get interventionReportRecommendationsLabel => 'Recommendations';
+
+  @override
+  String get interventionReportRecommendationsHint =>
+      'Preventive measures, spare parts to stock…';
+
+  @override
+  String get interventionReportDurationLabel => 'Duration (hours)';
+
+  @override
+  String get interventionReportReturnedAtLabel => 'Returned to service on';
+
+  @override
+  String get interventionReportCostLabel => 'Estimated cost (RWF)';
+
+  @override
+  String get interventionReportFinalStatusLabel => 'Final equipment status';
+
+  @override
+  String get interventionReportAuthorLabel => 'Written by';
+
+  @override
+  String get interventionReportValidatedByLabel => 'Validated by';
+
+  @override
+  String get interventionReportSaveButton => 'Save';
+
+  @override
+  String get interventionReportSaved => 'Report saved';
+
+  @override
+  String get interventionReportSaveError => 'Failed to save';
+
+  @override
+  String get interventionReportFinalizeButton => 'Finalize';
+
+  @override
+  String get interventionReportFinalized => 'Report finalized and archived';
+
+  @override
+  String get interventionReportFinalizeError =>
+      'Cannot finalize (incident not resolved?)';
+
+  @override
+  String get interventionReportReopenButton => 'Reopen';
+
+  @override
+  String get interventionReportReopened => 'Report reopened';
+
+  @override
+  String get interventionReportReopenError => 'Cannot reopen';
+
+  @override
+  String get interventionReportExportButton => 'Export PDF';
+
+  @override
+  String get interventionReportExportError => 'Failed to generate the PDF';
+
+  @override
+  String get interventionReportArchived =>
+      'PDF archived in the equipment record';
+
+  @override
+  String get interventionReportLockedHint =>
+      'Finalized report: editing restricted to administrators';
+
+  @override
+  String get interventionReportEmptyReadonly =>
+      'No intervention report has been written yet';
+
+  @override
+  String get reportsMaintenanceCost => 'Maintenance cost';
+
+  @override
+  String get reportsMaintenanceCostHint => 'Sum of finalized reports (period)';
 }

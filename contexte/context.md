@@ -689,7 +689,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 
 | Methode | Route                       | Auth           | Description                                              |
 |---------|-----------------------------|----------------|----------------------------------------------------------|
-| GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at |
+| GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at. LEFT JOIN du rapport finalisé : ajoute `report_duration_hours` et `report_estimated_cost` (KPIs MTTR réel + coût) |
 | GET     | /api/issues/:id             | Auth           | Details incident enrichis : `{ ...issue, equipment, audit_log: [{id,timestamp,user_name,user_role,action,details}], maintenance_records: [{id,equipment_id,date,intervention,technician,is_future}] }` |
 | POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
 | PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
@@ -699,6 +699,10 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | POST    | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Upload multipart (champ `photos`, max 5 fichiers JPEG/PNG, 5 Mo chacun). Vérifie que total ≤ 5. Retourne `{photos: [{id, original_name, file_size_kb}]}` |
 | GET     | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Liste les photos de l'incident. Retourne `[{id, original_name, mime_type, file_size_kb, uploaded_at}]` |
 | GET     | /api/issues/:id/photos/:photo_id/download | Auth | **[NOUVEAU]** Téléchargement inline d'une photo. `Content-Disposition: inline` |
+| GET     | /api/issues/:id/report      | Auth           | **[NOUVEAU]** Rapport d'intervention (brouillon vide `{issue_id, report_status:'draft'}` si absent). Joint les champs live de l'incident : `diagnosis`, `actions`, `parts_replaced`, `equipment_id`, `equipment_name`, `issue_status` |
+| PUT     | /api/issues/:id/report      | Admin/Sup/Tech | **[NOUVEAU]** UPSERT du rapport (`ON CONFLICT(issue_id)`). **409** si `report_status='finalized'` sauf `admin`. Valide `final_equipment_status` (whitelist statuts équipement → 400). Renseigne `author_id/name` au 1er enregistrement |
+| POST    | /api/issues/:id/report/finalize | Admin/Sup/Tech | **[NOUVEAU]** Fige le rapport (`finalized`). Exige `issues.status ∈ {Completed, Verified, Closed}` sinon **409**. Renseigne `validated_by_id/name` + `validated_at` |
+| PATCH   | /api/issues/:id/report/reopen | Admin        | **[NOUVEAU]** Rouvre un rapport figé (`report_status='draft'`) |
 
 ### Lieux (`/api/locations`)
 
@@ -1016,7 +1020,7 @@ status: StockStatus (normal, low, outOfStock)
 | 2  | EquipmentListScreen      | viewEquipment           | SliverList virtualisé, tri sur 4 colonnes, filtres PM (retard/imminente), RBAC colonnes (staffMedical vs technicien), export CSV liste filtrée, bouton "Planifier PM" quick-action, délègue créa/édition à EquipmentFormScreen |
 | 2b | EquipmentFormScreen      | manageEquipment         | Nouvel écran dédié créa/édition : Stepper 3 étapes (Infos essentielles / Infos techniques / GMAO & Maintenance). Remplace le dialog mono-bloc. |
 | 3  | IssueTrackingScreen      | trackIssues             | Liste unique tous les incidents, filtres statut/urgence/période/groupe, recherche, vue Kanban (desktop), split view, export CSV. Onglet "À valider" déplacé vers TechnicianUpdateScreen. |
-| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : 5 sections (contexte, panne, intervention, ressources, timeline). Charge GET /api/issues/:id enrichi |
+| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte, panne, intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen) |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | 3 onglets fixes (Disponibles / Mes interventions / Agenda) + 1 onglet conditionnel "À valider" (visible si `canApproveRequests`). Diagnostic, actions, pièces, chrono, validation incidents (admin/superviseur). |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |

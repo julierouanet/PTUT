@@ -225,6 +225,60 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  // ── RAPPORT D'INTERVENTION (1:1 avec incident) ─────────────────────────────
+
+  /// Rapport d'intervention d'un incident (brouillon vide si inexistant).
+  /// La réponse inclut les champs live de l'incident (diagnosis/actions/...).
+  Future<Map<String, dynamic>> getInterventionReport(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/report';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Enregistre (UPSERT) le rapport d'intervention.
+  Future<Map<String, dynamic>> saveInterventionReport(
+    String issueId,
+    Map<String, dynamic> data,
+  ) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/report';
+    final response = await ApiClient.put(url, data);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Fige le rapport (incident résolu requis côté serveur).
+  Future<Map<String, dynamic>> finalizeInterventionReport(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/report/finalize';
+    final response = await ApiClient.post(url, {});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Rouvre un rapport figé (admin uniquement côté serveur).
+  Future<Map<String, dynamic>> reopenInterventionReport(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/report/reopen';
+    final response = await ApiClient.patch(url, {});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Archive le PDF du rapport dans l'historique documentaire de l'équipement.
+  /// Réutilise POST /api/equipment/:id/documents (type 'intervention').
+  Future<void> archiveInterventionPdf(
+    String equipmentId,
+    Uint8List pdfBytes,
+    String fileName,
+  ) async {
+    await ApiClient.postMultipart(
+      '${ApiConfig.equipmentUrl}/$equipmentId/documents',
+      pdfBytes,
+      fileName,
+      'application/pdf',
+      {'type': 'intervention'},
+    );
+  }
+
   // ── INVENTAIRE ─────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getInventory({
