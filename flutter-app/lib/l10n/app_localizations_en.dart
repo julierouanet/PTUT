@@ -4859,7 +4859,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get departmentDetailTitle => 'Department details';
 
   @override
-  String get departmentOpenIssuesSection => 'Open issues';
+  String get departmentOpenIssuesSection => 'Ongoing issues';
+
+  @override
+  String get departmentResolvedIssuesSection => 'Resolved issues';
+
+  @override
+  String get departmentOpenIssuesKpi => 'Open issues';
+
+  @override
+  String get departmentIncidentTargetFallback => 'Department incident';
+
+  @override
+  String get departmentIncidentCategoryBiomedical => 'Biomedical';
+
+  @override
+  String get departmentIncidentCategoryInfrastructure => 'Infrastructure';
+
+  @override
+  String get departmentIncidentCategoryIt => 'IT';
 
   @override
   String get modelDetailTitle => 'Model sheet';

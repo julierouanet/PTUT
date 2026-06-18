@@ -9015,8 +9015,44 @@ abstract class AppLocalizations {
   /// No description provided for @departmentOpenIssuesSection.
   ///
   /// In fr, this message translates to:
-  /// **'Incidents ouverts'**
+  /// **'Incidents en cours'**
   String get departmentOpenIssuesSection;
+
+  /// No description provided for @departmentResolvedIssuesSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents résolus'**
+  String get departmentResolvedIssuesSection;
+
+  /// No description provided for @departmentOpenIssuesKpi.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents ouverts'**
+  String get departmentOpenIssuesKpi;
+
+  /// No description provided for @departmentIncidentTargetFallback.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident de département'**
+  String get departmentIncidentTargetFallback;
+
+  /// No description provided for @departmentIncidentCategoryBiomedical.
+  ///
+  /// In fr, this message translates to:
+  /// **'Biomédical'**
+  String get departmentIncidentCategoryBiomedical;
+
+  /// No description provided for @departmentIncidentCategoryInfrastructure.
+  ///
+  /// In fr, this message translates to:
+  /// **'Infrastructure'**
+  String get departmentIncidentCategoryInfrastructure;
+
+  /// No description provided for @departmentIncidentCategoryIt.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informatique'**
+  String get departmentIncidentCategoryIt;
 
   /// No description provided for @modelDetailTitle.
   ///

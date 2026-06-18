@@ -1,45 +1,49 @@
-# Protocole de déploiement — Hôpital Kabutare (réseau local)
+# Protocole de déploiement — Hôpital Kabutare (IP-only, certificat auto-signé)
 
 ## Contexte
 
-Le système doit être déployé sur un **serveur interne à l'hôpital** (réseau local uniquement, pas d'accès Internet entrant). Deux modes d'accès pour les utilisateurs :
+Le système est déployé sur un **serveur de l'hôpital**. Le chemin de déploiement **par défaut** est l'accès direct par **IP publique brute** (pas de nom de domaine) avec un **certificat HTTPS auto-signé**. Deux modes d'accès utilisateur :
 
-1. **Application Android (APK)** — distribuée via un lien de téléchargement servi par le serveur lui-même.
-2. **Navigateur Web** — accès depuis un poste de l'hôpital via une URL pointant sur le serveur.
+1. **Navigateur Web** — `https://<IP>/app_isis/` (depuis le WiFi hôpital ou Internet).
+2. **Application Android (APK)** — compilée localement, pointant la même IP.
 
-Contraintes / décisions prises :
+Décisions / contraintes :
 
-- **Pas de nom de domaine acheté** → on utilise un **DDNS gratuit (DuckDNS)** pour obtenir un hostname `*.duckdns.org` qui permet d'émettre un certificat **Let's Encrypt** valide (challenge DNS-01, donc sans exposer le port 80 sur Internet).
-- **Nginx en reverse-proxy mono-port** : un seul vhost HTTPS qui sert à la fois le front Flutter Web, les deux APIs (sous-chemins `/auth/` et `/db/`), et l'APK téléchargeable (`/download/app.apk`).
-- **APK Android** compilé localement et déposé dans le répertoire web servi par Nginx.
+- **Pas de nom de domaine acheté** → accès par **IP brute** + **certificat auto-signé** (ECDSA P-384, valide 825 jours). L'IP publique **et** l'IP locale du serveur sont placées dans le `subjectAltName` du certificat, donc le même cert fonctionne sur le WiFi interne et depuis Internet.
+- **Provisionnement automatisé** via `setup_ubuntu.sh` : détection des IP, génération du cert, configuration Nginx, pare-feu, démarrage de la stack Docker et configuration Keycloak — le tout en une commande.
+- **Nginx mono-port** : un seul vhost HTTPS (`server_name _`) qui sert le front Flutter Web (`/app_isis/`), les deux APIs (`/auth/`, `/db/`) et Keycloak (`/keycloak/`).
+- **Aucune URL codée en dur côté Flutter** : `lib/services/api_config.dart` résout les URLs au runtime via `Uri.base` (l'hôte du navigateur). Aucun `--dart-define` n'est nécessaire pour l'IP-only.
 
-> ⚠️ Conséquence : les utilisateurs accèdent à `https://<hostname>.duckdns.org/` (et **non** à `https://192.168.x.y/` — un certificat Let's Encrypt ne peut pas être émis pour une IP). Le DNS local de l'hôpital (ou un fichier hosts sur les postes) devra résoudre ce hostname vers l'IP locale du serveur. Voir [Phase 1](#phase-1--réseau-de-lhôpital-ip-fixe--ddns--dns-local).
+> ⚠️ **Conséquence — avertissement navigateur** : un certificat auto-signé n'est pas reconnu par les autorités de certification. Au premier accès, le navigateur affiche un avertissement de sécurité que l'utilisateur doit accepter manuellement. C'est attendu et sans danger sur un réseau maîtrisé.
+
+> ⚠️ **Limitation connue — emails** : sans nom de domaine, il est **impossible de publier des enregistrements SPF/DKIM**. Les emails transactionnels (vérification de compte, reset mot de passe, notifications Brevo) risquent fort d'être **rejetés ou classés en spam**. Acceptable pour une mise en service interne ; pour un envoi fiable, basculer sur la famille « domaine » (voir [Annexe](#annexe--déploiement-avec-un-vrai-nom-de-domaine-optionnel)).
 
 ---
 
 ## Vue d'ensemble de l'architecture cible
 
 ```
-                   Réseau LAN hôpital (ex: 192.168.1.0/24)
-                  ┌──────────────────────────────────────────┐
-                  │  Postes / téléphones Android             │
-                  │  → résolvent kabutare.duckdns.org        │
-                  │     vers 192.168.1.50 (DNS local)        │
-                  └──────────────────┬───────────────────────┘
-                                     │ HTTPS 443
-                                     ▼
+        Réseau LAN hôpital (WiFi)            Internet (optionnel)
+                  │                                  │
+                  └──────────────┬───────────────────┘
+                                 │ HTTPS :443
+                                 │ (cert auto-signé, IP dans le SAN)
+                                 ▼
    ┌──────────────────────────────────────────────────────────┐
-   │  Serveur 192.168.1.50 (Linux + Docker + Nginx)           │
+   │  Serveur Ubuntu (Docker Compose)                          │
    │                                                          │
-   │   Nginx :443 (TLS Let's Encrypt sur kabutare.duckdns.org)│
-   │   ├── /                  → /var/www/flutter-app (SPA)    │
-   │   ├── /auth/             → 127.0.0.1:3001 (auth-service) │
-   │   ├── /db/               → 127.0.0.1:3002 (db-service)   │
-   │   └── /download/app.apk  → /var/www/downloads/app.apk    │
+   │   Nginx :443 (server_name _ — accepte n'importe quelle IP)│
+   │   ├── /app_isis/  → Flutter Web SPA (embarqué dans l'image)│
+   │   ├── /auth/      → auth-service:3001                     │
+   │   ├── /db/        → db-service:3002                       │
+   │   └── /keycloak/  → keycloak:8080                         │
    │                                                          │
-   │   Docker Compose                                         │
-   │   ├── auth-service-prod  (vol auth_data_prod)            │
-   │   └── db-service-prod    (vol db_data_prod)              │
+   │   Docker Compose (docker-compose.ip.secured.yml)         │
+   │   ├── nginx-ip            (cert dans ./ssl)              │
+   │   ├── auth-service-ip     (vol auth_data_ip)             │
+   │   ├── db-service-ip       (vol db_data_ip)               │
+   │   ├── keycloak-ip                                        │
+   │   └── postgres-keycloak-ip (réseau isolé keycloak_db)    │
    └──────────────────────────────────────────────────────────┘
 ```
 
@@ -47,390 +51,202 @@ Contraintes / décisions prises :
 
 ## Phase 0 — Prérequis serveur
 
-| Élément               | Détail                                                           |
+| Élément               | Détail                                                            |
 | --------------------- | ---------------------------------------------------------------- |
-| Linux Debian/Ubuntu   | accès sudo                                                       |
-| RAM                   | 2 Go minimum                                                     |
+| Ubuntu 22.04 / 24.04  | accès `sudo`                                                     |
+| RAM                   | 2 Go minimum (4 Go conseillé avec Keycloak + PostgreSQL)         |
 | Disque                | 10 Go libre                                                      |
-| **IP locale fixe**    | ex: 192.168.1.50 (réservation DHCP sur le routeur)               |
-| Internet sortant      | requis pour `apt`, `docker pull`, l'API DuckDNS et Let's Encrypt |
-| Ports LAN à ouvrir    | **443** (HTTPS) — c'est tout                                     |
-| Logiciels à installer | Docker, Docker Compose v2, Nginx, certbot, git, curl             |
+| IP                    | une IP publique et/ou une IP locale fixe (réservation DHCP)      |
+| Internet sortant      | requis pour `apt`, `docker pull`                                 |
+| Ports à ouvrir        | **443** (HTTPS) et **80** (redirection → 443) — c'est tout       |
+| Logiciels             | Docker + Docker Compose v2 (installés par `setup_ubuntu.sh`)     |
 
-```bash
-sudo apt update
-sudo apt install -y docker.io docker-compose-plugin nginx certbot \
-                    python3-certbot-dns-duckdns git curl openssl
-sudo systemctl enable --now docker nginx
-sudo usermod -aG docker "$USER"   # se reconnecter ensuite
-```
-
-> Aucune installation Node ou Flutter sur le serveur : tout passe par des images Docker (`node:20-alpine` pour les services, `ghcr.io/cirruslabs/flutter:3.41.4` pour le build web et APK).
+> Aucune installation de Node ou Flutter sur le serveur : tout passe par des images Docker poussées sur Docker Hub (build effectué en amont sur la machine de développement via `build_and_push.sh`).
 
 ---
 
-## Phase 1 — Réseau de l'hôpital (IP fixe + DDNS + DNS local)
+## Phase 1 — Déploiement automatisé (recommandé)
 
-### 1.1 IP fixe sur le serveur
-
-Réserver une IP fixe pour le serveur sur le routeur DHCP de l'hôpital (ex. `192.168.1.50`). Vérifier :
+Le script `setup_ubuntu.sh` réalise l'intégralité du provisionnement. Copier sur le serveur **deux fichiers** suffit :
 
 ```bash
-ip a              # confirmer l'IP
-ping -c1 8.8.8.8  # vérifier l'accès Internet sortant
+mkdir -p ~/kabutare && cd ~/kabutare
+scp setup_ubuntu.sh docker-compose.ip.secured.yml user@<IP>:~/kabutare/
+# (sur le serveur)
+sudo bash setup_ubuntu.sh
 ```
 
-### 1.2 Compte DuckDNS
+Le script enchaîne 9 étapes interactives :
 
-Créer un compte gratuit sur https://www.duckdns.org → choisir un sous-domaine (ex. `kabutare.duckdns.org`) → noter le **token** (UUID).
+| Étape | Action |
+|---|---|
+| 1 | Mise à jour système (optionnelle) |
+| 2 | Installation de Docker + Compose v2 |
+| 3 | Détection de l'**IP publique** (`api.ipify.org`) et de l'**IP locale** (plages privées) |
+| 4 | Génération du fichier `.env` (IP, `CORS_ORIGIN`, `KC_PUBLIC_URL`, secrets) |
+| 5 | **Génération du certificat auto-signé** ECDSA P-384 (825 j, SAN = IP publique + IP locale) + config Nginx `ip.conf` |
+| 6 | Vérification / réattribution automatique des ports (80, 443, 8080) |
+| 7 | Pare-feu `ufw` (deny incoming, SSH rate-limité, ouverture 80/443) |
+| 8 | `docker compose pull` des images depuis Docker Hub |
+| 9 | Démarrage de la stack + **configuration automatique de Keycloak** (realm, rôles, clients, secret `auth-service`) |
 
-Sur le serveur, configurer un script cron qui actualise l'IP publique de l'hôpital toutes les 5 minutes (utile pour les renouvellements de cert) :
+À la fin, le script propose l'initialisation des données (seed de démo / restauration d'un backup / ignorer) et affiche les URLs d'accès.
 
-```bash
-sudo tee /etc/duckdns/duck.sh >/dev/null <<'EOF'
-#!/bin/sh
-echo url="https://www.duckdns.org/update?domains=kabutare&token=<TOKEN>&ip=" \
-  | curl -k -o /var/log/duckdns.log -K -
-EOF
-sudo chmod 700 /etc/duckdns/duck.sh
-( crontab -l 2>/dev/null; echo "*/5 * * * * /etc/duckdns/duck.sh" ) | crontab -
-```
-
-> L'IP publique pointée par DuckDNS n'a pas besoin d'être joignable depuis Internet — le challenge utilisé pour le cert est **DNS-01** (validation par TXT record), pas HTTP-01.
-
-### 1.3 Résolution DNS interne — `kabutare.duckdns.org` → IP locale
-
-C'est l'étape **clé** pour que les postes hospitaliers puissent atteindre le serveur via le hostname (sinon le navigateur tenterait l'IP publique → impossible depuis le LAN).
-
-**Trois options selon les capacités du routeur de l'hôpital** :
-
-- **Option A** — _Override DNS sur le routeur (recommandé)_ : la plupart des routeurs pro permettent d'ajouter une entrée DNS statique (`kabutare.duckdns.org → 192.168.1.50`). Pousser ensuite ce DNS aux clients via DHCP.
-- **Option B** — _DNS local sur le serveur_ : installer `dnsmasq` sur le serveur et configurer le routeur DHCP pour distribuer `192.168.1.50` comme DNS primaire. Le `dnsmasq` répond avec l'IP locale pour le hostname et délègue tout le reste à `8.8.8.8`.
-- **Option C** — _Fichiers hosts par appareil (dépannage)_ : éditer `/etc/hosts` sur les postes Linux/Mac, `C:\Windows\System32\drivers\etc\hosts` sur Windows. **Pas applicable sur Android sans root** — donc cette option ne marche pas pour l'APK.
-
-Tester depuis un poste de l'hôpital :
-
-```bash
-ping kabutare.duckdns.org      # doit répondre 192.168.1.50
-```
+> Le certificat et la config Nginx sont **régénérés idempotemment** ; relancer le script ne casse rien (un `.env` ou un cert existant est conservé).
 
 ---
 
-## Phase 2 — Certificat HTTPS via Let's Encrypt + DuckDNS (DNS-01)
+## Phase 2 — Équivalent manuel (si l'on ne veut pas le script)
+
+### 2.1 Fichier `.env`
+
+Copier `.env.ip.example` en `.env` et renseigner les valeurs (générer les secrets avec `openssl rand -hex 32`) :
 
 ```bash
-# Stocker le token DuckDNS pour certbot
-sudo mkdir -p /etc/letsencrypt
-sudo tee /etc/letsencrypt/duckdns.ini >/dev/null <<EOF
-dns_duckdns_token = <TOKEN_DUCKDNS>
-EOF
-sudo chmod 600 /etc/letsencrypt/duckdns.ini
-
-# Émission du certificat
-sudo certbot certonly \
-  --authenticator dns-duckdns \
-  --dns-duckdns-credentials /etc/letsencrypt/duckdns.ini \
-  --dns-duckdns-propagation-seconds 60 \
-  -d kabutare.duckdns.org \
-  --agree-tos -m admin@kabutare.local --no-eff-email
+cp .env.ip.example .env
+# Renseigner au minimum : SERVER_IP, DOCKER_USER, INTERNAL_SECRET,
+# KC_ADMIN_PASSWORD, KC_CLIENT_SECRET_AUTH, KC_DB_PASSWORD
+# CORS_ORIGIN et KC_PUBLIC_URL doivent valoir https://<IP>
+chmod 600 .env
 ```
 
-Le certificat est déposé dans `/etc/letsencrypt/live/kabutare.duckdns.org/`. Le renouvellement automatique tourne via `certbot.timer` ; la commande ci-dessus est rejouée tous les 60 jours sans action manuelle.
+### 2.2 Certificat auto-signé
 
-> Les certificats Let's Encrypt sont **automatiquement reconnus par Android 7+ et tous les navigateurs récents** — pas d'avertissement à accepter, pas de CA à pousser sur les appareils.
+```bash
+mkdir -p ssl && chmod 700 ssl
+# SAN avec IP publique (+ IP locale si différente)
+openssl req -x509 -nodes -days 825 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
+  -keyout ssl/key.pem -out ssl/cert.pem \
+  -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=<IP_PUBLIQUE>" \
+  -addext "subjectAltName=IP:<IP_PUBLIQUE>,IP:<IP_LOCALE>"
+chmod 600 ssl/key.pem && chmod 644 ssl/cert.pem
+```
+
+### 2.3 Nginx
+
+La config `nginx/conf.d/ip.conf` (server_name `_`, routage `/auth/`, `/db/`, `/keycloak/`, `/app_isis/`) est montée directement par `docker-compose.ip.secured.yml`. Le placeholder `__NGINX_SERVER_IP__` (réécriture sub_filter des ressources Keycloak) doit être remplacé par l'IP publique réelle :
+
+```bash
+sed -i "s/__NGINX_SERVER_IP__/<IP_PUBLIQUE>/g" nginx/conf.d/ip.conf
+```
+
+### 2.4 Démarrage
+
+```bash
+docker compose -f docker-compose.ip.secured.yml up -d
+docker compose -f docker-compose.ip.secured.yml ps   # tous healthy
+```
+
+> `docker-compose.ip.secured.yml` est la variante **durcie** : réseaux cloisonnés (`frontend` / `backend` / `keycloak_db`), `cap_drop: ALL`, `no-new-privileges`, PostgreSQL isolé. C'est le compose recommandé pour l'IP-only.
 
 ---
 
-## Phase 3 — Cloner le dépôt et générer les secrets
+## Phase 3 — Configuration Keycloak
 
-```bash
-sudo mkdir -p /opt && cd /opt
-sudo git clone <url-du-repo> kabutare
-sudo chown -R "$USER":"$USER" /opt/kabutare
-cd /opt/kabutare
-git checkout main
-```
+Si `setup_ubuntu.sh` a réussi l'étape 9, Keycloak est **déjà configuré** (realm `kabutare-hospital`, 6 rôles, clients `flutter-app` et `auth-service`, secret injecté dans `.env`). Il reste à créer les utilisateurs.
 
-Créer le fichier secrets (chemin codé en dur dans le `Jenkinsfile`, mais aussi utilisé par les commandes manuelles ci-dessous) :
+En cas de configuration manuelle, ouvrir `https://<IP>/keycloak/admin/` et :
 
-```bash
-sudo mkdir -p /etc/kabutare
-sudo tee /etc/kabutare/.env >/dev/null <<EOF
-JWT_SECRET=$(openssl rand -hex 48)
-JWT_REFRESH_SECRET=$(openssl rand -hex 48)
-INTERNAL_SECRET=$(openssl rand -hex 32)
-EOF
-sudo chmod 600 /etc/kabutare/.env
-```
+1. Créer le realm `kabutare-hospital` (`resetPasswordAllowed=true`, `loginWithEmailAllowed=true`).
+2. Rôles realm : `admin`, `supervisor`, `hospitalStaff`, `technician_biomedical`, `technician_it`, `technician_infra`.
+3. Client `flutter-app` : public, Direct Access Grants ON, redirect URI `https://<IP>/app_isis/*`, web origins `https://<IP>`.
+4. Client `auth-service` : confidential, Service Accounts ON ; assigner le rôle `manage-users` (client `realm-management`) au service account ; copier le client secret dans `.env` (`KC_CLIENT_SECRET_AUTH`) puis `docker compose -f docker-compose.ip.secured.yml restart auth-service`.
 
-> Les 3 variables sont **obligatoires** ; sans elles, les services démarrent avec des secrets par défaut connus (cf. avertissement émis par `auth-service/src/config.js`).
+> ⚠️ Le claim `iss` du JWT vaut `https://<IP>/keycloak/realms/kabutare-hospital`. `KC_ISSUER` (services Node) **doit** correspondre exactement, sinon toute validation JWT échoue. Le script gère ce calcul (variable `KC_PUBLIC_URL`).
 
 ---
 
-## Phase 4 — Adapter le code à l'architecture single-port
-
-Trois fichiers à modifier **avant** de construire les images Docker et le front.
-
-### 4.1 Nouveau vhost Nginx unique
-
-Remplacer **tous** les fichiers `nginx/conf.d/*.conf` du dépôt par un seul nouveau vhost. Créer [nginx/conf.d/kabutare.conf](nginx/conf.d/kabutare.conf) :
-
-```nginx
-server {
-    listen 80;
-    server_name kabutare.duckdns.org;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name kabutare.duckdns.org;
-
-    ssl_certificate     /etc/letsencrypt/live/kabutare.duckdns.org/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/kabutare.duckdns.org/privkey.pem;
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
-
-    client_max_body_size 25m;   # uploads (XLSX, photos, APK download)
-
-    # ── Auth service ────────────────────────────────
-    # Le slash final dans proxy_pass strippe le préfixe /auth de l'URL upstream.
-    # Front appelle https://kabutare.duckdns.org/auth/api/auth/login
-    #   → upstream reçoit /api/auth/login
-    location /auth/ {
-        proxy_pass         http://127.0.0.1:3001/;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-    }
-
-    # ── DB service ──────────────────────────────────
-    location /db/ {
-        proxy_pass         http://127.0.0.1:3002/;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-    }
-
-    # ── Téléchargement APK ──────────────────────────
-    location = /download/app.apk {
-        alias /var/www/downloads/app.apk;
-        add_header Content-Disposition 'attachment; filename="kabutare.apk"';
-    }
-    location /download/ {
-        alias /var/www/downloads/;
-        autoindex on;            # liste le contenu (utile si plusieurs versions)
-    }
-
-    # ── App Flutter Web (SPA, fallback /index.html) ─
-    root  /var/www/flutter-app;
-    index index.html;
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-    gzip on;
-    gzip_types text/plain text/css application/javascript application/json;
-}
-```
-
-Activer le vhost :
+## Phase 4 — Initialiser les données
 
 ```bash
-sudo cp /opt/kabutare/nginx/conf.d/kabutare.conf /etc/nginx/conf.d/
-sudo rm -f /etc/nginx/conf.d/default.conf       # éviter conflit
-sudo mkdir -p /var/www/flutter-app /var/www/downloads
-sudo nginx -t && sudo systemctl reload nginx
-```
+# Utilisateurs / permissions applicatives (admin par défaut — à changer immédiatement)
+docker exec auth-service-ip node seed.js
 
-### 4.2 CORS — autoriser le nouveau hostname
-
-Le front et les APIs sont sur la **même origine** (`https://kabutare.duckdns.org`), mais les services valident l'`Origin` header. Modifier la whitelist :
-
-- [auth-service/src/index.js](auth-service/src/index.js) — tableau `allowed`
-- [db-service/src/index.js](db-service/src/index.js) — idem
-
-Remplacer les entrées `lucaslopvet.fr` par :
-
-```js
-const allowed = ["https://kabutare.duckdns.org"];
-```
-
-> Ces fichiers seront re-copiés dans les images Docker au prochain `up --build` (Phase 5).
-
-### 4.3 (Aucune modif Flutter requise)
-
-[flutter-app/lib/services/api_config.dart:38-52](flutter-app/lib/services/api_config.dart#L38) compose les URLs en concaténant `${AUTH_URL}/api/auth/login` etc. Avec `AUTH_URL=https://kabutare.duckdns.org/auth` et `DB_URL=https://kabutare.duckdns.org/db`, les appels sortent en `https://kabutare.duckdns.org/auth/api/auth/login` → Nginx les achemine vers `auth-service:3001/api/auth/login`. La fonction `assertSecureUrls()` accepte tout HTTPS, donc OK.
-
----
-
-## Phase 5 — Démarrer les microservices Docker
-
-```bash
-cd /opt/kabutare
-set -a; source /etc/kabutare/.env; set +a
-docker compose -p gestion-equipement-medical-prod \
-  -f docker-compose.yml up -d --build
-```
-
-Vérifier :
-
-```bash
-docker compose -p gestion-equipement-medical-prod ps   # both healthy
-curl -fsS http://localhost:3001/health
-curl -fsS http://localhost:3002/health
-curl -fsS https://kabutare.duckdns.org/auth/health      # via Nginx
-curl -fsS https://kabutare.duckdns.org/db/health
-```
-
----
-
-## Phase 6 — Compiler et déployer le Flutter Web
-
-Build via container Flutter (pas besoin d'installer Flutter sur le serveur) :
-
-```bash
-cd /opt/kabutare
-docker run --rm \
-  -v "$(pwd)/flutter-app":/app \
-  -e PUB_CACHE=/app/.pub-cache \
-  -w /app \
-  ghcr.io/cirruslabs/flutter:3.41.4 \
-  bash -c "flutter pub get && flutter build web --release \
-    --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
-    --dart-define=DB_URL=https://kabutare.duckdns.org/db"
-
-# Publication
-sudo rm -rf /var/www/flutter-app/*
-sudo cp -r flutter-app/build/web/. /var/www/flutter-app/
-sudo chown -R www-data:www-data /var/www/flutter-app
-```
-
----
-
-## Phase 7 — Compiler l'APK Android et le servir
-
-### 7.1 Build APK
-
-```bash
-cd /opt/kabutare
-docker run --rm \
-  -v "$(pwd)/flutter-app":/app \
-  -e PUB_CACHE=/app/.pub-cache \
-  -w /app \
-  ghcr.io/cirruslabs/flutter:3.41.4 \
-  bash -c "flutter pub get && flutter build apk --release \
-    --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
-    --dart-define=DB_URL=https://kabutare.duckdns.org/db"
-```
-
-L'APK est généré dans `flutter-app/build/app/outputs/flutter-apk/app-release.apk`.
-
-> L'APK signé avec une clé de **debug** par défaut. Pour une distribution interne hospitalière c'est acceptable, mais Google Play et certaines politiques de sécurité d'entreprise exigeront une clé de release. Si besoin : générer un keystore avec `keytool`, configurer `flutter-app/android/app/build.gradle` avec un `signingConfig`, puis rebuilder.
-
-### 7.2 Publier sur Nginx
-
-```bash
-sudo cp flutter-app/build/app/outputs/flutter-apk/app-release.apk \
-        /var/www/downloads/app.apk
-sudo chown www-data:www-data /var/www/downloads/app.apk
-```
-
-Les utilisateurs téléchargent en ouvrant **`https://kabutare.duckdns.org/download/app.apk`** depuis le navigateur de leur téléphone Android, puis activent « Sources inconnues » dans les paramètres pour installer.
-
-> Versions multiples : nommer `app-v1.2.0.apk` ; le listing `autoindex on` les expose tous sous `/download/`.
-
----
-
-## Phase 8 — Initialiser les données
-
-```bash
-# Utilisateurs (admin@kabutare.rw / Admin1234!  — à changer immédiatement)
-docker exec auth-service-prod node seed.js
-
-# OPTION A — données démo (45 équipements fictifs)
-docker exec db-service-prod node seed.js
+# OPTION A — données démo (équipements fictifs)
+docker exec db-service-ip node seed.js
 
 # OPTION B — inventaire physique réel (à privilégier en production)
-docker cp /chemin/vers/inventaire.xlsx db-service-prod:/tmp/inventory.xlsx
-docker exec db-service-prod node scripts/import_inventory.js \
-  --xlsx /tmp/inventory.xlsx
+docker cp /chemin/vers/inventaire.xlsx db-service-ip:/tmp/inventory.xlsx
+docker exec db-service-ip node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
 ```
 
-L'import est idempotent (`UPSERT` par défaut, `created_at` préservé).
+L'import est idempotent (`UPSERT` par défaut, `created_at` préservé). `setup_ubuntu.sh` propose ces opérations à son étape finale.
 
 ---
 
-## Phase 9 — Vérification end-to-end
+## Phase 5 — Compiler et distribuer l'APK Android
 
-Depuis un poste interne à l'hôpital :
+Le front Web est **embarqué dans l'image Docker `nginx`** (build effectué par `build_and_push.sh`). Pour l'APK Android, compiler localement **sans `--dart-define`** (résolution auto via `Uri.base`) :
 
 ```bash
-# 1. Hostname résolu vers IP locale
-nslookup kabutare.duckdns.org   # doit retourner 192.168.1.50
-
-# 2. Front Flutter Web accessible
-curl -I https://kabutare.duckdns.org/   # 200 OK + index.html
-
-# 3. APIs accessibles via Nginx
-curl https://kabutare.duckdns.org/auth/health
-curl https://kabutare.duckdns.org/db/health
-
-# 4. Login + appel API authentifié
-TOKEN=$(curl -s -X POST https://kabutare.duckdns.org/auth/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@kabutare.rw","password":"Admin1234!"}' \
-  | jq -r .accessToken)
-curl https://kabutare.duckdns.org/db/api/equipment \
-  -H "Authorization: Bearer $TOKEN"
-
-# 5. APK téléchargeable
-curl -I https://kabutare.duckdns.org/download/app.apk    # 200 OK
+cd flutter-app
+flutter build apk --release
+# → build/app/outputs/flutter-apk/app-release.apk
 ```
 
-Sur un téléphone Android : ouvrir le navigateur, aller sur `https://kabutare.duckdns.org/download/app.apk`, installer, lancer l'app, se connecter.
+Distribuer l'APK par le moyen de votre choix (clé USB, partage réseau, ou en le déposant derrière Nginx). À l'ouverture, l'app pointe l'IP/host depuis lequel elle a été configurée.
+
+> L'APK est signé avec la clé de **debug** par défaut. Pour une distribution durable, générer un keystore release (`keytool`) et configurer `android/app/build.gradle`.
+
+---
+
+## Phase 6 — Vérification end-to-end
+
+```bash
+# 1. Front Flutter accessible (-k : ignorer l'avertissement cert auto-signé)
+curl -k -I https://<IP>/app_isis/          # 200 OK
+
+# 2. APIs via Nginx
+curl -k https://<IP>/auth/health           # {"status":"ok"}
+curl -k https://<IP>/db/health
+
+# 3. Login + appel authentifié
+TOKEN=$(curl -sk -X POST https://<IP>/auth/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@kabutare.rw","password":"Admin1234!"}' | jq -r .accessToken)
+curl -k https://<IP>/db/api/equipment -H "Authorization: Bearer $TOKEN"
+
+# 4. Console Keycloak
+curl -k -I https://<IP>/keycloak/admin/    # 200 / 302
+```
+
+Depuis un navigateur : ouvrir `https://<IP>/app_isis/`, accepter l'avertissement de certificat, se connecter.
 
 ---
 
 ## Maintenance
 
-### Sauvegardes (cron quotidien)
+### Sauvegardes
 
 ```bash
-docker run --rm -v auth_data_prod:/d:ro -v /backup:/b alpine \
-  tar czf /b/auth_$(date +%F).tar.gz -C /d .
-docker run --rm -v db_data_prod:/d:ro   -v /backup:/b alpine \
-  tar czf /b/hospital_$(date +%F).tar.gz -C /d .
+mkdir -p backups && chmod 700 backups
+docker cp auth-service-ip:/data/auth.db        backups/auth_$(date +%F).db
+docker cp db-service-ip:/data/hospital.db      backups/hospital_$(date +%F).db
+docker exec postgres-keycloak-ip pg_dump -U keycloak keycloak > backups/keycloak_$(date +%F).sql
+chmod 600 backups/*.db backups/*.sql
 ```
+
+Restauration : relancer `sudo bash setup_ubuntu.sh` → option 2 (placer les fichiers dans `./backups/`).
 
 ### Mises à jour applicatives
 
+Reconstruire et pousser les images (machine dev, `build_and_push.sh`), puis sur le serveur :
+
 ```bash
-cd /opt/kabutare
-git pull
-set -a; source /etc/kabutare/.env; set +a
-docker compose -p gestion-equipement-medical-prod -f docker-compose.yml up -d --build
-# Reconstruire le Flutter Web (Phase 6) et l'APK (Phase 7) si du code front a changé
+docker compose -f docker-compose.ip.secured.yml pull
+docker compose -f docker-compose.ip.secured.yml up -d
 ```
 
-### Renouvellement TLS
+### Renouvellement du certificat
 
-Automatique via `certbot.timer`. Vérifier : `sudo certbot renew --dry-run`.
+Le certificat auto-signé est valide **825 jours**. Pour le régénérer : supprimer `ssl/cert.pem` et `ssl/key.pem`, relancer `setup_ubuntu.sh` (étape 5) ou la commande `openssl` de la Phase 2.2, puis `docker compose -f docker-compose.ip.secured.yml restart nginx`.
 
 ### Logs
 
 ```bash
-docker logs -f auth-service-prod
-docker logs -f db-service-prod
-sudo tail -f /var/log/nginx/access.log /var/log/nginx/error.log
+docker logs -f auth-service-ip
+docker logs -f db-service-ip
+docker logs -f nginx-ip
 ```
 
 L'audit applicatif (login, mutations) est en base : table `logs` du `db-service`.
@@ -439,21 +255,25 @@ L'audit applicatif (login, mutations) est en base : table `logs` du `db-service`
 
 ## Pièges à éviter
 
-| Piège                                                        | Conséquence                                                                                                                                 |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `docker compose down -v`                                     | Détruit `auth_data_prod` / `db_data_prod` → perte des utilisateurs et de l'inventaire.                                                      |
-| Rebuild Docker sans avoir modifié la whitelist CORS          | Le navigateur bloque les requêtes XHR avec « CORS error ».                                                                                  |
-| Build Flutter sans `--dart-define`                           | L'app pointe vers les URL par défaut (`auth.lucaslopvet.fr`) → connexion impossible.                                                        |
-| Accès direct via `https://192.168.1.50/`                     | Erreur de certificat (CN ne correspond pas à l'IP). Toujours utiliser le hostname DDNS.                                                     |
-| Hostname non résolu sur Android                              | Téléphone hors du wifi hôpital, ou résolution DNS locale absente → app injoignable.                                                         |
-| APK signé en debug poussé en prod long terme                 | À chaque rebuild, la signature change → impossible d'installer en mise à jour, l'ancien doit être désinstallé. Passer en signature release. |
-| Oublier d'ajouter un dossier dans le `Dockerfile db-service` | Code non embarqué dans l'image (cas du dossier `scripts/` pour `import_inventory.js`).                                                      |
+| Piège                                            | Conséquence |
+| ------------------------------------------------ | ----------- |
+| `docker compose down -v`                         | Détruit `auth_data_ip` / `db_data_ip` / `keycloak_postgres_data_ip` → perte totale des données. Toujours `down` sans `-v`. |
+| `KC_PUBLIC_URL` ≠ IP réellement utilisée         | `iss` du JWT incohérent → validation JWT échoue sur toutes les requêtes. Laisser `setup_ubuntu.sh` calculer la valeur. |
+| Port 443 réassigné (ex. 444) sans recalcul       | `KC_PUBLIC_URL` et `CORS_ORIGIN` doivent inclure `:444`. Le script le gère (étape 6). |
+| Build Flutter avec `--dart-define` en IP-only    | Fige une URL → casse l'accès multi-IP (WiFi local vs Internet). Ne **pas** fournir de dart-define. |
+| Accès via une IP absente du SAN du certificat    | Erreur de certificat. Régénérer le cert en ajoutant l'IP au `subjectAltName`. |
+| Compter sur les emails sans domaine              | SPF/DKIM impossibles → spam/rejet probable. Limitation assumée (voir Contexte). |
 
 ---
 
-## Fichiers critiques (modifier / créer)
+## Annexe — Déploiement avec un vrai nom de domaine (optionnel)
 
-- **À créer** : `/etc/kabutare/.env`, `/etc/letsencrypt/duckdns.ini`, `/etc/duckdns/duck.sh`, `nginx/conf.d/kabutare.conf` (ou `/etc/nginx/conf.d/kabutare.conf`)
-- **À modifier** : [auth-service/src/index.js](auth-service/src/index.js) (CORS), [db-service/src/index.js](db-service/src/index.js) (CORS)
-- **Inchangés** : [docker-compose.yml](docker-compose.yml), Dockerfiles, [flutter-app/lib/services/api_config.dart](flutter-app/lib/services/api_config.dart), seed/import scripts
-- **À supprimer / ignorer** : les vhosts existants `nginx/conf.d/{app,auth,db,dev-*}.conf` (spécifiques à `lucaslopvet.fr`)
+> Cette famille de déploiement est **conservée mais débranchée par défaut**. Elle ne s'utilise **que** si l'on dispose d'un véritable nom de domaine et d'un certificat valide (Let's Encrypt). Historiquement, le projet a utilisé un DDNS gratuit (DuckDNS) avec un certificat Let's Encrypt émis via le challenge **DNS-01**.
+
+Principe :
+
+- Faire pointer un nom de domaine (acheté, ou sous-domaine DDNS type `*.duckdns.org`) vers l'IP du serveur ; résolution locale via le DNS du routeur ou `dnsmasq` pour l'accès LAN.
+- Émettre un certificat Let's Encrypt valide (challenge DNS-01 si le port 80 n'est pas exposé sur Internet) avec `certbot` et le plugin DNS du fournisseur.
+- Utiliser la famille `docker-compose.yml` / `docker-compose.dev.yml`, ajuster la whitelist CORS (`auth-service/src/index.js`, `db-service/src/index.js`) avec le domaine, et compiler le front avec les `--dart-define` `AUTH_URL` / `DB_URL` / `KC_TOKEN_URL` pointant le domaine.
+
+Avantages d'un vrai domaine : pas d'avertissement de certificat, et possibilité de publier des enregistrements **SPF/DKIM** pour fiabiliser les emails — c'est la seule manière de lever la limitation email de l'IP-only.

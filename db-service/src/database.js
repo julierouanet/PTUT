@@ -203,6 +203,8 @@ function initTables() {
   // Migration : rebuild issues — rend equipment_id/equipment_name nullable,
   // ajoute location_id, issue_category, assigned_group.
   // Idempotent : ne s'exécute que si la colonne location_id est absente.
+  // NB : conserve location_text/location_tag/taken_at (ajoutés par ALTER plus
+  // haut) — sans quoi un boot unique (tests, nouvelle install) les perdrait.
   const issuesCols = db.pragma('table_info(issues)');
   if (!issuesCols.some(c => c.name === 'location_id')) {
     db.exec(`
@@ -213,6 +215,8 @@ function initTables() {
         equipment_id        TEXT,
         equipment_name      TEXT,
         location_id         TEXT REFERENCES locations(id),
+        location_text       TEXT,
+        location_tag        TEXT,
         issue_category      TEXT NOT NULL DEFAULT 'Biomédical',
         assigned_group      TEXT,
         department          TEXT NOT NULL,
@@ -228,17 +232,20 @@ function initTables() {
         updated_at          TEXT DEFAULT (datetime('now','localtime')),
         reporter_id         TEXT,
         reporter_email      TEXT,
+        taken_at            TEXT,
         urgency             TEXT DEFAULT 'Moyen'
       );
       INSERT INTO issues (
-        id, equipment_id, equipment_name, department, type, description, reporter,
+        id, equipment_id, equipment_name, location_text, location_tag,
+        department, type, description, reporter,
         created_at, status, assigned_technician, diagnosis, actions, parts_replaced,
-        updated_at, reporter_id, reporter_email, urgency
+        updated_at, reporter_id, reporter_email, taken_at, urgency
       )
       SELECT
-        id, equipment_id, equipment_name, department, type, description, reporter,
+        id, equipment_id, equipment_name, location_text, location_tag,
+        department, type, description, reporter,
         created_at, status, assigned_technician, diagnosis, actions, parts_replaced,
-        updated_at, reporter_id, reporter_email, urgency
+        updated_at, reporter_id, reporter_email, taken_at, urgency
       FROM issues_old;
       DROP TABLE issues_old;
       CREATE INDEX IF NOT EXISTS idx_issues_status    ON issues(status);

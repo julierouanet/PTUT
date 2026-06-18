@@ -94,7 +94,7 @@ Permettre au personnel hospitalier de **suivre, surveiller et signaler les probl
 | **Base de données métier** | SQLite via better-sqlite3 (mode synchrone, WAL) | 11.7.0 |
 | **IAM** | Keycloak (realm `kabutare-hospital`) | 26+ |
 | **Auth DB** | PostgreSQL (backend Keycloak uniquement) | 16 |
-| **Reverse proxy** | Nginx (HTTPS, Let's Encrypt via DuckDNS DNS-01) | Stable |
+| **Reverse proxy** | Nginx (HTTPS, certificat auto-signé sur IP — domaine optionnel) | Stable |
 | **Containerisation** | Docker Compose (prod + dev) | v2 |
 | **CI/CD** | Jenkins (`ghcr.io/cirruslabs/flutter:3.41.4`) | — |
 | **Emailing** | Brevo (SMTP Keycloak + API REST services Node) | — |
@@ -148,7 +148,7 @@ PTUT/
 ├── Jenkinsfile                   # Pipeline CI/CD
 └── contexte/
     ├── context.md                # Schémas DB complets + tous les endpoints API
-    ├── plan.md                   # Protocole déploiement LAN hôpital (DuckDNS + NAT)
+    ├── plan.md                   # Protocole déploiement IP-only (cert auto-signé) — domaine optionnel
     └── resume_need_software_kabutare.md  # Cahier des charges original
 ```
 
@@ -259,25 +259,25 @@ Requête API → 401
 
 ## 🌐 Déploiement & Infrastructure
 
-### Mode cible — Serveur local hôpital avec NAT
+### Mode cible — Serveur hôpital, accès par IP publique (défaut)
 
-Le système tourne sur un **serveur physique à l'hôpital**. L'accès combine LAN interne et accès depuis l'extérieur via NAT :
+Le système tourne sur un **serveur physique à l'hôpital**. Le chemin de déploiement **par défaut** est l'accès direct par **IP publique brute** + **certificat HTTPS auto-signé** (aucun nom de domaine requis). Provisionnement clé en main via `setup_ubuntu.sh`.
 
 ```
-Internet / Réseau LAN hôpital
-         ↓ HTTPS :443
-  Routeur hôpital (NAT port-forward :443 → IP serveur)
-         ↓
-  Nginx (kabutare.duckdns.org — cert Let's Encrypt DNS-01)
-  ├── /auth/          → auth-service :3001
-  ├── /db/            → db-service :3002
-  ├── /download/app.apk → APK Android
-  └── /               → Flutter Web SPA
+Réseau LAN hôpital + Internet
+         ↓ HTTPS :443  (cert auto-signé, IP dans le SAN)
+  Nginx (server_name _  — écoute sur https://<IP>)
+  ├── /auth/        → auth-service :3001
+  ├── /db/          → db-service :3002
+  ├── /keycloak/    → keycloak :8080
+  └── /app_isis/    → Flutter Web SPA
 ```
 
-- **DuckDNS** (`kabutare.duckdns.org`) : hostname public → résolution DNS locale par le routeur (ou dnsmasq) vers l'IP interne
-- **Let's Encrypt DNS-01** : cert valide sans exposer le port 80 sur Internet
-- **APK Android** : servi par Nginx sous `/download/app.apk`, installable depuis le navigateur Android
+- **IP-only** : le certificat ECDSA P-384 auto-signé (généré par `setup_ubuntu.sh`) inclut l'IP publique **et** l'IP locale dans le `subjectAltName`, donc le même cert sert sur le WiFi hôpital et depuis Internet. Le navigateur affiche un avertissement à accepter une fois.
+- **Résolution des URLs** : Flutter détecte l'hôte au runtime via `Uri.base` (`lib/services/api_config.dart`) — aucun `--dart-define` ni hostname codé en dur.
+- **Domaine (optionnel, débranché par défaut)** : la famille `docker-compose.yml` / `docker-compose.dev.yml` reste disponible si l'on fournit explicitement un vrai nom de domaine et un certificat valide.
+
+> ⚠️ **Limitation connue (IP-only, sans domaine)** : les emails Brevo (vérification, reset mot de passe, notifications) risquent fort le rejet ou le classement en spam — sans nom de domaine, impossible de publier des enregistrements SPF/DKIM. Acceptable pour une mise en service interne ; pour un envoi fiable, basculer sur un vrai domaine.
 
 > Voir `contexte/plan.md` pour le protocole de déploiement complet pas-à-pas.
 
@@ -309,8 +309,10 @@ Internet / Réseau LAN hôpital
 
 | Branche | Cible | `AUTH_URL` / `DB_URL` |
 |---|---|---|
-| `main` | prod | `https://kabutare.duckdns.org/auth` / `/db` |
-| `dev` | dev | `https://dev.kabutare.duckdns.org/auth` / `/db` |
+| `main` | prod | `https://<domaine>/auth` / `/db` (famille domaine optionnelle) |
+| `dev` | dev | `https://dev.<domaine>/auth` / `/db` (famille domaine optionnelle) |
+
+> Le déploiement par défaut (IP-only) **ne fournit pas** ces `--dart-define` : Flutter résout les URLs au runtime via `Uri.base`. Ces colonnes ne s'appliquent qu'à la famille « domaine ».
 
 ---
 
@@ -322,7 +324,7 @@ Internet / Réseau LAN hôpital
 |---|---|---|
 | `INTERNAL_SECRET` | auth + db | Authentification service-à-service |
 | `DB_PATH` | auth + db | Chemin SQLite (`/data/auth.db` / `/data/hospital.db`) |
-| `KC_ISSUER` | auth + db | URL realm (`https://kabutare.duckdns.org/realms/kabutare-hospital`) |
+| `KC_ISSUER` | auth + db | URL realm (IP-only : `https://<IP>/keycloak/realms/kabutare-hospital`) |
 | `KC_ADMIN_URL` | auth | URL Admin API Keycloak |
 | `KC_CLIENT_ID` | auth | `auth-service` (service account) |
 | `KC_CLIENT_SECRET` | auth | Secret client Keycloak |
@@ -341,10 +343,14 @@ Internet / Réseau LAN hôpital
 
 ### Flutter (`--dart-define` à la compilation)
 
+> **IP-only (défaut)** : aucun `--dart-define` — `ApiConfig` résout `AUTH_URL`/`DB_URL`/`KC_TOKEN_URL` au runtime depuis `Uri.base`.
+
+Uniquement pour la **famille domaine optionnelle**, fournir les 3 URLs (remplacer `<domaine>`) :
+
 ```bash
---dart-define=AUTH_URL=https://kabutare.duckdns.org/auth
---dart-define=DB_URL=https://kabutare.duckdns.org/db
---dart-define=KC_TOKEN_URL=https://kabutare.duckdns.org/realms/kabutare-hospital/protocol/openid-connect/token
+--dart-define=AUTH_URL=https://<domaine>/auth
+--dart-define=DB_URL=https://<domaine>/db
+--dart-define=KC_TOKEN_URL=https://<domaine>/realms/kabutare-hospital/protocol/openid-connect/token
 ```
 
 ---
@@ -409,4 +415,4 @@ Timestamp `_lastRefresh` mis à jour au mount et lors des rafraîchissements man
 |---|---|
 | `CLAUDE.md` | Instructions de développement (conventions, commandes, règles de code) |
 | `contexte/context.md` | Schémas DB complets, tous les endpoints API, détails d'implémentation |
-| `contexte/plan.md` | Protocole de déploiement LAN hôpital pas-à-pas (DuckDNS, NAT, Nginx, TLS) |
+| `contexte/plan.md` | Protocole de déploiement IP-only pas-à-pas (cert auto-signé, Nginx, Keycloak) — domaine optionnel |

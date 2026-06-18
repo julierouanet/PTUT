@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
@@ -7,6 +8,20 @@ import 'equipment_detail_screen.dart';
 /// Helpers partagés entre les fiches de détail (sous-catégorie, catégorie,
 /// département, fabricant, modèle) pour éviter la duplication des briques UI
 /// récurrentes (en-tête de section, carte « vide », liste d'équipements).
+
+// Formateur de date partagé, construit une seule fois (la construction d'un
+// DateFormat parse le motif — coûteux à répéter par ligne de liste).
+final DateFormat _detailDateFmt = DateFormat('dd/MM/yyyy');
+
+/// Formate une date ISO en `dd/MM/yyyy` (locale). Null si absente/invalide.
+String? detailFormatDate(String? raw) {
+  if (raw == null || raw.isEmpty) return null;
+  try {
+    return _detailDateFmt.format(DateTime.parse(raw).toLocal());
+  } catch (_) {
+    return null;
+  }
+}
 
 /// En-tête de section : icône primaire + libellé.
 Widget detailSectionHeader(IconData icon, String label) => Row(children: [

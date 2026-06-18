@@ -47,8 +47,8 @@ router.get('/:id/stats', verifyToken, (req, res) => {
 
 // ── GET /api/departments/:id/detail ───────────────────────────────────────────
 // Dashboard d'un département (lecture seule) : KPIs parc + équipements + incidents
-// ouverts. Les KPIs/équipements filtrent par department_id ; les incidents par
-// nom (issues.department est un texte, comme dans /stats et la liste).
+// ouverts ET résolus. Les KPIs/équipements filtrent par department_id ; les
+// incidents par nom (issues.department est un texte, comme dans /stats et la liste).
 router.get('/:id/detail', verifyToken, (req, res) => {
   const db = getDb();
   const id = parseInt(req.params.id, 10);
@@ -81,27 +81,47 @@ router.get('/:id/detail', verifyToken, (req, res) => {
     ORDER BY name ASC
   `).all(id);
 
-  // Incidents ouverts (statuts non terminaux).
+  // Incidents ouverts (statuts non terminaux). Jointure du lieu pour afficher
+  // un nom même quand l'incident vise une infrastructure (equipment_id NULL).
   const openIssues = db.prepare(`
-    SELECT id, type, description, status, urgency
-    FROM issues
-    WHERE department = ?
-      AND status IN ('Reported','Acknowledged','Assigned','In Progress','Waiting Materials','Redirected')
-    ORDER BY created_at DESC
+    SELECT i.id, i.type, i.description, i.status, i.urgency, i.issue_category,
+           i.equipment_name,
+           COALESCE(l.name, i.location_text) AS location_name,
+           i.created_at, i.updated_at
+    FROM issues i
+    LEFT JOIN locations l ON l.id = i.location_id
+    WHERE i.department = ?
+      AND i.status IN ('Reported','Acknowledged','Assigned','In Progress','Waiting Materials','Redirected')
+    ORDER BY i.created_at DESC
+  `).all(dept.name);
+
+  // Incidents résolus (statuts terminaux). Triés par date de clôture (updated_at).
+  const resolvedIssues = db.prepare(`
+    SELECT i.id, i.type, i.description, i.status, i.urgency, i.issue_category,
+           i.equipment_name,
+           COALESCE(l.name, i.location_text) AS location_name,
+           i.created_at, i.updated_at
+    FROM issues i
+    LEFT JOIN locations l ON l.id = i.location_id
+    WHERE i.department = ?
+      AND i.status IN ('Completed','Verified','Closed')
+    ORDER BY i.updated_at DESC
   `).all(dept.name);
 
   res.json({
     id: dept.id,
     name: dept.name,
     kpis: {
-      total:        kpis.total        || 0,
-      operational:  kpis.operational  || 0,
-      maintenance:  kpis.maintenance  || 0,
-      outOfService: kpis.outOfService || 0,
-      pmOverdue:    kpis.pmOverdue    || 0,
+      total:           kpis.total        || 0,
+      operational:     kpis.operational  || 0,
+      maintenance:     kpis.maintenance  || 0,
+      outOfService:    kpis.outOfService || 0,
+      pmOverdue:       kpis.pmOverdue    || 0,
+      openIssuesCount: openIssues.length,
     },
     equipment,
     openIssues,
+    resolvedIssues,
   });
 });
 

@@ -4906,7 +4906,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get departmentDetailTitle => 'Détail du département';
 
   @override
-  String get departmentOpenIssuesSection => 'Incidents ouverts';
+  String get departmentOpenIssuesSection => 'Incidents en cours';
+
+  @override
+  String get departmentResolvedIssuesSection => 'Incidents résolus';
+
+  @override
+  String get departmentOpenIssuesKpi => 'Incidents ouverts';
+
+  @override
+  String get departmentIncidentTargetFallback => 'Incident de département';
+
+  @override
+  String get departmentIncidentCategoryBiomedical => 'Biomédical';
+
+  @override
+  String get departmentIncidentCategoryInfrastructure => 'Infrastructure';
+
+  @override
+  String get departmentIncidentCategoryIt => 'Informatique';
 
   @override
   String get modelDetailTitle => 'Fiche du modèle';

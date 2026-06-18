@@ -1947,7 +1947,13 @@
 
   "categoryDetailTitle": "Détail de la catégorie",
   "departmentDetailTitle": "Détail du département",
-  "departmentOpenIssuesSection": "Incidents ouverts",
+  "departmentOpenIssuesSection": "Incidents en cours",
+  "departmentResolvedIssuesSection": "Incidents résolus",
+  "departmentOpenIssuesKpi": "Incidents ouverts",
+  "departmentIncidentTargetFallback": "Incident de département",
+  "departmentIncidentCategoryBiomedical": "Biomédical",
+  "departmentIncidentCategoryInfrastructure": "Infrastructure",
+  "departmentIncidentCategoryIt": "Informatique",
 
   "modelDetailTitle": "Fiche du modèle",
   "modelEquipmentSection": "Équipements",

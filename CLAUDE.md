@@ -147,35 +147,44 @@ flutter run -d chrome \
   --dart-define=DB_URL=http://localhost:3002 \
   --dart-define=KC_TOKEN_URL=http://localhost:8080/realms/kabutare-hospital/protocol/openid-connect/token
 
-# Build web (prod hôpital)
-flutter build web --release \
-  --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
-  --dart-define=DB_URL=https://kabutare.duckdns.org/db \
-  --dart-define=KC_TOKEN_URL=https://kabutare.duckdns.org/realms/kabutare-hospital/protocol/openid-connect/token
+# Build web (prod hôpital — déploiement IP-only par défaut)
+# Aucun --dart-define : ApiConfig détecte l'hôte au runtime via Uri.base.
+# Servi par Nginx derrière https://<IP>/app_isis/ (voir contexte/plan.md).
+flutter build web --release
 
-# Build APK Android
-flutter build apk --release \
-  --dart-define=AUTH_URL=https://kabutare.duckdns.org/auth \
-  --dart-define=DB_URL=https://kabutare.duckdns.org/db \
-  --dart-define=KC_TOKEN_URL=https://kabutare.duckdns.org/realms/kabutare-hospital/protocol/openid-connect/token
+# Build APK Android (IP-only)
+flutter build apk --release
+
+# (Optionnel) Déploiement avec un vrai nom de domaine — fournir les 3 URLs.
+# Ne PAS utiliser pour l'IP-only : la résolution auto suffit.
+flutter build web --release \
+  --dart-define=AUTH_URL=https://exemple.tld/auth \
+  --dart-define=DB_URL=https://exemple.tld/db \
+  --dart-define=KC_TOKEN_URL=https://exemple.tld/realms/kabutare-hospital/protocol/openid-connect/token
 ```
 
 ### Docker
 
 ```bash
+# ── Déploiement par défaut : IP-only + certificat auto-signé ──────────
+# Provisionnement serveur Ubuntu de bout en bout (cert SSL, Nginx, Keycloak) :
+sudo bash setup_ubuntu.sh
+# Stack seule (images Docker Hub, .env renseigné depuis .env.ip.example) :
+docker compose -f docker-compose.ip.secured.yml up -d
+# Seed / import (conteneurs suffixés -ip)
+docker exec auth-service-ip node seed.js
+docker exec db-service-ip   node seed.js
+docker cp <fichier.xlsx> db-service-ip:/tmp/inventory.xlsx
+docker exec db-service-ip node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
+
+# ── Famille « domaine » (optionnelle, débranchée par défaut) ──────────
+# À n'utiliser QUE si l'on dispose d'un vrai nom de domaine + cert valide.
 # Prod
 docker compose -p gestion-equipement-medical-prod -f docker-compose.yml up -d --build
-
 # Dev
 docker compose -p gestion-equipement-medical_dev -f docker-compose.dev.yml up -d --build
-
-# Seed
 docker exec auth-service-prod node seed.js
 docker exec db-service-prod   node seed.js
-
-# Import inventaire en prod
-docker cp <fichier.xlsx> db-service-prod:/tmp/inventory.xlsx
-docker exec db-service-prod node scripts/import_inventory.js --xlsx /tmp/inventory.xlsx
 ```
 
 ---

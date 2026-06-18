@@ -741,7 +741,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 |---|---|---|---|
 | GET | /api/departments | Auth | Liste des départements |
 | GET | /api/departments/:id/stats | Auth | Statistiques d'un département |
-| GET | /api/departments/:id/detail | Auth | **[NOUVEAU]** Dashboard département (lecture seule). Retourne `{id, name, kpis:{total,operational,maintenance,outOfService,pmOverdue}, equipment:[{id,name,status,category}], openIssues:[{id,type,description,status,urgency}]}`. KPIs/équipements via `department_id` ; incidents via `department=name` |
+| GET | /api/departments/:id/detail | Auth | Dashboard département (lecture seule). Retourne `{id, name, kpis:{total,operational,maintenance,outOfService,pmOverdue,openIssuesCount}, equipment:[{id,name,status,category}], openIssues:[...], resolvedIssues:[...]}`. Chaque incident = `{id,type,description,status,urgency,issue_category,equipment_name,location_name,created_at,updated_at}` avec `location_name = COALESCE(locations.name, location_text)`. `openIssues` = statuts non terminaux (tri `created_at` DESC) ; `resolvedIssues` = `Completed/Verified/Closed` (tri `updated_at` DESC). KPIs/équipements via `department_id` ; incidents via `department=name` |
 | GET | /api/departments/:id/check-dependencies | Admin | Vérifie les dépendances avant suppression |
 | POST | /api/departments | Admin | Créer |
 | PUT | /api/departments/:id | Admin | Modifier |

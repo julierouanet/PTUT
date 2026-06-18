@@ -7,6 +7,7 @@ import '../widgets/detail_breadcrumb.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/status_badge.dart';
 import 'detail_screen_helpers.dart';
+import 'issue_detail_screen.dart';
 
 /// Dashboard d'un département (lecture seule).
 ///
@@ -33,6 +34,7 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
   Map<String, dynamic> _kpis = const {};
   List<Map<String, dynamic>> _equipment = [];
   List<Map<String, dynamic>> _openIssues = [];
+  List<Map<String, dynamic>> _resolvedIssues = [];
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
         _kpis = Map<String, dynamic>.from((detail['kpis'] as Map?) ?? const {});
         _equipment = List<Map<String, dynamic>>.from((detail['equipment'] as List?) ?? const []);
         _openIssues = List<Map<String, dynamic>>.from((detail['openIssues'] as List?) ?? const []);
+        _resolvedIssues = List<Map<String, dynamic>>.from((detail['resolvedIssues'] as List?) ?? const []);
         _loading = false;
       });
     } catch (e) {
@@ -96,11 +99,20 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
                               emptyLabel: l10n.settingsEmptyList, subtitleKey: 'category'),
                           const SizedBox(height: 16),
 
-                          // ── Incidents ouverts ───────────────────────────────
+                          // ── Incidents en cours ──────────────────────────────
                           detailSectionHeader(
-                              Icons.report_problem_outlined, l10n.departmentOpenIssuesSection),
+                              Icons.report_problem_outlined,
+                              '${l10n.departmentOpenIssuesSection} (${_openIssues.length})'),
                           const SizedBox(height: 8),
-                          _buildIssuesList(l10n),
+                          _buildIssuesList(l10n, _openIssues, dateKey: 'created_at'),
+                          const SizedBox(height: 16),
+
+                          // ── Incidents résolus ───────────────────────────────
+                          detailSectionHeader(
+                              Icons.task_alt_outlined,
+                              '${l10n.departmentResolvedIssuesSection} (${_resolvedIssues.length})'),
+                          const SizedBox(height: 8),
+                          _buildIssuesList(l10n, _resolvedIssues, dateKey: 'updated_at'),
                         ],
                       ),
                     ),
@@ -109,7 +121,7 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
     );
   }
 
-  // ── KPIs responsives : 5 cartes en grille fluide (empilées sous 600px) ──────
+  // ── KPIs responsives : 6 cartes en grille fluide (empilées sous 600px) ──────
   Widget _buildKpis(AppLocalizations l10n) {
     final cards = <Widget>[
       StatCard(title: l10n.dashboardTotal, value: '${_kpi('total')}',
@@ -122,6 +134,8 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
           icon: Icons.cancel_outlined, color: AppColors.error),
       StatCard(title: l10n.dashboardPmOverdue, value: '${_kpi('pmOverdue')}',
           icon: Icons.event_busy_outlined, color: AppColors.error),
+      StatCard(title: l10n.departmentOpenIssuesKpi, value: '${_kpi('openIssuesCount')}',
+          icon: Icons.report_problem_outlined, color: AppColors.warning),
     ];
 
     return LayoutBuilder(builder: (context, constraints) {
@@ -140,27 +154,77 @@ class _DepartmentDetailScreenState extends State<DepartmentDetailScreen> {
     });
   }
 
-  Widget _buildIssuesList(AppLocalizations l10n) {
-    if (_openIssues.isEmpty) return detailEmptyCard(l10n.dashboardNoIssues);
+  /// Liste d'incidents en carte, paramétrée par la liste et la clé de date à
+  /// afficher (`created_at` pour les incidents en cours, `updated_at` — date de
+  /// clôture — pour les résolus). Chaque tuile ouvre [IssueDetailScreen].
+  Widget _buildIssuesList(
+    AppLocalizations l10n,
+    List<Map<String, dynamic>> issues, {
+    required String dateKey,
+  }) {
+    if (issues.isEmpty) return detailEmptyCard(l10n.dashboardNoIssues);
     return Card(
       child: Column(
-        children: _openIssues.map((i) {
+        children: issues.map((i) {
+          final id = i['id'] as String? ?? '';
           final status = i['status'] as String? ?? '';
           final desc = i['description'] as String? ?? '—';
           final urgency = i['urgency'] as String? ?? '';
+          final equipmentName = i['equipment_name'] as String? ?? '';
+          final locationName = i['location_name'] as String? ?? '';
+
+          // Cible : équipement si renseigné, sinon lieu, sinon fallback générique.
+          final target = equipmentName.isNotEmpty
+              ? equipmentName
+              : (locationName.isNotEmpty
+                  ? locationName
+                  : l10n.departmentIncidentTargetFallback);
+
+          // Sous-titre : cible · urgence · date formatée (selon la section).
+          final parts = <String>[target];
+          if (urgency.isNotEmpty) parts.add(urgency);
+          final dateLabel = detailFormatDate(i[dateKey] as String?);
+          if (dateLabel != null) parts.add(dateLabel);
+
           return ListTile(
             dense: true,
-            leading: const Icon(Icons.report_problem_outlined, size: 18, color: AppColors.warning),
+            leading: _categoryBadge(l10n, i['issue_category'] as String?),
             title: Text(desc,
                 maxLines: 1, overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 14)),
-            subtitle: urgency.isEmpty
-                ? null
-                : Text(urgency, style: const TextStyle(fontSize: 12)),
+            subtitle: Text(parts.join(' · '),
+                maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12)),
             trailing: status.isEmpty ? null : StatusBadge(status: status, isCompact: true),
+            onTap: id.isEmpty
+                ? null
+                : () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => IssueDetailScreen(issueId: id),
+                      ),
+                    ),
           );
         }).toList(),
       ),
+    );
+  }
+
+  /// Badge de catégorie d'incident (Biomedical / Infrastructure / IT) : icône +
+  /// couleur distincte issues de [AppColors] — pas de couleur inline. Icône,
+  /// couleur et libellé dérivent d'un seul switch sur la catégorie.
+  Widget _categoryBadge(AppLocalizations l10n, String? category) {
+    final (IconData icon, Color color, String label) = switch (category) {
+      'Infrastructure' => (
+          Icons.bolt_outlined, AppColors.warning, l10n.departmentIncidentCategoryInfrastructure),
+      'IT' => (
+          Icons.computer_outlined, AppColors.textSecondary, l10n.departmentIncidentCategoryIt),
+      _ => (
+          Icons.medical_services_outlined, AppColors.primary, l10n.departmentIncidentCategoryBiomedical),
+    };
+    return Tooltip(
+      message: label,
+      child: Icon(icon, size: 18, color: color),
     );
   }
 }

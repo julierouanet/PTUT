@@ -166,13 +166,15 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
       if (!mounted) return;
       setState(() => _report = report);
 
-      // Archivage auto du PDF dans l'historique équipement (si équipement lié).
-      await _exportPdf(l10n, archive: true, report: report);
-
       messenger.showSnackBar(SnackBar(
         content: Text(l10n.interventionReportFinalized),
         behavior: SnackBarBehavior.floating,
       ));
+
+      // Génère le PDF une seule fois : archivage auto sur l'équipement (si lié)
+      // PUIS, dans tous les cas, ouverture du dialogue interactif de
+      // téléchargement / impression pour le proposer à l'utilisateur.
+      await _exportPdf(l10n, archive: true, report: report, alsoDownload: true);
     } catch (_) {
       messenger.showSnackBar(SnackBar(
         content: Text(l10n.interventionReportFinalizeError),
@@ -211,9 +213,17 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
     }
   }
 
+  /// Génère le PDF (une seule fois) et le diffuse selon le contexte :
+  /// - [archive] : si un équipement est lié, archive le PDF dans son historique.
+  /// - [alsoDownload] : ouvre EN PLUS le dialogue interactif (téléchargement /
+  ///   impression). Utilisé à la finalisation pour proposer le rapport figé.
+  ///
+  /// Appelé sans paramètre (bouton « Exporter PDF »), il archive si possible,
+  /// sinon ouvre directement le dialogue interactif.
   Future<void> _exportPdf(
     AppLocalizations l10n, {
     bool archive = false,
+    bool alsoDownload = false,
     IssueInterventionReport? report,
   }) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -229,8 +239,9 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
       );
 
       final fileName = 'rapport_intervention_${widget.issueId}.pdf';
+      final archived = archive && r.equipmentId != null && r.equipmentId!.isNotEmpty;
 
-      if (archive && r.equipmentId != null && r.equipmentId!.isNotEmpty) {
+      if (archived) {
         // Archivage dans l'historique documentaire de l'équipement.
         await DbApiService.instance.archiveInterventionPdf(r.equipmentId!, pdfBytes, fileName);
         if (mounted) {
@@ -239,8 +250,11 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
             behavior: SnackBarBehavior.floating,
           ));
         }
-      } else {
-        // Export interactif (téléchargement / impression).
+      }
+
+      // Dialogue interactif : si demandé explicitement, ou si rien n'a été
+      // archivé (export simple sans équipement lié). Réutilise les mêmes octets.
+      if (alsoDownload || !archived) {
         await Printing.layoutPdf(onLayout: (_) async => pdfBytes, name: fileName);
       }
     } catch (_) {

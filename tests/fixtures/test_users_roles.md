@@ -1,8 +1,8 @@
 # Comptes de test Keycloak — Recette RBAC
 
-> **Environnement cible** : recette uniquement (`dev.kabutare.duckdns.org`)  
+> **Environnement cible** : recette uniquement (serveur IP-only, remplacer `<IP_RECETTE>` par l'IP du serveur)  
 > **Realm Keycloak** : `kabutare-hospital`  
-> **Console admin** : `https://dev.kabutare.duckdns.org/realms/kabutare-hospital` (ou port 8081 en local)  
+> **Console admin** : `https://<IP_RECETTE>/keycloak/admin/` (ou port 8081 en local)  
 > **⚠️ Ne jamais créer ces comptes en production**
 
 ---
@@ -237,7 +237,7 @@ Ces équipements doivent exister dans la base de données de recette. Les donné
 
 ## Checklist de préparation avant session de recette
 
-- [ ] Environnement dev opérationnel : `https://dev.kabutare.duckdns.org/health` répond `{"status":"ok"}`
+- [ ] Environnement dev opérationnel : `https://<IP_RECETTE>/auth/health` répond `{"status":"ok"}`
 - [ ] Realm Keycloak `kabutare-hospital` accessible en dev
 - [ ] 7 comptes de test créés avec les rôles et attributs corrects
 - [ ] Données seed chargées (`node seed.js` dans auth-service-dev et db-service-dev)
@@ -252,14 +252,14 @@ Ces équipements doivent exister dans la base de données de recette. Les donné
 ## Commandes de vérification rapide (pour le technicien ICT)
 
 ```bash
-# Vérifier que les 7 comptes ont le bon rôle (remplacer l'email et le token)
-curl -H "Authorization: Bearer <TOKEN>" https://dev.kabutare.duckdns.org/auth/api/auth/me | jq '.permissions'
+# Vérifier que les 7 comptes ont le bon rôle (remplacer l'IP, l'email et le token)
+curl -k -H "Authorization: Bearer <TOKEN>" https://<IP_RECETTE>/auth/api/auth/me | jq '.permissions'
 
 # Vérifier les incidents pré-créés
-curl -H "Authorization: Bearer <TOKEN>" https://dev.kabutare.duckdns.org/db/api/issues | jq '[.[] | {id, status, assigned_technician}]'
+curl -k -H "Authorization: Bearer <TOKEN>" https://<IP_RECETTE>/db/api/issues | jq '[.[] | {id, status, assigned_technician}]'
 
 # Vérifier les stocks d'inventaire
-curl -H "Authorization: Bearer <TOKEN>" https://dev.kabutare.duckdns.org/db/api/inventory | jq '[.[] | {id, name, current_stock, min_stock}]'
+curl -k -H "Authorization: Bearer <TOKEN>" https://<IP_RECETTE>/db/api/inventory | jq '[.[] | {id, name, current_stock, min_stock}]'
 ```
 
 ---

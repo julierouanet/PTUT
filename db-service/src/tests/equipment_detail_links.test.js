@@ -158,14 +158,30 @@ describe('GET /api/departments/:id/detail — dashboard département', () => {
       INSERT INTO equipment (id, name, department, department_id, category, status, next_preventive_maintenance)
       VALUES ('eq-dept-1', 'Équipement dept', 'Détail Dept Test', ?, 'Autre', 'Operational', '2000-01-01')
     `).run(deptId);
-    // Incident ouvert dans ce département.
+    // Incident ouvert lié à un équipement dans ce département.
     db.prepare(`
       INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, created_at, status, urgency)
       VALUES ('iss-dept-1', 'eq-dept-1', 'Équipement dept', 'Détail Dept Test', 'panne', 'Ne démarre plus', 'Test', datetime('now'), 'Reported', 'Haut')
     `).run();
+
+    // Incident d'infrastructure (sans équipement) rattaché à un lieu DB.
+    db.prepare(`
+      INSERT INTO locations (id, name, building, department)
+      VALUES ('loc-dept-1', 'Salle technique', 'Bâtiment A', 'Détail Dept Test')
+    `).run();
+    db.prepare(`
+      INSERT INTO issues (id, location_id, issue_category, department, type, description, reporter, created_at, status, urgency)
+      VALUES ('iss-dept-infra', 'loc-dept-1', 'Infrastructure', 'Détail Dept Test', 'electricite', 'Coupure de courant', 'Test', datetime('now'), 'In Progress', 'Moyen')
+    `).run();
+
+    // Incident résolu (statut terminal) → doit apparaître dans resolvedIssues.
+    db.prepare(`
+      INSERT INTO issues (id, equipment_id, equipment_name, department, type, description, reporter, created_at, status, urgency)
+      VALUES ('iss-dept-done', 'eq-dept-1', 'Équipement dept', 'Détail Dept Test', 'panne', 'Réparé', 'Test', datetime('now'), 'Closed', 'Bas')
+    `).run();
   });
 
-  test('✅ renvoie kpis + equipment + openIssues', async () => {
+  test('✅ renvoie kpis + equipment + openIssues + resolvedIssues', async () => {
     setTestRole('admin');
     const res = await request(app)
       .get(`/api/departments/${deptId}/detail`)
@@ -176,7 +192,21 @@ describe('GET /api/departments/:id/detail — dashboard département', () => {
     expect(res.body.kpis.operational).toBe(1);
     expect(res.body.kpis.pmOverdue).toBe(1);
     expect(res.body.equipment.find((e) => e.id === 'eq-dept-1')).toBeDefined();
+
+    // Incidents ouverts : équipement + infrastructure (2), pas le résolu.
+    expect(res.body.kpis.openIssuesCount).toBe(2);
     expect(res.body.openIssues.find((i) => i.id === 'iss-dept-1')).toBeDefined();
+
+    // L'incident d'infra expose son lieu via COALESCE(l.name, location_text).
+    const infra = res.body.openIssues.find((i) => i.id === 'iss-dept-infra');
+    expect(infra).toBeDefined();
+    expect(infra.issue_category).toBe('Infrastructure');
+    expect(infra.equipment_name).toBeNull();
+    expect(infra.location_name).toBe('Salle technique');
+
+    // Incidents résolus : uniquement le statut terminal.
+    expect(res.body.resolvedIssues.find((i) => i.id === 'iss-dept-done')).toBeDefined();
+    expect(res.body.resolvedIssues.find((i) => i.id === 'iss-dept-1')).toBeUndefined();
   });
 
   test('🚫 département introuvable → 404', async () => {

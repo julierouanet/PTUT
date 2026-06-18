@@ -11,7 +11,7 @@ const config = {
   KC_CLIENT_SECRET:       process.env.KC_CLIENT_SECRET       || null,
   // Brevo — API transactionnelle pour les emails applicatifs
   BREVO_API_KEY:          process.env.BREVO_API_KEY          || '',
-  BREVO_SENDER_EMAIL:     process.env.BREVO_SENDER_EMAIL     || 'noreply@kabutare.duckdns.org',
+  BREVO_SENDER_EMAIL:     process.env.BREVO_SENDER_EMAIL     || 'noreply@hospital.local',
   BREVO_SENDER_NAME:      process.env.BREVO_SENDER_NAME      || 'GMAO Kabutare',
 };
 
