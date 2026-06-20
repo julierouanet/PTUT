@@ -2204,6 +2204,18 @@ abstract class AppLocalizations {
   /// **'Details'**
   String get issueValidationDetails;
 
+  /// No description provided for @issueValidationReview.
+  ///
+  /// In fr, this message translates to:
+  /// **'Examiner'**
+  String get issueValidationReview;
+
+  /// No description provided for @issueValidationReportedAgo.
+  ///
+  /// In fr, this message translates to:
+  /// **'{days, plural, =0{Signale aujourd\'hui} one{Signale il y a {days} jour} other{Signale il y a {days} jours}}'**
+  String issueValidationReportedAgo(int days);
+
   /// No description provided for @issueValidationValidate.
   ///
   /// In fr, this message translates to:

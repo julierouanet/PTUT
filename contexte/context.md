@@ -861,6 +861,7 @@ lib/
 │   ├── issue_form_screen.dart
 │   ├── issue_staff_detail_screen.dart  # Vue lecture seule incidents pour hospitalStaff (timeline, pas de champs techniques)
 │   ├── technician_update_screen.dart
+│   ├── technician_schedule_screen.dart  # Planning technicien (calendrier), extrait de l'onglet Agenda
 │   ├── inventory_screen.dart
 │   ├── reports_screen.dart
 │   ├── user_management_screen.dart
@@ -1015,7 +1016,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (25 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail)
+## 3.4 Ecrans (26 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -1024,9 +1025,9 @@ status: StockStatus (normal, low, outOfStock)
 | 2  | EquipmentListScreen      | viewEquipment           | SliverList virtualisé, tri sur 4 colonnes, filtres PM (retard/imminente), RBAC colonnes (staffMedical vs technicien), export CSV liste filtrée, bouton "Planifier PM" quick-action, délègue créa/édition à EquipmentFormScreen |
 | 2b | EquipmentFormScreen      | manageEquipment         | Nouvel écran dédié créa/édition : Stepper 3 étapes (Infos essentielles / Infos techniques / GMAO & Maintenance). Remplace le dialog mono-bloc. |
 | 3  | IssueTrackingScreen      | trackIssues             | Liste unique tous les incidents, filtres statut/urgence/période/groupe, recherche, vue Kanban (desktop), split view, export CSV. Onglet "À valider" déplacé vers TechnicianUpdateScreen. |
-| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte, panne, intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen) |
+| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte, panne, intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen). Actions admin/superviseur : **Valider** (si statut `reported` — choix groupe + urgence + délai depuis signalement, statut → Acknowledged), Réassigner (par groupe), Commenter. |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
-| 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | 3 onglets fixes (Disponibles / Mes interventions / Agenda) + 1 onglet conditionnel "À valider" (visible si `canApproveRequests`). Diagnostic, actions, pièces, chrono, validation incidents (admin/superviseur). |
+| 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | Onglets : "À valider" (premier, conditionnel `canApproveRequests`) / Disponibles / Mes interventions. Bouton calendrier (à droite du TabBar) → TechnicianScheduleScreen. Diagnostic, actions, pièces, chrono. L'onglet "À valider" propose un bouton unique "Examiner" qui ouvre IssueDetailScreen où se font validation + réassignation par groupe. |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
 | 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
@@ -1042,6 +1043,7 @@ status: StockStatus (normal, low, outOfStock)
 | 18 | AnalyticsScreen          | generateReports         | Tableaux de bord analytiques (GET /api/analytics) |
 | 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle |
 | 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
+| 21 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
 
 ## 3.5 Navigation
 

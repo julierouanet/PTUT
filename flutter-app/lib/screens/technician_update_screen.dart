@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -16,23 +15,9 @@ import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
 import 'issue_detail_screen.dart';
+import 'technician_schedule_screen.dart';
 
 // ── Modèles internes ──────────────────────────────────────────────────────────
-
-/// Événement unifié pour l'onglet Agenda du technicien.
-class _AgendaEvent {
-  final String title;
-  final String subtitle;
-  final String type; // 'in_progress' | 'resolved' | 'maintenance' | 'future_maintenance'
-  final DateTime date;
-
-  const _AgendaEvent({
-    required this.title,
-    required this.subtitle,
-    required this.type,
-    required this.date,
-  });
-}
 
 /// Pièce sélectionnée depuis le catalogue d'inventaire.
 class _SelectedPart {
@@ -50,7 +35,8 @@ class _SelectedPart {
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
-/// Espace technicien — trois onglets : incidents disponibles, mes interventions, agenda.
+/// Espace technicien — onglets : à valider (admin/superviseur), incidents
+/// disponibles, mes interventions. Le planning est sur un écran séparé.
 class TechnicianUpdateScreen extends StatefulWidget {
   final String? issueId;
 
@@ -77,10 +63,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   bool _isSaving      = false;
   bool _isReassigning = false;
   bool _isEscalating  = false;
-  bool _isValidating  = false;
 
   // Vrai si l'utilisateur peut valider des incidents (admin ou superviseur)
   bool _canValidate = false;
+
+  // Index de l'onglet "Mes interventions" — dépend de la présence de "À valider"
+  int get _myInterventionsIndex => _canValidate ? 2 : 1;
 
   // ── Chronomètre d'intervention ───────────────────────────────────────────────
   Timer?    _timer;
@@ -89,10 +77,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   // ── Sélection de pièces depuis l'inventaire ──────────────────────────────────
   final List<_SelectedPart> _selectedParts = [];
-
-  // ── Onglet "Agenda" ─────────────────────────────────────────────────────────
-  DateTime _focusedDay  = DateTime.now();
-  DateTime _selectedDay = DateTime.now();
 
   // ── Getters de données ────────────────────────────────────────────────────────
 
@@ -198,8 +182,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     super.initState();
     // Détermine si l'utilisateur a le droit de valider des incidents
     _canValidate = AuthService().canApproveRequests;
-    final tabCount = _canValidate ? 4 : 3;
-    final startTab = widget.issueId != null ? 1 : 0;
+    // Onglets : [À valider?, Disponibles, Mes interventions]
+    final tabCount = _canValidate ? 3 : 2;
+    // Deep-link incident → on atterrit sur "Mes interventions" (dernier onglet)
+    final startTab = widget.issueId != null ? _myInterventionsIndex : 0;
     _tabController = TabController(length: tabCount, vsync: this, initialIndex: startTab);
     if (widget.issueId != null) {
       WidgetsBinding.instance.addPostFrameCallback(
@@ -301,72 +287,81 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
     return Column(
       children: [
-        // TabBar : icône + texte sur desktop, icône seule sur mobile
+        // TabBar : icône + texte sur desktop, icône seule sur mobile.
+        // Le bouton calendrier (planning) est à droite, hors des onglets.
         Material(
           color: Theme.of(context).cardColor,
           elevation: 1,
-          child: TabBar(
-            controller: _tabController,
-            labelColor: AppColors.primary,
-            unselectedLabelColor: AppColors.textSecondary,
-            indicatorColor: AppColors.primary,
-            indicatorWeight: 2,
-            padding: EdgeInsets.zero,
-            labelPadding: const EdgeInsets.symmetric(horizontal: 12),
-            tabs: [
-              Tab(
-                height: 40,
-                child: TabLabel(
-                  isMobile: isMobileTab,
-                  icon: Icons.inbox_outlined,
-                  label: l10n.techAvailableTab,
-                  badgeCount: _availableIssues.length,
+          child: Row(
+            children: [
+              Expanded(
+                child: TabBar(
+                  controller: _tabController,
+                  labelColor: AppColors.primary,
+                  unselectedLabelColor: AppColors.textSecondary,
+                  indicatorColor: AppColors.primary,
+                  indicatorWeight: 2,
+                  padding: EdgeInsets.zero,
+                  labelPadding: const EdgeInsets.symmetric(horizontal: 12),
+                  tabs: [
+                    // Onglet Validation — visible uniquement pour admin/superviseur
+                    if (_canValidate)
+                      Tab(
+                        height: 40,
+                        child: TabLabel(
+                          isMobile: isMobileTab,
+                          icon: Icons.pending_actions_outlined,
+                          label: l10n.issueValidationTab,
+                          badgeCount: _openIssuesForValidation.length,
+                        ),
+                      ),
+                    Tab(
+                      height: 40,
+                      child: TabLabel(
+                        isMobile: isMobileTab,
+                        icon: Icons.inbox_outlined,
+                        label: l10n.techAvailableTab,
+                        badgeCount: _availableIssues.length,
+                      ),
+                    ),
+                    Tab(
+                      height: 40,
+                      child: TabLabel(
+                        isMobile: isMobileTab,
+                        icon: Icons.build_outlined,
+                        label: l10n.techMyInterventionsTab,
+                        badgeCount: _myIssues.length,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Tab(
-                height: 40,
-                child: TabLabel(
-                  isMobile: isMobileTab,
-                  icon: Icons.build_outlined,
-                  label: l10n.techMyInterventionsTab,
-                  badgeCount: _myIssues.length,
+              // Bouton planning — accessible quelle que soit la config d'onglets
+              IconButton(
+                icon: const Icon(Icons.calendar_today_outlined),
+                color: AppColors.textSecondary,
+                tooltip: l10n.techScheduleTab,
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => const TechnicianScheduleScreen()),
                 ),
               ),
-              Tab(
-                height: 40,
-                child: TabLabel(
-                  isMobile: isMobileTab,
-                  icon: Icons.calendar_today_outlined,
-                  label: l10n.techScheduleTab,
-                ),
-              ),
-              // Onglet Validation — visible uniquement pour admin/superviseur
-              if (_canValidate)
-                Tab(
-                  height: 40,
-                  child: TabLabel(
-                    isMobile: isMobileTab,
-                    icon: Icons.pending_actions_outlined,
-                    label: l10n.issueValidationTab,
-                    badgeCount: _openIssuesForValidation.length,
-                  ),
-                ),
             ],
           ),
         ),
 
-        // ── TabBarView ──────────────────────────────────────────────────────
+        // ── TabBarView (même ordre que les onglets) ─────────────────────────
         Expanded(
           child: TabBarView(
             controller: _tabController,
             children: [
+              if (_canValidate)
+                _buildValidationTab(!isDesktop),
               _buildAvailableTab(l10n, !isDesktop),
               isDesktop
                   ? _buildDesktopInterventionsTab(l10n)
                   : _buildMobileInterventionsTab(l10n),
-              _buildAgendaTab(!isDesktop),
-              if (_canValidate)
-                _buildValidationTab(!isDesktop),
             ],
           ),
         ),
@@ -1244,365 +1239,6 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Onglet 2 : Agenda
-  // ─────────────────────────────────────────────────────────────────────────────
-
-  DateTime? _parseDate(String dateStr) {
-    if (dateStr.isEmpty) return null;
-    try {
-      return DateTime.parse(dateStr.split('T').first);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  List<_AgendaEvent> get _allAgendaEvents {
-    final events   = <_AgendaEvent>[];
-    final techName = _currentTechnicianName;
-
-    for (final issue in DataService().issues) {
-      if (issue.assignedTechnician != techName) continue;
-      if (issue.status != IssueStatus.inProgress &&
-          issue.status != IssueStatus.completed) continue;
-      final dateStr = issue.takenAt ?? issue.createdAt;
-      final date    = _parseDate(dateStr);
-      if (date == null) continue;
-      events.add(_AgendaEvent(
-        title:    issue.displayName,
-        subtitle: issue.type,
-        type:
-            issue.status == IssueStatus.inProgress ? 'in_progress' : 'resolved',
-        date: date,
-      ));
-    }
-
-    for (final eq in DataService().equipment) {
-      for (final rec in eq.maintenanceHistory) {
-        if (rec.technician != techName) continue;
-        final date = _parseDate(rec.date);
-        if (date == null) continue;
-        events.add(_AgendaEvent(
-            title:    eq.name,
-            subtitle: rec.intervention,
-            type:     'maintenance',
-            date:     date));
-      }
-      for (final rec in eq.futureMaintenance) {
-        if (rec.technician != techName) continue;
-        final date = _parseDate(rec.date);
-        if (date == null) continue;
-        events.add(_AgendaEvent(
-            title:    eq.name,
-            subtitle: rec.intervention,
-            type:     'future_maintenance',
-            date:     date));
-      }
-    }
-
-    return events;
-  }
-
-  List<_AgendaEvent> _eventsForDay(DateTime day) {
-    return _allAgendaEvents
-        .where((e) =>
-            e.date.year  == day.year &&
-            e.date.month == day.month &&
-            e.date.day   == day.day)
-        .toList();
-  }
-
-  String _monthName(int month, AppLocalizations l10n) {
-    switch (month) {
-      case 1:  return l10n.monthJanuary;
-      case 2:  return l10n.monthFebruary;
-      case 3:  return l10n.monthMarch;
-      case 4:  return l10n.monthApril;
-      case 5:  return l10n.monthMay;
-      case 6:  return l10n.monthJune;
-      case 7:  return l10n.monthJuly;
-      case 8:  return l10n.monthAugust;
-      case 9:  return l10n.monthSeptember;
-      case 10: return l10n.monthOctober;
-      case 11: return l10n.monthNovember;
-      case 12: return l10n.monthDecember;
-      default: return '';
-    }
-  }
-
-  Widget _buildAgendaTab(bool isMobile) {
-    final l10n           = AppLocalizations.of(context)!;
-    final selectedEvents = _eventsForDay(_selectedDay);
-    final allEvents      = _allAgendaEvents;
-
-    final Map<String, List<_AgendaEvent>> byMonth = {};
-    for (final e in allEvents) {
-      final key =
-          '${e.date.year}-${e.date.month.toString().padLeft(2, '0')}';
-      byMonth.putIfAbsent(key, () => []).add(e);
-    }
-    final monthKeys = byMonth.keys.toList()
-      ..sort((a, b) => b.compareTo(a));
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 16 : 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(l10n.techScheduleTitle,
-              style: TextStyle(
-                  fontSize: isMobile ? 20 : 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 4),
-          Text(l10n.techScheduleSubtitle,
-              style: const TextStyle(color: AppColors.textSecondary)),
-          const SizedBox(height: 16),
-
-          // Légende
-          Wrap(spacing: 12, runSpacing: 4, children: [
-            _legendItem(AppColors.warning, Icons.build_circle_outlined,
-                l10n.techLegendInProgress),
-            _legendItem(AppColors.success, Icons.check_circle_outlined,
-                l10n.techLegendResolved),
-            _legendItem(AppColors.textSecondary, Icons.build_outlined,
-                l10n.techLegendPastMaintenance),
-            _legendItem(
-                AppColors.primary, Icons.event_repeat, l10n.techLegendPlanned),
-          ]),
-          const SizedBox(height: 12),
-
-          // Calendrier
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              child: TableCalendar<_AgendaEvent>(
-                firstDay:
-                    DateTime.now().subtract(const Duration(days: 365)),
-                lastDay:
-                    DateTime.now().add(const Duration(days: 365)),
-                focusedDay: _focusedDay,
-                selectedDayPredicate: (day) =>
-                    isSameDay(_selectedDay, day),
-                eventLoader: _eventsForDay,
-                calendarStyle: const CalendarStyle(
-                  todayDecoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      shape: BoxShape.circle),
-                  todayTextStyle: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.bold),
-                  selectedDecoration: BoxDecoration(
-                      color: AppColors.primary, shape: BoxShape.circle),
-                  markerDecoration: BoxDecoration(
-                      color: AppColors.warning, shape: BoxShape.circle),
-                  outsideDaysVisible: false,
-                  markersMaxCount: 3,
-                ),
-                headerStyle: const HeaderStyle(
-                  formatButtonVisible: false,
-                  titleCentered: true,
-                  titleTextStyle:
-                      TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                ),
-                onDaySelected: (selectedDay, focusedDay) {
-                  setState(() {
-                    _selectedDay = selectedDay;
-                    _focusedDay  = focusedDay;
-                  });
-                },
-                onPageChanged: (focusedDay) =>
-                    setState(() => _focusedDay = focusedDay),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          Text(
-            l10n.techEventsOn(
-              '${_selectedDay.day.toString().padLeft(2, '0')}/'
-              '${_selectedDay.month.toString().padLeft(2, '0')}/'
-              '${_selectedDay.year}',
-            ),
-            style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 15,
-                color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 8),
-          selectedEvents.isEmpty
-              ? Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(children: [
-                      const Icon(Icons.event_available,
-                          color: AppColors.textSecondary),
-                      const SizedBox(width: 12),
-                      Text(l10n.techNoEventsToday,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary)),
-                    ]),
-                  ),
-                )
-              : Card(
-                  child: Column(
-                    children: selectedEvents.asMap().entries.map((entry) {
-                      final isLast =
-                          entry.key == selectedEvents.length - 1;
-                      return Column(children: [
-                        _buildEventTile(entry.value, l10n),
-                        if (!isLast)
-                          const Divider(height: 1, indent: 56),
-                      ]);
-                    }).toList(),
-                  ),
-                ),
-          const SizedBox(height: 24),
-
-          if (allEvents.isNotEmpty) ...[
-            Text(l10n.techFullHistory,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                    color: AppColors.textPrimary)),
-            const SizedBox(height: 8),
-            ...monthKeys.map((key) {
-              final events = List<_AgendaEvent>.from(byMonth[key]!)
-                ..sort((a, b) => b.date.compareTo(a.date));
-              final parts      = key.split('-');
-              final monthLabel =
-                  '${_monthName(int.parse(parts[1]), l10n)} ${parts[0]}';
-
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                            color: AppColors.primaryLight,
-                            borderRadius: BorderRadius.circular(12)),
-                        child: Text(monthLabel,
-                            style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.primary)),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(l10n.techEventCount(events.length),
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary)),
-                    ]),
-                  ),
-                  Card(
-                    child: Column(
-                      children: events.asMap().entries.map((entry) {
-                        final isLast =
-                            entry.key == events.length - 1;
-                        return Column(children: [
-                          _buildEventTile(entry.value, l10n),
-                          if (!isLast)
-                            const Divider(height: 1, indent: 56),
-                        ]);
-                      }).toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              );
-            }),
-          ] else ...[
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 40, color: AppColors.textSecondary),
-                  const SizedBox(height: 12),
-                  Text(l10n.techNoInterventions,
-                      style:
-                          const TextStyle(fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 4),
-                  Text(l10n.techNoInterventionsHint,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary, fontSize: 13),
-                      textAlign: TextAlign.center),
-                ]),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEventTile(_AgendaEvent event, AppLocalizations l10n) {
-    final IconData icon;
-    final Color    color;
-    final String   statusLabel;
-
-    switch (event.type) {
-      case 'in_progress':
-        icon        = Icons.build_circle_outlined;
-        color       = AppColors.warning;
-        statusLabel = l10n.techLegendInProgress;
-      case 'resolved':
-        icon        = Icons.check_circle_outline;
-        color       = AppColors.success;
-        statusLabel = l10n.techLegendResolved;
-      case 'future_maintenance':
-        icon        = Icons.event_repeat;
-        color       = AppColors.primary;
-        statusLabel = l10n.techLegendPlanned;
-      default: // 'maintenance'
-        icon        = Icons.build_outlined;
-        color       = AppColors.textSecondary;
-        statusLabel = l10n.techEventStatusCompleted;
-    }
-
-    return ListTile(
-      leading: Container(
-        width:   36,
-        height:  36,
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color:        color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: color, size: 18),
-      ),
-      title: Text(event.title,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
-      subtitle: Text(
-        '${event.subtitle}  ·  $statusLabel',
-        style:
-            const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-      ),
-      trailing: Text(
-        '${event.date.day.toString().padLeft(2, '0')}/'
-        '${event.date.month.toString().padLeft(2, '0')}/'
-        '${event.date.year}',
-        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-      ),
-    );
-  }
-
-  Widget _legendItem(Color color, IconData icon, String label) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, color: color, size: 14),
-      const SizedBox(width: 4),
-      Text(label, style: TextStyle(fontSize: 11, color: color)),
-    ]);
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // Helpers visuels
-  // ─────────────────────────────────────────────────────────────────────────────
-
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Dialog : Prise en charge
@@ -1653,20 +1289,16 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   }
 
   Future<void> _takeOverIssue(Issue issue) async {
-    final now = DateTime.now().toIso8601String();
     try {
-      await DbApiService.instance.updateIssue(issue.id, {
-        'status':              'In Progress',
-        'assigned_technician': _currentTechnicianName,
-        'taken_at':            now,
-      });
+      await DbApiService.instance
+          .takeOverIssue(issue.id, _currentTechnicianName);
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
       setState(() {
         _selectedIssueId = issue.id;
         _loadIssueData();
-        _tabController.animateTo(1);
+        _tabController.animateTo(_myInterventionsIndex);
       });
       _startTimer(DateTime.now());
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -2420,28 +2052,17 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 _buildValidationGroupChip(issue.assignedGroup!),
               ],
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _showValidationIssueDetail(issue),
-                    icon: const Icon(Icons.info_outline, size: 16),
-                    label: Text(l10n.issueValidationDetails),
-                  ),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _showValidationIssueDetail(issue),
+                  icon: const Icon(Icons.visibility_outlined, size: 16),
+                  label: Text(l10n.issueValidationReview),
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _isValidating
-                        ? null
-                        : () => _showValidateDialog(issue),
-                    icon: const Icon(Icons.check_circle_outline, size: 16),
-                    label: Text(l10n.issueValidationValidate),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.success,
-                        foregroundColor: Colors.white),
-                  ),
-                ),
-              ]),
+              ),
             ])
           : Row(children: [
               Container(
@@ -2497,29 +2118,23 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 _buildValidationGroupChip(issue.assignedGroup!),
               ],
               const SizedBox(width: 12),
-              OutlinedButton.icon(
-                onPressed: () => _showValidationIssueDetail(issue),
-                icon: const Icon(Icons.info_outline, size: 16),
-                label: Text(l10n.issueValidationDetails),
-              ),
-              const SizedBox(width: 8),
               ElevatedButton.icon(
-                onPressed: _isValidating
-                    ? null
-                    : () => _showValidateDialog(issue),
-                icon: const Icon(Icons.check_circle_outline, size: 16),
-                label: Text(l10n.issueValidationValidate),
+                onPressed: () => _showValidationIssueDetail(issue),
+                icon: const Icon(Icons.visibility_outlined, size: 16),
+                label: Text(l10n.issueValidationReview),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white),
               ),
             ]),
     );
   }
 
-  // Navigue vers le détail d'un incident depuis l'onglet validation
-  void _showValidationIssueDetail(Issue issue) {
-    Navigator.push(
+  // Navigue vers le détail d'un incident depuis l'onglet validation.
+  // La validation (et la réassignation) se font désormais dans le détail :
+  // on attend le retour puis on rafraîchit la liste "À valider".
+  Future<void> _showValidationIssueDetail(Issue issue) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => IssueDetailScreen(
@@ -2528,180 +2143,8 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         ),
       ),
     );
-  }
-
-  void _showValidateDialog(Issue issue) {
-    final l10n = AppLocalizations.of(context)!;
-    IssueUrgency selectedUrgency = issue.urgency;
-    String? selectedGroup = issue.assignedGroup;
-    const groups = ['Biomédical', 'IT', 'Infrastructure'];
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l10n.issueValidationConfirmTitle),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.issueValidationConfirmContent),
-                const SizedBox(height: 8),
-                Text(issue.displayName,
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(issue.description,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13)),
-                const SizedBox(height: 16),
-
-                // Groupe technique
-                Text(l10n.issueValidationGroupLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedGroup,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    isDense: true,
-                  ),
-                  items: groups.map((g) {
-                    final meta = _validationGroupMeta(g, l10n);
-                    return DropdownMenuItem<String>(
-                      value: g,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(meta.icon, size: 16, color: meta.color),
-                        const SizedBox(width: 8),
-                        Text(meta.label),
-                      ]),
-                    );
-                  }).toList(),
-                  onChanged: (v) => setDialogState(() => selectedGroup = v),
-                ),
-                if (selectedGroup != null &&
-                    selectedGroup != issue.assignedGroup)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Row(children: [
-                      const Icon(Icons.info_outline,
-                          size: 14, color: AppColors.warning),
-                      const SizedBox(width: 4),
-                      Text(l10n.issueValidationRedirectLabel,
-                          style: const TextStyle(
-                              color: AppColors.warning, fontSize: 12)),
-                    ]),
-                  ),
-
-                const SizedBox(height: 16),
-                // Niveau d'urgence
-                Text(l10n.issueValidationUrgencyLabel,
-                    style: const TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  children: IssueUrgency.values.map((u) {
-                    final sel = selectedUrgency == u;
-                    return GestureDetector(
-                      onTap: () =>
-                          setDialogState(() => selectedUrgency = u),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: sel
-                              ? _validationUrgencyColor(u).withValues(alpha: 0.15)
-                              : AppColors.background,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: sel
-                                ? _validationUrgencyColor(u)
-                                : AppColors.border,
-                            width: sel ? 2 : 1,
-                          ),
-                        ),
-                        child: UrgencyBadge(urgency: u, isCompact: true),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  l10n.issueValidationConfirmMessage,
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: Text(l10n.commonCancel),
-            ),
-            ElevatedButton.icon(
-              onPressed: () async {
-                Navigator.pop(ctx);
-                await _validateIssue(issue,
-                    urgency: selectedUrgency, newGroup: selectedGroup);
-              },
-              icon: const Icon(Icons.check_circle_outline, size: 16),
-              label: Text(l10n.commonSave),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.success,
-                  foregroundColor: Colors.white),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _validateIssue(Issue issue,
-      {IssueUrgency? urgency, String? newGroup}) async {
-    setState(() => _isValidating = true);
-    try {
-      await DbApiService.instance.updateIssue(issue.id, {
-        'status': 'Acknowledged',
-        if (urgency != null) 'urgency': urgency.displayName,
-        if (newGroup != null && newGroup != issue.assignedGroup)
-          'assigned_group': newGroup,
-      });
-      await DataService().reloadIssues();
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(l10n.issueValidationSuccess(issue.displayName)),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } catch (e) {
-      if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              l10n.issueValidationError(l10n.commonApiError)),
-          backgroundColor: AppColors.error,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    } finally {
-      if (mounted) setState(() => _isValidating = false);
-    }
-  }
-
-  Color _validationUrgencyColor(IssueUrgency u) {
-    switch (u) {
-      case IssueUrgency.faible:   return AppColors.textSecondary;
-      case IssueUrgency.moyen:    return AppColors.warning;
-      case IssueUrgency.urgent:   return AppColors.error;
-      case IssueUrgency.critique: return AppColors.critical;
-    }
+    await DataService().reloadIssues();
+    if (mounted) setState(() {});
   }
 
   ({Color color, IconData icon, String label}) _validationGroupMeta(

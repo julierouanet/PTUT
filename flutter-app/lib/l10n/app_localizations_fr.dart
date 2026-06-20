@@ -1147,6 +1147,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueValidationDetails => 'Details';
 
   @override
+  String get issueValidationReview => 'Examiner';
+
+  @override
+  String issueValidationReportedAgo(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Signale il y a $days jours',
+      one: 'Signale il y a $days jour',
+      zero: 'Signale aujourd\'hui',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get issueValidationValidate => 'Valider';
 
   @override

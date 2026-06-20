@@ -392,6 +392,18 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       spacing: 10,
       runSpacing: 6,
       children: [
+        // Validation — uniquement pour un incident encore au statut "signalé"
+        if (detail.issue.status == IssueStatus.reported)
+          ElevatedButton.icon(
+            onPressed: _submitting ? null : () => _showValidateDialog(l10n, detail),
+            icon: const Icon(Icons.check_circle_outline, size: 16),
+            label: Text(l10n.issueValidationValidate),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            ),
+          ),
         OutlinedButton.icon(
           onPressed: _submitting ? null : () => _showReassignDialog(l10n, detail),
           icon: const Icon(Icons.swap_horiz, size: 16),
@@ -518,6 +530,201 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l10n.issueDetailReassignError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  // ── Dialogue validation (tri d'un incident signalé) ────────────────────────
+
+  Color _validationUrgencyColor(IssueUrgency u) {
+    switch (u) {
+      case IssueUrgency.faible:   return AppColors.textSecondary;
+      case IssueUrgency.moyen:    return AppColors.warning;
+      case IssueUrgency.urgent:   return AppColors.error;
+      case IssueUrgency.critique: return AppColors.critical;
+    }
+  }
+
+  void _showValidateDialog(AppLocalizations l10n, IssueDetail detail) {
+    final issue = detail.issue;
+    IssueUrgency selectedUrgency = issue.urgency;
+    String? selectedGroup = issue.assignedGroup;
+    const groups = ['Biomédical', 'IT', 'Infrastructure'];
+
+    // Délai depuis le signalement (borné à 0 si le parsing échoue)
+    int daysAgo;
+    try {
+      daysAgo = DateTime.now()
+          .difference(DateTime.parse(issue.createdAt))
+          .inDays;
+      if (daysAgo < 0) daysAgo = 0;
+    } catch (_) {
+      daysAgo = 0;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l10n.issueValidationConfirmTitle),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Indicateur de délai depuis le signalement
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.schedule,
+                        size: 14, color: AppColors.warning),
+                    const SizedBox(width: 6),
+                    Text(l10n.issueValidationReportedAgo(daysAgo),
+                        style: const TextStyle(
+                            color: AppColors.warning,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500)),
+                  ]),
+                ),
+                const SizedBox(height: 12),
+                Text(l10n.issueValidationConfirmContent),
+                const SizedBox(height: 8),
+                Text(issue.displayName,
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 4),
+                Text(issue.description,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13)),
+                const SizedBox(height: 16),
+
+                // Groupe technique
+                Text(l10n.issueValidationGroupLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedGroup,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    isDense: true,
+                  ),
+                  items: groups
+                      .map((g) =>
+                          DropdownMenuItem(value: g, child: Text(g)))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => selectedGroup = v),
+                ),
+                if (selectedGroup != null &&
+                    selectedGroup != issue.assignedGroup)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Row(children: [
+                      const Icon(Icons.info_outline,
+                          size: 14, color: AppColors.warning),
+                      const SizedBox(width: 4),
+                      Text(l10n.issueValidationRedirectLabel,
+                          style: const TextStyle(
+                              color: AppColors.warning, fontSize: 12)),
+                    ]),
+                  ),
+
+                const SizedBox(height: 16),
+                // Niveau d'urgence
+                Text(l10n.issueValidationUrgencyLabel,
+                    style: const TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: IssueUrgency.values.map((u) {
+                    final sel = selectedUrgency == u;
+                    return GestureDetector(
+                      onTap: () =>
+                          setDialogState(() => selectedUrgency = u),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: sel
+                              ? _validationUrgencyColor(u)
+                                  .withValues(alpha: 0.15)
+                              : AppColors.background,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: sel
+                                ? _validationUrgencyColor(u)
+                                : AppColors.border,
+                            width: sel ? 2 : 1,
+                          ),
+                        ),
+                        child: UrgencyBadge(urgency: u, isCompact: true),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Text(l10n.issueValidationConfirmMessage,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13)),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await _doValidate(l10n, issue, selectedUrgency, selectedGroup);
+              },
+              icon: const Icon(Icons.check_circle_outline, size: 16),
+              label: Text(l10n.issueValidationValidate),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.success,
+                  foregroundColor: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doValidate(AppLocalizations l10n, Issue issue,
+      IssueUrgency urgency, String? newGroup) async {
+    setState(() => _submitting = true);
+    try {
+      await DbApiService.instance.updateIssue(issue.id, {
+        'status': 'Acknowledged',
+        'urgency': urgency.displayName,
+        if (newGroup != null && newGroup != issue.assignedGroup)
+          'assigned_group': newGroup,
+      });
+      setState(() { _loading = true; _error = null; });
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueValidationSuccess(issue.displayName)),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.issueValidationError(e.toString())),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));

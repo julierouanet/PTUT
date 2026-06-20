@@ -4,6 +4,8 @@ import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/db_api_service.dart';
+import '../services/notification_service.dart';
 import '../services/equipment_filter_state.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
@@ -13,6 +15,8 @@ import '../widgets/alert_card.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
+import 'equipment_detail_screen.dart';
+import 'issue_detail_screen.dart';
 class DashboardScreen extends StatefulWidget {
   final Function(int) onNavigate;
   const DashboardScreen({super.key, required this.onNavigate});
@@ -899,8 +903,104 @@ class _DashboardScreenState extends State<DashboardScreen> {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
       ),
-      trailing: IssueStatusBadge(status: issue.status.displayName),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IssueStatusBadge(status: issue.status.displayName),
+          // Action rapide « Prendre en charge » réservée au technicien éligible.
+          if (_canTakeOver(issue))
+            IconButton(
+              tooltip: l10n.techTakeCharge,
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.handyman_outlined,
+                  size: 18, color: AppColors.primary),
+              onPressed: () => _quickTakeOver(issue),
+            ),
+        ],
+      ),
     );
+  }
+
+  // ── Action rapide « Prendre en charge » (technicien) ─────────────────────
+
+  /// Groupes assignables selon les rôles techniciens de l'utilisateur courant.
+  /// Réplique de [_myAssignableGroups] de l'écran technicien.
+  Set<String> _assignableGroups() {
+    final roles  = AuthService().currentRoles;
+    final groups = <String>{};
+    if (roles.contains(UserRole.technicianBiomedical)) groups.add('Biomédical');
+    if (roles.contains(UserRole.technicianIt))         groups.add('IT');
+    if (roles.contains(UserRole.technicianInfra))      groups.add('Infrastructure');
+    return groups;
+  }
+
+  /// Vrai si l'incident est éligible à une prise en charge rapide par
+  /// l'utilisateur courant (technicien d'un groupe compatible).
+  bool _canTakeOver(Issue i) {
+    final groups = _assignableGroups();
+    return (i.status == IssueStatus.acknowledged ||
+            i.status == IssueStatus.assigned) &&
+        groups.isNotEmpty &&
+        (i.assignedGroup == null || groups.contains(i.assignedGroup));
+  }
+
+  Future<void> _quickTakeOver(Issue issue) async {
+    final l10n = AppLocalizations.of(context)!;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.techTakeChargeTitle),
+        content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l10n.techTakeChargeContent),
+              const SizedBox(height: 8),
+              Text(issue.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text(l10n.techTakeChargeMessage,
+                  style: const TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
+            ]),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.handyman_outlined, size: 16),
+            label: Text(l10n.commonConfirm),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await DbApiService.instance
+          .takeOverIssue(issue.id, AuthService().currentUser?.fullName ?? '');
+      await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.techTakeChargeSuccess(issue.displayName)),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.commonApiError),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Widget _buildUrgentAlerts(
@@ -938,11 +1038,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   title: l10n.dashboardCriticalFailure,
                   message: '${eq.name} — ${eq.department}',
                   severity: AlertSeverity.critical,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => EquipmentDetailScreen(equipmentId: eq.id),
+                    ),
+                  ),
                 )),
             ...criticalIssues.map((issue) => AlertCard(
                   title: l10n.dashboardCriticalIssue24h,
                   message: '${issue.displayName} — ${issue.urgency.localizedName(l10n)}',
                   severity: AlertSeverity.critical,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => IssueDetailScreen(issueId: issue.id),
+                    ),
+                  ),
                 )),
           ],
         ]),

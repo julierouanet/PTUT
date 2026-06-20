@@ -7,8 +7,10 @@ import '../../theme/app_theme.dart';
 /// critique (criticité A) ET hors service simultanément.
 class EquipmentCriticalBanner extends StatelessWidget {
   final Equipment equipment;
+  // Optionnel : rend la bannière cliquable (ex. basculer sur l'onglet Incidents).
+  final VoidCallback? onTap;
 
-  const EquipmentCriticalBanner({super.key, required this.equipment});
+  const EquipmentCriticalBanner({super.key, required this.equipment, this.onTap});
 
   bool get _shouldShow =>
       equipment.criticality == EquipmentCriticality.a &&
@@ -19,25 +21,31 @@ class EquipmentCriticalBanner extends StatelessWidget {
     if (!_shouldShow) return const SizedBox.shrink();
 
     final l10n = AppLocalizations.of(context)!;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: AppColors.critical,
-      child: Row(
-        children: [
-          const Icon(Icons.crisis_alert, color: Colors.white, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              l10n.equipDetailCriticalBanner,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        color: AppColors.critical,
+        child: Row(
+          children: [
+            const Icon(Icons.crisis_alert, color: Colors.white, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                l10n.equipDetailCriticalBanner,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
               ),
             ),
-          ),
-        ],
+            // Chevron affiché uniquement si la bannière est cliquable.
+            if (onTap != null)
+              const Icon(Icons.chevron_right, color: Colors.white, size: 20),
+          ],
+        ),
       ),
     );
   }

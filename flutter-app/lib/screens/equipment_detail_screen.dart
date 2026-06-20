@@ -327,8 +327,15 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
           children: [
             // Fil d'Ariane cliquable (vue complète) en tête du body
             _buildBreadcrumb(eq),
-            // Bannière critique persistante au-dessus des onglets
-            EquipmentCriticalBanner(equipment: eq),
+            // Bannière critique persistante au-dessus des onglets.
+            // Builder pour capturer un contexte descendant du DefaultTabController,
+            // sans quoi DefaultTabController.of échouerait.
+            Builder(
+              builder: (ctx) => EquipmentCriticalBanner(
+                equipment: eq,
+                onTap: () => DefaultTabController.of(ctx).animateTo(2), // onglet Incidents
+              ),
+            ),
             _buildNotificationsBanner(l10n),
             Expanded(
               child: TabBarView(

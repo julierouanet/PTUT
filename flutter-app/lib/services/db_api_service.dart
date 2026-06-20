@@ -204,6 +204,17 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  /// Prise en charge d'un incident par un technicien : passe l'incident en
+  /// « In Progress », l'assigne au technicien et horodate la prise en charge.
+  /// L'audit trail est assuré côté backend par PUT /api/issues/:id.
+  Future<void> takeOverIssue(String id, String technicianName) async {
+    await updateIssue(id, {
+      'status':              'In Progress',
+      'assigned_technician': technicianName,
+      'taken_at':            DateTime.now().toIso8601String(),
+    });
+  }
+
   Future<void> deleteIssue(String id) async {
     final url = '${ApiConfig.issuesUrl}/$id';
     final response = await ApiClient.delete(url);
