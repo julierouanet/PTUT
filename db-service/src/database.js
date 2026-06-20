@@ -256,6 +256,12 @@ function initTables() {
     `);
   }
 
+  // Migration : date de résolution (posée à la 1ʳᵉ transition vers Completed ;
+  // alimente l'onglet « Terminés » et le KPI MTTR).
+  // ⚠️ Placée APRÈS le rebuild ci-dessus : ce dernier recrée la table `issues`
+  // sans cette colonne, donc l'ALTER doit suivre pour survivre à un boot unique.
+  try { db.exec("ALTER TABLE issues ADD COLUMN resolved_at TEXT"); } catch (_) {}
+
   // Migration : refonte des statuts d'issues (français → anglais, 5 → 9 valeurs).
   // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
   try {

@@ -31,6 +31,9 @@ docker-data/
 # ── Backups (générés par backup.sh — ne jamais committer) ─────
 backups/
 
+# ── Prompts de développement (notes internes, non versionnées) ─
+prompts/
+
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

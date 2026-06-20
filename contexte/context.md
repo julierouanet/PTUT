@@ -475,9 +475,11 @@ Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, 
 | actions              | TEXT | Nullable                                           |
 | parts_replaced       | TEXT | Nullable                                           |
 | created_at           | TEXT | NOT NULL                                           |
+| resolved_at          | TEXT | Nullable — posé à la 1ʳᵉ transition vers `Completed` (KPI MTTR, onglet Terminés) |
 | updated_at           | TEXT | DEFAULT `datetime('now','localtime')`              |
 
 **Contrainte applicative** (POST `/api/issues`) : `equipment_id` + `equipment_name` **OU** `location_id` doit etre fourni.
+**`resolved_at`** : renseigné une seule fois par `PUT /api/issues/:id` quand `status` passe à `Completed` (idempotent via `COALESCE` — jamais réécrit). Les incidents terminés avant la migration restent `NULL`. Migration `ALTER TABLE` placée **après** le rebuild ci-dessus.
 **Derivation auto** : `issue_category` / `assigned_group` = `Biomedical` si equipement, `Infrastructure` si lieu.
 **Index** : `idx_issues_status` (status), `idx_issues_equipment` (equipment_id), `idx_issues_location` (location_id), `idx_issues_group` (assigned_group)
 **Migration** : rebuild complet de la table (RENAME -> CREATE -> INSERT SELECT -> DROP), idempotent (s'execute si `location_id` est absent du PRAGMA).
@@ -693,7 +695,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at. LEFT JOIN du rapport finalisé : ajoute `report_duration_hours` et `report_estimated_cost` (KPIs MTTR réel + coût) |
 | GET     | /api/issues/:id             | Auth           | Details incident enrichis : `{ ...issue, equipment, audit_log: [{id,timestamp,user_name,user_role,action,details}], maintenance_records: [{id,equipment_id,date,intervention,technician,is_future}] }` |
 | POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
-| PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
+| PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). La 1ʳᵉ transition `status → Completed` pose `resolved_at` (ISO, idempotent via `COALESCE`) et l'inscrit dans l'audit `details`. Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
 | PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracée appendée dans `actions`. |
 | PATCH   | /api/issues/:id/escalate    | Admin/Sup/Tech | Escalade/suspension. Body: `{ escalation_status, escalation_comment }`. `escalation_status` ∈ `Waiting Materials\|Redirected`, `escalation_comment` >= 10 char. Met à jour le statut et appende le commentaire dans `actions`. |
 | DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
@@ -1276,7 +1278,7 @@ Administration, OPD (Consultations externes), Medecine Interne, Pediatrie, Urgen
 | Fichier | Service | Tests | Couverture |
 |---|---|---|---|
 | `auth-service/src/tests/rbac_permissions.test.js` | auth-service | 73 tests RBAC | GET /api/auth/me (7 rôles × permissions), GET/POST /api/users (admin only), GET /api/roles (admin), GET/PUT /api/users/department-requests (admin), GET/PUT /api/users/me/notifications (tous), POST /api/users/department-request (tous) |
-| `db-service/src/tests/rbac_equipment_issues.test.js` | db-service | 79 tests RBAC | GET/POST/DELETE /api/equipment, POST /api/issues, PUT /api/issues/:id, GET/POST/DELETE /api/inventory, GET /api/logs, PATCH /api/issues/:id/escalate |
+| `db-service/src/tests/rbac_equipment_issues.test.js` | db-service | 82 tests RBAC | GET/POST/DELETE /api/equipment, POST /api/issues, PUT /api/issues/:id (dont pose de `resolved_at` sur Completed), GET/POST/DELETE /api/inventory, GET /api/logs, PATCH /api/issues/:id/escalate |
 | `db-service/__tests__/inventory_normalizer.test.js` | db-service | 32 tests unitaires | Normalisation des données XLSX (cleanCell, normalizeStatus, normalizeDate, tagToId) |
 | `flutter-app/test/models/user_role_test.dart` | Flutter | Tests unitaires | UserRole enum, Permission enum, getPermissionsForRole() |
 | `flutter-app/test/services/auth_service_test.dart` | Flutter | Tests unitaires | AuthService (login, logout, hasPermission, switchUser) |

@@ -160,6 +160,11 @@
   "issuesUpdate": "Mettre a jour",
   "issuesReportedByDate": "Signale par {reporter} • {date}",
   "@issuesReportedByDate": { "placeholders": { "reporter": { "type": "String" }, "date": { "type": "String" } } },
+  "issuesTabMine": "Mes signalements",
+  "issuesTabAll": "Tous les incidents",
+  "issuesTabCompleted": "Termines",
+  "issuesResolvedOn": "Resolu le {date}",
+  "@issuesResolvedOn": { "placeholders": { "date": { "type": "String" } } },
 
   "issueFormTitle": "Signaler un probleme",
   "issueFormSubtitle": "Remplissez le formulaire pour signaler un probleme d'equipement",

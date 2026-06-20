@@ -155,6 +155,11 @@
   "issuesDiagnosis": "Diagnosis",
   "issuesUpdate": "Update",
   "issuesReportedByDate": "Reported by {reporter} • {date}",
+  "issuesTabMine": "My reports",
+  "issuesTabAll": "All issues",
+  "issuesTabCompleted": "Completed",
+  "issuesResolvedOn": "Resolved on {date}",
+  "@issuesResolvedOn": { "placeholders": { "date": { "type": "String" } } },
 
   "issueFormTitle": "Report a problem",
   "issueFormSubtitle": "Fill out the form to report an equipment problem",

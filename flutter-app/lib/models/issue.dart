@@ -157,6 +157,7 @@ class Issue {
   final String? reporterEmail;
   final String? reporterPhone;
   final String createdAt;
+  final String? resolvedAt;
   final IssueStatus status;
   final IssueUrgency urgency;
   final String? assignedTechnician;
@@ -183,6 +184,7 @@ class Issue {
     this.reporterEmail,
     this.reporterPhone,
     required this.createdAt,
+    this.resolvedAt,
     required this.status,
     this.urgency = IssueUrgency.moyen,
     this.assignedTechnician,
@@ -224,6 +226,7 @@ class Issue {
       reporterEmail:      json['reporter_email']       as String?,
       reporterPhone:      json['reporter_phone']       as String?,
       createdAt:          json['created_at']           as String? ?? '',
+      resolvedAt:         json['resolved_at']          as String?,
       status:             IssueStatus.fromString(json['status'] as String? ?? ''),
       urgency:            IssueUrgency.fromString(json['urgency'] as String?),
       assignedTechnician: json['assigned_technician']  as String?,
@@ -251,6 +254,7 @@ class Issue {
     String? reporterEmail,
     String? reporterPhone,
     String? createdAt,
+    String? resolvedAt,
     IssueStatus? status,
     IssueUrgency? urgency,
     String? assignedTechnician,
@@ -276,6 +280,7 @@ class Issue {
       reporterEmail:      reporterEmail     ?? this.reporterEmail,
       reporterPhone:      reporterPhone     ?? this.reporterPhone,
       createdAt:          createdAt         ?? this.createdAt,
+      resolvedAt:         resolvedAt        ?? this.resolvedAt,
       status:             status            ?? this.status,
       urgency:            urgency           ?? this.urgency,
       assignedTechnician: assignedTechnician ?? this.assignedTechnician,

@@ -307,6 +307,12 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     }
   }
 
+  // Date de résolution : posée uniquement à la 1ʳᵉ transition vers Completed.
+  // COALESCE garantit l'idempotence (ne réécrit pas une date déjà posée).
+  const resolvedAt = (status === 'Completed' && existing.status !== 'Completed')
+    ? new Date().toISOString()
+    : null;
+
   db.prepare(`
     UPDATE issues
     SET status = COALESCE(?, status),
@@ -317,9 +323,10 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         urgency = COALESCE(?, urgency),
         assigned_group = COALESCE(?, assigned_group),
         taken_at = COALESCE(?, taken_at),
+        resolved_at = COALESCE(?, resolved_at),
         updated_at = datetime('now','localtime')
     WHERE id = ?
-  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group || null, taken_at || null, req.params.id);
+  `).run(status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group || null, taken_at || null, resolvedAt, req.params.id);
 
   const groupChanged = assigned_group && assigned_group !== existing.assigned_group;
   const actionLabel = status && status !== existing.status ? `issue_status_${status.toLowerCase().replace(/\s+/g, '_')}` : 'update_issue';
@@ -330,6 +337,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     details: {
       ...(status ? { old_status: existing.status, new_status: status } : {}),
       ...(groupChanged ? { old_group: existing.assigned_group, new_group: assigned_group } : {}),
+      ...(resolvedAt ? { resolved_at: resolvedAt } : {}),
       ...(parts_consumed?.length ? { parts_consumed } : {}),
     },
     ...extractReqMeta(req) });
@@ -382,7 +390,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
 
     // 3. Incident marqué Completed → KPIs de résolution
     if (status === 'Completed' && existing.status !== 'Completed') {
-      const resolvedAt = new Date().toISOString();
+      // Réutilise la date de résolution déjà persistée ; fallback de sécurité si null.
+      const resolvedAtForNotif = resolvedAt || new Date().toISOString();
       // Récupérer les données à jour (diagnosis/actions/parts peuvent être dans ce même PUT)
       const finalDiag    = diagnosis       || existing.diagnosis;
       const finalActions = actions         || null;
@@ -395,7 +404,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
           department:      dept,
           technician_name: techName,
           created_at:      existing.created_at,
-          resolved_at:     resolvedAt,
+          resolved_at:     resolvedAtForNotif,
           diagnosis:       finalDiag,
           actions:         finalActions,
           parts_replaced:  finalParts,

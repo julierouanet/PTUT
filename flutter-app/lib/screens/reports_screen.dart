@@ -780,48 +780,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── Répartition équipements (état courant) ────────────────────
-              LayoutBuilder(builder: (_, constraints) {
-                final wide       = constraints.maxWidth > 800;
-                final statusCard = _buildStatusReport(l10n, total, operational, maintenance, outOfService);
-                final deptCard   = _buildDepartmentReport(l10n, byDepartment);
-                return wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: statusCard),
-                          const SizedBox(width: 24),
-                          Expanded(child: deptCard),
-                        ],
-                      )
-                    : Column(children: [
-                        statusCard,
-                        const SizedBox(height: 24),
-                        deptCard,
-                      ]);
-              }),
+              // ── Activité incidents : état du parc + statistiques incidents ──
+              _buildResponsivePair(
+                _buildStatusReport(l10n, total, operational, maintenance, outOfService),
+                _buildIssuesReport(l10n, totalPeriod, openIssues, resolvedCount),
+              ),
               const SizedBox(height: 24),
 
-              // ── Catégories + statistiques incidents (période) ─────────────
-              LayoutBuilder(builder: (_, constraints) {
-                final wide      = constraints.maxWidth > 800;
-                final catCard   = _buildCategoryReport(l10n, byCategory);
-                final issueCard = _buildIssuesReport(l10n, totalPeriod, openIssues, resolvedCount);
-                return wide
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(child: catCard),
-                          const SizedBox(width: 24),
-                          Expanded(child: issueCard),
-                        ],
-                      )
-                    : Column(children: [
-                        catCard,
-                        const SizedBox(height: 24),
-                        issueCard,
-                      ]);
-              }),
+              // ── Répartition du parc : par département + par catégorie ──────
+              _buildResponsivePair(
+                _buildDepartmentReport(l10n, byDepartment),
+                _buildCategoryReport(l10n, byCategory),
+              ),
             ],
           ),
         );
@@ -830,6 +800,27 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   // ── Widgets helpers ────────────────────────────────────────────────────────
+
+  // Affiche deux cartes côte à côte (Row) au-delà de 800 px, empilées (Column) en dessous.
+  Widget _buildResponsivePair(Widget left, Widget right) {
+    return LayoutBuilder(builder: (_, constraints) {
+      final wide = constraints.maxWidth > 800;
+      return wide
+          ? Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: left),
+                const SizedBox(width: 24),
+                Expanded(child: right),
+              ],
+            )
+          : Column(children: [
+              left,
+              const SizedBox(height: 24),
+              right,
+            ]);
+    });
+  }
 
   Widget _buildHeader(AppLocalizations l10n, bool isMobile) {
     return Column(

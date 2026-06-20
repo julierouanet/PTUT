@@ -459,6 +459,20 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get issuesTabMine => 'Mes signalements';
+
+  @override
+  String get issuesTabAll => 'Tous les incidents';
+
+  @override
+  String get issuesTabCompleted => 'Termines';
+
+  @override
+  String issuesResolvedOn(String date) {
+    return 'Resolu le $date';
+  }
+
+  @override
   String get issueFormTitle => 'Signaler un probleme';
 
   @override

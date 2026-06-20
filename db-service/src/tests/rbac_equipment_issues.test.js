@@ -428,6 +428,38 @@ describe('RBAC — PUT /api/issues/:id', () => {
 
     expect(res.status).toBe(400);
   });
+
+  test('✅ transition → Completed pose resolved_at (non nul)', async () => {
+    setTestRole('admin');
+
+    // Incident dédié pour ne pas interférer avec les autres tests
+    db.prepare(`
+      INSERT OR IGNORE INTO issues (
+        id, equipment_id, equipment_name, issue_category, assigned_group,
+        department, type, description, reporter, urgency, status, created_at
+      ) VALUES (
+        'iss-resolved-test', 'eq-rbac-test', 'Moniteur cardiaque test', 'Biomédical', 'Biomédical',
+        'OPD', 'Panne', 'Test resolved_at', 'Dr. Test', 'Urgent', 'Assigned',
+        datetime('now','localtime')
+      )
+    `).run();
+
+    // Avant : pas de date de résolution
+    const before = db.prepare('SELECT resolved_at FROM issues WHERE id = ?').get('iss-resolved-test');
+    expect(before.resolved_at).toBeNull();
+
+    const res = await request(app)
+      .put('/api/issues/iss-resolved-test')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ status: 'Completed' });
+
+    expect(res.status).toBe(200);
+
+    // Après : resolved_at renseigné dans la liste GET /
+    const after = db.prepare('SELECT resolved_at FROM issues WHERE id = ?').get('iss-resolved-test');
+    expect(after.resolved_at).not.toBeNull();
+    expect(typeof after.resolved_at).toBe('string');
+  });
 });
 
 // =============================================================================

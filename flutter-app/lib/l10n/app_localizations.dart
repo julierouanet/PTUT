@@ -956,6 +956,30 @@ abstract class AppLocalizations {
   /// **'Signale par {reporter} • {date}'**
   String issuesReportedByDate(String reporter, String date);
 
+  /// No description provided for @issuesTabMine.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes signalements'**
+  String get issuesTabMine;
+
+  /// No description provided for @issuesTabAll.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les incidents'**
+  String get issuesTabAll;
+
+  /// No description provided for @issuesTabCompleted.
+  ///
+  /// In fr, this message translates to:
+  /// **'Termines'**
+  String get issuesTabCompleted;
+
+  /// No description provided for @issuesResolvedOn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Resolu le {date}'**
+  String issuesResolvedOn(String date);
+
   /// No description provided for @issueFormTitle.
   ///
   /// In fr, this message translates to:

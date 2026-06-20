@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -9,7 +9,6 @@ import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
-import '../widgets/issues/kanban_board.dart';
 import '../utils/csv_export.dart';
 import 'issue_detail_screen.dart';
 import 'issue_staff_detail_screen.dart';
@@ -17,8 +16,10 @@ import 'issue_staff_detail_screen.dart';
 // Filtre période
 enum _PeriodFilter { all, last7Days, last30Days }
 
-/// Écran de suivi des incidents avec recherche globale, filtres avancés,
-/// tri par urgence, vue Kanban (desktop), export CSV et split view desktop.
+/// Écran de suivi des incidents en 3 onglets (Mes signalements / Tous les
+/// incidents actifs / Terminés) avec recherche globale, filtres avancés,
+/// tri par urgence et export CSV. Un clic sur un incident ouvre toujours la
+/// page de détail en plein écran (lecture seule staff ou édition technicien).
 class IssueTrackingScreen extends StatefulWidget {
   final Function(int, {String? issueId}) onNavigate;
 
@@ -28,47 +29,44 @@ class IssueTrackingScreen extends StatefulWidget {
   State<IssueTrackingScreen> createState() => _IssueTrackingScreenState();
 }
 
-class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
+class _IssueTrackingScreenState extends State<IssueTrackingScreen>
+    with TickerProviderStateMixin {
 
   // ── Services ───────────────────────────────────────────────────────────────
   final AuthService _authService = AuthService();
 
+  // ── Onglets ────────────────────────────────────────────────────────────────
+  late final TabController _tabController;
 
-  // ── Filtre statut ──────────────────────────────────────────────────────────
-  IssueStatus? _statusFilter;
-
-  // ── Filtres avancés ────────────────────────────────────────────────────────
+  // ── Filtres avancés (appliqués à l'onglet actif) ───────────────────────────
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   IssueUrgency? _urgencyFilter;
   String? _groupFilter;
   _PeriodFilter _periodFilter = _PeriodFilter.all;
 
-  // ── Vue Liste / Kanban ─────────────────────────────────────────────────────
-  bool _isKanban = false;
-
-  // ── Filtres rapides ────────────────────────────────────────────────────────
-  bool _showOnlyMyIssues   = false;
-  bool _showOnlyDeptIssues = false;
-
-  // ── Split View Desktop — incident sélectionné ─────────────────────────────
-  String? _selectedIssueId;
-
-
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    // Rebuild du footer (compteur + export) une fois l'onglet stabilisé —
+    // le garde indexIsChanging évite un setState à chaque frame du swipe.
+    _tabController.addListener(() {
+      if (mounted && !_tabController.indexIsChanging) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
-  // ── Sources d'incidents ────────────────────────────────────────────────────
+  // ── Sources des onglets ────────────────────────────────────────────────────
 
-  List<Issue> get _myIssues {
+  /// Onglet 0 — signalements de l'utilisateur courant.
+  List<Issue> get _tabMine {
     final user = _authService.currentUser;
     if (user == null) return [];
     return DataService().issues.where((i) {
@@ -79,26 +77,18 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     }).toList();
   }
 
-  List<Issue> get _deptIssues {
-    final dept = _authService.currentUser?.department ?? '';
-    if (dept.isEmpty) return [];
-    return DataService().issues.where((i) => i.department == dept).toList();
-  }
+  /// Onglet 1 — tous les incidents SAUF les terminés.
+  List<Issue> get _tabAll =>
+      DataService().issues.where((i) => i.status != IssueStatus.completed).toList();
 
+  /// Onglet 2 — incidents terminés uniquement.
+  List<Issue> get _tabCompleted =>
+      DataService().issues.where((i) => i.status == IssueStatus.completed).toList();
 
-  List<Issue> get _filteredIssues {
-    List<Issue> source;
-    if (_showOnlyMyIssues) {
-      source = List<Issue>.from(_myIssues);
-    } else if (_showOnlyDeptIssues) {
-      source = List<Issue>.from(_deptIssues);
-    } else {
-      source = List<Issue>.from(DataService().issues);
-    }
+  // ── Application des filtres + tri sur la liste de base d'un onglet ──────────
 
-    if (_statusFilter != null) {
-      source = source.where((i) => i.status == _statusFilter).toList();
-    }
+  List<Issue> _applyFilters(List<Issue> base) {
+    var source = List<Issue>.from(base);
 
     if (_urgencyFilter != null) {
       source = source.where((i) => i.urgency == _urgencyFilter).toList();
@@ -150,207 +140,107 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     return sorted;
   }
 
-  void _clearQuickFilter() =>
-      setState(() { _showOnlyMyIssues = false; _showOnlyDeptIssues = false; });
-
   // ── Build ──────────────────────────────────────────────────────────────────
-
 
   @override
   Widget build(BuildContext context) {
-    return _buildMainContent(context);
-  }
-
-  // ── Onglet principal — adaptatif Mobile / Desktop ──────────────────────────
-
-  Widget _buildMainContent(BuildContext context) {
     final l10n      = AppLocalizations.of(context)!;
     final isMobile  = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
-    final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
-    // Contenu de liste partagé entre les deux modes
-    final listPanel = SingleChildScrollView(
-      padding: EdgeInsets.all(isMobile ? 16 : 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: _buildListColumnContent(context, l10n, isMobile, isDesktop),
-      ),
+    // Listes filtrées de chaque onglet (recherche + filtres appliqués).
+    final mine      = _applyFilters(_tabMine);
+    final all       = _applyFilters(_tabAll);
+    final completed = _applyFilters(_tabCompleted);
+    final tabLists  = [mine, all, completed];
+    final active    = tabLists[_tabController.index];
+
+    final pad = isMobile ? 16.0 : 24.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── En-tête + recherche + filtres ──────────────────────────────
+        Padding(
+          padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(l10n, isMobile),
+              const SizedBox(height: 16),
+              _buildSearchBar(l10n),
+              const SizedBox(height: 12),
+              _buildFilterCard(l10n, isMobile, active),
+            ],
+          ),
+        ),
+
+        // ── Onglets ─────────────────────────────────────────────────────
+        TabBar(
+          controller: _tabController,
+          isScrollable: isMobile,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          indicatorColor: AppColors.primary,
+          tabs: [
+            Tab(text: '${l10n.issuesTabMine} (${mine.length})'),
+            Tab(text: '${l10n.issuesTabAll} (${all.length})'),
+            Tab(text: '${l10n.issuesTabCompleted} (${completed.length})'),
+          ],
+        ),
+
+        // ── Contenu des onglets ─────────────────────────────────────────
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildIssueList(mine,      l10n, isMobile),
+              _buildIssueList(all,       l10n, isMobile),
+              _buildIssueList(completed, l10n, isMobile),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── En-tête : titre + bouton « Signaler un incident » ──────────────────────
+
+  Widget _buildHeader(AppLocalizations l10n, bool isMobile) {
+    final titleBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(l10n.issuesTitle,
+            style: TextStyle(
+                fontSize: isMobile ? 20 : 28,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textPrimary)),
+        const SizedBox(height: 4),
+        Text(l10n.issuesSubtitle,
+            style: const TextStyle(color: AppColors.textSecondary)),
+      ],
     );
 
-    // ── Desktop : Split View Gmail-style ──────────────────────────────────
-    if (isDesktop) {
-      return Row(
+    final reportButton = ElevatedButton.icon(
+      onPressed: () => showIssueCategorySelector(context),
+      icon: const Icon(Icons.add, size: 18),
+      label: Text(l10n.issuesReport),
+    );
+
+    if (isMobile) {
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Panneau gauche : liste
-          Expanded(flex: 5, child: listPanel),
-          // Séparateur
-          Container(width: 1, color: AppColors.border),
-          // Panneau droit : détail ou placeholder
-          Expanded(
-            flex: 7,
-            child: _selectedIssueId != null
-                ? IssueDetailScreen(
-                    key: ValueKey(_selectedIssueId),
-                    issueId: _selectedIssueId!,
-                    isPanel: true,
-                    onNavigate: widget.onNavigate,
-                    onClosePanel: () =>
-                        setState(() => _selectedIssueId = null),
-                  )
-                : _buildEmptyDetailPanel(context, l10n),
-          ),
+          titleBlock,
+          const SizedBox(height: 12),
+          SizedBox(width: double.infinity, child: reportButton),
         ],
       );
     }
 
-    // ── Mobile : liste seule ───────────────────────────────────────────────
-    return Align(alignment: Alignment.topLeft, child: listPanel);
-  }
-
-  // ── Placeholder panneau droit vide ────────────────────────────────────────
-
-  Widget _buildEmptyDetailPanel(BuildContext context, AppLocalizations l10n) {
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        const Icon(Icons.article_outlined, size: 64, color: AppColors.textMuted),
-        const SizedBox(height: 16),
-        Text(
-          l10n.issueDetailPanelNoSelection,
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-          textAlign: TextAlign.center,
-        ),
-      ]),
-    );
-  }
-
-  // ── Contenu colonne de la liste ────────────────────────────────────────────
-
-  List<Widget> _buildListColumnContent(
-    BuildContext context,
-    AppLocalizations l10n,
-    bool isMobile,
-    bool isDesktop,
-  ) {
-    final openCount       = DataService().issues
-        .where((i) => i.status == IssueStatus.reported).length;
-    final approvedCount   = DataService().issues
-        .where((i) => i.status == IssueStatus.inProgress).length;
-    final inProgressCount = DataService().issues
-        .where((i) => i.status == IssueStatus.waitingMaterials).length;
-    final resolvedCount   = DataService().issues
-        .where((i) => i.status == IssueStatus.completed).length;
-
-    return [
-      // ── Header ─────────────────────────────────────────────────────
-      Text(l10n.issuesTitle,
-          style: TextStyle(
-              fontSize: isMobile ? 20 : 28,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary)),
-      const SizedBox(height: 4),
-      Text(l10n.issuesSubtitle,
-          style: const TextStyle(color: AppColors.textSecondary)),
-      const SizedBox(height: 16),
-
-      // ── Stats KPI + bouton Signaler ────────────────────────────────
-      if (isMobile) ...[
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
-          _buildMiniStat(l10n.issuesApproved,   approvedCount,   AppColors.primary),
-          _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
-          _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
-        ]),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => showIssueCategorySelector(context),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(l10n.issuesReport),
-          ),
-        ),
-      ] else
-        Row(children: [
-          _buildMiniStat(l10n.issuesOpen,       openCount,       AppColors.error),
-          const SizedBox(width: 12),
-          _buildMiniStat(l10n.issuesApproved,   approvedCount,   AppColors.primary),
-          const SizedBox(width: 12),
-          _buildMiniStat(l10n.issuesInProgress, inProgressCount, AppColors.warning),
-          const SizedBox(width: 12),
-          _buildMiniStat(l10n.issuesResolved,   resolvedCount,   AppColors.success),
-          const Spacer(),
-          ElevatedButton.icon(
-            onPressed: () => showIssueCategorySelector(context),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(l10n.issuesReport),
-          ),
-        ]),
-      const SizedBox(height: 24),
-
-      // ── Encadrés personnels ────────────────────────────────────────
-      _buildPersonalCard(l10n),
-      const SizedBox(height: 16),
-      _buildDeptCard(l10n),
-      const SizedBox(height: 24),
-
-      // ── Séparateur "Tous les incidents" ────────────────────────────
-      Row(children: [
-        const Expanded(child: Divider()),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(l10n.issuesAllIssues,
-              style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w500)),
-        ),
-        const Expanded(child: Divider()),
-      ]),
-      const SizedBox(height: 16),
-
-      // ── Barre de recherche ─────────────────────────────────────────
-      _buildSearchBar(l10n),
-      const SizedBox(height: 12),
-
-      // ── Filtres avancés ────────────────────────────────────────────
-      _buildFilterCard(l10n, isMobile, isDesktop),
-
-      // ── Bannière filtre rapide actif ───────────────────────────────
-      if (_showOnlyMyIssues || _showOnlyDeptIssues) ...[
-        const SizedBox(height: 8),
-        _buildActiveFilterBanner(l10n),
-      ],
-      const SizedBox(height: 12),
-
-      // ── Liste ou Kanban ────────────────────────────────────────────
-      if (_isKanban && isDesktop)
-        SizedBox(
-          width: double.infinity,
-          height: 520,
-          child: IssueKanbanBoard(
-            issues: _filteredIssues,
-            onIssueTap: _showIssueDetail,
-          ),
-        )
-      else
-        SizedBox(
-          width: double.infinity,
-          child: Card(
-            child: Column(
-              children: _filteredIssues.isEmpty
-                  ? [Padding(
-                      padding: const EdgeInsets.all(32),
-                      child: Text(l10n.issuesNoMyIssues,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary)),
-                    )]
-                  : _filteredIssues
-                      .map((issue) => _buildIssueItem(issue))
-                      .toList(),
-            ),
-          ),
-        ),
-    ];
+    return Row(children: [
+      Expanded(child: titleBlock),
+      reportButton,
+    ]);
   }
 
   // ── Barre de recherche ──────────────────────────────────────────────────────
@@ -387,11 +277,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     );
   }
 
-  // ── Carte de filtres avancés ────────────────────────────────────────────────
+  // ── Carte de filtres avancés (urgence / période / groupe) ────────────────────
 
   Widget _buildFilterCard(
-      AppLocalizations l10n, bool isMobile, bool isDesktop) {
-    final statuses  = <IssueStatus?>[null, ...IssueStatus.values];
+      AppLocalizations l10n, bool isMobile, List<Issue> exportList) {
     final urgencies = <IssueUrgency?>[null, ...IssueUrgency.values];
     const groups    = <String?>['Biomédical', 'IT', 'Infrastructure'];
     const periods   = <_PeriodFilter>[
@@ -400,8 +289,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
       _PeriodFilter.last30Days
     ];
 
-    String statusLabel(IssueStatus? s) =>
-        s == null ? l10n.commonAll : s.localizedName(l10n);
     String urgencyLabel(IssueUrgency? u) =>
         u == null ? l10n.commonAll : u.localizedName(l10n);
     String groupLabel(String? g) {
@@ -420,24 +307,6 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
         default:                       return l10n.issuesFilterPeriodAll;
       }
     }
-
-    Widget statusChips() => SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: statuses.map((s) => Padding(
-          padding: const EdgeInsets.only(right: 6),
-          child: FilterChip(
-            selected: _statusFilter == s,
-            label: Text(statusLabel(s), style: const TextStyle(fontSize: 12)),
-            onSelected: (_) => setState(() => _statusFilter = s),
-            selectedColor: AppColors.primaryLight,
-            checkmarkColor: AppColors.primary,
-            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-          ),
-        )).toList(),
-      ),
-    );
 
     Widget urgencyChips() => SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -501,26 +370,20 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _filterRow(l10n.issuesFilterByStatus, statusChips(),  isMobile),
+            _filterRow(l10n.issuesFilterUrgency, urgencyChips(), isMobile),
             const SizedBox(height: 6),
-            _filterRow(l10n.issuesFilterUrgency,  urgencyChips(), isMobile),
+            _filterRow(l10n.issuesFilterPeriod,  periodChips(),  isMobile),
             const SizedBox(height: 6),
-            _filterRow(l10n.issuesFilterPeriod,   periodChips(),  isMobile),
-            const SizedBox(height: 6),
-            _filterRow(l10n.issuesFilterGroup,    groupChips(),   isMobile),
+            _filterRow(l10n.issuesFilterGroup,   groupChips(),   isMobile),
             const Divider(height: 16),
-            // Footer : compteur + actions
+            // Footer : compteur de l'onglet actif + export CSV
             Row(children: [
-              Text(l10n.issuesCount(_filteredIssues.length),
+              Text(l10n.issuesCount(exportList.length),
                   style: const TextStyle(
                       color: AppColors.textSecondary, fontSize: 13)),
               const Spacer(),
-              if (isDesktop) ...[
-                _buildViewToggle(l10n),
-                const SizedBox(width: 8),
-              ],
               OutlinedButton.icon(
-                onPressed: () => _exportCsv(l10n),
+                onPressed: () => _exportCsv(l10n, exportList),
                 icon: const Icon(Icons.download, size: 16),
                 label: Text(l10n.issuesExportCsv,
                     style: const TextStyle(fontSize: 12)),
@@ -563,94 +426,39 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     ]);
   }
 
-  // ── Toggle Liste / Kanban ───────────────────────────────────────────────────
+  // ── Liste d'incidents (fonction unique réutilisée par les 3 onglets) ─────────
 
-  Widget _buildViewToggle(AppLocalizations l10n) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      _toggleOption(Icons.view_list,   l10n.issuesViewList,   !_isKanban,
-          () => setState(() => _isKanban = false)),
-      const SizedBox(width: 4),
-      _toggleOption(Icons.view_column, l10n.issuesViewKanban,  _isKanban,
-          () => setState(() => _isKanban = true)),
-    ]);
-  }
+  Widget _buildIssueList(
+      List<Issue> issues, AppLocalizations l10n, bool isMobile) {
+    final pad = isMobile ? 16.0 : 24.0;
 
-  Widget _toggleOption(
-      IconData icon, String label, bool selected, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.primaryLight : Colors.transparent,
-          border:
-              Border.all(color: selected ? AppColors.primary : AppColors.border),
-          borderRadius: BorderRadius.circular(6),
+    if (issues.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(pad),
+          child: Text(l10n.issuesNoMyIssues,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary)),
         ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon,
-              size: 15,
-              color: selected ? AppColors.primary : AppColors.textSecondary),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: selected ? AppColors.primary : AppColors.textSecondary,
-              fontWeight:
-                  selected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ]),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(pad, 12, pad, pad),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: issues.length,
+          itemBuilder: (_, i) => _buildIssueItem(issues[i], l10n),
+        ),
       ),
-    );
-  }
-
-  // ── Bannière filtre rapide ──────────────────────────────────────────────────
-
-  Widget _buildActiveFilterBanner(AppLocalizations l10n) {
-    final filterLabel = _showOnlyMyIssues
-        ? l10n.issuesActiveFilterMyIssues
-        : l10n.issuesActiveFilterDeptIssues;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(8),
-        border:
-            Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-      ),
-      child: Row(children: [
-        const Icon(Icons.filter_alt, size: 16, color: AppColors.primary),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(
-            '${l10n.issuesActiveFilterLabel} $filterLabel',
-            style: const TextStyle(
-                color: AppColors.primary,
-                fontSize: 13,
-                fontWeight: FontWeight.w500),
-          ),
-        ),
-        TextButton(
-          style: TextButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            minimumSize: Size.zero,
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-          onPressed: _clearQuickFilter,
-          child: Text(l10n.issuesClearFilter,
-              style: const TextStyle(fontSize: 12)),
-        ),
-      ]),
     );
   }
 
   // ── Export CSV ─────────────────────────────────────────────────────────────
 
-  void _exportCsv(AppLocalizations l10n) {
-    final list   = _filteredIssues;
+  void _exportCsv(AppLocalizations l10n, List<Issue> list) {
     final buffer = StringBuffer();
     buffer.write('﻿'); // BOM UTF-8
     buffer.writeln([
@@ -691,276 +499,21 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     return v;
   }
 
-  // ── Encadré "Mes incidents" ─────────────────────────────────────────────────
+  // ── Ligne d'incident dans la liste ──────────────────────────────────────────
 
-  Widget _buildPersonalCard(AppLocalizations l10n) {
-    final myIssues   = _myIssues;
-    const maxVisible = 3;
+  Widget _buildIssueItem(Issue issue, AppLocalizations l10n) {
+    final isCompleted = issue.status == IssueStatus.completed;
+    // Onglet Terminés : afficher la date de résolution plutôt que le signalement.
+    final dateLine = isCompleted
+        ? l10n.issuesResolvedOn(_resolutionDate(issue))
+        : l10n.issuesReportedByDate(issue.reporter, issue.createdAt);
 
-    return Card(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.person_outline,
-                  color: AppColors.primary, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.issuesMyIssues,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: AppColors.textPrimary)),
-                    Text(l10n.issuesMyIssuesSubtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.textSecondary)),
-                  ]),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                  color: AppColors.primaryLight,
-                  borderRadius: BorderRadius.circular(12)),
-              child: Text('${myIssues.length}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primary)),
-            ),
-          ]),
-        ),
-        const Divider(height: 1),
-        if (myIssues.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(children: [
-              const Icon(Icons.check_circle_outline,
-                  color: AppColors.success, size: 20),
-              const SizedBox(width: 8),
-              Text(l10n.issuesNoMyIssues,
-                  style:
-                      const TextStyle(color: AppColors.textSecondary)),
-            ]),
-          )
-        else ...[
-          ...myIssues.take(maxVisible).map(_buildCompactIssueRow),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(children: [
-              if (myIssues.length > maxVisible)
-                Text(
-                  l10n.issuesAndMore(myIssues.length - maxVisible),
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
-                ),
-              const Spacer(),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () => setState(() {
-                  _showOnlyMyIssues   = true;
-                  _showOnlyDeptIssues = false;
-                }),
-                icon: const Icon(Icons.chevron_right, size: 14),
-                label: Text(l10n.issuesViewSeeAll,
-                    style: const TextStyle(fontSize: 12)),
-              ),
-            ]),
-          ),
-        ],
-      ]),
-    );
-  }
-
-  // ── Encadré "Incidents de mon département" ──────────────────────────────────
-
-  Widget _buildDeptCard(AppLocalizations l10n) {
-    final deptIssues = _deptIssues;
-    final dept       = _authService.currentUser?.department ?? '';
-    const maxVisible = 3;
-
-    return Card(
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.business_outlined,
-                  color: AppColors.warning, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(l10n.issuesDeptIssues,
-                        style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
-                            color: AppColors.textPrimary)),
-                    Text(
-                      dept.isNotEmpty
-                          ? l10n.issuesDeptIssuesSubtitle(dept)
-                          : l10n.issuesNoDeptIssues,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                  ]),
-            ),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                  color: AppColors.warningLight,
-                  borderRadius: BorderRadius.circular(12)),
-              child: Text('${deptIssues.length}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.warning)),
-            ),
-          ]),
-        ),
-        const Divider(height: 1),
-        if (deptIssues.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(children: [
-              const Icon(Icons.check_circle_outline,
-                  color: AppColors.success, size: 20),
-              const SizedBox(width: 8),
-              Text(l10n.issuesNoDeptIssues,
-                  style:
-                      const TextStyle(color: AppColors.textSecondary)),
-            ]),
-          )
-        else ...[
-          ...deptIssues.take(maxVisible).map(_buildCompactIssueRow),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(children: [
-              if (deptIssues.length > maxVisible)
-                Text(
-                  l10n.issuesAndMore(deptIssues.length - maxVisible),
-                  style: const TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13),
-                ),
-              const Spacer(),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 8, vertical: 4),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () => setState(() {
-                  _showOnlyDeptIssues = true;
-                  _showOnlyMyIssues   = false;
-                }),
-                icon: const Icon(Icons.chevron_right, size: 14),
-                label: Text(l10n.issuesViewSeeAll,
-                    style: const TextStyle(fontSize: 12)),
-              ),
-            ]),
-          ),
-        ],
-      ]),
-    );
-  }
-
-  // ── Ligne compacte dans les encadrés ──────────────────────────────────────
-
-  Widget _buildCompactIssueRow(Issue issue) {
-    final isSelected = issue.id == _selectedIssueId;
-    return InkWell(
-      onTap: () => _showIssueDetail(issue),
-      child: Container(
-        color: isSelected ? AppColors.primaryLight : null,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-                color: _getStatusColor(issue.status),
-                shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(issue.displayName,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w500, fontSize: 13)),
-                  Text(
-                    issue.description,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 12),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ]),
-          ),
-          const SizedBox(width: 8),
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            IssueStatusBadge(status: issue.status.displayName),
-            const SizedBox(height: 2),
-            UrgencyBadge(urgency: issue.urgency, isCompact: true),
-          ]),
-        ]),
-      ),
-    );
-  }
-
-  // ── Ligne complète dans la liste principale ────────────────────────────────
-
-  Widget _buildMiniStat(String label, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Text('$count',
-            style: TextStyle(
-                fontSize: 20, fontWeight: FontWeight.bold, color: color)),
-        const SizedBox(width: 8),
-        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w500)),
-      ]),
-    );
-  }
-
-  Widget _buildIssueItem(Issue issue) {
-    final l10n       = AppLocalizations.of(context)!;
-    final isSelected = issue.id == _selectedIssueId;
     return InkWell(
       onTap: () => _showIssueDetail(issue),
       child: Container(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryLight : null,
-          border:
-              const Border(bottom: BorderSide(color: AppColors.border)),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.border)),
         ),
         child: Row(children: [
           Container(
@@ -987,8 +540,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
                       overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
                   Text(
-                    l10n.issuesReportedByDate(
-                        issue.reporter, issue.createdAt),
+                    dateLine,
                     style: const TextStyle(
                         color: AppColors.textMuted, fontSize: 12),
                   ),
@@ -1001,12 +553,20 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
             UrgencyBadge(urgency: issue.urgency, isCompact: true),
           ]),
           const SizedBox(width: 4),
-          Icon(Icons.chevron_right,
-              size: 18,
-              color: isSelected ? AppColors.primary : AppColors.textMuted),
+          const Icon(Icons.chevron_right,
+              size: 18, color: AppColors.textMuted),
         ]),
       ),
     );
+  }
+
+  /// Date affichée sur l'onglet Terminés : la date de résolution si elle existe,
+  /// sinon repli sur la date de création (incidents antérieurs à la migration
+  /// `resolved_at`). Jamais une chaîne vide ni « null ».
+  String _resolutionDate(Issue issue) {
+    final r = issue.resolvedAt;
+    if (r != null && r.isNotEmpty) return r;
+    return issue.createdAt;
   }
 
   Color _getStatusColor(IssueStatus status) {
@@ -1023,21 +583,16 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
     }
   }
 
-  // ── Navigation vers le détail ──────────────────────────────────────────────
+  // ── Navigation vers le détail (plein écran, RBAC conservé) ──────────────────
 
   void _showIssueDetail(Issue issue) {
-    final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
-
-    // Vérification RBAC : techniciens/superviseurs/admins → vue complète
+    // Techniciens / superviseurs / admins → vue complète éditable.
     final canEdit = _authService.hasPermission(Permission.updateRepairs) ||
                     _authService.hasPermission(Permission.approveRequests) ||
                     _authService.hasPermission(Permission.manageEquipment);
 
-    if (isDesktop && canEdit) {
-      // Mode Split View desktop : mise à jour du panneau droit
-      setState(() => _selectedIssueId = issue.id);
-    } else if (!canEdit) {
-      // hospitalStaff → vue lecture seule
+    if (!canEdit) {
+      // hospitalStaff → vue lecture seule.
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -1045,20 +600,15 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen> {
         ),
       );
     } else {
-      // Desktop sans canEdit ou mobile avec canEdit → vue complète
-      if (isDesktop) {
-        setState(() => _selectedIssueId = issue.id);
-      } else {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => IssueDetailScreen(
-              issueId:    issue.id,
-              onNavigate: widget.onNavigate,
-            ),
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => IssueDetailScreen(
+            issueId:    issue.id,
+            onNavigate: widget.onNavigate,
           ),
-        );
-      }
+        ),
+      );
     }
   }
 }

@@ -455,6 +455,20 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get issuesTabMine => 'My reports';
+
+  @override
+  String get issuesTabAll => 'All issues';
+
+  @override
+  String get issuesTabCompleted => 'Completed';
+
+  @override
+  String issuesResolvedOn(String date) {
+    return 'Resolved on $date';
+  }
+
+  @override
   String get issueFormTitle => 'Report a problem';
 
   @override
