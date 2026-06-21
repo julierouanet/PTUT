@@ -577,6 +577,11 @@ function initTables() {
   // de remplacement et de l'horizon budgétaire des équipements biomédicaux.
   try { db.exec("ALTER TABLE equipment_subcategories ADD COLUMN expected_lifespan_years INTEGER"); } catch (_) {}
 
+  // Description métier de la sous-catégorie (affichée en lecture seule sur la
+  // fiche équipement → onglet Informations). Saisie par l'admin depuis la fiche
+  // sous-catégorie. ALTER idempotent : échoue silencieusement si déjà présent.
+  try { db.exec("ALTER TABLE equipment_subcategories ADD COLUMN description TEXT"); } catch (_) {}
+
   // ── Rétro-remplissage : subcategory_id + macro_category_id pour l'existant.
   // Priorité : cherche dans equipment_subcategories un nom = equipment.category.
   // Idempotent : ne met à jour que les lignes qui n'ont pas encore de subcategory_id.

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/app_localizations.dart';
+import '../models/user_role.dart';
+import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/detail_breadcrumb.dart';
@@ -48,10 +50,23 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
   // et porteurs d'une alerte (badge non nul) — biomédical uniquement.
   List<Map<String, dynamic>> _alerts = [];
 
+  // Description métier de la sous-catégorie (éditable par l'admin uniquement).
+  final TextEditingController _descriptionController = TextEditingController();
+  bool _savingDescription = false;
+
+  // Seul l'admin peut éditer la description (miroir RBAC PUT /sub/:id).
+  bool get _isAdmin => AuthService().primaryRole == UserRole.admin;
+
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -61,6 +76,7 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
       final detail = await DbApiService.instance.getSubCategoryDetail(widget.subcategoryId);
       _equipment = List<Map<String, dynamic>>.from((detail['equipment'] as List?) ?? const []);
       _brands = List<Map<String, dynamic>>.from((detail['brands'] as List?) ?? const []);
+      _descriptionController.text = (detail['description'] as String?) ?? '';
 
       // Alertes de remplacement (biomédical uniquement).
       if (widget.isBiomedical) {
@@ -109,6 +125,10 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
                             color: AppColors.textPrimary)),
                     const SizedBox(height: 16),
 
+                    // ── Description métier (édition admin) ──────────────────
+                    _buildDescriptionCard(l10n),
+                    const SizedBox(height: 16),
+
                     // ── Durée de vie de référence (biomédical) ──────────────
                     if (widget.isBiomedical) ...[
                       _buildLifespanCard(l10n),
@@ -142,6 +162,91 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
 
   Widget _buildSectionHeader(IconData icon, String label) =>
       detailSectionHeader(icon, label);
+
+  /// Carte description : édition multi-lignes pour l'admin, lecture seule sinon.
+  /// Masquée pour les non-admins si aucune description n'est saisie.
+  Widget _buildDescriptionCard(AppLocalizations l10n) {
+    if (!_isAdmin && _descriptionController.text.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              const Icon(Icons.description_outlined,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 10),
+              Text(l10n.subcategoryDescriptionLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
+            ]),
+            const SizedBox(height: 12),
+            if (_isAdmin) ...[
+              TextField(
+                controller: _descriptionController,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: l10n.subcategoryDescriptionHint,
+                  isDense: true,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Align(
+                alignment: Alignment.centerRight,
+                child: _savingDescription
+                    ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : ElevatedButton(
+                        onPressed: () => _saveDescription(l10n),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
+                        child: Text(l10n.commonSave),
+                      ),
+              ),
+            ] else
+              Text(_descriptionController.text.trim(),
+                  style: const TextStyle(
+                      fontSize: 14, color: AppColors.textPrimary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveDescription(AppLocalizations l10n) async {
+    setState(() => _savingDescription = true);
+    try {
+      // PUT /sub/:id exige le name : on le renvoie inchangé avec la description.
+      await DbApiService.instance.updateSubCategory(widget.subcategoryId, {
+        'name': widget.subcategoryName,
+        'description': _descriptionController.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.subcategoryDescriptionSaved),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.commonApiError),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _savingDescription = false);
+    }
+  }
 
   Widget _buildLifespanCard(AppLocalizations l10n) => Card(
         child: Padding(

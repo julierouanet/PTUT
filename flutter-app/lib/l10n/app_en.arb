@@ -2004,5 +2004,41 @@
   "interventionReportEmptyReadonly": "No intervention report has been written yet",
 
   "reportsMaintenanceCost": "Maintenance cost",
-  "reportsMaintenanceCostHint": "Sum of finalized reports (period)"
+  "reportsMaintenanceCostHint": "Sum of finalized reports (period)",
+
+  "equipFieldEditTitle": "Edit: {field}",
+  "@equipFieldEditTitle": { "placeholders": { "field": { "type": "String" } } },
+  "equipFieldEditNoDate": "No date",
+
+  "equipDetailStateSection": "Current state",
+  "equipDetailIncidentsLabel": "Incidents",
+  "equipDetailIncidentsSummary": "{active} active / {total} total",
+  "@equipDetailIncidentsSummary": { "placeholders": { "active": { "type": "int" }, "total": { "type": "int" } } },
+  "equipDetailMaintenanceLabel": "Preventive maintenance",
+  "equipDetailMaintUpToDate": "Up to date",
+  "equipDetailMaintSoon": "Soon",
+  "equipDetailMaintOverdue": "Overdue",
+  "equipDetailMaintNone": "Not scheduled",
+
+  "equipDetailNotifLifespanMissing": "Reference lifespan missing",
+  "equipDetailNotifIncidentOpen": "Open incident on this equipment",
+  "equipDetailNotifPmDue": "Preventive maintenance overdue",
+  "equipDetailNotifPmSoon": "Preventive maintenance due soon",
+  "equipDetailContactAdmin": "Contact an administrator to enter this data",
+  "equipDetailDescriptionLabel": "Equipment description",
+
+  "equipMaintRecordTitle": "Intervention details",
+  "equipMaintInterventionLabel": "Intervention",
+  "equipMaintDateLabel": "Date",
+  "equipMaintTechnicianLabel": "Technician",
+  "equipMaintTypeLabel": "Type",
+  "equipMaintDurationLabel": "Duration",
+  "equipMaintDurationValue": "{minutes} min",
+  "@equipMaintDurationValue": { "placeholders": { "minutes": { "type": "int" } } },
+  "equipMaintEpochLabel": "Period label",
+  "equipPmStatusSection": "Preventive maintenance status",
+
+  "subcategoryDescriptionLabel": "Description",
+  "subcategoryDescriptionHint": "Business description of the subcategory (shown on the equipment record)",
+  "subcategoryDescriptionSaved": "Description saved"
 }

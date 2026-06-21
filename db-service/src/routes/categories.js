@@ -174,7 +174,7 @@ router.put('/sub/:id', verifyToken, requireRole('admin'), (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
 
-  const { name, macro_category_id } = req.body;
+  const { name, macro_category_id, description } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name est requis' });
 
   const existing = db.prepare('SELECT * FROM equipment_subcategories WHERE id = ?').get(id);
@@ -191,19 +191,30 @@ router.put('/sub/:id', verifyToken, requireRole('admin'), (req, res) => {
   if (duplicate) return res.status(409).json({ error: 'Une sous-catégorie avec ce nom existe déjà' });
 
   const newMacroId = macro_category_id ? parseInt(macro_category_id, 10) : existing.macro_category_id;
+
+  // Description métier optionnelle : mise à jour seulement si le champ est fourni
+  // (undefined = inchangée). Chaîne vide / null = effacement explicite.
+  const descProvided = description !== undefined;
+  const newDescription = descProvided
+    ? (description && String(description).trim() ? String(description).trim() : null)
+    : (existing.description ?? null);
+
   db.prepare(
-    'UPDATE equipment_subcategories SET name = ?, macro_category_id = ? WHERE id = ?'
-  ).run(name.trim(), newMacroId, id);
+    'UPDATE equipment_subcategories SET name = ?, macro_category_id = ?, description = ? WHERE id = ?'
+  ).run(name.trim(), newMacroId, newDescription, id);
 
   logAction({
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] ?? 'admin',
     action: 'update_subcategory',
     target_type: 'subcategory', target_id: String(id), target_name: name.trim(),
-    details: { old_name: existing.name, name, macro_category_id },
+    details: {
+      old_name: existing.name, name, macro_category_id,
+      ...(descProvided ? { old_description: existing.description ?? null, description: newDescription } : {}),
+    },
     ...extractReqMeta(req),
   });
 
-  res.json({ id, name: name.trim(), macro_category_id: newMacroId });
+  res.json({ id, name: name.trim(), macro_category_id: newMacroId, description: newDescription });
 });
 
 // ── DELETE /api/categories/sub/:id ────────────────────────────────────────────

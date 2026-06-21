@@ -5089,4 +5089,96 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reportsMaintenanceCostHint => 'Sum of finalized reports (period)';
+
+  @override
+  String equipFieldEditTitle(String field) {
+    return 'Edit: $field';
+  }
+
+  @override
+  String get equipFieldEditNoDate => 'No date';
+
+  @override
+  String get equipDetailStateSection => 'Current state';
+
+  @override
+  String get equipDetailIncidentsLabel => 'Incidents';
+
+  @override
+  String equipDetailIncidentsSummary(int active, int total) {
+    return '$active active / $total total';
+  }
+
+  @override
+  String get equipDetailMaintenanceLabel => 'Preventive maintenance';
+
+  @override
+  String get equipDetailMaintUpToDate => 'Up to date';
+
+  @override
+  String get equipDetailMaintSoon => 'Soon';
+
+  @override
+  String get equipDetailMaintOverdue => 'Overdue';
+
+  @override
+  String get equipDetailMaintNone => 'Not scheduled';
+
+  @override
+  String get equipDetailNotifLifespanMissing => 'Reference lifespan missing';
+
+  @override
+  String get equipDetailNotifIncidentOpen => 'Open incident on this equipment';
+
+  @override
+  String get equipDetailNotifPmDue => 'Preventive maintenance overdue';
+
+  @override
+  String get equipDetailNotifPmSoon => 'Preventive maintenance due soon';
+
+  @override
+  String get equipDetailContactAdmin =>
+      'Contact an administrator to enter this data';
+
+  @override
+  String get equipDetailDescriptionLabel => 'Equipment description';
+
+  @override
+  String get equipMaintRecordTitle => 'Intervention details';
+
+  @override
+  String get equipMaintInterventionLabel => 'Intervention';
+
+  @override
+  String get equipMaintDateLabel => 'Date';
+
+  @override
+  String get equipMaintTechnicianLabel => 'Technician';
+
+  @override
+  String get equipMaintTypeLabel => 'Type';
+
+  @override
+  String get equipMaintDurationLabel => 'Duration';
+
+  @override
+  String equipMaintDurationValue(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get equipMaintEpochLabel => 'Period label';
+
+  @override
+  String get equipPmStatusSection => 'Preventive maintenance status';
+
+  @override
+  String get subcategoryDescriptionLabel => 'Description';
+
+  @override
+  String get subcategoryDescriptionHint =>
+      'Business description of the subcategory (shown on the equipment record)';
+
+  @override
+  String get subcategoryDescriptionSaved => 'Description saved';
 }

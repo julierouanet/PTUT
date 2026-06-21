@@ -179,7 +179,7 @@ PTUT/
 | `departments` | AUTOINCREMENT | Référentiel départements (~56 entrées en anglais) |
 | `equipment_categories` | AUTOINCREMENT | Référentiel de noms standards (~626 entrées XLSX) |
 | `equipment_macro_categories` | AUTOINCREMENT | **[NOUVEAU]** 3 macro-catégories : `Biomedical`, `Infrastructure`, `IT` |
-| `equipment_subcategories` | AUTOINCREMENT | **[NOUVEAU]** Sous-catégories (migrées depuis equipment_categories, chacune liée à une macro-catégorie). Colonne `expected_lifespan_years` INTEGER (durée de vie de référence, NULL = non définie) — plan de remplacement biomédical RA3 S5 |
+| `equipment_subcategories` | AUTOINCREMENT | **[NOUVEAU]** Sous-catégories (migrées depuis equipment_categories, chacune liée à une macro-catégorie). Colonne `expected_lifespan_years` INTEGER (durée de vie de référence, NULL = non définie) — plan de remplacement biomédical RA3 S5. Colonne `description` TEXT (description métier affichée en lecture seule sur la fiche équipement → onglet Informations, NULL = non saisie) |
 | `pm_protocols` | AUTOINCREMENT | **[NOUVEAU]** Protocoles de maintenance préventive par type d'équipement (checklist JSON, fréquence en mois) |
 | `maintenance_records` | AUTOINCREMENT | Historique des interventions de maintenance |
 | `preventive_maintenance_plans` | AUTOINCREMENT | Plans de maintenance préventive par équipement (fréquence en mois) |
@@ -206,6 +206,7 @@ PTUT/
 - **`equipment.macro_category_id`** : dérivé automatiquement de `subcategory_id` lors de l'insert/update si non fourni
 - **`equipment.criticality`** : valeurs autorisées `'A'`, `'B'`, `'C'` (Matrice ABC GMAO)
 - **`equipment_subcategories.expected_lifespan_years`** : durée de vie de référence (années, INTEGER, NULL = non définie). Source de vérité du plan de remplacement biomédical : `GET /api/equipment/replacement-plan` calcule âge/statut/horizon côté serveur (warranty_end_date et statut 'Out of service' n'interviennent PAS)
+- **`equipment_subcategories.description`** : description métier (TEXT, NULL = non saisie). Saisie par l'admin depuis la fiche sous-catégorie (`PUT /api/categories/sub/:id`, champ `description`), exposée en lecture seule sur la fiche équipement (`GET /api/equipment/:id` → `subcategory_description`) → onglet Informations
 - **`pm_protocols`** : protocoles par *type* d'équipement (≠ `preventive_maintenance_plans` qui est par équipement individuel)
 - **Cycle de vie / réforme** (soft delete) : 7 colonnes sur `equipment` — `decommissioned_at`, `decommission_reason`, `disposal_method`, `decommissioned_by_id`, `decommissioned_by_name`, `decommission_notes`, `replaced_by_id` (FK logique vers `equipment(id)`, validée côté Node — pas de FK SQL via ALTER). Un équipement réformé passe `status='Disposed'`, sort des listes actives (`GET /api/equipment` l'exclut sauf `?include_disposed=true`) mais conserve tout son historique. Workflow proposition (`To be disposal`, tech/sup) → validation (`Disposed`, admin). Le hard delete (`DELETE`) est bloqué (`409 hasHistory`) si l'équipement a un historique, sauf `?force=true` (admin)
 - **`issues.taken_at`** (TEXT, Nullable) : horodatage ISO 8601 de la prise en charge par le technicien — permet le chronomètre persistant côté Flutter (`DateTime.now().difference(takenAt)` au rechargement)

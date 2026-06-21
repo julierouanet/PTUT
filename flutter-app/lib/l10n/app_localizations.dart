@@ -9431,6 +9431,174 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Somme des rapports finalisés (période)'**
   String get reportsMaintenanceCostHint;
+
+  /// No description provided for @equipFieldEditTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier : {field}'**
+  String equipFieldEditTitle(String field);
+
+  /// No description provided for @equipFieldEditNoDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune date'**
+  String get equipFieldEditNoDate;
+
+  /// No description provided for @equipDetailStateSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'État actuel'**
+  String get equipDetailStateSection;
+
+  /// No description provided for @equipDetailIncidentsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents'**
+  String get equipDetailIncidentsLabel;
+
+  /// No description provided for @equipDetailIncidentsSummary.
+  ///
+  /// In fr, this message translates to:
+  /// **'{active} actif(s) / {total} au total'**
+  String equipDetailIncidentsSummary(int active, int total);
+
+  /// No description provided for @equipDetailMaintenanceLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive'**
+  String get equipDetailMaintenanceLabel;
+
+  /// No description provided for @equipDetailMaintUpToDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'À jour'**
+  String get equipDetailMaintUpToDate;
+
+  /// No description provided for @equipDetailMaintSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bientôt'**
+  String get equipDetailMaintSoon;
+
+  /// No description provided for @equipDetailMaintOverdue.
+  ///
+  /// In fr, this message translates to:
+  /// **'En retard'**
+  String get equipDetailMaintOverdue;
+
+  /// No description provided for @equipDetailMaintNone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non planifiée'**
+  String get equipDetailMaintNone;
+
+  /// No description provided for @equipDetailNotifLifespanMissing.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de vie de référence manquante'**
+  String get equipDetailNotifLifespanMissing;
+
+  /// No description provided for @equipDetailNotifIncidentOpen.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident ouvert sur cet équipement'**
+  String get equipDetailNotifIncidentOpen;
+
+  /// No description provided for @equipDetailNotifPmDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive en retard'**
+  String get equipDetailNotifPmDue;
+
+  /// No description provided for @equipDetailNotifPmSoon.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive bientôt due'**
+  String get equipDetailNotifPmSoon;
+
+  /// No description provided for @equipDetailContactAdmin.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contactez un administrateur pour saisir cette donnée'**
+  String get equipDetailContactAdmin;
+
+  /// No description provided for @equipDetailDescriptionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description de l\'équipement'**
+  String get equipDetailDescriptionLabel;
+
+  /// No description provided for @equipMaintRecordTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détail de l\'intervention'**
+  String get equipMaintRecordTitle;
+
+  /// No description provided for @equipMaintInterventionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intervention'**
+  String get equipMaintInterventionLabel;
+
+  /// No description provided for @equipMaintDateLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Date'**
+  String get equipMaintDateLabel;
+
+  /// No description provided for @equipMaintTechnicianLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Technicien'**
+  String get equipMaintTechnicianLabel;
+
+  /// No description provided for @equipMaintTypeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type'**
+  String get equipMaintTypeLabel;
+
+  /// No description provided for @equipMaintDurationLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée'**
+  String get equipMaintDurationLabel;
+
+  /// No description provided for @equipMaintDurationValue.
+  ///
+  /// In fr, this message translates to:
+  /// **'{minutes} min'**
+  String equipMaintDurationValue(int minutes);
+
+  /// No description provided for @equipMaintEpochLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Étiquette d\'époque'**
+  String get equipMaintEpochLabel;
+
+  /// No description provided for @equipPmStatusSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'État de la maintenance préventive'**
+  String get equipPmStatusSection;
+
+  /// No description provided for @subcategoryDescriptionLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description'**
+  String get subcategoryDescriptionLabel;
+
+  /// No description provided for @subcategoryDescriptionHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description métier de la sous-catégorie (affichée sur la fiche équipement)'**
+  String get subcategoryDescriptionHint;
+
+  /// No description provided for @subcategoryDescriptionSaved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Description enregistrée'**
+  String get subcategoryDescriptionSaved;
 }
 
 class _AppLocalizationsDelegate

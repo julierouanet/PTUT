@@ -388,3 +388,59 @@ describe('Catalogue — liens protocoles PM', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// =============================================================================
+// 5. SOUS-CATÉGORIE — description métier (PUT /sub/:id + propagation fiche équipement)
+// =============================================================================
+describe('Sous-catégorie — description', () => {
+  test('✅ admin met à jour la description → 200 et persistance via GET /sub/:id', async () => {
+    setTestRole('admin');
+    const put = await request(app)
+      .put(`/api/categories/sub/${subId}`)
+      .set('Authorization', 'Bearer fake')
+      .send({ name: 'Catalogue Test Subcat', description: 'Équipements de test biomédicaux' });
+    expect(put.status).toBe(200);
+    expect(put.body.description).toBe('Équipements de test biomédicaux');
+
+    const get = await request(app)
+      .get(`/api/categories/sub/${subId}`)
+      .set('Authorization', 'Bearer fake');
+    expect(get.status).toBe(200);
+    expect(get.body.description).toBe('Équipements de test biomédicaux');
+  });
+
+  test('✅ description exposée sur GET /api/equipment/:id (subcategory_description)', async () => {
+    db.prepare(`
+      INSERT INTO equipment (id, name, department, category, status, subcategory_id)
+      VALUES ('eq-desc-test', 'Moniteur test', 'OPD', 'Catalogue Test Subcat', 'Operational', ?)
+    `).run(subId);
+
+    setTestRole('admin');
+    const res = await request(app)
+      .get('/api/equipment/eq-desc-test')
+      .set('Authorization', 'Bearer fake');
+    expect(res.status).toBe(200);
+    expect(res.body.subcategory_description).toBe('Équipements de test biomédicaux');
+
+    db.prepare("DELETE FROM equipment WHERE id = 'eq-desc-test'").run();
+  });
+
+  test('✅ description vide → effacée (null)', async () => {
+    setTestRole('admin');
+    const put = await request(app)
+      .put(`/api/categories/sub/${subId}`)
+      .set('Authorization', 'Bearer fake')
+      .send({ name: 'Catalogue Test Subcat', description: '' });
+    expect(put.status).toBe(200);
+    expect(put.body.description).toBeNull();
+  });
+
+  test('🚫 non-admin ne peut pas modifier la description → 403', async () => {
+    setTestRole('technician_biomedical');
+    const res = await request(app)
+      .put(`/api/categories/sub/${subId}`)
+      .set('Authorization', 'Bearer fake')
+      .send({ name: 'Catalogue Test Subcat', description: 'tentative' });
+    expect(res.status).toBe(403);
+  });
+});

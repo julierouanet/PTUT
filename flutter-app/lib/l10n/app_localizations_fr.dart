@@ -5141,4 +5141,98 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get reportsMaintenanceCostHint =>
       'Somme des rapports finalisés (période)';
+
+  @override
+  String equipFieldEditTitle(String field) {
+    return 'Modifier : $field';
+  }
+
+  @override
+  String get equipFieldEditNoDate => 'Aucune date';
+
+  @override
+  String get equipDetailStateSection => 'État actuel';
+
+  @override
+  String get equipDetailIncidentsLabel => 'Incidents';
+
+  @override
+  String equipDetailIncidentsSummary(int active, int total) {
+    return '$active actif(s) / $total au total';
+  }
+
+  @override
+  String get equipDetailMaintenanceLabel => 'Maintenance préventive';
+
+  @override
+  String get equipDetailMaintUpToDate => 'À jour';
+
+  @override
+  String get equipDetailMaintSoon => 'Bientôt';
+
+  @override
+  String get equipDetailMaintOverdue => 'En retard';
+
+  @override
+  String get equipDetailMaintNone => 'Non planifiée';
+
+  @override
+  String get equipDetailNotifLifespanMissing =>
+      'Durée de vie de référence manquante';
+
+  @override
+  String get equipDetailNotifIncidentOpen =>
+      'Incident ouvert sur cet équipement';
+
+  @override
+  String get equipDetailNotifPmDue => 'Maintenance préventive en retard';
+
+  @override
+  String get equipDetailNotifPmSoon => 'Maintenance préventive bientôt due';
+
+  @override
+  String get equipDetailContactAdmin =>
+      'Contactez un administrateur pour saisir cette donnée';
+
+  @override
+  String get equipDetailDescriptionLabel => 'Description de l\'équipement';
+
+  @override
+  String get equipMaintRecordTitle => 'Détail de l\'intervention';
+
+  @override
+  String get equipMaintInterventionLabel => 'Intervention';
+
+  @override
+  String get equipMaintDateLabel => 'Date';
+
+  @override
+  String get equipMaintTechnicianLabel => 'Technicien';
+
+  @override
+  String get equipMaintTypeLabel => 'Type';
+
+  @override
+  String get equipMaintDurationLabel => 'Durée';
+
+  @override
+  String equipMaintDurationValue(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String get equipMaintEpochLabel => 'Étiquette d\'époque';
+
+  @override
+  String get equipPmStatusSection => 'État de la maintenance préventive';
+
+  @override
+  String get subcategoryDescriptionLabel => 'Description';
+
+  @override
+  String get subcategoryDescriptionHint =>
+      'Description métier de la sous-catégorie (affichée sur la fiche équipement)';
+
+  @override
+  String get subcategoryDescriptionSaved => 'Description enregistrée';
 }

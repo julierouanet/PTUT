@@ -2026,5 +2026,41 @@
   "interventionReportEmptyReadonly": "Aucun rapport d'intervention n'a encore été rédigé",
 
   "reportsMaintenanceCost": "Coût de maintenance",
-  "reportsMaintenanceCostHint": "Somme des rapports finalisés (période)"
+  "reportsMaintenanceCostHint": "Somme des rapports finalisés (période)",
+
+  "equipFieldEditTitle": "Modifier : {field}",
+  "@equipFieldEditTitle": { "placeholders": { "field": { "type": "String" } } },
+  "equipFieldEditNoDate": "Aucune date",
+
+  "equipDetailStateSection": "État actuel",
+  "equipDetailIncidentsLabel": "Incidents",
+  "equipDetailIncidentsSummary": "{active} actif(s) / {total} au total",
+  "@equipDetailIncidentsSummary": { "placeholders": { "active": { "type": "int" }, "total": { "type": "int" } } },
+  "equipDetailMaintenanceLabel": "Maintenance préventive",
+  "equipDetailMaintUpToDate": "À jour",
+  "equipDetailMaintSoon": "Bientôt",
+  "equipDetailMaintOverdue": "En retard",
+  "equipDetailMaintNone": "Non planifiée",
+
+  "equipDetailNotifLifespanMissing": "Durée de vie de référence manquante",
+  "equipDetailNotifIncidentOpen": "Incident ouvert sur cet équipement",
+  "equipDetailNotifPmDue": "Maintenance préventive en retard",
+  "equipDetailNotifPmSoon": "Maintenance préventive bientôt due",
+  "equipDetailContactAdmin": "Contactez un administrateur pour saisir cette donnée",
+  "equipDetailDescriptionLabel": "Description de l'équipement",
+
+  "equipMaintRecordTitle": "Détail de l'intervention",
+  "equipMaintInterventionLabel": "Intervention",
+  "equipMaintDateLabel": "Date",
+  "equipMaintTechnicianLabel": "Technicien",
+  "equipMaintTypeLabel": "Type",
+  "equipMaintDurationLabel": "Durée",
+  "equipMaintDurationValue": "{minutes} min",
+  "@equipMaintDurationValue": { "placeholders": { "minutes": { "type": "int" } } },
+  "equipMaintEpochLabel": "Étiquette d'époque",
+  "equipPmStatusSection": "État de la maintenance préventive",
+
+  "subcategoryDescriptionLabel": "Description",
+  "subcategoryDescriptionHint": "Description métier de la sous-catégorie (affichée sur la fiche équipement)",
+  "subcategoryDescriptionSaved": "Description enregistrée"
 }

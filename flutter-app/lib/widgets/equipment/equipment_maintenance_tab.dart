@@ -154,20 +154,20 @@ class _EquipmentMaintenanceTabState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Bannière alerte PM ──────────────────────────────────────
-          _buildPreventiveAlertBanner(l10n),
-
-          // ── Carte KPIs ─────────────────────────────────────────────
-          _buildKpiCard(l10n),
-          const SizedBox(height: 16),
-
-          // ── Dates PM ───────────────────────────────────────────────
+          // ══ (a) État PM lisible d'un coup d'œil ════════════════════
+          // Échéances (prochaine / retard via couleur / dernière) puis KPIs
+          // (dont taux de conformité). La bannière PM autonome a été retirée :
+          // l'alerte « PM en retard/bientôt » vit dans l'onglet Informations.
           if (hasDates) ...[
             _buildPmDatesCard(l10n),
             const SizedBox(height: 16),
           ],
 
-          // ── Fréquence PM (Tâche 2) ────────────────────────────────
+          // ── Carte KPIs (MTTR, réparations, conformité) ─────────────
+          _buildKpiCard(l10n),
+          const SizedBox(height: 16),
+
+          // ══ (b) Configuration : fréquence + checklist ═════════════
           if (_canSchedulePm) ...[
             _buildFrequencyCard(l10n),
             const SizedBox(height: 16),
@@ -192,12 +192,13 @@ class _EquipmentMaintenanceTabState
             const SizedBox(height: 12),
           ],
 
-          // ── Bouton "Valider la maintenance préventive" (Tâche 3) ──
+          // ══ (c) Action : valider la maintenance préventive ════════
           if (_canValidatePm) ...[
             _buildValidatePmButton(l10n),
             const SizedBox(height: 16),
           ],
 
+          // ══ (d) Historiques ═══════════════════════════════════════
           // ── Maintenances planifiées ────────────────────────────────
           if (hasFuture) ...[
             _buildMaintenanceListCard(
@@ -242,42 +243,48 @@ class _EquipmentMaintenanceTabState
     );
   }
 
-  // ── Bannière alerte PM ───────────────────────────────────────────────────────
+  // ── Dialog détail d'une intervention + étiquette d'époque ────────────────────
 
-  Widget _buildPreventiveAlertBanner(AppLocalizations l10n) {
-    final level = eq.preventiveMaintenanceAlertLevel;
-    if (level != 'due' && level != 'soon') return const SizedBox.shrink();
-    final isOverdue = level == 'due';
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: isOverdue ? AppColors.errorLight : AppColors.warningLight,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: (isOverdue ? AppColors.error : AppColors.warning)
-              .withValues(alpha: 0.4),
+  /// Ouvre le détail d'un enregistrement de maintenance (intervention, date,
+  /// technicien, type, durée). Bouton « Étiquette d'époque » : régénère
+  /// l'étiquette PM **de ce record** (technicien + date d'origine).
+  void _showMaintenanceRecordDialog(MaintenanceRecord m, AppLocalizations l10n) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.equipMaintRecordTitle, style: const TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DetailInfoRow(l10n.equipMaintInterventionLabel, m.intervention),
+            DetailInfoRow(l10n.equipMaintDateLabel, formatDetailDate(m.date)),
+            DetailInfoRow(l10n.equipMaintTechnicianLabel,
+                m.technician.isNotEmpty ? m.technician : '—'),
+            if (m.maintenanceType != null && m.maintenanceType!.isNotEmpty)
+              DetailInfoRow(l10n.equipMaintTypeLabel, m.maintenanceType!),
+            if (m.durationMinutes != null)
+              DetailInfoRow(l10n.equipMaintDurationLabel,
+                  l10n.equipMaintDurationValue(m.durationMinutes!)),
+          ],
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            isOverdue ? Icons.error_outline : Icons.schedule,
-            size: 18,
-            color: isOverdue ? AppColors.error : AppColors.warning,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              isOverdue
-                  ? l10n.preventiveAlertOverdue
-                  : l10n.preventiveAlertSoon,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isOverdue ? AppColors.error : AppColors.warning,
-              ),
+        actions: [
+          // Étiquette d'époque : réservée aux profils habilités (RBAC miroir).
+          if (_canValidatePm)
+            TextButton.icon(
+              icon: const Icon(Icons.label_outline, size: 16),
+              label: Text(l10n.equipMaintEpochLabel),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _printLabelFromHistory(m, l10n);
+              },
             ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
+            child: Text(l10n.commonClose),
           ),
         ],
       ),
@@ -849,43 +856,50 @@ class _EquipmentMaintenanceTabState
   }
 
   Widget _buildMaintenanceRow(MaintenanceRecord m, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 3,
-            height: 36,
-            margin: const EdgeInsets.only(right: 12, top: 2),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(2),
+    final l10n = AppLocalizations.of(context)!;
+    return InkWell(
+      onTap: () => _showMaintenanceRecordDialog(m, l10n),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 3,
+              height: 36,
+              margin: const EdgeInsets.only(right: 12, top: 2),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  m.intervention,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    m.intervention,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-                Text(
-                  '${formatDetailDate(m.date)} — ${m.technician}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondary,
+                  Text(
+                    '${formatDetailDate(m.date)} — ${m.technician}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+            const Icon(Icons.chevron_right,
+                size: 16, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }
@@ -967,36 +981,41 @@ class _EquipmentMaintenanceTabState
   }
 
   Widget _buildPmHistoryRow(MaintenanceRecord m) {
+    final l10n = AppLocalizations.of(context)!;
     final steps = m.durationMinutes;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          const Icon(Icons.check_circle,
-              size: 14, color: AppColors.success),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              formatDetailDate(m.date),
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textPrimary),
+    return InkWell(
+      onTap: () => _showMaintenanceRecordDialog(m, l10n),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle,
+                size: 14, color: AppColors.success),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                formatDetailDate(m.date),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textPrimary),
+              ),
             ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              m.technician,
-              style: const TextStyle(
-                  fontSize: 12, color: AppColors.textSecondary),
+            Expanded(
+              flex: 2,
+              child: Text(
+                m.technician,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondary),
+              ),
             ),
-          ),
-          if (steps != null)
-            Text(
-              '${steps} min',
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textMuted),
-            ),
-        ],
+            if (steps != null)
+              Text(
+                l10n.equipMaintDurationValue(steps),
+                style: const TextStyle(
+                    fontSize: 11, color: AppColors.textMuted),
+              ),
+          ],
+        ),
       ),
     );
   }

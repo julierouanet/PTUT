@@ -627,7 +627,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | Methode | Route                           | Auth              | Description                                      |
 |---------|---------------------------------|-------------------|--------------------------------------------------|
 | GET     | /api/equipment                  | Auth              | Liste (filtres: department, status, category, **macro_category**, **macro_category_id**). **Exclut `status='Disposed'` par défaut** (sauf `?include_disposed=true` ou `?status=Disposed`). Retourne maintenanceHistory + futureMaintenance + **macro_category** + **subcategory_name** + **replaced_by_name**/**replaces_id**/**replaces_name** (liens de remplacement) |
-| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** + **pmPlan** (fréquence + dernière date). **[NOUVEAU]** Expose `model_id`, `brand_id`, `brand_name`, `subcategory_id`, `subcategory_name` (LEFT JOIN catalogue, `null` si non rattaché) pour le drill-down de la fiche |
+| GET     | /api/equipment/:id              | Auth              | Details avec historique maintenance + **pmProtocols** + **pmPlan** (fréquence + dernière date). **[NOUVEAU]** Expose `model_id`, `brand_id`, `brand_name`, `subcategory_id`, `subcategory_name`, `subcategory_description` (LEFT JOIN catalogue, `null` si non rattaché/non saisi) pour le drill-down et la description de la fiche |
 | POST    | /api/equipment                  | Admin/Supervisor  | Creer (required: id, name, department, category) + optionnel: **subcategory_id**, **warranty_end_date**, **criticality** |
 | PUT     | /api/equipment/:id              | Admin/Sup/Tech    | Modifier (COALESCE, partial update) + nouveaux champs GMAO |
 | DELETE  | /api/equipment/:id              | Admin             | Supprimer (snapshot audit, ?reason=). **[GARDE-FOU]** Si historique (issues/maintenance/tags/documents) → `409 {hasHistory:true}` sauf `?force=true` (purge l'équipement + son historique, `details.forced=true`) |
@@ -649,8 +649,9 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 |---------|--------------------------|-------|--------------------------------------------------------------|
 | GET     | /api/categories/macro    | Auth  | Liste des 3 macro-catégories (Biomedical, Infrastructure, IT) |
 | GET     | /api/categories/sub      | Auth  | Liste sous-catégories (filtre: ?macro_category_id=). Inclut equipment_count |
-| GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie + `protocols` (PM) + `equipment_count` + **[NOUVEAU]** `equipment` (liste) + `brands` (fabricants présents, avec model_count/equipment_count) |
+| GET     | /api/categories/sub/:id  | Auth  | Détail sous-catégorie (inclut `description`) + `protocols` (PM) + `equipment_count` + **[NOUVEAU]** `equipment` (liste) + `brands` (fabricants présents, avec model_count/equipment_count) |
 | GET     | /api/categories/detail   | Auth  | **[NOUVEAU]** Détail d'une catégorie standard par nom (`?name=`). Retourne `{name, equipment:[{id,name,status,department}], brands:[{id,name,model_count,equipment_count}]}`. Lecture seule (drill-down fiche équipement) |
+| PUT     | /api/categories/sub/:id  | Admin | Renomme la sous-catégorie. Body `{name, macro_category_id?, description?}`. **[NOUVEAU]** `description` (TEXT, optionnel ; chaîne vide/null = effacement) affichée sur la fiche équipement. `logAction('update_subcategory')` (audit `old_description`/`description`) |
 | PUT     | /api/categories/sub/:id/lifespan | Admin | **[NOUVEAU]** Durée de vie de référence (RA3 S5). Body `{expected_lifespan_years: int>=0\|null}`. `logAction('update_subcategory_lifespan')` |
 
 ### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**

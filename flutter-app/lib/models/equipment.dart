@@ -153,6 +153,8 @@ class Equipment {
   final int? subcategoryId;
   /// Nom de la sous-catégorie (champ dénormalisé depuis le JOIN API)
   final String? subcategoryName;
+  /// Description métier de la sous-catégorie (lecture seule, dénormalisée depuis le JOIN API)
+  final String? subcategoryDescription;
   /// ID de la macro-catégorie (Biomedical=1, Infrastructure=2, IT=3)
   final int? macroCategoryId;
   /// Nom de la macro-catégorie ('Biomedical' | 'Infrastructure' | 'IT')
@@ -219,6 +221,7 @@ class Equipment {
     this.nextPreventiveMaintenance,
     this.subcategoryId,
     this.subcategoryName,
+    this.subcategoryDescription,
     this.macroCategoryId,
     this.macroCategory,
     this.warrantyEndDate,
@@ -320,6 +323,7 @@ class Equipment {
       nextPreventiveMaintenance: json['next_preventive_maintenance'] as String?,
       subcategoryId:      subcategoryId,
       subcategoryName:    json['subcategory_name']     as String?,
+      subcategoryDescription: json['subcategory_description'] as String?,
       macroCategoryId:    macroCategoryId,
       macroCategory:      json['macro_category']       as String?,
       warrantyEndDate:    json['warranty_end_date']    as String?,
@@ -403,6 +407,7 @@ class Equipment {
     String? nextPreventiveMaintenance,
     int? subcategoryId,
     String? subcategoryName,
+    String? subcategoryDescription,
     int? macroCategoryId,
     String? macroCategory,
     String? warrantyEndDate,
@@ -444,6 +449,7 @@ class Equipment {
       nextPreventiveMaintenance: nextPreventiveMaintenance ?? this.nextPreventiveMaintenance,
       subcategoryId: subcategoryId ?? this.subcategoryId,
       subcategoryName: subcategoryName ?? this.subcategoryName,
+      subcategoryDescription: subcategoryDescription ?? this.subcategoryDescription,
       macroCategoryId: macroCategoryId ?? this.macroCategoryId,
       macroCategory: macroCategory ?? this.macroCategory,
       warrantyEndDate: warrantyEndDate ?? this.warrantyEndDate,

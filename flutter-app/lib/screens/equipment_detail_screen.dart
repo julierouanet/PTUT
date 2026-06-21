@@ -325,18 +325,11 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
         ),
         body: Column(
           children: [
-            // Fil d'Ariane cliquable (vue complète) en tête du body
+            // Fil d'Ariane cliquable (vue complète) en tête du body.
+            // Les bannières de notification (critique + remplacement) ne sont
+            // plus rendues ici : elles vivent désormais dans l'onglet Info
+            // uniquement, sinon elles réapparaîtraient sur tous les onglets.
             _buildBreadcrumb(eq),
-            // Bannière critique persistante au-dessus des onglets.
-            // Builder pour capturer un contexte descendant du DefaultTabController,
-            // sans quoi DefaultTabController.of échouerait.
-            Builder(
-              builder: (ctx) => EquipmentCriticalBanner(
-                equipment: eq,
-                onTap: () => DefaultTabController.of(ctx).animateTo(2), // onglet Incidents
-              ),
-            ),
-            _buildNotificationsBanner(l10n),
             Expanded(
               child: TabBarView(
                 children: [
@@ -345,6 +338,11 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                     equipment: eq,
                     linksEnabled: true,
                     handlers: _buildLinkHandlers(eq),
+                    issues: _issues,
+                    onRefresh: _fetchDetails,
+                    replacementItem: _replacementItem,
+                    replacementLoaded: _replacementLoaded,
+                    isAdmin: _isAdmin,
                   ),
 
                   // ── Onglet 2 : Maintenance ───────────────────────

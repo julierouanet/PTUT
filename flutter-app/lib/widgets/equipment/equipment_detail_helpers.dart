@@ -96,6 +96,28 @@ int? computeMttr(List<Issue> issues) {
 
 // ── Widgets partagés ──────────────────────────────────────────────────────────
 
+/// Petit crayon d'édition par champ (InkWell + icône). Réutilisé par
+/// [DetailInfoRow] et par les lignes custom de la fiche (criticité, garantie,
+/// statut) pour garder un visuel d'édition cohérent.
+class EditPencil extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const EditPencil({super.key, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: const Padding(
+        padding: EdgeInsets.all(2),
+        child: Icon(Icons.edit_outlined,
+            size: 15, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
 /// Ligne label / valeur standard du détail équipement.
 ///
 /// Si [onTap] est fourni, la valeur devient un lien cliquable (style primary
@@ -109,6 +131,10 @@ class DetailInfoRow extends StatelessWidget {
   final bool mono;
   final VoidCallback? onTap;
 
+  /// Si fourni, affiche un petit crayon d'édition à droite de la valeur
+  /// (édition par champ inline). Null → ligne en lecture seule.
+  final VoidCallback? onEdit;
+
   const DetailInfoRow(
     this.label,
     this.value, {
@@ -117,6 +143,7 @@ class DetailInfoRow extends StatelessWidget {
     this.color,
     this.mono = false,
     this.onTap,
+    this.onEdit,
   });
 
   @override
@@ -170,6 +197,8 @@ class DetailInfoRow extends StatelessWidget {
             ),
           ),
           Expanded(child: valueWidget),
+          // Crayon d'édition par champ (visible seulement si onEdit fourni → RBAC géré par l'appelant)
+          if (onEdit != null) EditPencil(onTap: onEdit!),
         ],
       ),
     );

@@ -28,7 +28,8 @@ const DISPOSAL_METHODS     = ['destroyed', 'sold', 'donated', 'returned', 'canni
 const BASE_SELECT = `
   SELECT
     e.*,
-    es.name   AS subcategory_name,
+    es.name        AS subcategory_name,
+    es.description AS subcategory_description,
     emc.name  AS macro_category,
     emc.id    AS macro_category_id_resolved,
     -- Fabricant rattaché via le modèle catalogue (pour le drill-down fiche équipement)
