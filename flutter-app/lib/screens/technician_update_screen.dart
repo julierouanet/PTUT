@@ -15,6 +15,7 @@ import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
 import '../widgets/issue_validation_sheet.dart';
+import 'issue_detail_screen.dart';
 import 'technician_schedule_screen.dart';
 
 // ── Modèles internes ──────────────────────────────────────────────────────────
@@ -2431,7 +2432,13 @@ class _AvailableIssueCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.border))),
-      child: isMobile ? _buildMobile(l10n, eq) : _buildDesktop(l10n, eq),
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => IssueDetailScreen(issueId: issue.id)),
+        ),
+        child: isMobile ? _buildMobile(l10n, eq) : _buildDesktop(l10n, eq),
+      ),
     );
   }
 
