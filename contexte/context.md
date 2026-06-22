@@ -150,10 +150,11 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 ### Authentification (`/api/auth`)
 
 #### POST /api/auth/access-request *(public, rate-limit 3/h/IP)*
-- **Body** : `{ "first_name", "last_name", "email", "password", "department?" }`
+- **Body** : `{ "first_name", "last_name", "email", "password", "department?", "phone?" }`
 - Crée un compte Keycloak (rôle `hospitalStaff`, mot de passe permanent) avec **email non vérifié** : `requiredActions: ['VERIFY_EMAIL']` + envoi immédiat de l'email de vérification — l'utilisateur doit valider son email avant de pouvoir se connecter (`routes/auth.js`).
-- Traçabilité : ligne insérée dans `access_requests` (statut `auto_created`) + audit trail central `sendLog` (action `access_request_account_created`).
-- **Erreurs** : 400 si champs manquants / email invalide / mot de passe < 8 chars ; 409 si email déjà existant ; 502 si erreur Keycloak.
+- `phone` optionnel : posé en attribut Keycloak (`attributes.phone`), aucune validation de format côté serveur (déléguée au formulaire Flutter) — uniquement une limite de 20 caractères max anti-abus.
+- Traçabilité : ligne insérée dans `access_requests` (colonne `phone` incluse, statut `auto_created`) + audit trail central `sendLog` (action `access_request_account_created`, `details.phone`).
+- **Erreurs** : 400 si champs manquants / email invalide / mot de passe < 8 chars / téléphone > 20 chars ; 409 si email déjà existant ; 502 si erreur Keycloak.
 - ✅ Correctif #1 de l'audit 2026-06-10 appliqué : rate-limiter dédié (`index.js`), VERIFY_EMAIL, sendLog.
 
 #### POST /api/auth/forgot-password *(public, rate-limit 5/15min)*

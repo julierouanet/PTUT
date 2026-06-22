@@ -1050,6 +1050,7 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
   final _emailCtrl    = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl  = TextEditingController();
+  final _phoneCtrl    = TextEditingController();
 
   String? _selectedDept;
   bool    _obscurePassword = true;
@@ -1065,6 +1066,7 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
   }
 
@@ -1081,6 +1083,7 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
         email:      email,
         password:   pwd,
         department: _selectedDept,
+        phone:      _phoneCtrl.text.trim().isEmpty ? null : _phoneCtrl.text.trim(),
       );
       // Le compte vient d'être créé : afficher le popup de sélection de rôle
       // une fois la session lancée (consommé dans main.dart).
@@ -1222,6 +1225,24 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
             ),
             items: _buildDeptItems(l10n),
             onChanged: (v) => setState(() => _selectedDept = v),
+          ),
+          const SizedBox(height: 12),
+
+          TextFormField(
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            decoration: InputDecoration(
+              labelText: l10n.accessRequestPhone,
+              prefixIcon: const Icon(Icons.phone_outlined),
+            ),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return null;
+              final cleaned = v.trim().replaceAll(RegExp(r'[\s-]'), '');
+              if (!RegExp(r'^(\+250|0)7[2389]\d{7}$').hasMatch(cleaned)) {
+                return l10n.accessRequestPhoneInvalid;
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 12),
 

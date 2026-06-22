@@ -524,14 +524,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildHeader(AppLocalizations l10n, bool isMobile) {
-    final exportBtn = OutlinedButton.icon(
-      onPressed: () => _exportCsv(l10n),
-      icon: const Icon(Icons.download, size: 18),
-      label: Text(l10n.equipmentExportCsv),
-      style: OutlinedButton.styleFrom(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-    );
+    final canExportCsv = _auth.canManageOperations;
+    final exportBtn = canExportCsv
+        ? OutlinedButton.icon(
+            onPressed: () => _exportCsv(l10n),
+            icon: const Icon(Icons.download, size: 18),
+            label: Text(l10n.equipmentExportCsv),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          )
+        : null;
 
     final addBtn = _auth.canManageEquipment
         ? ElevatedButton.icon(
@@ -571,7 +574,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           const SizedBox(height: 12),
           Row(children: [
             if (addBtn != null) ...[Expanded(child: addBtn), const SizedBox(width: 8)],
-            Expanded(child: exportBtn),
+            if (exportBtn != null) Expanded(child: exportBtn),
           ]),
         ],
       );
@@ -591,8 +594,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
               style: const TextStyle(color: AppColors.textSecondary)),
         ]),
         Row(children: [
-          exportBtn,
-          const SizedBox(width: 4),
+          if (exportBtn != null) ...[exportBtn, const SizedBox(width: 4)],
           // Toggle vue grille / liste (desktop seulement)
           IconButton(
             icon: Icon(_isGridView ? Icons.view_list : Icons.grid_view),

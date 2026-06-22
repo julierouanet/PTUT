@@ -25,12 +25,16 @@ class HomeHubScreen extends StatelessWidget {
   final VoidCallback onEquipmentModule;
   final VoidCallback onSettingsModule;
   final VoidCallback onInventoryModule;
+  final VoidCallback onMyActiveIssues;
+  final void Function(String department) onDepartmentIssues;
 
   const HomeHubScreen({
     super.key,
     required this.onEquipmentModule,
     required this.onSettingsModule,
     required this.onInventoryModule,
+    required this.onMyActiveIssues,
+    required this.onDepartmentIssues,
   });
 
   // ── Helpers de classification des rôles ──────────────────────────────────
@@ -122,6 +126,12 @@ class HomeHubScreen extends StatelessWidget {
         i.status != IssueStatus.verified).toList();
   }
 
+  List<Issue> _myDepartmentOpenIssues(DataService data, AuthService auth) {
+    final dept = auth.currentUser?.department;
+    if (dept == null || dept.isEmpty) return [];
+    return data.issues.where((i) => i.department == dept && i.status.isOpen).toList();
+  }
+
   // ── Build principal ───────────────────────────────────────────────────────
 
   @override
@@ -182,6 +192,8 @@ class HomeHubScreen extends StatelessWidget {
     AuthService auth,
   ) {
     final activeIssues = _myActiveIssues(data, auth);
+    final department = auth.currentUser?.department ?? '';
+    final departmentIssues = _myDepartmentOpenIssues(data, auth);
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -231,45 +243,13 @@ class HomeHubScreen extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ── Accès "Mes incidents actifs" ────────────────────────────────
-          OutlinedButton.icon(
-            onPressed: onEquipmentModule,
-            icon: const Icon(Icons.troubleshoot_outlined),
-            label: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.hubStaffActiveIssuesButton,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (activeIssues.isNotEmpty)
-                  Text(
-                    l10n.hubStaffActiveIssuesCount(activeIssues.length),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.warning,
-                    ),
-                  )
-                else
-                  Text(
-                    l10n.hubStaffNoActiveIssues,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-              ],
-            ),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primary,
-              side: const BorderSide(color: AppColors.primary, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
-            ),
+          _buildIssuesAccessButton(
+            icon: Icons.troubleshoot_outlined,
+            label: l10n.hubStaffActiveIssuesButton,
+            count: activeIssues.length,
+            countLabel: l10n.hubStaffActiveIssuesCount(activeIssues.length),
+            emptyLabel: l10n.hubStaffNoActiveIssues,
+            onPressed: onMyActiveIssues,
           ),
 
           if (activeIssues.isNotEmpty) ...[
@@ -278,7 +258,7 @@ class HomeHubScreen extends StatelessWidget {
             if (activeIssues.length > 3) ...[
               const SizedBox(height: 8),
               TextButton(
-                onPressed: onEquipmentModule,
+                onPressed: onMyActiveIssues,
                 child: Text(
                   '+ ${activeIssues.length - 3} ${l10n.issuesAndMore(activeIssues.length - 3)}',
                   style: const TextStyle(color: AppColors.primary),
@@ -286,7 +266,64 @@ class HomeHubScreen extends StatelessWidget {
               ),
             ],
           ],
+
+          // ── Accès "Incidents de mon département" ────────────────────────
+          if (department.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _buildIssuesAccessButton(
+              icon: Icons.business_outlined,
+              label: l10n.hubStaffDepartmentIssuesButton,
+              count: departmentIssues.length,
+              countLabel: l10n.hubStaffDepartmentIssuesCount(departmentIssues.length),
+              emptyLabel: l10n.hubStaffNoDepartmentIssues,
+              onPressed: () => onDepartmentIssues(department),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Bouton d'accès générique vers une liste d'incidents — affiche un compteur
+  /// si non vide, sinon un libellé "aucun incident". Réutilisé pour "Mes
+  /// incidents actifs" et "Incidents de mon département".
+  Widget _buildIssuesAccessButton({
+    required IconData icon,
+    required String label,
+    required int count,
+    required String countLabel,
+    required String emptyLabel,
+    required VoidCallback onPressed,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: Icon(icon),
+      label: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            count > 0 ? countLabel : emptyLabel,
+            style: TextStyle(
+              fontSize: 12,
+              color: count > 0 ? AppColors.warning : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primary,
+        side: const BorderSide(color: AppColors.primary, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
       ),
     );
   }

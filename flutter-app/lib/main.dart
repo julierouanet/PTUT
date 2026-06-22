@@ -136,6 +136,8 @@ class _AppRootState extends State<_AppRoot> {
   _HubModule? _activeModule;
   // Écran de démarrage injecté lors de la redirection automatique par rôle
   ScreenType? _initialScreenType;
+  // Filtre département injecté lors de la navigation depuis le hub staff
+  String? _initialDepartmentFilter;
 
   @override
   void initState() {
@@ -197,6 +199,16 @@ class _AppRootState extends State<_AppRoot> {
     }
   }
 
+  /// Bascule directement sur l'écran de suivi des incidents, avec un filtre
+  /// département optionnel — utilisé par les boutons "incidents" du hub staff.
+  void _goToIssueTracking({String? departmentFilter}) {
+    setState(() {
+      _activeModule = _HubModule.equipment;
+      _initialScreenType = ScreenType.issueTracking;
+      _initialDepartmentFilter = departmentFilter;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_activeModule == null) {
@@ -204,6 +216,8 @@ class _AppRootState extends State<_AppRoot> {
         onEquipmentModule: () => setState(() => _activeModule = _HubModule.equipment),
         onSettingsModule:  () => setState(() => _activeModule = _HubModule.settings),
         onInventoryModule: () => setState(() => _activeModule = _HubModule.inventory),
+        onMyActiveIssues:  () => _goToIssueTracking(),
+        onDepartmentIssues: (department) => _goToIssueTracking(departmentFilter: department),
       );
     }
     return MainScaffold(
@@ -211,8 +225,10 @@ class _AppRootState extends State<_AppRoot> {
       onBackToHub: () => setState(() {
         _activeModule = null;
         _initialScreenType = null; // retour au hub : plus de redirection automatique
+        _initialDepartmentFilter = null;
       }),
       initialScreenType: _initialScreenType,
+      initialDepartmentFilter: _initialDepartmentFilter,
     );
   }
 }
@@ -226,7 +242,8 @@ class MainScaffold extends StatefulWidget {
   final List<ScreenType>? moduleFilter;
   final VoidCallback? onBackToHub;
   final ScreenType? initialScreenType;
-  const MainScaffold({super.key, this.moduleFilter, this.onBackToHub, this.initialScreenType});
+  final String? initialDepartmentFilter;
+  const MainScaffold({super.key, this.moduleFilter, this.onBackToHub, this.initialScreenType, this.initialDepartmentFilter});
 
   @override
   State<MainScaffold> createState() => _MainScaffoldState();
@@ -369,7 +386,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     switch (currentItem.screenType) {
       case ScreenType.dashboard:       return DashboardScreen(onNavigate: _navigateByScreenType);
       case ScreenType.equipment:       return EquipmentHubScreen(onNavigate: _navigateByScreenType);
-      case ScreenType.issueTracking:   return IssueTrackingScreen(onNavigate: _navigateByScreenType);
+      case ScreenType.issueTracking:   return IssueTrackingScreen(onNavigate: _navigateByScreenType, initialDepartmentFilter: widget.initialDepartmentFilter);
       case ScreenType.issueForm:       return IssueFormScreen(key: _issueFormKey, equipmentId: _selectedEquipmentId, onCancel: _goBack);
       case ScreenType.technician:      return TechnicianUpdateScreen(issueId: _selectedIssueId);
       case ScreenType.inventory:       return const InventoryScreen();

@@ -284,6 +284,7 @@ class AuthApiService {
     required String email,
     required String password,
     String? department,
+    String? phone,
   }) async {
     final response = await ApiClient.postPublic(ApiConfig.accessRequestUrl, {
       'first_name': firstName,
@@ -291,6 +292,7 @@ class AuthApiService {
       'email':      email,
       'password':   password,
       if (department != null && department.isNotEmpty) 'department': department,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
     });
     if (response.statusCode >= 400) {
       final body = jsonDecode(response.body) as Map<String, dynamic>;

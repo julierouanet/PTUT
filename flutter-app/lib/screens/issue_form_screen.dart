@@ -848,6 +848,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
     final currentUser = AuthService().currentUser;
     final String descRaw = _descriptionController.text.trim();
+    // Repli pour les signalements "équipement non répertorié" : le département
+    // de l'utilisateur, ou une valeur par défaut si non renseigné (jamais vide).
+    final String unlistedDepartment = (currentUser?.department.isNotEmpty ?? false)
+        ? currentUser!.department
+        : 'Non spécifié';
 
     final commons = {
       'description':         descRaw,
@@ -869,7 +874,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           issueData = {
             'id':             ticketId,
             'equipment_name': name,
-            'department':     currentUser?.department ?? 'Non spécifié',
+            'department':     unlistedDepartment,
             'type':           _bioProblemType,
             'issue_category': 'Biomédical',
             'assigned_group': 'Biomédical',
@@ -910,7 +915,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           issueData = {
             'id':             ticketId,
             'equipment_name': name,
-            'department':     currentUser?.department ?? 'Non spécifié',
+            'department':     unlistedDepartment,
             'type':           _itProblemType,
             'issue_category': 'IT',
             'assigned_group': 'IT',

@@ -4238,6 +4238,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accessRequestDepartment => 'Département (optionnel)';
 
   @override
+  String get accessRequestPhone => 'Téléphone (optionnel)';
+
+  @override
+  String get accessRequestPhoneInvalid => 'Format invalide (ex: 0788123456)';
+
+  @override
   String get accessRequestPassword => 'Mot de passe *';
 
   @override
@@ -4290,6 +4296,18 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get hubStaffNoActiveIssues => 'Aucun incident actif pour le moment';
+
+  @override
+  String get hubStaffDepartmentIssuesButton => 'Incidents de mon département';
+
+  @override
+  String hubStaffDepartmentIssuesCount(int count) {
+    return '$count incident(s) ouvert(s) dans le département';
+  }
+
+  @override
+  String get hubStaffNoDepartmentIssues =>
+      'Aucun incident ouvert dans le département';
 
   @override
   String get hubTechWorkplanTitle => 'Mon plan de travail du jour';

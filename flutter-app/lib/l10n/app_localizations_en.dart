@@ -4196,6 +4196,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accessRequestDepartment => 'Department (optional)';
 
   @override
+  String get accessRequestPhone => 'Phone (optional)';
+
+  @override
+  String get accessRequestPhoneInvalid => 'Invalid format (e.g.: 0788123456)';
+
+  @override
   String get accessRequestPassword => 'Password *';
 
   @override
@@ -4247,6 +4253,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hubStaffNoActiveIssues => 'No active incidents at the moment';
+
+  @override
+  String get hubStaffDepartmentIssuesButton => 'My department\'s incidents';
+
+  @override
+  String hubStaffDepartmentIssuesCount(int count) {
+    return '$count open incident(s) in department';
+  }
+
+  @override
+  String get hubStaffNoDepartmentIssues => 'No open incidents in department';
 
   @override
   String get hubTechWorkplanTitle => 'My workplan for today';

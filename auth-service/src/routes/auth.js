@@ -165,7 +165,7 @@ router.post('/forgot-password', (req, res) => {
 // connexion) + envoi immédiat de l'email de vérification, et trace dans l'audit
 // log central (sendLog).
 router.post('/access-request', async (req, res) => {
-  const { first_name, last_name, email, password, department } = req.body;
+  const { first_name, last_name, email, password, department, phone } = req.body;
 
   if (!first_name || !last_name || !email || !password) {
     return res.status(400).json({ error: 'Champs requis : first_name, last_name, email, password' });
@@ -176,11 +176,17 @@ router.post('/access-request', async (req, res) => {
   if (String(password).length < 8) {
     return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
   }
+  // Téléphone optionnel : pas de validation de format côté serveur (déléguée à Flutter),
+  // seule une limite de longueur anti-abus est appliquée.
+  if (phone && String(phone).length > 20) {
+    return res.status(400).json({ error: 'Numéro de téléphone trop long' });
+  }
 
   const cleanEmail = String(email).trim().toLowerCase();
   const cleanFirst = String(first_name).trim();
   const cleanLast  = String(last_name).trim();
   const cleanDept  = department ? String(department).trim() : '';
+  const cleanPhone = phone ? String(phone).trim() : null;
 
   try {
     // 1. Créer l'utilisateur dans Keycloak — email non vérifié à titre informatif
@@ -194,7 +200,7 @@ router.post('/access-request', async (req, res) => {
         lastName:        cleanLast,
         enabled:         true,
         emailVerified:   false,
-        attributes:      { department: [cleanDept] },
+        attributes:      { department: [cleanDept], ...(cleanPhone ? { phone: [cleanPhone] } : {}) },
       }),
     });
 
@@ -227,9 +233,9 @@ router.post('/access-request', async (req, res) => {
     // 5. Traçabilité — enregistrement en DB avec statut auto_created
     const db = getDb();
     db.prepare(
-      `INSERT INTO access_requests (first_name, last_name, email, department, role, status)
-       VALUES (?, ?, ?, ?, 'hospitalStaff', 'auto_created')`
-    ).run(cleanFirst, cleanLast, cleanEmail, cleanDept || null);
+      `INSERT INTO access_requests (first_name, last_name, email, department, phone, role, status)
+       VALUES (?, ?, ?, ?, ?, 'hospitalStaff', 'auto_created')`
+    ).run(cleanFirst, cleanLast, cleanEmail, cleanDept || null, cleanPhone);
 
     // 6. Audit trail central (db-service /api/logs/internal)
     sendLog({
@@ -240,7 +246,7 @@ router.post('/access-request', async (req, res) => {
       target_type: 'user',
       target_id:   kcId,
       target_name: `${cleanFirst} ${cleanLast}`.trim(),
-      details:     { email: cleanEmail, department: cleanDept || null },
+      details:     { email: cleanEmail, department: cleanDept || null, phone: cleanPhone },
       ...reqMeta(req),
     });
 

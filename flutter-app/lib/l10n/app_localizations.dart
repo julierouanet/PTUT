@@ -7844,6 +7844,18 @@ abstract class AppLocalizations {
   /// **'Département (optionnel)'**
   String get accessRequestDepartment;
 
+  /// No description provided for @accessRequestPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone (optionnel)'**
+  String get accessRequestPhone;
+
+  /// No description provided for @accessRequestPhoneInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Format invalide (ex: 0788123456)'**
+  String get accessRequestPhoneInvalid;
+
   /// No description provided for @accessRequestPassword.
   ///
   /// In fr, this message translates to:
@@ -7939,6 +7951,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun incident actif pour le moment'**
   String get hubStaffNoActiveIssues;
+
+  /// No description provided for @hubStaffDepartmentIssuesButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents de mon département'**
+  String get hubStaffDepartmentIssuesButton;
+
+  /// No description provided for @hubStaffDepartmentIssuesCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} incident(s) ouvert(s) dans le département'**
+  String hubStaffDepartmentIssuesCount(int count);
+
+  /// No description provided for @hubStaffNoDepartmentIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident ouvert dans le département'**
+  String get hubStaffNoDepartmentIssues;
 
   /// No description provided for @hubTechWorkplanTitle.
   ///

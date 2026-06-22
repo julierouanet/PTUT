@@ -63,6 +63,17 @@ enum IssueStatus {
   redirected,
   rejected;
 
+  /// Statuts "ouverts" : ni terminés, ni clôturés, ni rejetés.
+  bool get isOpen => switch (this) {
+    IssueStatus.reported ||
+    IssueStatus.acknowledged ||
+    IssueStatus.assigned ||
+    IssueStatus.inProgress ||
+    IssueStatus.waitingMaterials ||
+    IssueStatus.redirected => true,
+    IssueStatus.completed || IssueStatus.verified || IssueStatus.closed || IssueStatus.rejected => false,
+  };
+
   /// Canonical English name (used for storage/API)
   String get displayName {
     switch (this) {

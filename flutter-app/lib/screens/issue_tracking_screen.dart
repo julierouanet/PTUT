@@ -5,7 +5,6 @@ import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
 import '../models/issue.dart';
-import '../models/user_role.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
@@ -22,8 +21,9 @@ enum _PeriodFilter { all, last7Days, last30Days }
 /// page de détail en plein écran (lecture seule staff ou édition technicien).
 class IssueTrackingScreen extends StatefulWidget {
   final Function(int, {String? issueId}) onNavigate;
+  final String? initialDepartmentFilter;
 
-  const IssueTrackingScreen({super.key, required this.onNavigate});
+  const IssueTrackingScreen({super.key, required this.onNavigate, this.initialDepartmentFilter});
 
   @override
   State<IssueTrackingScreen> createState() => _IssueTrackingScreenState();
@@ -44,11 +44,17 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   IssueUrgency? _urgencyFilter;
   String? _groupFilter;
   _PeriodFilter _periodFilter = _PeriodFilter.all;
+  String? _departmentFilter;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _departmentFilter = widget.initialDepartmentFilter;
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialDepartmentFilter != null ? 1 : 0,
+    );
     // Rebuild du footer (compteur + export) une fois l'onglet stabilisé —
     // le garde indexIsChanging évite un setState à chaque frame du swipe.
     _tabController.addListener(() {
@@ -96,6 +102,10 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
     if (_groupFilter != null) {
       source = source.where((i) => i.assignedGroup == _groupFilter).toList();
+    }
+
+    if (_departmentFilter != null) {
+      source = source.where((i) => i.department == _departmentFilter).toList();
     }
 
     if (_periodFilter != _PeriodFilter.all) {
@@ -592,9 +602,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   void _showIssueDetail(Issue issue) {
     // Techniciens / superviseurs / admins → vue complète éditable.
-    final canEdit = _authService.hasPermission(Permission.updateRepairs) ||
-                    _authService.hasPermission(Permission.approveRequests) ||
-                    _authService.hasPermission(Permission.manageEquipment);
+    final canEdit = _authService.canManageOperations;
 
     if (!canEdit) {
       // hospitalStaff → vue lecture seule.

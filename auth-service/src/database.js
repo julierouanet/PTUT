@@ -166,6 +166,7 @@ function initTables() {
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_acknowledged INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_diagnosed INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_resolved INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
+  try { db.exec("ALTER TABLE access_requests ADD COLUMN phone TEXT"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];

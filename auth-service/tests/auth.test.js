@@ -342,6 +342,56 @@ describe('POST /api/auth/access-request', () => {
     const res = await request(app).post('/api/auth/access-request').send(valid);
     expect(res.status).toBe(502);
   });
+
+  test('phone fourni → 201, attribut Keycloak posé et access_requests.phone renseigné', async () => {
+    const fakeId = 'kc-access-req-phone-uuid';
+    kcAdminFetch
+      .mockResolvedValueOnce(kcResp({}, { status: 201, location: `/users/${fakeId}` })) // POST /users
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }))                                // reset-password
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }));                               // send-verify-email
+    assignRolesToUser.mockResolvedValueOnce(undefined);
+
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ ...valid, email: 'avec-phone@kabutare.rw', phone: '0788123456' });
+    expect(res.status).toBe(201);
+
+    const createBody = JSON.parse(kcAdminFetch.mock.calls[0][1].body);
+    expect(createBody.attributes.phone).toEqual(['0788123456']);
+
+    const row = getDb().prepare('SELECT phone FROM access_requests WHERE email = ?').get('avec-phone@kabutare.rw');
+    expect(row.phone).toBe('0788123456');
+
+    expect(sendLog).toHaveBeenCalledWith(expect.objectContaining({
+      details: expect.objectContaining({ phone: '0788123456' }),
+    }));
+  });
+
+  test('sans phone → 201, colonne phone à NULL', async () => {
+    const fakeId = 'kc-access-req-nophone-uuid';
+    kcAdminFetch
+      .mockResolvedValueOnce(kcResp({}, { status: 201, location: `/users/${fakeId}` }))
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }))
+      .mockResolvedValueOnce(kcResp({}, { status: 204 }));
+    assignRolesToUser.mockResolvedValueOnce(undefined);
+
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ ...valid, email: 'sans-phone@kabutare.rw' });
+    expect(res.status).toBe(201);
+
+    const row = getDb().prepare('SELECT phone FROM access_requests WHERE email = ?').get('sans-phone@kabutare.rw');
+    expect(row.phone).toBeNull();
+  });
+
+  test('phone trop long (21+ caractères) → 400', async () => {
+    const res = await request(app)
+      .post('/api/auth/access-request')
+      .send({ ...valid, phone: '012345678901234567890' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/trop long/i);
+    expect(kcAdminFetch).not.toHaveBeenCalled();
+  });
 });
 
 // =============================================================================
