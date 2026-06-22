@@ -1048,6 +1048,9 @@ class _AccessRequestContentState extends State<_AccessRequestContent> {
         password:   pwd,
         department: _selectedDept,
       );
+      // Le compte vient d'être créé : afficher le popup de sélection de rôle
+      // une fois la session lancée (consommé dans main.dart).
+      AuthService().markRoleSelectionPending();
       // Fermer le dialog/sheet et lancer l'auto-login dans le parent
       if (mounted) Navigator.of(context).pop();
       widget.onSuccess(email, pwd);

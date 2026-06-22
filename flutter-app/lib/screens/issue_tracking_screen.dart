@@ -156,50 +156,46 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
     final pad = isMobile ? 16.0 : 24.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // ── En-tête + recherche + filtres ──────────────────────────────
-        Padding(
-          padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(l10n, isMobile),
-              const SizedBox(height: 16),
-              _buildSearchBar(l10n),
-              const SizedBox(height: 12),
-              _buildFilterCard(l10n, isMobile, active),
-            ],
+    return NestedScrollView(
+      headerSliverBuilder: (context, innerBoxIsScrolled) => [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(pad, pad, pad, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(l10n, isMobile),
+                const SizedBox(height: 16),
+                _buildSearchBar(l10n),
+                const SizedBox(height: 12),
+                _buildFilterCard(l10n, isMobile, active),
+              ],
+            ),
           ),
         ),
-
-        // ── Onglets ─────────────────────────────────────────────────────
-        TabBar(
-          controller: _tabController,
-          isScrollable: isMobile,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          tabs: [
-            Tab(text: '${l10n.issuesTabMine} (${mine.length})'),
-            Tab(text: '${l10n.issuesTabAll} (${all.length})'),
-            Tab(text: '${l10n.issuesTabCompleted} (${completed.length})'),
-          ],
-        ),
-
-        // ── Contenu des onglets ─────────────────────────────────────────
-        Expanded(
-          child: TabBarView(
+        SliverToBoxAdapter(
+          child: TabBar(
             controller: _tabController,
-            children: [
-              _buildIssueList(mine,      l10n, isMobile),
-              _buildIssueList(all,       l10n, isMobile),
-              _buildIssueList(completed, l10n, isMobile),
+            isScrollable: isMobile,
+            labelColor: AppColors.primary,
+            unselectedLabelColor: AppColors.textSecondary,
+            indicatorColor: AppColors.primary,
+            tabs: [
+              Tab(text: '${l10n.issuesTabMine} (${mine.length})'),
+              Tab(text: '${l10n.issuesTabAll} (${all.length})'),
+              Tab(text: '${l10n.issuesTabCompleted} (${completed.length})'),
             ],
           ),
         ),
       ],
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildIssueList(mine,      l10n, isMobile, 0),
+          _buildIssueList(all,       l10n, isMobile, 1),
+          _buildIssueList(completed, l10n, isMobile, 2),
+        ],
+      ),
     );
   }
 
@@ -429,17 +425,23 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   // ── Liste d'incidents (fonction unique réutilisée par les 3 onglets) ─────────
 
   Widget _buildIssueList(
-      List<Issue> issues, AppLocalizations l10n, bool isMobile) {
+      List<Issue> issues, AppLocalizations l10n, bool isMobile, int tabIndex) {
     final pad = isMobile ? 16.0 : 24.0;
+    final storageKey = PageStorageKey('issues_tab_$tabIndex');
+    const physics = ClampingScrollPhysics();
 
     if (issues.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: EdgeInsets.all(pad),
-          child: Text(l10n.issuesNoMyIssues,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary)),
-        ),
+      return ListView(
+        key: storageKey,
+        physics: physics,
+        children: [
+          Padding(
+            padding: EdgeInsets.all(pad),
+            child: Text(l10n.issuesNoMyIssues,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSecondary)),
+          ),
+        ],
       );
     }
 
@@ -448,6 +450,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       child: Card(
         clipBehavior: Clip.antiAlias,
         child: ListView.builder(
+          key: storageKey,
+          physics: physics,
           padding: EdgeInsets.zero,
           itemCount: issues.length,
           itemBuilder: (_, i) => _buildIssueItem(issues[i], l10n),

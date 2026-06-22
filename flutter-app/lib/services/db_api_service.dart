@@ -413,6 +413,16 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Réinitialise les données d'instance (équipements, incidents, inventaire,
+  /// lieux) avec le jeu de données de démo (seed.js) — réservé admin.
+  /// Ne touche pas aux tables de référence/catalogue (catégories, fabricants...).
+  Future<Map<String, dynamic>> debugReseedDatabase() async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/reseed';
+    final response = await ApiClient.post(url, {});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── Utilitaire ─────────────────────────────────────────────────────────────
 
   void _checkStatus(dynamic response, String url) {

@@ -1119,16 +1119,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                           const BoxConstraints(minWidth: 28, minHeight: 28),
                       tooltip: l10n.commonDetails,
                     ),
-                    if (_canEdit)
-                      IconButton(
-                        icon: const Icon(Icons.edit, size: 16),
-                        onPressed: () => _editEquipment(eq),
-                        color: AppColors.textSecondary,
-                        padding: EdgeInsets.zero,
-                        constraints:
-                            const BoxConstraints(minWidth: 28, minHeight: 28),
-                        tooltip: l10n.commonEdit,
-                      ),
                   ]),
                 ],
               ),
@@ -1218,16 +1208,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                     ),
                   ),
                 ),
-              if (_canEdit)
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 18),
-                  onPressed: () => _editEquipment(eq),
-                  tooltip: l10n.commonEdit,
-                  color: AppColors.textSecondary,
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
-                ),
               IconButton(
                 icon: const Icon(Icons.chevron_right),
                 onPressed: () => _openDetail(eq),
@@ -1295,15 +1275,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
         ),
-        if (_canEdit)
-          IconButton(
-            icon: const Icon(Icons.edit, size: 18),
-            onPressed: () => _editEquipment(eq),
-            tooltip: l10n.commonEdit,
-            color: AppColors.textSecondary,
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          ),
       ],
     );
   }

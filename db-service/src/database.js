@@ -5,7 +5,10 @@ let db;
 
 function getDb() {
   if (!db) {
-    db = new Database(config.DB_PATH);
+    // process.env.DB_PATH est relu ici (pas via `config.DB_PATH` figé au chargement
+    // du module) pour que les scripts CLI puissent forcer ':memory:' en --dry-run
+    // après avoir déjà require() ce module (cf. scripts/import_inventory.js).
+    db = new Database(process.env.DB_PATH || config.DB_PATH);
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     initTables();

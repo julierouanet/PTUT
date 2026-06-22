@@ -7,6 +7,7 @@ import '../services/config_service.dart';
 import '../providers/locale_provider.dart';
 import '../models/user_role.dart';
 import '../widgets/notification_preferences_dialog.dart';
+import '../widgets/role_request_dialog.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
 class AccountSettingsScreen extends StatefulWidget {
@@ -676,124 +677,16 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   // ── Dialog : demande de rôle supplémentaire ───────────────────────────────
 
-  static const _kRequestableRoles = [
-    'supervisor',
-    'technician_biomedical',
-    'technician_it',
-    'technician_infra',
-  ];
-
-  static const _kRoleLabels = {
-    'supervisor':            'Superviseur',
-    'technician_biomedical': 'Technicien Biomédical',
-    'technician_it':         'Technicien IT',
-    'technician_infra':      'Technicien Infra',
-  };
-
   void _showRoleRequestDialog(AppLocalizations l10n) {
-    final user            = _authService.currentUser;
-    final existingRoles   = user?.roles.map((r) => r.apiName).toList() ?? [];
-    final available       = _kRequestableRoles.where((r) => !existingRoles.contains(r)).toList();
-    String? selectedRole  = available.isNotEmpty ? available.first : null;
-    bool    loading       = false;
-
-    if (available.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Vous possédez déjà tous les rôles disponibles.'),
+    if (availableRequestableRoles().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.roleRequestAllRolesHeld),
         behavior: SnackBarBehavior.floating,
       ));
       return;
     }
 
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => Dialog(
-          insetPadding: const EdgeInsets.all(16),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 420),
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(l10n.roleRequestTitle,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    ),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Votre demande sera soumise à un administrateur pour validation.',
-                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 20),
-                DropdownButtonFormField<String>(
-                  value: selectedRole,
-                  decoration: InputDecoration(
-                    labelText: l10n.roleRequestLabel,
-                    prefixIcon: const Icon(Icons.badge_outlined),
-                  ),
-                  items: available
-                      .map((r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(_kRoleLabels[r] ?? r),
-                          ))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => selectedRole = v),
-                ),
-                const SizedBox(height: 24),
-                Row(children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: loading ? null : () => Navigator.pop(ctx),
-                      child: Text(l10n.commonCancel),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: loading || selectedRole == null ? null : () async {
-                        setDialogState(() => loading = true);
-                        try {
-                          await AuthApiService.instance.requestRole(selectedRole!);
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(l10n.roleRequestSuccess),
-                              backgroundColor: AppColors.success,
-                              behavior: SnackBarBehavior.floating,
-                            ));
-                          }
-                        } catch (e) {
-                          setDialogState(() => loading = false);
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(e.toString().replaceFirst('Exception: ', '')),
-                              backgroundColor: AppColors.error,
-                              behavior: SnackBarBehavior.floating,
-                            ));
-                          }
-                        }
-                      },
-                      child: loading
-                          ? const SizedBox(width: 18, height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : Text(l10n.roleRequestSubmit),
-                    ),
-                  ),
-                ]),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
+    showRoleRequestDialog(context);
   }
 
   // ── Dialog : changer mot de passe ──────────────────────────────────────────

@@ -17,22 +17,28 @@ class StatusBadge extends StatelessWidget {
     final color = getStatusColor(status);
     final bgColor = getStatusBackgroundColor(status);
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 6 : 12,
-        vertical: isCompact ? 2 : 6,
-      ),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: isCompact ? 11 : 14,
-          fontWeight: FontWeight.w500,
+    return Tooltip(
+      message: status,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 6 : 12,
+          vertical: isCompact ? 2 : 6,
+        ),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          status,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+          softWrap: false,
+          style: TextStyle(
+            color: color,
+            fontSize: isCompact ? 11 : 14,
+            fontWeight: FontWeight.w500,
+          ),
         ),
       ),
     );

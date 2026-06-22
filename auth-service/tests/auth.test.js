@@ -304,7 +304,7 @@ describe('POST /api/auth/access-request', () => {
     expect(res.status).toBe(409);
   });
 
-  test('création réussie → 201, compte créé avec VERIFY_EMAIL non vérifié', async () => {
+  test('création réussie → 201, compte créé email non vérifié SANS blocage de connexion', async () => {
     const fakeId = 'kc-access-req-uuid';
     kcAdminFetch
       .mockResolvedValueOnce(kcResp({}, { status: 201, location: `/users/${fakeId}` })) // POST /users
@@ -314,12 +314,13 @@ describe('POST /api/auth/access-request', () => {
 
     const res = await request(app).post('/api/auth/access-request').send(valid);
     expect(res.status).toBe(201);
-    expect(res.body.message).toMatch(/vérifiez votre email/i);
+    expect(res.body.message).toMatch(/vous pouvez vous connecter/i);
 
-    // Le compte Keycloak doit être créé email non vérifié + action VERIFY_EMAIL
+    // Le compte Keycloak doit être créé email non vérifié, sans requiredActions
+    // (aucun blocage de connexion — VERIFY_EMAIL n'est plus posé)
     const createBody = JSON.parse(kcAdminFetch.mock.calls[0][1].body);
     expect(createBody.emailVerified).toBe(false);
-    expect(createBody.requiredActions).toEqual(['VERIFY_EMAIL']);
+    expect(createBody.requiredActions).toBeUndefined();
 
     // L'email de vérification doit être déclenché
     const verifyCall = kcAdminFetch.mock.calls.find(([url]) => url.includes('send-verify-email'));

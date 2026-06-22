@@ -210,7 +210,7 @@ class _CategoriesTabState extends State<CategoriesTab> {
             isBiomedical: isBiomedical,
           ),
         ),
-      ),
+      ).then((_) => _load()),
       title: Row(children: [
         Flexible(child: Text(name, style: const TextStyle(fontSize: 13))),
         // Triangle gris si durée de vie non définie (biomédical).
@@ -251,21 +251,14 @@ class _CategoriesTabState extends State<CategoriesTab> {
                 '$eqCount',
                 style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w500),
               ),
+            )
+          else
+            Tooltip(
+              message: l10n.subcategoryEmptyTooltip,
+              child: const Icon(Icons.warning_amber_rounded, size: 16, color: AppColors.warning),
             ),
-          IconButton(
-            icon: const Icon(Icons.edit, size: 16),
-            color: AppColors.primary,
-            onPressed: () => _showEditDialog(sub),
-            tooltip: l10n.commonEdit,
-            visualDensity: VisualDensity.compact,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete, size: 16),
-            color: eqCount > 0 ? AppColors.textMuted : AppColors.error,
-            onPressed: eqCount > 0 ? null : () => _confirmDeleteSub(l10n, sub),
-            tooltip: eqCount > 0 ? l10n.settingsDeptDeleteDisabledTooltip : l10n.commonDelete,
-            visualDensity: VisualDensity.compact,
-          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
         ],
       ),
     );
@@ -359,93 +352,6 @@ class _CategoriesTabState extends State<CategoriesTab> {
     );
   }
 
-  void _showEditDialog(Map<String, dynamic> sub) {
-    final l10n = AppLocalizations.of(context)!;
-    final nameCtrl = TextEditingController(text: sub['name'] as String);
-    int selectedMacroId = sub['macro_category_id'] as int;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => Dialog(
-          child: Container(
-            width: 420,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(l10n.settingsEditCategory, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameCtrl,
-                  decoration: InputDecoration(
-                    labelText: l10n.settingsCategoryName,
-                    prefixIcon: const Icon(Icons.label_outline),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
-                  value: selectedMacroId,
-                  decoration: InputDecoration(
-                    labelText: l10n.settingsCatSelectMacro,
-                    prefixIcon: const Icon(Icons.category),
-                  ),
-                  items: _macroCategories.map((m) => DropdownMenuItem<int>(
-                    value: m['id'] as int,
-                    child: Text(_macroLabel(l10n, m['name'] as String)),
-                  )).toList(),
-                  onChanged: (v) { if (v != null) setDialog(() => selectedMacroId = v); },
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      child: Text(l10n.commonCancel),
-                    )),
-                    const SizedBox(width: 12),
-                    Expanded(child: ElevatedButton(
-                      onPressed: () async {
-                        if (nameCtrl.text.trim().isEmpty) return;
-                        Navigator.pop(ctx);
-                        try {
-                          await DbApiService.instance.updateSubCategory(sub['id'] as int, {
-                            'name': nameCtrl.text.trim(),
-                            'macro_category_id': selectedMacroId,
-                          });
-                          await _load();
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(l10n.settingsCategoryModified),
-                            backgroundColor: AppColors.success,
-                            behavior: SnackBarBehavior.floating,
-                          ));
-                        } on ApiException catch (e) {
-                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(e.message),
-                            backgroundColor: AppColors.error,
-                            behavior: SnackBarBehavior.floating,
-                          ));
-                        }
-                      },
-                      child: Text(l10n.commonSave),
-                    )),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   /// Dialogue de saisie de la durée de vie de référence (en années) — RA3 S5.
   /// Champ vide = durée non définie (null). Réservé admin côté serveur.
   void _showLifespanDialog(AppLocalizations l10n, Map<String, dynamic> sub) {
@@ -521,38 +427,4 @@ class _CategoriesTabState extends State<CategoriesTab> {
     );
   }
 
-  Future<void> _confirmDeleteSub(AppLocalizations l10n, Map<String, dynamic> sub) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.settingsDeleteCategory),
-        content: Text(l10n.settingsDeleteConfirm(sub['name'] as String)),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(l10n.commonDelete),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    try {
-      await DbApiService.instance.deleteSubCategory(sub['id'] as int);
-      await _load();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.settingsDeletedFeminine(l10n.settingsDeleteCategory)),
-        backgroundColor: AppColors.success,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(e.message),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
-  }
 }

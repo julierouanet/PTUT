@@ -2384,6 +2384,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueFormSourceLocation => 'Infrastructure / Location';
 
   @override
+  String get issueFormPreciseLocation => 'Precise location';
+
+  @override
   String get issueFormSelectLocation => 'Select a location';
 
   @override
@@ -2632,6 +2635,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get roleRequestSuccess => 'Request sent, pending admin approval';
+
+  @override
+  String get roleRequestKeepCurrent => 'Keep my current role (Hospital staff)';
+
+  @override
+  String get roleRequestDescription =>
+      'Your request will be submitted to an administrator for approval.';
+
+  @override
+  String get roleRequestAllRolesHeld => 'You already hold all available roles.';
 
   @override
   String get navAnalytics => 'Analytics';
@@ -4083,10 +4096,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthTooltipNoCheck => 'Checking…';
 
   @override
-  String get accessRequestLink => 'Request access';
+  String get accessRequestLink => 'Create an account';
 
   @override
-  String get accessRequestTitle => 'System access request';
+  String get accessRequestTitle => 'Create an account';
 
   @override
   String get accessRequestSubtitle =>
@@ -4399,6 +4412,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String debugClearIssuesError(String error) {
     return 'Error during clearing: $error';
+  }
+
+  @override
+  String get debugReseedLabel => 'Reset with demo data';
+
+  @override
+  String get debugReseedDesc =>
+      'Deletes all equipment, incidents, inventory items and locations, then reloads the demo dataset (seed.js). Categories, brands and models are not affected. This action is irreversible.';
+
+  @override
+  String get debugReseedButton => 'Reset database';
+
+  @override
+  String get debugReseedLoading => 'Resetting...';
+
+  @override
+  String get debugReseedTitle => 'Confirm reset';
+
+  @override
+  String get debugReseedMessage =>
+      'This action will permanently delete ALL current equipment, incidents, inventory items and locations, then reload the demo dataset. This operation is irreversible and cannot be undone.';
+
+  @override
+  String get debugReseedConfirm => 'Reset';
+
+  @override
+  String debugReseedSuccess(int equipment, int issues) {
+    return 'Database reset: $equipment equipment item(s), $issues incident(s)';
+  }
+
+  @override
+  String debugReseedError(String error) {
+    return 'Error during reset: $error';
   }
 
   @override
@@ -4796,6 +4842,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get subcategoryLifespanUndefinedTooltip =>
       'Reference lifespan not defined';
+
+  @override
+  String get subcategoryEmptyTooltip => 'No equipment in this subcategory';
 
   @override
   String get subcategoryLifespanSaved => 'Lifespan saved';

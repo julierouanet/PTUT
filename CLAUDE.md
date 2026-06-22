@@ -412,4 +412,4 @@ Tout déclenchement "Signaler un incident" (sidebar, bottom nav, drawer, dashboa
 
 **Relancer l'audit** : invoquer le skill `/audit-gmao-kpi` (ou demander « audite l'application avec la grille KPI »). Le skill embarque la grille complète, les requêtes SQL de mesure (lecture seule) et la structure du rapport. Outils d'appui : `audit/tools/diff_arb.js` (sync ARB), `audit/tools/kpi_queries.js` (KPIs métier sur `hospital.db`).
 
-Points faibles relevés (voir top 10 du rapport) : ~~`POST /api/auth/access-request` public sans rate-limit créant des comptes actifs~~ (✅ corrigé 2026-06-10 : rate-limit 3/h + VERIFY_EMAIL + sendLog), mutations `roles.js` sans audit trail, documentation `contexte/context.md` en retard sur le code, chaînes UI en dur dans les écrans admin.
+Points faibles relevés (voir top 10 du rapport) : ~~`POST /api/auth/access-request` public sans rate-limit créant des comptes actifs~~ (✅ corrigé 2026-06-10 : rate-limit 3/h + sendLog), mutations `roles.js` sans audit trail, documentation `contexte/context.md` en retard sur le code, chaînes UI en dur dans les écrans admin.

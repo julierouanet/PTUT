@@ -42,6 +42,12 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
   bool _loading = true;
   String? _error;
 
+  // Nom et macro-catégorie courants, mis à jour après modification sans
+  // quitter l'écran (calque de _brandName dans BrandDetailScreen).
+  late String _name;
+  int? _macroCategoryId;
+  List<Map<String, dynamic>> _macroCategories = [];
+
   // Équipements et fabricants de la sous-catégorie (catalogue).
   List<Map<String, dynamic>> _equipment = [];
   List<Map<String, dynamic>> _brands = [];
@@ -57,9 +63,14 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
   // Seul l'admin peut éditer la description (miroir RBAC PUT /sub/:id).
   bool get _isAdmin => AuthService().primaryRole == UserRole.admin;
 
+  // Modifier/Supprimer la sous-catégorie : gardé côté client par la permission
+  // de gestion des catégories (le serveur impose requireRole('admin')).
+  bool get _canManage => AuthService().hasPermission(Permission.manageCategories);
+
   @override
   void initState() {
     super.initState();
+    _name = widget.subcategoryName;
     _load();
   }
 
@@ -74,18 +85,31 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
     try {
       // Détail sous-catégorie : équipements + fabricants.
       final detail = await DbApiService.instance.getSubCategoryDetail(widget.subcategoryId);
+      _name = detail['name'] as String? ?? _name;
+      _macroCategoryId = detail['macro_category_id'] as int?;
       _equipment = List<Map<String, dynamic>>.from((detail['equipment'] as List?) ?? const []);
       _brands = List<Map<String, dynamic>>.from((detail['brands'] as List?) ?? const []);
       _descriptionController.text = (detail['description'] as String?) ?? '';
 
-      // Alertes de remplacement (biomédical uniquement).
+      // Macro-catégories (dialogue d'édition, chargées une fois) + alertes de
+      // remplacement (biomédical) : indépendantes, lancées en parallèle.
+      final results = await Future.wait([
+        _macroCategories.isEmpty
+            ? DbApiService.instance.getMacroCategories()
+            : Future.value(_macroCategories),
+        widget.isBiomedical
+            ? DbApiService.instance.getReplacementPlan()
+            : Future.value(<String, dynamic>{}),
+      ]);
+      _macroCategories = results[0] as List<Map<String, dynamic>>;
+
       if (widget.isBiomedical) {
-        final plan  = await DbApiService.instance.getReplacementPlan();
+        final plan  = results[1] as Map<String, dynamic>;
         final items = (plan['items'] as List?) ?? const [];
         final alerts = <Map<String, dynamic>>[];
         for (final it in items) {
           final m = it as Map<String, dynamic>;
-          if (m['subcategory'] == widget.subcategoryName) {
+          if (m['subcategory'] == _name) {
             final status = m['status_replacement'] as String? ?? 'ok';
             if (ReplacementBadge.colorFor(status) != null) alerts.add(m);
           }
@@ -104,7 +128,25 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: Text(l10n.subcategoryDetailTitle)),
+      appBar: AppBar(
+        title: Text(l10n.subcategoryDetailTitle),
+        actions: [
+          if (_canManage)
+            IconButton(
+              icon: const Icon(Icons.edit),
+              tooltip: l10n.commonEdit,
+              onPressed: () => _showEditDialog(l10n),
+            ),
+          if (_canManage)
+            IconButton(
+              icon: const Icon(Icons.delete),
+              tooltip: _equipment.isNotEmpty
+                  ? l10n.settingsDeptDeleteDisabledTooltip
+                  : l10n.commonDelete,
+              onPressed: _equipment.isNotEmpty ? null : () => _confirmDelete(l10n),
+            ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -116,10 +158,10 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
                     // ici → segment unique masqué par DetailBreadcrumb).
                     DetailBreadcrumb(
                       padding: const EdgeInsets.only(bottom: 8),
-                      segments: [BreadcrumbSegment(widget.subcategoryName)],
+                      segments: [BreadcrumbSegment(_name)],
                     ),
                     // ── En-tête sous-catégorie ──────────────────────────────
-                    Text(widget.subcategoryName,
+                    Text(_name,
                         style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary)),
@@ -225,7 +267,7 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
     try {
       // PUT /sub/:id exige le name : on le renvoie inchangé avec la description.
       await DbApiService.instance.updateSubCategory(widget.subcategoryId, {
-        'name': widget.subcategoryName,
+        'name': _name,
         'description': _descriptionController.text.trim(),
       });
       if (mounted) {
@@ -355,7 +397,7 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
                   brandId: b['id'] as int,
                   brandName: b['name'] as String? ?? '—',
                   subcategoryId: widget.subcategoryId,
-                  subcategoryName: widget.subcategoryName,
+                  subcategoryName: _name,
                 ),
               ),
             ),
@@ -363,6 +405,133 @@ class _SubcategoryDetailScreenState extends State<SubcategoryDetailScreen> {
         }).toList(),
       ),
     );
+  }
+
+  // ── Modifier la sous-catégorie (nom + macro-catégorie) ──────────────────────
+  void _showEditDialog(AppLocalizations l10n) {
+    final nameCtrl = TextEditingController(text: _name);
+    int? selectedMacroId = _macroCategoryId;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => Dialog(
+          child: Container(
+            width: 420,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(l10n.settingsEditCategory,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: InputDecoration(
+                    labelText: l10n.settingsCategoryName,
+                    prefixIcon: const Icon(Icons.label_outline),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<int>(
+                  value: selectedMacroId,
+                  decoration: InputDecoration(
+                    labelText: l10n.settingsCatSelectMacro,
+                    prefixIcon: const Icon(Icons.category),
+                  ),
+                  items: _macroCategories.map((m) => DropdownMenuItem<int>(
+                    value: m['id'] as int,
+                    child: Text(m['name'] as String),
+                  )).toList(),
+                  onChanged: (v) { if (v != null) setDialog(() => selectedMacroId = v); },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(child: OutlinedButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text(l10n.commonCancel),
+                    )),
+                    const SizedBox(width: 12),
+                    Expanded(child: ElevatedButton(
+                      onPressed: () async {
+                        if (nameCtrl.text.trim().isEmpty || selectedMacroId == null) return;
+                        Navigator.pop(ctx);
+                        try {
+                          await DbApiService.instance.updateSubCategory(widget.subcategoryId, {
+                            'name': nameCtrl.text.trim(),
+                            'macro_category_id': selectedMacroId,
+                          });
+                          await _load();
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(l10n.settingsCategoryModified),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                          ));
+                        } on ApiException catch (e) {
+                          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(e.message),
+                            backgroundColor: AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                          ));
+                        }
+                      },
+                      child: Text(l10n.commonSave),
+                    )),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Supprimer la sous-catégorie ──────────────────────────────────────────────
+  Future<void> _confirmDelete(AppLocalizations l10n) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.settingsDeleteCategory),
+        content: Text(l10n.settingsDeleteConfirm(_name)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await DbApiService.instance.deleteSubCategory(widget.subcategoryId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.settingsDeletedFeminine(l10n.settingsDeleteCategory)),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+        Navigator.pop(context, true);
+      }
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(e.message),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
   }
 
   Widget _emptyCard(String message) => detailEmptyCard(message);

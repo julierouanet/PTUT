@@ -186,6 +186,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String _bioProblemType = '';
   bool _bioUnlisted = false;
   final _bioUnlistedNameController = TextEditingController();
+  final _bioBuildingController = TextEditingController();
+  final _bioLocationController = TextEditingController();
 
   // ── Tab 1 : Infrastructure ────────────────────────────────────────────────
   String? _infraDepartment;
@@ -205,10 +207,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String _itProblemType = '';
   bool _itUnlisted = false;
   final _itUnlistedNameController = TextEditingController();
+  final _itBuildingController = TextEditingController();
+  final _itLocationController = TextEditingController();
 
   // ── Tab 3 : Autre ─────────────────────────────────────────────────────────
   String? _autreDepartment;
   String _autreProblemType = '';
+  final _autreBuildingController = TextEditingController();
+  final _autreLocationController = TextEditingController();
 
   // ── Partagés entre tous les tabs ──────────────────────────────────────────
   IssueUrgency _urgency = IssueUrgency.moyen;
@@ -222,13 +228,19 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _bioEquipmentId != null ||
       _bioUnlisted ||
       _bioUnlistedNameController.text.isNotEmpty ||
+      _bioBuildingController.text.isNotEmpty ||
+      _bioLocationController.text.isNotEmpty ||
       _infraBuildingController.text.isNotEmpty ||
       _infraLocationController.text.isNotEmpty ||
       _itEquipment != null ||
       _itUnlisted ||
       _itUnlistedNameController.text.isNotEmpty ||
+      _itBuildingController.text.isNotEmpty ||
+      _itLocationController.text.isNotEmpty ||
       _tagController.text.isNotEmpty ||
       _autreDepartment != null ||
+      _autreBuildingController.text.isNotEmpty ||
+      _autreLocationController.text.isNotEmpty ||
       _descriptionController.text.isNotEmpty ||
       _photos.isNotEmpty;
 
@@ -276,6 +288,12 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     _infraTagController.dispose();
     _bioUnlistedNameController.dispose();
     _itUnlistedNameController.dispose();
+    _bioBuildingController.dispose();
+    _bioLocationController.dispose();
+    _itBuildingController.dispose();
+    _itLocationController.dispose();
+    _autreBuildingController.dispose();
+    _autreLocationController.dispose();
     super.dispose();
   }
 
@@ -361,8 +379,14 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _infraSearchKey++;
       _bioUnlisted       = false;
       _bioUnlistedNameController.clear();
+      _bioBuildingController.clear();
+      _bioLocationController.clear();
       _itUnlisted        = false;
       _itUnlistedNameController.clear();
+      _itBuildingController.clear();
+      _itLocationController.clear();
+      _autreBuildingController.clear();
+      _autreLocationController.clear();
       _scanBlockMode     = false;
       _currentStep       = 0;
     });
@@ -849,6 +873,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             'type':           _bioProblemType,
             'issue_category': 'Biomédical',
             'assigned_group': 'Biomédical',
+            'location_text':  _locationText(_bioBuildingController, _bioLocationController),
             ...commons,
             // Le préfixe permet au technicien d'identifier l'équipement sur site
             'description': '[NON RÉPERTORIÉ: $name] — $descRaw',
@@ -863,6 +888,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             'type':           _bioProblemType,
             'issue_category': 'Biomédical',
             'assigned_group': 'Biomédical',
+            'location_text':  _locationText(_bioBuildingController, _bioLocationController),
             ...commons,
           };
         }
@@ -888,6 +914,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             'type':           _itProblemType,
             'issue_category': 'IT',
             'assigned_group': 'IT',
+            'location_text':  _locationText(_itBuildingController, _itLocationController),
             ...commons,
             'description': '[NON RÉPERTORIÉ: $name] — $descRaw',
           };
@@ -901,6 +928,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             'type':           _itProblemType,
             'issue_category': 'IT',
             'assigned_group': 'IT',
+            'location_text':  _locationText(_itBuildingController, _itLocationController),
             ...commons,
           };
         }
@@ -910,6 +938,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           'department':     _autreDepartment!,
           'type':           _autreProblemType,
           'issue_category': 'Autre',
+          'location_text':  _locationText(_autreBuildingController, _autreLocationController),
           ...commons,
         };
     }
@@ -954,6 +983,12 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
+
+  // ── Concaténation Bâtiment — Lieu pour location_text ─────────────────────
+
+  String _locationText(
+      TextEditingController building, TextEditingController location) =>
+      '${building.text.trim()} — ${location.text.trim()}';
 
   // ── Couleur d'urgence ─────────────────────────────────────────────────────
 
@@ -1494,6 +1529,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
 
       const SizedBox(height: 20),
+      ..._buildLocationFields(
+        buildingController: _bioBuildingController,
+        locationController: _bioLocationController,
+        l10n: l10n,
+      ),
       Text(l10n.issueFormProblemType,
           style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
@@ -1802,6 +1842,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
 
       const SizedBox(height: 20),
+      ..._buildLocationFields(
+        buildingController: _itBuildingController,
+        locationController: _itLocationController,
+        l10n: l10n,
+      ),
       Text(l10n.issueFormProblemType,
           style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
@@ -1835,7 +1880,12 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             ? l10n.issueFormDepartmentRequired
             : null,
       ),
-      const SizedBox(height: 20),
+      const SizedBox(height: 16),
+      ..._buildLocationFields(
+        buildingController: _autreBuildingController,
+        locationController: _autreLocationController,
+        l10n: l10n,
+      ),
       Text(l10n.issueFormProblemType,
           style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
@@ -1852,6 +1902,48 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   // ══════════════════════════════════════════════════════════════════════════
   // WIDGETS PARTAGÉS
   // ══════════════════════════════════════════════════════════════════════════
+
+  /// Champs Bâtiment + Lieu précis — réutilisés sur les onglets Bio/IT/Autre.
+  /// Toujours visibles (équipement répertorié ou non) : il peut avoir été déplacé.
+  List<Widget> _buildLocationFields({
+    required TextEditingController buildingController,
+    required TextEditingController locationController,
+    required AppLocalizations l10n,
+  }) {
+    return [
+      Text(l10n.issueFormBuilding,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: buildingController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormBuildingHint,
+          prefixIcon: const Icon(CupertinoIcons.building_2_fill,
+              color: AppColors.textSecondary),
+        ),
+        validator: (v) => (v == null || v.trim().isEmpty)
+            ? l10n.issueFormBuildingRequired
+            : null,
+      ),
+      const SizedBox(height: 16),
+
+      Text(l10n.issueFormPreciseLocation,
+          style: const TextStyle(fontWeight: FontWeight.w500)),
+      const SizedBox(height: 8),
+      TextFormField(
+        controller: locationController,
+        decoration: InputDecoration(
+          hintText: l10n.issueFormLocationHint,
+          prefixIcon: const Icon(Icons.location_on_outlined,
+              color: AppColors.textSecondary),
+        ),
+        validator: (v) => (v == null || v.trim().isEmpty)
+            ? l10n.issueFormLocationRequired2
+            : null,
+      ),
+      const SizedBox(height: 16),
+    ];
+  }
 
   /// Bandeau d'avertissement pour un équipement non répertorié.
   Widget _buildUnlistedWarning(AppLocalizations l10n) {

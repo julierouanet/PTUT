@@ -2397,6 +2397,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueFormSourceLocation => 'Infrastructure / Lieu';
 
   @override
+  String get issueFormPreciseLocation => 'Lieu précis';
+
+  @override
   String get issueFormSelectLocation => 'Sélectionnez un lieu';
 
   @override
@@ -2654,6 +2657,18 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get roleRequestSuccess =>
       'Demande envoyée, en attente de validation administrateur';
+
+  @override
+  String get roleRequestKeepCurrent =>
+      'Garder mon rôle actuel (Personnel hospitalier)';
+
+  @override
+  String get roleRequestDescription =>
+      'Votre demande sera soumise à un administrateur pour validation.';
+
+  @override
+  String get roleRequestAllRolesHeld =>
+      'Vous possédez déjà tous les rôles disponibles.';
 
   @override
   String get navAnalytics => 'Analytiques';
@@ -4123,10 +4138,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get healthTooltipNoCheck => 'Vérification en cours…';
 
   @override
-  String get accessRequestLink => 'Demander un accès';
+  String get accessRequestLink => 'Créer un compte';
 
   @override
-  String get accessRequestTitle => 'Demande d\'accès au système';
+  String get accessRequestTitle => 'Création de compte';
 
   @override
   String get accessRequestSubtitle =>
@@ -4443,6 +4458,39 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String debugClearIssuesError(String error) {
     return 'Erreur lors du nettoyage : $error';
+  }
+
+  @override
+  String get debugReseedLabel => 'Réinitialiser avec les données de démo';
+
+  @override
+  String get debugReseedDesc =>
+      'Supprime tous les équipements, incidents, articles d\'inventaire et lieux, puis recharge le jeu de données de démo (seed.js). Les catégories, fabricants et modèles ne sont pas affectés. Cette action est irréversible.';
+
+  @override
+  String get debugReseedButton => 'Réinitialiser la base de données';
+
+  @override
+  String get debugReseedLoading => 'Réinitialisation en cours...';
+
+  @override
+  String get debugReseedTitle => 'Confirmer la réinitialisation';
+
+  @override
+  String get debugReseedMessage =>
+      'Cette action va supprimer TOUS les équipements, incidents, articles d\'inventaire et lieux actuels, puis recharger les données de démo. Cette opération est irréversible et ne peut pas être annulée.';
+
+  @override
+  String get debugReseedConfirm => 'Réinitialiser';
+
+  @override
+  String debugReseedSuccess(int equipment, int issues) {
+    return 'Base de données réinitialisée : $equipment équipement(s), $issues incident(s)';
+  }
+
+  @override
+  String debugReseedError(String error) {
+    return 'Erreur lors de la réinitialisation : $error';
   }
 
   @override
@@ -4842,6 +4890,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get subcategoryLifespanUndefinedTooltip =>
       'Durée de vie de référence non définie';
+
+  @override
+  String get subcategoryEmptyTooltip =>
+      'Aucun équipement dans cette sous-catégorie';
 
   @override
   String get subcategoryLifespanSaved => 'Durée de vie enregistrée';

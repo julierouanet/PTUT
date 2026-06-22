@@ -21,6 +21,7 @@ class DebugTestScreen extends StatefulWidget {
 
 class _DebugTestScreenState extends State<DebugTestScreen> {
   bool _isClearingIssues = false;
+  bool _isReseeding = false;
 
   // ── État des tests de notifications ─────────────────────────────────────────
   bool   _isScheduleActive = false;
@@ -109,6 +110,72 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
       }
     } finally {
       if (mounted) setState(() => _isClearingIssues = false);
+    }
+  }
+
+  // ── Réinitialisation avec les données de démo ───────────────────────────────
+  Future<void> _reseedDatabase() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    // Dialogue de confirmation obligatoire — action destructive
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            const SizedBox(width: 12),
+            Text(l10n.debugReseedTitle),
+          ],
+        ),
+        content: Text(l10n.debugReseedMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.debugReseedConfirm),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isReseeding = true);
+    try {
+      final result = await DbApiService.instance.debugReseedDatabase();
+      if (!mounted) return;
+      final after = result['after'] as Map<String, dynamic>? ?? const {};
+      await DataService().loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.debugReseedSuccess(
+            after['equipment'] as int? ?? 0,
+            after['issues'] as int? ?? 0,
+          )),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.debugReseedError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isReseeding = false);
     }
   }
 
@@ -309,6 +376,46 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
                           )
                         : const Icon(Icons.delete_forever),
                     label: Text(_isClearingIssues ? l10n.debugClearIssuesLoading : l10n.debugClearIssuesButton),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const Divider(height: 32),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.restart_alt, color: AppColors.error, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.debugReseedLabel,
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.debugReseedDesc,
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _isReseeding ? null : _reseedDatabase,
+                    icon: _isReseeding
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.restart_alt),
+                    label: Text(_isReseeding ? l10n.debugReseedLoading : l10n.debugReseedButton),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.error,
                       foregroundColor: Colors.white,

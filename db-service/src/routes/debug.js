@@ -4,6 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
 const { sendPushToUser } = require('../utils/push_sender');
+const { seed } = require('../../seed');
 
 const router = express.Router();
 
@@ -29,6 +30,57 @@ router.post('/clear-issues', verifyToken, requireRole('admin'), (req, res) => {
   });
 
   res.json({ message: `${result.changes} incident(s) supprimé(s)`, deleted: result.changes });
+});
+
+// ── POST /reseed ──────────────────────────────────────────────────────────────
+// Réinitialise les données d'INSTANCE (équipements, incidents, maintenance,
+// inventaire, lieux) avec le jeu de démo de seed.js — réservé admin.
+// Ne touche PAS aux tables de référence/catalogue (departments, equipment_categories,
+// equipment_macro_categories, equipment_subcategories, equipment_brands,
+// equipment_models, pm_protocols) : seules les instances créées par import/usage
+// sont remises à zéro, pas la structure de catégorisation.
+router.post('/reseed', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+
+  const before = {
+    equipment: db.prepare('SELECT COUNT(*) c FROM equipment').get().c,
+    issues:    db.prepare('SELECT COUNT(*) c FROM issues').get().c,
+    inventory: db.prepare('SELECT COUNT(*) c FROM inventory').get().c,
+    locations: db.prepare('SELECT COUNT(*) c FROM locations').get().c,
+  };
+
+  const runReseed = db.transaction(() => {
+    // `issues` puis `equipment` d'abord : les tables enfants (equipment_tags,
+    // maintenance_records, preventive_maintenance_plans, equipment_documents,
+    // issue_intervention_reports, issue_photos) sont en ON DELETE CASCADE.
+    db.prepare('DELETE FROM issues').run();
+    db.prepare('DELETE FROM equipment').run();
+    db.prepare('DELETE FROM inventory').run();
+    db.prepare('DELETE FROM locations').run();
+    seed();
+  });
+  runReseed();
+
+  const after = {
+    equipment: db.prepare('SELECT COUNT(*) c FROM equipment').get().c,
+    issues:    db.prepare('SELECT COUNT(*) c FROM issues').get().c,
+    inventory: db.prepare('SELECT COUNT(*) c FROM inventory').get().c,
+    locations: db.prepare('SELECT COUNT(*) c FROM locations').get().c,
+  };
+
+  logAction({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      'debug_reseed_database',
+    target_type: 'database',
+    target_id:   null,
+    target_name: 'Données de démo',
+    details:     JSON.stringify({ before, after, note: 'Réinitialisation équipements/incidents/inventaire/lieux avec seed.js' }),
+    ...extractReqMeta(req),
+  });
+
+  res.json({ message: 'Base de données réinitialisée avec les données de démo', before, after });
 });
 
 // ── POST /notify-now ──────────────────────────────────────────────────────────

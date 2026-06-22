@@ -158,8 +158,12 @@ function seed() {
   }
   console.log(`  ${inventory.length} inventory items inserted`);
 
-  closeDb();
   console.log('\nSeed completed successfully.');
 }
 
-seed();
+module.exports = { seed };
+
+if (require.main === module) {
+  seed();
+  closeDb();
+}

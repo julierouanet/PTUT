@@ -24,6 +24,7 @@ import 'models/nav_item.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/issue_category_selector.dart';
 import 'widgets/notification_preferences_dialog.dart';
+import 'widgets/role_request_dialog.dart';
 import 'widgets/layout/app_sidebar.dart';
 import 'widgets/layout/app_top_bar.dart';
 import 'widgets/layout/app_bottom_nav.dart';
@@ -147,6 +148,10 @@ class _AppRootState extends State<_AppRoot> {
       if (AuthService().needsPreferencesSetup) {
         AuthService().clearPreferencesSetupFlag();
         showNotificationPreferencesDialog(context, isFirstSetup: true);
+      }
+      if (AuthService().needsRoleSelectionSetup) {
+        AuthService().clearRoleSelectionSetupFlag();
+        showRoleRequestDialog(context, isFirstSetup: true);
       }
     });
   }

@@ -25,6 +25,8 @@ class AuthService extends ChangeNotifier {
   NotificationPreferences? _notificationPreferences;
   // Indique si la modal de 1ère configuration doit être affichée
   bool _needsPreferencesSetup = false;
+  // Indique si le popup de sélection de rôle doit être affiché après création de compte
+  bool _needsRoleSelectionSetup = false;
 
   User?   get currentUser               => _currentUser;
   bool    get isLoggedIn                => _currentUser != null;
@@ -33,6 +35,7 @@ class AuthService extends ChangeNotifier {
   String? get sessionExpiredMessage     => _sessionExpiredMessage;
   NotificationPreferences? get notificationPreferences => _notificationPreferences;
   bool    get needsPreferencesSetup     => _needsPreferencesSetup;
+  bool    get needsRoleSelectionSetup   => _needsRoleSelectionSetup;
 
   void clearSessionExpiredMessage() {
     _sessionExpiredMessage = null;
@@ -41,6 +44,16 @@ class AuthService extends ChangeNotifier {
   /// Marque la modal de configuration des préférences comme affichée.
   void clearPreferencesSetupFlag() {
     _needsPreferencesSetup = false;
+  }
+
+  /// Marque le popup de sélection de rôle comme à afficher (post-création de compte).
+  void markRoleSelectionPending() {
+    _needsRoleSelectionSetup = true;
+  }
+
+  /// Marque le popup de sélection de rôle comme affiché.
+  void clearRoleSelectionSetupFlag() {
+    _needsRoleSelectionSetup = false;
   }
 
   /// Liste des rôles de l'utilisateur connecté (vide si non connecté).

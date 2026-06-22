@@ -4520,6 +4520,12 @@ abstract class AppLocalizations {
   /// **'Infrastructure / Lieu'**
   String get issueFormSourceLocation;
 
+  /// No description provided for @issueFormPreciseLocation.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lieu précis'**
+  String get issueFormPreciseLocation;
+
   /// No description provided for @issueFormSelectLocation.
   ///
   /// In fr, this message translates to:
@@ -4987,6 +4993,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Demande envoyée, en attente de validation administrateur'**
   String get roleRequestSuccess;
+
+  /// No description provided for @roleRequestKeepCurrent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Garder mon rôle actuel (Personnel hospitalier)'**
+  String get roleRequestKeepCurrent;
+
+  /// No description provided for @roleRequestDescription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Votre demande sera soumise à un administrateur pour validation.'**
+  String get roleRequestDescription;
+
+  /// No description provided for @roleRequestAllRolesHeld.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous possédez déjà tous les rôles disponibles.'**
+  String get roleRequestAllRolesHeld;
 
   /// No description provided for @navAnalytics.
   ///
@@ -7631,13 +7655,13 @@ abstract class AppLocalizations {
   /// No description provided for @accessRequestLink.
   ///
   /// In fr, this message translates to:
-  /// **'Demander un accès'**
+  /// **'Créer un compte'**
   String get accessRequestLink;
 
   /// No description provided for @accessRequestTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Demande d\'accès au système'**
+  /// **'Création de compte'**
   String get accessRequestTitle;
 
   /// No description provided for @accessRequestSubtitle.
@@ -8203,6 +8227,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Erreur lors du nettoyage : {error}'**
   String debugClearIssuesError(String error);
+
+  /// No description provided for @debugReseedLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser avec les données de démo'**
+  String get debugReseedLabel;
+
+  /// No description provided for @debugReseedDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Supprime tous les équipements, incidents, articles d\'inventaire et lieux, puis recharge le jeu de données de démo (seed.js). Les catégories, fabricants et modèles ne sont pas affectés. Cette action est irréversible.'**
+  String get debugReseedDesc;
+
+  /// No description provided for @debugReseedButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser la base de données'**
+  String get debugReseedButton;
+
+  /// No description provided for @debugReseedLoading.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialisation en cours...'**
+  String get debugReseedLoading;
+
+  /// No description provided for @debugReseedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la réinitialisation'**
+  String get debugReseedTitle;
+
+  /// No description provided for @debugReseedMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action va supprimer TOUS les équipements, incidents, articles d\'inventaire et lieux actuels, puis recharger les données de démo. Cette opération est irréversible et ne peut pas être annulée.'**
+  String get debugReseedMessage;
+
+  /// No description provided for @debugReseedConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réinitialiser'**
+  String get debugReseedConfirm;
+
+  /// No description provided for @debugReseedSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Base de données réinitialisée : {equipment} équipement(s), {issues} incident(s)'**
+  String debugReseedSuccess(int equipment, int issues);
+
+  /// No description provided for @debugReseedError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la réinitialisation : {error}'**
+  String debugReseedError(String error);
 
   /// No description provided for @reportsArchivesSectionTitle.
   ///
@@ -8891,6 +8969,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Durée de vie de référence non définie'**
   String get subcategoryLifespanUndefinedTooltip;
+
+  /// Tooltip affiché sur l'icône d'alerte quand une sous-catégorie ne contient aucun équipement
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun équipement dans cette sous-catégorie'**
+  String get subcategoryEmptyTooltip;
 
   /// No description provided for @subcategoryLifespanSaved.
   ///

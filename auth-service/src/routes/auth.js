@@ -56,8 +56,9 @@ router.get('/me', verifyToken, (req, res) => {
 });
 
 // ── POST /api/auth/register — inscription libre ───────────────────────────────
-// Endpoint public : crée un compte via l'Admin API Keycloak, assigne hospitalStaff,
-// force VERIFY_EMAIL et envoie l'email de vérification immédiatement.
+// Endpoint public : crée un compte via l'Admin API Keycloak, assigne hospitalStaff.
+// L'email de vérification est envoyé à titre informatif mais ne bloque plus la
+// connexion (pas de requiredActions VERIFY_EMAIL).
 router.post('/register', async (req, res) => {
   const { first_name, last_name, email, password, department, phone } = req.body;
 
@@ -81,7 +82,6 @@ router.post('/register', async (req, res) => {
         lastName:        last_name,
         enabled:         true,
         emailVerified:   false,
-        requiredActions: ['VERIFY_EMAIL'],
         attributes: {
           department: [department],
           ...(phone ? { phone: [phone] } : {}),
@@ -124,7 +124,7 @@ router.post('/register', async (req, res) => {
 
     res.status(201).json({
       id:      kcId,
-      message: 'Compte créé. Vérifiez votre email pour activer votre compte.',
+      message: 'Compte créé. Vous pouvez vous connecter dès maintenant — vérifiez votre email pour sécuriser votre compte.',
     });
   } catch (err) {
     console.error('[AUTH] Erreur POST /register:', err.message);
@@ -161,8 +161,9 @@ router.post('/forgot-password', (req, res) => {
 // ── POST /api/auth/access-request ─────────────────────────────────────────────
 // Endpoint public : crée un compte Keycloak avec le rôle hospitalStaff.
 // Sécurisé (audit 2026-06-10) : rate-limit 3/h/IP (index.js), email non vérifié
-// à la création (requiredActions VERIFY_EMAIL) + envoi immédiat de l'email de
-// vérification, et trace dans l'audit log central (sendLog).
+// à la création (emailVerified: false, informatif uniquement — ne bloque pas la
+// connexion) + envoi immédiat de l'email de vérification, et trace dans l'audit
+// log central (sendLog).
 router.post('/access-request', async (req, res) => {
   const { first_name, last_name, email, password, department } = req.body;
 
@@ -182,8 +183,8 @@ router.post('/access-request', async (req, res) => {
   const cleanDept  = department ? String(department).trim() : '';
 
   try {
-    // 1. Créer l'utilisateur dans Keycloak — email non vérifié : l'utilisateur
-    //    doit cliquer le lien de vérification avant de pouvoir se connecter
+    // 1. Créer l'utilisateur dans Keycloak — email non vérifié à titre informatif
+    //    uniquement, la connexion n'est pas bloquée par cette absence de vérification
     const createResp = await kcAdminFetch('/users', {
       method: 'POST',
       body: JSON.stringify({
@@ -193,7 +194,6 @@ router.post('/access-request', async (req, res) => {
         lastName:        cleanLast,
         enabled:         true,
         emailVerified:   false,
-        requiredActions: ['VERIFY_EMAIL'],
         attributes:      { department: [cleanDept] },
       }),
     });
@@ -245,7 +245,7 @@ router.post('/access-request', async (req, res) => {
     });
 
     console.log(`[AUTH] Compte auto-créé (hospitalStaff) : ${cleanEmail} (kcId: ${kcId})`);
-    res.status(201).json({ message: 'Compte créé. Vérifiez votre email pour activer votre compte avant de vous connecter.' });
+    res.status(201).json({ message: 'Compte créé. Vous pouvez vous connecter dès maintenant — vérifiez votre email pour sécuriser votre compte.' });
   } catch (err) {
     console.error('[AUTH] Erreur création compte access-request:', err.message);
     res.status(500).json({ error: 'Erreur interne du serveur' });
