@@ -30,7 +30,6 @@ import 'widgets/layout/app_top_bar.dart';
 import 'widgets/layout/app_bottom_nav.dart';
 import 'screens/home_hub_screen.dart';
 import 'screens/analytics_screen.dart';
-import 'screens/feature_management_screen.dart';
 import 'screens/backup_management_screen.dart';
 import 'screens/debug_test_screen.dart';
 
@@ -185,7 +184,6 @@ class _AppRootState extends State<_AppRoot> {
     ScreenType.users,
     ScreenType.logs,
     ScreenType.analytics,
-    ScreenType.featureManagement,
     ScreenType.backupManagement,
     ScreenType.debugTest,
   ];
@@ -274,7 +272,6 @@ class _MainScaffoldState extends State<MainScaffold> {
     NavItem(icon: Icons.settings_outlined, activeIcon: Icons.settings, label: l10n.navSettings, shortLabel: l10n.navSettingsShort, screenType: ScreenType.settings, requiredPermission: Permission.manageDepartments),
     NavItem(icon: Icons.history_outlined, activeIcon: Icons.history, label: l10n.navLogs, shortLabel: l10n.navLogsShort, screenType: ScreenType.logs, requiredPermission: Permission.manageUsers),
     NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart, label: l10n.navAnalytics, shortLabel: l10n.navAnalyticsShort, screenType: ScreenType.analytics, requiredPermission: Permission.generateReports),
-    NavItem(icon: Icons.tune_outlined, activeIcon: Icons.tune, label: l10n.navFeatureManagement, shortLabel: l10n.navFeatureManagementShort, screenType: ScreenType.featureManagement, requiredPermission: Permission.manageFeatures),
     NavItem(icon: Icons.backup_outlined, activeIcon: Icons.backup, label: l10n.navBackupManagement, shortLabel: l10n.navBackupManagementShort, screenType: ScreenType.backupManagement, requiredPermission: Permission.manageBackups),
     NavItem(icon: Icons.bug_report_outlined, activeIcon: Icons.bug_report, label: l10n.navDebugTest, shortLabel: l10n.navDebugTestShort, screenType: ScreenType.debugTest, requiredPermission: Permission.manageFeatures),
   ];
@@ -381,7 +378,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       case ScreenType.settings:        return const SettingsScreen();
       case ScreenType.logs:            return const LogsScreen();
       case ScreenType.analytics:       return const AnalyticsScreen();
-      case ScreenType.featureManagement: return const FeatureManagementScreen();
       case ScreenType.backupManagement:  return const BackupManagementScreen();
       case ScreenType.debugTest:         return const DebugTestScreen();
     }
@@ -466,7 +462,6 @@ class _MainScaffoldState extends State<MainScaffold> {
       ScreenType.settings          => l10n.sidebarTitleSettings,
       ScreenType.users             => l10n.sidebarTitleSettings,
       ScreenType.logs              => l10n.sidebarTitleSettings,
-      ScreenType.featureManagement => l10n.sidebarTitleSettings,
       ScreenType.backupManagement  => l10n.sidebarTitleSettings,
       ScreenType.debugTest         => l10n.sidebarTitleSettings,
       _                            => l10n.hospitalSubtitle,

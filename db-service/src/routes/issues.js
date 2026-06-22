@@ -45,8 +45,11 @@ async function _notifyRoles(roles, type, payload) {
 
 const router = express.Router();
 
-const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected'];
+const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected', 'Rejected'];
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
+
+// Motifs de rejet catégorisés (alimentent un futur KPI « taux de demandes invalides »)
+const REJECT_REASONS    = ['duplicate', 'not_reproducible', 'out_of_scope', 'false_alarm', 'other'];
 
 // ── Rapport d'intervention ─────────────────────────────────────────────────
 // Whitelist alignée sur equipment.status (cf. routes/equipment.js VALID_STATUSES_EQ)
@@ -497,6 +500,117 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ..
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident réassigné', id: req.params.id });
+});
+
+// ── PATCH /api/issues/:id/reject ──────────────────────────────────────────────
+// Rejet rapide d'un incident encore en file de validation (statut 'Reported').
+// Le valideur (admin/superviseur) tranche la recevabilité avec un motif catégorisé.
+// L'incident n'est PAS supprimé : il est conservé pour la traçabilité.
+router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
+  const db = getDb();
+  const { reason_code, comment } = req.body;
+
+  // 1. Validation explicite du motif catégorisé
+  if (!reason_code || !REJECT_REASONS.includes(reason_code)) {
+    return res.status(400).json({ error: `reason_code invalide. Valeurs acceptées : ${REJECT_REASONS.join(', ')}` });
+  }
+  const trimmedComment = (comment || '').trim();
+  if (trimmedComment.length > 500) {
+    return res.status(400).json({ error: 'comment ne doit pas dépasser 500 caractères' });
+  }
+  // Le motif "other" exige un commentaire explicatif (≥ 5 caractères)
+  if (reason_code === 'other' && trimmedComment.length < 5) {
+    return res.status(400).json({ error: 'Un commentaire (min 5 caractères) est requis pour le motif "other"' });
+  }
+
+  // 2. Vérifier existence
+  const existing = db.prepare(
+    'SELECT id, status, equipment_name, location_id, department, actions FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // 3. On ne rejette que depuis la file de validation
+  if (existing.status !== 'Reported') {
+    return res.status(409).json({ error: 'Seul un incident au statut "Reported" peut être rejeté' });
+  }
+
+  // 4. Opération DB (synchrone) — append dans le journal d'actions
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const rejectLine = `[${ts}] Rejet (${reason_code})${trimmedComment ? ` — ${trimmedComment}` : ''}`;
+  const appendedActions = existing.actions ? `${existing.actions}\n${rejectLine}` : rejectLine;
+
+  db.prepare(`
+    UPDATE issues
+    SET status     = 'Rejected',
+        actions    = ?,
+        updated_at = datetime('now','localtime')
+    WHERE id = ?
+  `).run(appendedActions, req.params.id);
+
+  // TODO: notifier le signaleur du rejet (hors scope — à brancher ultérieurement).
+
+  // 5. Audit trail
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'reject_issue', target_type: 'issue', target_id: req.params.id,
+    target_name: existing.equipment_name || existing.location_id || existing.department,
+    details: { reason_code, comment: trimmedComment || null, old_status: existing.status },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Incident rejeté', id: req.params.id });
+});
+
+// ── PATCH /api/issues/:id/detach ──────────────────────────────────────────────
+// Un technicien (ou un admin) se détache d'un incident pris en charge ('In Progress')
+// qui lui est assigné → l'incident retourne au pool (statut 'Acknowledged').
+router.patch('/:id/detach', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { reason } = req.body;
+
+  // 1. Validation explicite du motif
+  if (!reason || reason.trim().length < 10) {
+    return res.status(400).json({ error: 'reason est requis (min 10 caractères)' });
+  }
+
+  // 2. Vérifier existence
+  const existing = db.prepare(
+    'SELECT id, status, assigned_technician, equipment_name, location_id, department, actions FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // 3. On ne détache qu'un incident en cours de traitement
+  if (existing.status !== 'In Progress') {
+    return res.status(409).json({ error: 'Seul un incident au statut "In Progress" peut être détaché' });
+  }
+
+  // 4. Un technicien ne détache que ses propres incidents (l'admin n'a pas cette restriction)
+  const isAdmin = Array.isArray(req.user.roles) && req.user.roles.includes('admin');
+  if (!isAdmin && existing.assigned_technician !== req.user.name) {
+    return res.status(403).json({ error: 'Vous ne pouvez détacher que les incidents qui vous sont assignés' });
+  }
+
+  // 5. Opération DB (synchrone) — retour au pool + append journal d'actions
+  const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const detachLine = `[${ts}] Détachement par ${req.user.name} — ${reason.trim()}`;
+  const appendedActions = existing.actions ? `${existing.actions}\n${detachLine}` : detachLine;
+
+  db.prepare(`
+    UPDATE issues
+    SET status              = 'Acknowledged',
+        assigned_technician = NULL,
+        taken_at            = NULL,
+        actions             = ?,
+        updated_at          = datetime('now','localtime')
+    WHERE id = ?
+  `).run(appendedActions, req.params.id);
+
+  // 6. Audit trail
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'detach_issue', target_type: 'issue', target_id: req.params.id,
+    target_name: existing.equipment_name || existing.location_id || existing.department,
+    details: { reason: reason.trim(), old_technician: existing.assigned_technician, old_status: existing.status },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Incident détaché', id: req.params.id });
 });
 
 // ── POST /api/issues/:id/photos ──────────────────────────────────────────────

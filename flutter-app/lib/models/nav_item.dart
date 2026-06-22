@@ -14,7 +14,6 @@ enum ScreenType {
   settings,
   logs,
   analytics,
-  featureManagement,
   backupManagement,
   debugTest,
 }

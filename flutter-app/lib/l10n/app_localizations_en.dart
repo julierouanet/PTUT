@@ -1469,6 +1469,84 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueStatusRedirected => 'Redirected';
 
   @override
+  String get issueStatusRejected => 'Rejected';
+
+  @override
+  String get issueValidationSheetTitle => 'Issue validation';
+
+  @override
+  String get issueValidationSheetReporter => 'Reporter';
+
+  @override
+  String get issueValidationSheetObject => 'Reported object';
+
+  @override
+  String get issueValidationSheetProblem => 'Reported problem';
+
+  @override
+  String get issueValidationSheetPhotos => 'Photos';
+
+  @override
+  String get issueValidationSheetHistory => 'Previous issues';
+
+  @override
+  String get issueValidationSheetNoPhoto => 'No photo';
+
+  @override
+  String get issueValidationSheetNoHistory =>
+      'No previous issue on this equipment';
+
+  @override
+  String get rejectConfirmTitle => 'Reject the issue';
+
+  @override
+  String get rejectConfirmButton => 'Reject';
+
+  @override
+  String get rejectReasonLabel => 'Rejection reason';
+
+  @override
+  String get rejectReasonDuplicate => 'Duplicate';
+
+  @override
+  String get rejectReasonNotReproducible => 'Not reproducible';
+
+  @override
+  String get rejectReasonOutOfScope => 'Out of scope';
+
+  @override
+  String get rejectReasonFalseAlarm => 'False alarm';
+
+  @override
+  String get rejectReasonOther => 'Other';
+
+  @override
+  String get rejectCommentLabel => 'Comment';
+
+  @override
+  String get rejectCommentRequired =>
+      'A comment (min 5 characters) is required for the \"Other\" reason';
+
+  @override
+  String get rejectSuccess => 'Issue rejected';
+
+  @override
+  String get detachButton => 'Detach';
+
+  @override
+  String get detachDialogTitle => 'Detach the issue';
+
+  @override
+  String get detachReasonLabel => 'Detachment reason';
+
+  @override
+  String get detachReasonMinLength =>
+      'The reason must be at least 10 characters';
+
+  @override
+  String get detachSuccess => 'Issue returned to the pool';
+
+  @override
   String get urgencyLow => 'Low';
 
   @override
@@ -4448,6 +4526,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get debugReseedFileLabel => 'Regenerate from a file';
+
+  @override
+  String get debugReseedFileDesc =>
+      'Deletes all current equipment and incidents, then fully reimports from an .xlsx file in the Equipment Migration Template format (same sheets as the physical inventory import). This action is irreversible.';
+
+  @override
+  String get debugReseedFileButton => 'Choose an .xlsx file';
+
+  @override
+  String get debugReseedFileTitle => 'Confirm regeneration';
+
+  @override
+  String debugReseedFileMessage(String fileName) {
+    return 'This action will permanently delete ALL current equipment and incidents, then reimport from \"$fileName\". This operation is irreversible and cannot be undone.';
+  }
+
+  @override
+  String debugReseedFileSuccess(int equipment) {
+    return 'Database regenerated: $equipment equipment item(s) imported';
+  }
+
+  @override
   String get reportsArchivesSectionTitle => 'Archives & Historical Reports';
 
   @override
@@ -5230,4 +5331,99 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subcategoryDescriptionSaved => 'Description saved';
+
+  @override
+  String get settingsTabFeatureFlags => 'Feature Flags';
+
+  @override
+  String get settingsTabAppSettings => 'General Settings';
+
+  @override
+  String get appSettingsContactSection =>
+      'Contact displayed on the login screen';
+
+  @override
+  String get appSettingsContactTitle => 'Title / label';
+
+  @override
+  String get appSettingsContactEmail => 'Contact email';
+
+  @override
+  String get appSettingsContactPhone => 'Contact phone';
+
+  @override
+  String get appSettingsBrevoSection => 'Brevo email configuration';
+
+  @override
+  String get appSettingsBrevoApiKey => 'Brevo API key';
+
+  @override
+  String appSettingsBrevoApiKeyHint(String hint) {
+    return 'Leave empty to keep unchanged • ●●●● $hint if configured';
+  }
+
+  @override
+  String get appSettingsBrevoApiKeyHintNone => 'Leave empty to keep unchanged';
+
+  @override
+  String get appSettingsBrevoApiKeyClearLabel => 'Clear the key';
+
+  @override
+  String get appSettingsBrevoClearConfirm =>
+      'Are you sure you want to clear the Brevo API key? Emails will no longer be sent.';
+
+  @override
+  String get appSettingsBrevoSenderEmail => 'Sender email';
+
+  @override
+  String get appSettingsBrevoSenderName => 'Sender name';
+
+  @override
+  String get appSettingsBrevoConfigured => 'Key configured';
+
+  @override
+  String get appSettingsBrevoNotConfigured => 'Key not configured';
+
+  @override
+  String get appSettingsSave => 'Save';
+
+  @override
+  String get appSettingsSaveSuccess => 'Settings saved';
+
+  @override
+  String appSettingsSaveError(String message) {
+    return 'Error: $message';
+  }
+
+  @override
+  String get appSettingsTestEmailBtn => 'Send a test email';
+
+  @override
+  String get appSettingsTestEmailDialogTitle => 'Brevo test email';
+
+  @override
+  String get appSettingsTestEmailDialogHint =>
+      'Enter the email address that will receive the test email.';
+
+  @override
+  String get appSettingsTestEmailDialogLabel => 'Email address';
+
+  @override
+  String get appSettingsTestEmailSend => 'Send';
+
+  @override
+  String appSettingsTestEmailSuccess(String email) {
+    return 'Test email sent to $email';
+  }
+
+  @override
+  String appSettingsTestEmailError(String error) {
+    return 'Send failed: $error';
+  }
+
+  @override
+  String get commonRequired => 'Required field';
+
+  @override
+  String get validationEmailInvalid => 'Invalid email address';
 }

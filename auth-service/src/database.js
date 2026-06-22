@@ -210,7 +210,28 @@ function initTables() {
     );
   `);
 
-  // role_hierarchy : hiérarchie logique des rôles (technician → spécialisés)
+  // ── Paramètres applicatifs : table clé/valeur pilotée par l'admin ─────────────
+  // Permet de configurer contact de connexion et Brevo sans toucher aux .env.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT,
+      is_secret  INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT DEFAULT (datetime('now','localtime')),
+      updated_by TEXT
+    );
+  `);
+  const insertSetting = db.prepare(
+    'INSERT OR IGNORE INTO app_settings (key, value, is_secret) VALUES (?, ?, ?)'
+  );
+  insertSetting.run('login_contact_title', 'Urgence ou compte bloqué ?', 0);
+  insertSetting.run('login_contact_email', 'nzephmd@gmail.com', 0);
+  insertSetting.run('login_contact_phone', '+250 788 823 228', 0);
+  insertSetting.run('brevo_api_key',       '', 1);
+  insertSetting.run('brevo_sender_email',  '', 0);
+  insertSetting.run('brevo_sender_name',   '', 0);
+
+  // ── role_hierarchy : hiérarchie logique des rôles (technician → spécialisés)
   // Keycloak Composite Roles n'est pas utilisé dans ce projet — la hiérarchie
   // est gérée ici. Un rôle enfant hérite des permissions de son parent.
   db.exec(`

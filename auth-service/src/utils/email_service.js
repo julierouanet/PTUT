@@ -4,9 +4,43 @@
 
 'use strict';
 
-const { BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME } = require('../config');
+const config = require('../config');
+const { getDb } = require('../database');
 
 const BREVO_SMTP_URL = 'https://api.brevo.com/v3/smtp/email';
+
+// Statement compilé une seule fois au chargement du module (réutilisé à chaque envoi)
+let _brevoConfigStmt = null;
+
+/**
+ * Lit la config Brevo depuis app_settings (base de données),
+ * avec fallback sur les variables d'environnement si la valeur DB est vide.
+ */
+function _getBrevoConfig() {
+  try {
+    if (!_brevoConfigStmt) {
+      _brevoConfigStmt = getDb().prepare(
+        "SELECT key, value FROM app_settings WHERE key IN ('brevo_api_key','brevo_sender_email','brevo_sender_name')"
+      );
+    }
+    const map = {};
+    for (const r of _brevoConfigStmt.all()) map[r.key] = r.value || '';
+
+    return {
+      apiKey:      map['brevo_api_key']      || config.BREVO_API_KEY,
+      senderEmail: map['brevo_sender_email'] || config.BREVO_SENDER_EMAIL,
+      senderName:  map['brevo_sender_name']  || config.BREVO_SENDER_NAME,
+    };
+  } catch (_) {
+    // En cas d'erreur DB (ex: DB non encore ouverte), retomber sur l'env
+    _brevoConfigStmt = null;
+    return {
+      apiKey:      config.BREVO_API_KEY,
+      senderEmail: config.BREVO_SENDER_EMAIL,
+      senderName:  config.BREVO_SENDER_NAME,
+    };
+  }
+}
 
 // ── Utilitaires ────────────────────────────────────────────────────────────────
 
@@ -51,7 +85,9 @@ function _row(label, value, valueColor) {
  * Fire-and-forget : loggue les erreurs sans lever d'exception.
  */
 async function sendEmail({ to, toName, subject, htmlContent, textContent }) {
-  if (!BREVO_API_KEY) {
+  const { apiKey, senderEmail, senderName } = _getBrevoConfig();
+
+  if (!apiKey) {
     console.warn('[EMAIL] BREVO_API_KEY absent — email non envoyé à', to);
     return;
   }
@@ -64,12 +100,12 @@ async function sendEmail({ to, toName, subject, htmlContent, textContent }) {
     const resp = await fetch(BREVO_SMTP_URL, {
       method: 'POST',
       headers: {
-        'api-key':      BREVO_API_KEY,
+        'api-key':      apiKey,
         'Content-Type': 'application/json',
         'Accept':       'application/json',
       },
       body: JSON.stringify({
-        sender:      { email: BREVO_SENDER_EMAIL, name: BREVO_SENDER_NAME },
+        sender:      { email: senderEmail, name: senderName },
         to:          [{ email: to, name: toName || to }],
         subject,
         htmlContent,

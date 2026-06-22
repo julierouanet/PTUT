@@ -236,6 +236,25 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  /// Rejette un incident en file de validation (statut 'Reported' requis serveur).
+  /// [reasonCode] ∈ REJECT_REASONS ; [comment] obligatoire si reasonCode == 'other'.
+  Future<void> rejectIssue(String id, String reasonCode, String? comment) async {
+    final url = '${ApiConfig.issuesUrl}/$id/reject';
+    final response = await ApiClient.patch(url, {
+      'reason_code': reasonCode,
+      if (comment != null && comment.isNotEmpty) 'comment': comment,
+    });
+    _checkStatus(response, url);
+  }
+
+  /// Détache l'appelant d'un incident 'In Progress' qui lui est assigné →
+  /// l'incident retourne au pool (statut 'Acknowledged'). [reason] : min 10 car.
+  Future<void> detachIssue(String id, String reason) async {
+    final url = '${ApiConfig.issuesUrl}/$id/detach';
+    final response = await ApiClient.patch(url, {'reason': reason});
+    _checkStatus(response, url);
+  }
+
   // ── RAPPORT D'INTERVENTION (1:1 avec incident) ─────────────────────────────
 
   /// Rapport d'intervention d'un incident (brouillon vide si inexistant).
@@ -421,6 +440,24 @@ class DbApiService {
     final response = await ApiClient.post(url, {});
     _checkStatus(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Vide les équipements/incidents existants puis réimporte intégralement
+  /// depuis un fichier XLSX (format "Equipment Migration Template") — réservé
+  /// admin. Lève une [Exception] avec le message d'erreur serveur en cas
+  /// d'échec (feuille manquante, fichier illisible, etc.).
+  Future<Map<String, dynamic>> debugReseedFromFile(
+    Uint8List fileBytes,
+    String fileName,
+  ) async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/reseed-from-file';
+    return ApiClient.postMultipart(
+      url,
+      fileBytes,
+      fileName,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      const {},
+    );
   }
 
   // ── Utilitaire ─────────────────────────────────────────────────────────────

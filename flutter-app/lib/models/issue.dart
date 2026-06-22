@@ -60,7 +60,8 @@ enum IssueStatus {
   completed,
   verified,
   closed,
-  redirected;
+  redirected,
+  rejected;
 
   /// Canonical English name (used for storage/API)
   String get displayName {
@@ -83,6 +84,8 @@ enum IssueStatus {
         return 'Closed';
       case IssueStatus.redirected:
         return 'Redirected';
+      case IssueStatus.rejected:
+        return 'Rejected';
     }
   }
 
@@ -107,6 +110,8 @@ enum IssueStatus {
         return l10n.issueStatusClosed as String;
       case IssueStatus.redirected:
         return l10n.issueStatusRedirected as String;
+      case IssueStatus.rejected:
+        return l10n.issueStatusRejected as String;
     }
   }
 
@@ -135,6 +140,9 @@ enum IssueStatus {
         return IssueStatus.closed;
       case 'Redirected':
         return IssueStatus.redirected;
+      case 'Rejected':
+      case 'Rejeté':
+        return IssueStatus.rejected;
       default:
         return IssueStatus.reported;
     }

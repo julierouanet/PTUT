@@ -140,6 +140,9 @@ Color getStatusColor(String status) {
     case 'Transfere':
     case 'Transferred':
       return AppColors.primary;
+    case 'Rejeté':
+    case 'Rejected':
+      return AppColors.error;
     default:
       return AppColors.textSecondary;
   }
@@ -177,6 +180,9 @@ Color getStatusBackgroundColor(String status) {
     case 'Transfere':
     case 'Transferred':
       return AppColors.primaryLight;
+    case 'Rejeté':
+    case 'Rejected':
+      return AppColors.errorLight;
     default:
       return AppColors.background;
   }

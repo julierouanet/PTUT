@@ -78,6 +78,9 @@ class IssueStatusBadge extends StatelessWidget {
         return 'closed';
       case 'Redirected':
         return 'redirected';
+      case 'Rejected':
+      case 'Rejeté':
+        return 'rejected';
       default:
         return status.toLowerCase();
     }
@@ -103,6 +106,8 @@ class IssueStatusBadge extends StatelessWidget {
         return AppColors.textSecondary;
       case 'redirected':
         return AppColors.primary;
+      case 'rejected':
+        return AppColors.error;
       default:
         return AppColors.textSecondary;
     }
@@ -128,6 +133,8 @@ class IssueStatusBadge extends StatelessWidget {
         return AppColors.background;
       case 'redirected':
         return AppColors.primaryLight;
+      case 'rejected':
+        return AppColors.errorLight;
       default:
         return AppColors.background;
     }

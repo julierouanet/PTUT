@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../services/app_settings_service.dart';
+import '../services/feature_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/settings/departments_tab.dart';
 import '../widgets/settings/roles_tab.dart';
 import '../widgets/settings/activity_tab.dart';
+import '../screens/feature_management_screen.dart';
+import '../widgets/settings/app_settings_tab.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,7 +22,17 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
+
+    // Charger les données des deux onglets ajoutés si pas déjà chargées
+    final featureSvc = FeatureService();
+    if (featureSvc.features.isEmpty && !featureSvc.isLoading) {
+      featureSvc.loadFeatures();
+    }
+    final settingsSvc = AppSettingsService();
+    if (settingsSvc.settings == null && !settingsSvc.isLoading) {
+      settingsSvc.loadAdmin();
+    }
   }
 
   @override
@@ -80,6 +94,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
           ),
           child: TabBar(
             controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             indicator: BoxDecoration(
               color: AppColors.primary,
               borderRadius: BorderRadius.circular(8),
@@ -90,30 +106,11 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
             dividerColor: Colors.transparent,
             padding: const EdgeInsets.all(3),
             tabs: [
-              Tab(
-                height: 34,
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.business, size: 15),
-                  const SizedBox(width: 6),
-                  Text(l10n.settingsTabDepartments, style: const TextStyle(fontSize: 12)),
-                ]),
-              ),
-              Tab(
-                height: 34,
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.admin_panel_settings, size: 15),
-                  const SizedBox(width: 6),
-                  Text(l10n.settingsTabRoles, style: const TextStyle(fontSize: 12)),
-                ]),
-              ),
-              Tab(
-                height: 34,
-                child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.history, size: 15),
-                  const SizedBox(width: 6),
-                  Text(l10n.settingsTabActivity, style: const TextStyle(fontSize: 12)),
-                ]),
-              ),
+              _tab(Icons.business,               l10n.settingsTabDepartments),
+              _tab(Icons.admin_panel_settings,   l10n.settingsTabRoles),
+              _tab(Icons.history,                l10n.settingsTabActivity),
+              _tab(Icons.tune,                   l10n.settingsTabFeatureFlags),
+              _tab(Icons.settings_applications,  l10n.settingsTabAppSettings),
             ],
           ),
         ),
@@ -128,10 +125,24 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
               DepartmentsTab(),
               RolesTab(),
               ActivityTab(),
+              FeatureManagementScreen(),
+              AppSettingsTab(),
             ],
           ),
         ),
       ],
     );
   }
+
+  Tab _tab(IconData icon, String label) => Tab(
+        height: 34,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 15),
+            const SizedBox(width: 6),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      );
 }

@@ -14,7 +14,7 @@ import '../widgets/urgency_badge.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
-import 'issue_detail_screen.dart';
+import '../widgets/issue_validation_sheet.dart';
 import 'technician_schedule_screen.dart';
 
 // ── Modèles internes ──────────────────────────────────────────────────────────
@@ -63,6 +63,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   bool _isSaving      = false;
   bool _isReassigning = false;
   bool _isEscalating  = false;
+  bool _isDetaching   = false;
+
+  /// Vrai si une action API du formulaire d'intervention est en cours
+  /// (désactive tous les boutons d'action pour éviter les appels concurrents).
+  bool get _isBusy =>
+      _isSaving || _isReassigning || _isEscalating || _isDetaching;
 
   // Vrai si l'utilisateur peut valider des incidents (admin ou superviseur)
   bool _canValidate = false;
@@ -969,7 +975,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: (_isSaving || _isReassigning || _isEscalating)
+            onPressed: _isBusy
                 ? null
                 : _saveProgress,
             icon: _isSaving
@@ -988,7 +994,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: (_isSaving || _isReassigning || _isEscalating)
+            onPressed: _isBusy
                 ? null
                 : () => _showWorkOrderDialog(issue),
             icon: const Icon(Icons.verified_outlined, size: 16),
@@ -1005,7 +1011,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: (_isSaving || _isReassigning || _isEscalating)
+            onPressed: _isBusy
                 ? null
                 : () => _showEscalateDialog(issue),
             icon: _isEscalating
@@ -1030,7 +1036,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: (_isSaving || _isReassigning || _isEscalating)
+            onPressed: _isBusy
                 ? null
                 : () => _showReassignDialog(issue),
             icon: _isReassigning
@@ -1048,9 +1054,120 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             ),
           ),
         ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Détacher (retour au pool) ─────────────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isBusy
+                ? null
+                : () => _showDetachDialog(issue),
+            icon: _isDetaching
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.textSecondary))
+                : const Icon(Icons.link_off,
+                    size: 16, color: AppColors.textSecondary),
+            label: Text(l10n.detachButton,
+                style: const TextStyle(color: AppColors.textSecondary)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.border),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
         const SizedBox(height: 16),
       ],
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Détachement d'un incident (retour au pool)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  void _showDetachDialog(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
+    final formKey = GlobalKey<FormState>();
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.detachDialogTitle),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: reasonController,
+            maxLines: 3,
+            autofocus: true,
+            decoration: InputDecoration(labelText: l10n.detachReasonLabel),
+            validator: (v) => (v == null || v.trim().length < 10)
+                ? l10n.detachReasonMinLength
+                : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final reason = reasonController.text.trim();
+              Navigator.pop(ctx);
+              await _doDetach(issue, reason);
+            },
+            icon: const Icon(Icons.link_off, size: 16),
+            label: Text(l10n.commonConfirm),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.textSecondary,
+                foregroundColor: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _doDetach(Issue issue, String reason) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _isDetaching = true);
+    try {
+      await DbApiService.instance.detachIssue(issue.id, reason);
+      await DataService().reloadIssues();
+      NotificationService().generateFromLoadedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.link_off, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.detachSuccess),
+        ]),
+        backgroundColor: AppColors.textSecondary,
+        behavior: SnackBarBehavior.floating,
+      ));
+      _stopTimer();
+      setState(() {
+        _selectedIssueId = null;
+        _diagnosisController.clear();
+        _actionsController.clear();
+        _partsSearchController.clear();
+        _selectedParts.clear();
+        _legacyPartsText = '';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.commonApiError),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isDetaching = false);
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -2130,19 +2247,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     );
   }
 
-  // Navigue vers le détail d'un incident depuis l'onglet validation.
-  // La validation (et la réassignation) se font désormais dans le détail :
-  // on attend le retour puis on rafraîchit la liste "À valider".
+  // Ouvre le sheet de validation rapide depuis l'onglet "À valider".
+  // Valider / rejeter / réassigner se font dans le sheet (sans page de détail) :
+  // on attend la fermeture puis on rafraîchit la liste.
   Future<void> _showValidationIssueDetail(Issue issue) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => IssueDetailScreen(
-          issueId: issue.id,
-          onNavigate: (_, {equipmentId, issueId}) {},
-        ),
-      ),
-    );
+    await showIssueValidationSheet(context, issue);
     await DataService().reloadIssues();
     if (mounted) setState(() {});
   }

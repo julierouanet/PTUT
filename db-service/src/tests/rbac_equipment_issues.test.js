@@ -684,3 +684,189 @@ describe('RBAC — PATCH /api/issues/:id/escalate', () => {
     }
   );
 });
+
+// =============================================================================
+// 11. PATCH /api/issues/:id/reject — rejet d'un incident en file de validation
+//     (admin et supervisor uniquement, depuis le statut 'Reported')
+// =============================================================================
+describe('PATCH /api/issues/:id/reject', () => {
+  // Crée un incident 'Reported' frais avant chaque test
+  let rejectCounter = 0;
+  const newReportedIssue = () => {
+    const id = `iss-reject-${++rejectCounter}`;
+    db.prepare(`
+      INSERT INTO issues (
+        id, equipment_id, equipment_name, issue_category, assigned_group,
+        department, type, description, reporter, urgency, status, created_at
+      ) VALUES (
+        ?, 'eq-rbac-test', 'Moniteur cardiaque test', 'Biomédical', 'Biomédical',
+        'OPD', 'Panne', 'Incident à rejeter', 'Dr. Test', 'Moyen', 'Reported',
+        datetime('now','localtime')
+      )
+    `).run(id);
+    return id;
+  };
+
+  test('✅ admin — rejet d\'un incident Reported → 200 + statut Rejected', async () => {
+    setTestRole('admin');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'duplicate', comment: 'Doublon du ticket #42' });
+
+    expect(res.status).toBe(200);
+    const iss = db.prepare('SELECT status, actions FROM issues WHERE id = ?').get(id);
+    expect(iss.status).toBe('Rejected');
+    expect(iss.actions).toContain('Rejet (duplicate)');
+
+    // Une ligne d'audit reject_issue doit avoir été émise
+    const { logAction } = require('../utils/logger');
+    expect(logAction).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'reject_issue', target_id: id })
+    );
+  });
+
+  test('🚫 admin — reason_code invalide → 400', async () => {
+    setTestRole('admin');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'motif_bidon' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — motif "other" sans commentaire → 400', async () => {
+    setTestRole('admin');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'other' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — incident non Reported → 409', async () => {
+    setTestRole('admin');
+    const id = newReportedIssue();
+    db.prepare("UPDATE issues SET status = 'In Progress' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'false_alarm' });
+
+    expect(res.status).toBe(409);
+  });
+
+  test('🚫 technicien ne peut PAS rejeter → 403', async () => {
+    setTestRole('technician_biomedical');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'duplicate' });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+// =============================================================================
+// 12. PATCH /api/issues/:id/detach — détachement d'un incident pris en charge
+//     (admin, supervisor, technician* ; un technicien uniquement les siens)
+// =============================================================================
+describe('PATCH /api/issues/:id/detach', () => {
+  // Crée un incident 'In Progress' assigné à un technicien donné
+  let detachCounter = 0;
+  const newInProgressIssue = (technicianName) => {
+    const id = `iss-detach-${++detachCounter}`;
+    db.prepare(`
+      INSERT INTO issues (
+        id, equipment_id, equipment_name, issue_category, assigned_group,
+        department, type, description, reporter, urgency, status, assigned_technician, taken_at, created_at
+      ) VALUES (
+        ?, 'eq-rbac-test', 'Moniteur cardiaque test', 'Biomédical', 'Biomédical',
+        'OPD', 'Panne', 'Incident à détacher', 'Dr. Test', 'Moyen', 'In Progress', ?, datetime('now','localtime'),
+        datetime('now','localtime')
+      )
+    `).run(id, technicianName);
+    return id;
+  };
+
+  const detachBody = { reason: 'Je ne suis pas disponible cette semaine, à reprendre.' };
+
+  test('✅ technicien assigné — détachement → 200 + retour au pool', async () => {
+    setTestRole('technician_biomedical');
+    // Le mock auth nomme l'utilisateur "Utilisateur Test"
+    const id = newInProgressIssue('Utilisateur Test');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/detach`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(detachBody);
+
+    expect(res.status).toBe(200);
+    const iss = db.prepare(
+      'SELECT status, assigned_technician, taken_at FROM issues WHERE id = ?'
+    ).get(id);
+    expect(iss.status).toBe('Acknowledged');
+    expect(iss.assigned_technician).toBeNull();
+    expect(iss.taken_at).toBeNull();
+  });
+
+  test('🚫 technicien NON assigné → 403', async () => {
+    setTestRole('technician_biomedical');
+    const id = newInProgressIssue('Un Autre Technicien');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/detach`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(detachBody);
+
+    expect(res.status).toBe(403);
+  });
+
+  test('✅ admin — peut détacher l\'incident d\'un autre technicien → 200', async () => {
+    setTestRole('admin');
+    const id = newInProgressIssue('Un Autre Technicien');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/detach`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(detachBody);
+
+    expect(res.status).toBe(200);
+  });
+
+  test('🚫 incident non In Progress → 409', async () => {
+    setTestRole('admin');
+    const id = newInProgressIssue('Utilisateur Test');
+    db.prepare("UPDATE issues SET status = 'Reported' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/detach`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(detachBody);
+
+    expect(res.status).toBe(409);
+  });
+
+  test('🚫 motif trop court → 400', async () => {
+    setTestRole('admin');
+    const id = newInProgressIssue('Utilisateur Test');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/detach`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason: 'court' });
+
+    expect(res.status).toBe(400);
+  });
+});

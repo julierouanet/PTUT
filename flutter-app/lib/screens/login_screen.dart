@@ -85,6 +85,10 @@ class _LoginScreenState extends State<LoginScreen> {
   };
   DateTime? _lastCheckTime;
 
+  // Contact de connexion chargé depuis app_settings (fallback sur l10n)
+  String? _contactTitle;
+  String? _contactInfo;
+
   bool get _hasCriticalAlert =>
       _health['auth'] == 'ko' || _health['iam'] == 'ko';
 
@@ -97,6 +101,34 @@ class _LoginScreenState extends State<LoginScreen> {
       AuthService().clearSessionExpiredMessage();
     }
     _fetchHealth();
+    _fetchContactPublic();
+  }
+
+  // Charge le contact de connexion depuis app_settings/public (non bloquant).
+  Future<void> _fetchContactPublic() async {
+    try {
+      final resp = await http
+          .get(Uri.parse(ApiConfig.appSettingsPublicUrl))
+          .timeout(const Duration(seconds: 5));
+      if (!mounted) return;
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        final title = (data['login_contact_title'] as String?) ?? '';
+        final email = (data['login_contact_email'] as String?) ?? '';
+        final phone = (data['login_contact_phone'] as String?) ?? '';
+        if (title.isNotEmpty || email.isNotEmpty || phone.isNotEmpty) {
+          setState(() {
+            _contactTitle = title.isNotEmpty ? title : null;
+            _contactInfo  = [
+              if (email.isNotEmpty) email,
+              if (phone.isNotEmpty) phone,
+            ].join('  •  ');
+          });
+        }
+      }
+    } catch (_) {
+      // Échec silencieux — fallback sur les chaînes i18n
+    }
   }
 
   Future<void> _fetchHealth() async {
@@ -785,7 +817,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    l10n.emergencyContactTitle,
+                    _contactTitle ?? l10n.emergencyContactTitle,
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
@@ -794,7 +826,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    l10n.emergencyContactInfo,
+                    (_contactInfo != null && _contactInfo!.isNotEmpty)
+                        ? _contactInfo!
+                        : l10n.emergencyContactInfo,
                     style: TextStyle(fontSize: 11, color: Colors.blue.shade700),
                   ),
                 ],

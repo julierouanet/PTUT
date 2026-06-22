@@ -183,6 +183,11 @@ class ApiConfig {
   static String rolePermissionsUrl(String n) => '$rolesUrl/${Uri.encodeComponent(n)}/permissions';
   static String roleUsersUrl(String n)       => '$rolesUrl/${Uri.encodeComponent(n)}/users';
 
+  // ── Paramètres application (auth-service) ────────────────────────────────────
+  static String get appSettingsUrl          => '$authBaseUrl/api/app-settings';
+  static String get appSettingsPublicUrl    => '$authBaseUrl/api/app-settings/public';
+  static String get appSettingsTestEmailUrl => '$authBaseUrl/api/app-settings/test-email';
+
   // ── Health endpoints (publics, sans authentification) ────────────────────────
   static String get healthAuthUrl => '$authBaseUrl/health';
   static String get healthDbUrl   => '$dbBaseUrl/health';

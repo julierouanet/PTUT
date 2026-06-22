@@ -203,6 +203,9 @@ class _IssueTimeline extends StatelessWidget {
       case IssueStatus.waitingMaterials:
       case IssueStatus.redirected:
         return 2;
+      // Un incident rejeté est sorti du flux : on le replace au point de départ.
+      case IssueStatus.rejected:
+        return 0;
       case IssueStatus.completed:
       case IssueStatus.verified:
       case IssueStatus.closed:

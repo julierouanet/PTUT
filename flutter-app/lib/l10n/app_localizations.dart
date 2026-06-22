@@ -2810,6 +2810,156 @@ abstract class AppLocalizations {
   /// **'Redirigé'**
   String get issueStatusRedirected;
 
+  /// No description provided for @issueStatusRejected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rejeté'**
+  String get issueStatusRejected;
+
+  /// No description provided for @issueValidationSheetTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Validation de l\'incident'**
+  String get issueValidationSheetTitle;
+
+  /// No description provided for @issueValidationSheetReporter.
+  ///
+  /// In fr, this message translates to:
+  /// **'Signaleur'**
+  String get issueValidationSheetReporter;
+
+  /// No description provided for @issueValidationSheetObject.
+  ///
+  /// In fr, this message translates to:
+  /// **'Objet concerné'**
+  String get issueValidationSheetObject;
+
+  /// No description provided for @issueValidationSheetProblem.
+  ///
+  /// In fr, this message translates to:
+  /// **'Problème signalé'**
+  String get issueValidationSheetProblem;
+
+  /// No description provided for @issueValidationSheetPhotos.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photos'**
+  String get issueValidationSheetPhotos;
+
+  /// No description provided for @issueValidationSheetHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents précédents'**
+  String get issueValidationSheetHistory;
+
+  /// No description provided for @issueValidationSheetNoPhoto.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune photo'**
+  String get issueValidationSheetNoPhoto;
+
+  /// No description provided for @issueValidationSheetNoHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun incident précédent sur cet équipement'**
+  String get issueValidationSheetNoHistory;
+
+  /// No description provided for @rejectConfirmTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ne pas valider l\'incident'**
+  String get rejectConfirmTitle;
+
+  /// No description provided for @rejectConfirmButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ne pas valider'**
+  String get rejectConfirmButton;
+
+  /// No description provided for @rejectReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif du rejet'**
+  String get rejectReasonLabel;
+
+  /// No description provided for @rejectReasonDuplicate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Doublon'**
+  String get rejectReasonDuplicate;
+
+  /// No description provided for @rejectReasonNotReproducible.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non reproductible'**
+  String get rejectReasonNotReproducible;
+
+  /// No description provided for @rejectReasonOutOfScope.
+  ///
+  /// In fr, this message translates to:
+  /// **'Hors périmètre'**
+  String get rejectReasonOutOfScope;
+
+  /// No description provided for @rejectReasonFalseAlarm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fausse alerte'**
+  String get rejectReasonFalseAlarm;
+
+  /// No description provided for @rejectReasonOther.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autre'**
+  String get rejectReasonOther;
+
+  /// No description provided for @rejectCommentLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaire'**
+  String get rejectCommentLabel;
+
+  /// No description provided for @rejectCommentRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un commentaire (min 5 caractères) est requis pour le motif \"Autre\"'**
+  String get rejectCommentRequired;
+
+  /// No description provided for @rejectSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident rejeté'**
+  String get rejectSuccess;
+
+  /// No description provided for @detachButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détacher'**
+  String get detachButton;
+
+  /// No description provided for @detachDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Détacher l\'incident'**
+  String get detachDialogTitle;
+
+  /// No description provided for @detachReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif du détachement'**
+  String get detachReasonLabel;
+
+  /// No description provided for @detachReasonMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le motif doit contenir au moins 10 caractères'**
+  String get detachReasonMinLength;
+
+  /// No description provided for @detachSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident remis dans le pool'**
+  String get detachSuccess;
+
   /// No description provided for @urgencyLow.
   ///
   /// In fr, this message translates to:
@@ -8282,6 +8432,42 @@ abstract class AppLocalizations {
   /// **'Erreur lors de la réinitialisation : {error}'**
   String debugReseedError(String error);
 
+  /// No description provided for @debugReseedFileLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Régénérer depuis un fichier'**
+  String get debugReseedFileLabel;
+
+  /// No description provided for @debugReseedFileDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vide tous les équipements et incidents actuels, puis réimporte intégralement depuis un fichier .xlsx au format Equipment Migration Template (mêmes feuilles que l\'import inventaire physique). Cette action est irréversible.'**
+  String get debugReseedFileDesc;
+
+  /// No description provided for @debugReseedFileButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisir un fichier .xlsx'**
+  String get debugReseedFileButton;
+
+  /// No description provided for @debugReseedFileTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Confirmer la régénération'**
+  String get debugReseedFileTitle;
+
+  /// No description provided for @debugReseedFileMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cette action va supprimer TOUS les équipements et incidents actuels, puis réimporter depuis « {fileName} ». Cette opération est irréversible et ne peut pas être annulée.'**
+  String debugReseedFileMessage(String fileName);
+
+  /// No description provided for @debugReseedFileSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Base de données régénérée : {equipment} équipement(s) importé(s)'**
+  String debugReseedFileSuccess(int equipment);
+
   /// No description provided for @reportsArchivesSectionTitle.
   ///
   /// In fr, this message translates to:
@@ -9683,6 +9869,174 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Description enregistrée'**
   String get subcategoryDescriptionSaved;
+
+  /// No description provided for @settingsTabFeatureFlags.
+  ///
+  /// In fr, this message translates to:
+  /// **'Feature Flags'**
+  String get settingsTabFeatureFlags;
+
+  /// No description provided for @settingsTabAppSettings.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres généraux'**
+  String get settingsTabAppSettings;
+
+  /// No description provided for @appSettingsContactSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Contact affiché sur l\'écran de connexion'**
+  String get appSettingsContactSection;
+
+  /// No description provided for @appSettingsContactTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Titre / intitulé'**
+  String get appSettingsContactTitle;
+
+  /// No description provided for @appSettingsContactEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email de contact'**
+  String get appSettingsContactEmail;
+
+  /// No description provided for @appSettingsContactPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Téléphone de contact'**
+  String get appSettingsContactPhone;
+
+  /// No description provided for @appSettingsBrevoSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Configuration email Brevo'**
+  String get appSettingsBrevoSection;
+
+  /// No description provided for @appSettingsBrevoApiKey.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clé API Brevo'**
+  String get appSettingsBrevoApiKey;
+
+  /// No description provided for @appSettingsBrevoApiKeyHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Laisser vide pour ne pas modifier • ●●●● {hint} si configurée'**
+  String appSettingsBrevoApiKeyHint(String hint);
+
+  /// No description provided for @appSettingsBrevoApiKeyHintNone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Laisser vide pour ne pas modifier'**
+  String get appSettingsBrevoApiKeyHintNone;
+
+  /// No description provided for @appSettingsBrevoApiKeyClearLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Effacer la clé'**
+  String get appSettingsBrevoApiKeyClearLabel;
+
+  /// No description provided for @appSettingsBrevoClearConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous vraiment effacer la clé API Brevo ? Les emails ne pourront plus être envoyés.'**
+  String get appSettingsBrevoClearConfirm;
+
+  /// No description provided for @appSettingsBrevoSenderEmail.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email expéditeur'**
+  String get appSettingsBrevoSenderEmail;
+
+  /// No description provided for @appSettingsBrevoSenderName.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nom expéditeur'**
+  String get appSettingsBrevoSenderName;
+
+  /// No description provided for @appSettingsBrevoConfigured.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clé configurée'**
+  String get appSettingsBrevoConfigured;
+
+  /// No description provided for @appSettingsBrevoNotConfigured.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clé non configurée'**
+  String get appSettingsBrevoNotConfigured;
+
+  /// No description provided for @appSettingsSave.
+  ///
+  /// In fr, this message translates to:
+  /// **'Enregistrer'**
+  String get appSettingsSave;
+
+  /// No description provided for @appSettingsSaveSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Paramètres enregistrés'**
+  String get appSettingsSaveSuccess;
+
+  /// No description provided for @appSettingsSaveError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur : {message}'**
+  String appSettingsSaveError(String message);
+
+  /// No description provided for @appSettingsTestEmailBtn.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer un email de test'**
+  String get appSettingsTestEmailBtn;
+
+  /// No description provided for @appSettingsTestEmailDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email de test Brevo'**
+  String get appSettingsTestEmailDialogTitle;
+
+  /// No description provided for @appSettingsTestEmailDialogHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Entrez l\'adresse email qui recevra l\'email de test.'**
+  String get appSettingsTestEmailDialogHint;
+
+  /// No description provided for @appSettingsTestEmailDialogLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse email'**
+  String get appSettingsTestEmailDialogLabel;
+
+  /// No description provided for @appSettingsTestEmailSend.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer'**
+  String get appSettingsTestEmailSend;
+
+  /// No description provided for @appSettingsTestEmailSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email de test envoyé à {email}'**
+  String appSettingsTestEmailSuccess(String email);
+
+  /// No description provided for @appSettingsTestEmailError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de l\'envoi : {error}'**
+  String appSettingsTestEmailError(String error);
+
+  /// No description provided for @commonRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Champ requis'**
+  String get commonRequired;
+
+  /// No description provided for @validationEmailInvalid.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse email invalide'**
+  String get validationEmailInvalid;
 }
 
 class _AppLocalizationsDelegate

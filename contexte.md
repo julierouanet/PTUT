@@ -131,8 +131,10 @@ PTUT/
 │   └── lib/
 │       ├── main.dart             # MaterialApp, routing (enum ScreenType)
 │       ├── screens/              # 13 écrans (1 fichier par écran)
-│       │                         # SettingsScreen : TabBar 4 onglets (Départements, Catégories,
-│       │                         #   Rôles & Perms + Ordre menu, Journal activité)
+│       │                         # SettingsScreen : TabBar 5 onglets (Départements, Rôles,
+│       │                         #   Activité, Feature Flags, Paramètres généraux)
+│       │                         # FeatureManagementScreen : conservé comme widget réutilisé
+│       │                         #   par FeaturesTab — plus d'entrée sidebar autonome
 │       ├── services/             # ApiClient, AuthService, DataService, DbApiService,
 │       │                         # AuthApiService, ConfigService, NotificationService
 │       ├── models/               # Equipment, Issue, User, Location, InventoryItem,
@@ -165,8 +167,9 @@ PTUT/
 | `role_change_requests` | UUID TEXT | Demandes de rôle supplémentaire (`pending` / `approved` / `rejected`) |
 | `access_requests` | AUTOINCREMENT | Traçabilité des comptes auto-créés via demande d'accès |
 | `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur (5 flags booléens + `preferences_set`) |
-| `feature_flags` | `id` TEXT | **[NOUVEAU]** État global par module désactivable (`equipment`, `inventory`) — `enabled` INTEGER |
-| `feature_flag_overrides` | `(flag_id, role)` | **[NOUVEAU]** Overrides par rôle Keycloak — permet de désactiver un module pour un rôle spécifique |
+| `feature_flags` | `id` TEXT | État global par module désactivable (`equipment`, `inventory`) — `enabled` INTEGER |
+| `feature_flag_overrides` | `(flag_id, role)` | Overrides par rôle Keycloak — permet de désactiver un module pour un rôle spécifique |
+| `app_settings` | `key` TEXT | **[NOUVEAU]** Paramètres applicatifs clé/valeur pilotés depuis l'UI admin — 6 clés : `login_contact_title`, `login_contact_email`, `login_contact_phone` (publics), `brevo_api_key` (secret), `brevo_sender_email`, `brevo_sender_name`. Brevo : priorité DB non vide → fallback env. |
 
 > Les tables `users`, `user_roles`, `refresh_tokens`, `roles` ont été **supprimées** — tout est dans Keycloak.
 
@@ -218,7 +221,7 @@ PTUT/
 | `equipment.status` | `Operational`, `Maintenance`, `Out of service`, `To be disposal`, `Disposed` |
 | `equipment.decommission_reason` | `irreparable`, `obsolete`, `replaced`, `lost`, `donated_out` |
 | `equipment.disposal_method` | `destroyed`, `sold`, `donated`, `returned`, `cannibalized` |
-| `issues.status` | `Reported`, `Acknowledged`, `Assigned`, `In Progress`, `Waiting Materials`, `Completed`, `Verified`, `Closed`, `Redirected` |
+| `issues.status` | `Reported`, `Acknowledged`, `Assigned`, `In Progress`, `Waiting Materials`, `Completed`, `Verified`, `Closed`, `Redirected`, `Rejected` |
 | `issues.urgency` | `Faible`, `Moyen`, `Urgent`, `Critique` |
 | `issues.issue_category` | `Biomedical`, `Infrastructure`, `IT` |
 | `inventory.status` | `Normal`, `Faible`, `Rupture` (calculé : `stock=0` → Rupture, `<min` → Faible) |

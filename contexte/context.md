@@ -266,6 +266,27 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 - **Erreurs** : 400 si `is_global_active` manquant ou non booléen ; 400 si rôle inconnu dans les overrides ; 400 si tentative de désactiver `settings` ; 404 si flag inconnu ; 403 si non-admin
 - **Audit trail** via `sendLog` (action `update_feature_flag`)
 
+### Paramètres Application (`/api/app-settings`) **[NOUVEAU]**
+
+Table `app_settings` (auth.db) : 6 clés — 3 publiques (contact login) + 3 Brevo (clé API secrète masquée, expéditeur email/nom).
+Config Brevo : priorité valeur DB non vide → fallback variable d'environnement. Refactor `email_service.js` : `_getBrevoConfig()` lit la DB à chaque envoi.
+
+#### GET /api/app-settings/public (Public — aucune auth)
+- Retourne `{ login_contact_title, login_contact_email, login_contact_phone }`
+- Jamais de clé `is_secret=1`. Utilisé par `login_screen.dart` pour le bandeau contact d'urgence.
+
+#### GET /api/app-settings (Admin)
+- Retourne toutes les clés. `brevo_api_key` masquée : `{ key, is_secret:true, configured:bool, hint:string|null }`
+
+#### PUT /api/app-settings (Admin)
+- **Body** : `{ settings: { key: value, ... } }`
+- Règle secret : `''` = inchangé ; `'__CLEAR__'` = vider ; autre = écrire
+- Rejet 400 si clé hors `ALL_KEYS`. Audit `sendLog` (clés modifiées sans valeur secrète).
+
+#### POST /api/app-settings/test-email (Admin)
+- **Body** : `{ to_email: string }`
+- Envoie un email de test via la config Brevo active (DB ou env)
+
 ### Gestion des roles (`/api/roles`) - Rate limit : 60 req/min
 
 #### GET /api/roles (Admin)
@@ -549,7 +570,7 @@ Côté **auth-service**, la table `role_hierarchy` (parent/enfant de rôles, cf.
 | Equipment Status | `Operational`, `Maintenance`, `Out of service`, `To be disposal`, `Disposed` (5 valeurs, en anglais) |
 | Equipment Dept   | `IT`, `Radiologie`, `Réanimation`, `Stérilisation`, `Laboratoire`, `Urgences`, `Maintenance`, `Infrastructure` |
 | Equipment Cat    | `Imagerie`, `Laboratoire`, `Chirurgie`, `Monitoring`, `Thérapeutique`, `Informatique`, `Mobilier`, `Autre` |
-| Issue Status     | `Reported`, `Acknowledged`, `Assigned`, `In Progress`, `Waiting Materials`, `Completed`, `Verified`, `Closed`, `Redirected` (9 valeurs, en anglais) |
+| Issue Status     | `Reported`, `Acknowledged`, `Assigned`, `In Progress`, `Waiting Materials`, `Completed`, `Verified`, `Closed`, `Redirected`, `Rejected` (10 valeurs, en anglais) |
 | Issue Urgency    | `Faible`, `Moyen`, `Urgent`, `Critique`                                       |
 | Issue Type       | `Panne`, `Maintenance`, `Inspection`, `Autre`                                 |
 | Issue Group      | `Biomédical`, `Infrastructure`, `IT` (nouveau — `assigned_group` & `issue_category`) |
@@ -699,6 +720,8 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). La 1ʳᵉ transition `status → Completed` pose `resolved_at` (ISO, idempotent via `COALESCE`) et l'inscrit dans l'audit `details`. Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
 | PATCH   | /api/issues/:id/reassign    | Admin/Sup/Tech | Reassigner vers un autre groupe. Body: `{ new_group, reason }`. `new_group` dans `Biomédical/Infrastructure/IT`, `reason` >= 10 char. Effets : `assigned_group` change, `assigned_technician` -> NULL, status -> `Reported`, ligne tracée appendée dans `actions`. |
 | PATCH   | /api/issues/:id/escalate    | Admin/Sup/Tech | Escalade/suspension. Body: `{ escalation_status, escalation_comment }`. `escalation_status` ∈ `Waiting Materials\|Redirected`, `escalation_comment` >= 10 char. Met à jour le statut et appende le commentaire dans `actions`. |
+| PATCH   | /api/issues/:id/reject      | Admin/Sup      | Rejet rapide d'un incident en file de validation. Body: `{ reason_code, comment? }`. `reason_code` ∈ `duplicate\|not_reproducible\|out_of_scope\|false_alarm\|other` ; `comment` obligatoire (≥5 char) si `other`, max 500. **409** si statut ≠ `Reported`. Effets : status → `Rejected`, ligne tracée appendée dans `actions` (incident conservé). Audit `reject_issue`. |
+| PATCH   | /api/issues/:id/detach      | Admin/Sup/Tech | Détachement d'un incident pris en charge → retour au pool. Body: `{ reason }` (≥10 char). **409** si statut ≠ `In Progress` ; **403** si technicien non-assigné (admin exempté). Effets : status → `Acknowledged`, `assigned_technician`/`taken_at` → NULL, ligne tracée appendée dans `actions`. Audit `detach_issue`. |
 | DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
 | POST    | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Upload multipart (champ `photos`, max 5 fichiers JPEG/PNG, 5 Mo chacun). Vérifie que total ≤ 5. Retourne `{photos: [{id, original_name, file_size_kb}]}` |
 | GET     | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Liste les photos de l'incident. Retourne `[{id, original_name, mime_type, file_size_kb, uploaded_at}]` |
@@ -1019,7 +1042,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (26 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule)
+## 3.4 Ecrans (26 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -1034,7 +1057,7 @@ status: StockStatus (normal, low, outOfStock)
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
 | 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
-| 9  | SettingsScreen           | manageDepartments       | Departements, categories, permissions par role, sidebar order     |
+| 9  | SettingsScreen           | manageDepartments       | **5 onglets** : Départements, Rôles, Activité, Feature Flags, Paramètres généraux (contact login + config Brevo avec email de test) |
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
 | 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe                        |
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
@@ -1044,7 +1067,7 @@ status: StockStatus (normal, low, outOfStock)
 | 16 | UserDetailScreen         | manageUsers             | Fiche utilisateur : profil, demandes dept/rôle, actions admin |
 | 17 | RoleDetailScreen         | manageUsers             | Détail rôle : hiérarchie, permissions, ordre sidebar, utilisateurs |
 | 18 | AnalyticsScreen          | generateReports         | Tableaux de bord analytiques (GET /api/analytics) |
-| 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle |
+| 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle — **n'a plus d'entrée sidebar autonome** ; réutilisé comme onglet 4 de SettingsScreen via `FeaturesTab` |
 | 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
 | 21 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
 

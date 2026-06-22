@@ -500,6 +500,34 @@
   "issueStatusVerified": "Verified",
   "issueStatusClosed": "Closed",
   "issueStatusRedirected": "Redirected",
+  "issueStatusRejected": "Rejected",
+
+  "issueValidationSheetTitle": "Issue validation",
+  "issueValidationSheetReporter": "Reporter",
+  "issueValidationSheetObject": "Reported object",
+  "issueValidationSheetProblem": "Reported problem",
+  "issueValidationSheetPhotos": "Photos",
+  "issueValidationSheetHistory": "Previous issues",
+  "issueValidationSheetNoPhoto": "No photo",
+  "issueValidationSheetNoHistory": "No previous issue on this equipment",
+
+  "rejectConfirmTitle": "Reject the issue",
+  "rejectConfirmButton": "Reject",
+  "rejectReasonLabel": "Rejection reason",
+  "rejectReasonDuplicate": "Duplicate",
+  "rejectReasonNotReproducible": "Not reproducible",
+  "rejectReasonOutOfScope": "Out of scope",
+  "rejectReasonFalseAlarm": "False alarm",
+  "rejectReasonOther": "Other",
+  "rejectCommentLabel": "Comment",
+  "rejectCommentRequired": "A comment (min 5 characters) is required for the \"Other\" reason",
+  "rejectSuccess": "Issue rejected",
+
+  "detachButton": "Detach",
+  "detachDialogTitle": "Detach the issue",
+  "detachReasonLabel": "Detachment reason",
+  "detachReasonMinLength": "The reason must be at least 10 characters",
+  "detachSuccess": "Issue returned to the pool",
 
   "urgencyLow": "Low",
   "urgencyMedium": "Medium",
@@ -1707,6 +1735,15 @@
   "debugReseedError": "Error during reset: {error}",
   "@debugReseedError": { "placeholders": { "error": { "type": "String" } } },
 
+  "debugReseedFileLabel": "Regenerate from a file",
+  "debugReseedFileDesc": "Deletes all current equipment and incidents, then fully reimports from an .xlsx file in the Equipment Migration Template format (same sheets as the physical inventory import). This action is irreversible.",
+  "debugReseedFileButton": "Choose an .xlsx file",
+  "debugReseedFileTitle": "Confirm regeneration",
+  "debugReseedFileMessage": "This action will permanently delete ALL current equipment and incidents, then reimport from \"{fileName}\". This operation is irreversible and cannot be undone.",
+  "@debugReseedFileMessage": { "placeholders": { "fileName": { "type": "String" } } },
+  "debugReseedFileSuccess": "Database regenerated: {equipment} equipment item(s) imported",
+  "@debugReseedFileSuccess": { "placeholders": { "equipment": { "type": "int" } } },
+
   "reportsArchivesSectionTitle": "Archives & Historical Reports",
   "@reportsArchivesSectionTitle": {},
   "reportsArchivesTypeMonthly": "Monthly",
@@ -2060,5 +2097,75 @@
 
   "subcategoryDescriptionLabel": "Description",
   "subcategoryDescriptionHint": "Business description of the subcategory (shown on the equipment record)",
-  "subcategoryDescriptionSaved": "Description saved"
+  "subcategoryDescriptionSaved": "Description saved",
+
+  "settingsTabFeatureFlags": "Feature Flags",
+  "@settingsTabFeatureFlags": {},
+  "settingsTabAppSettings": "General Settings",
+  "@settingsTabAppSettings": {},
+
+  "appSettingsContactSection": "Contact displayed on the login screen",
+  "@appSettingsContactSection": {},
+  "appSettingsContactTitle": "Title / label",
+  "@appSettingsContactTitle": {},
+  "appSettingsContactEmail": "Contact email",
+  "@appSettingsContactEmail": {},
+  "appSettingsContactPhone": "Contact phone",
+  "@appSettingsContactPhone": {},
+
+  "appSettingsBrevoSection": "Brevo email configuration",
+  "@appSettingsBrevoSection": {},
+  "appSettingsBrevoApiKey": "Brevo API key",
+  "@appSettingsBrevoApiKey": {},
+  "appSettingsBrevoApiKeyHint": "Leave empty to keep unchanged • ●●●● {hint} if configured",
+  "@appSettingsBrevoApiKeyHint": {
+    "placeholders": { "hint": { "type": "String" } }
+  },
+  "appSettingsBrevoApiKeyHintNone": "Leave empty to keep unchanged",
+  "@appSettingsBrevoApiKeyHintNone": {},
+  "appSettingsBrevoApiKeyClearLabel": "Clear the key",
+  "@appSettingsBrevoApiKeyClearLabel": {},
+  "appSettingsBrevoClearConfirm": "Are you sure you want to clear the Brevo API key? Emails will no longer be sent.",
+  "@appSettingsBrevoClearConfirm": {},
+  "appSettingsBrevoSenderEmail": "Sender email",
+  "@appSettingsBrevoSenderEmail": {},
+  "appSettingsBrevoSenderName": "Sender name",
+  "@appSettingsBrevoSenderName": {},
+  "appSettingsBrevoConfigured": "Key configured",
+  "@appSettingsBrevoConfigured": {},
+  "appSettingsBrevoNotConfigured": "Key not configured",
+  "@appSettingsBrevoNotConfigured": {},
+
+  "appSettingsSave": "Save",
+  "@appSettingsSave": {},
+  "appSettingsSaveSuccess": "Settings saved",
+  "@appSettingsSaveSuccess": {},
+  "appSettingsSaveError": "Error: {message}",
+  "@appSettingsSaveError": {
+    "placeholders": { "message": { "type": "String" } }
+  },
+
+  "appSettingsTestEmailBtn": "Send a test email",
+  "@appSettingsTestEmailBtn": {},
+  "appSettingsTestEmailDialogTitle": "Brevo test email",
+  "@appSettingsTestEmailDialogTitle": {},
+  "appSettingsTestEmailDialogHint": "Enter the email address that will receive the test email.",
+  "@appSettingsTestEmailDialogHint": {},
+  "appSettingsTestEmailDialogLabel": "Email address",
+  "@appSettingsTestEmailDialogLabel": {},
+  "appSettingsTestEmailSend": "Send",
+  "@appSettingsTestEmailSend": {},
+  "appSettingsTestEmailSuccess": "Test email sent to {email}",
+  "@appSettingsTestEmailSuccess": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "appSettingsTestEmailError": "Send failed: {error}",
+  "@appSettingsTestEmailError": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "commonRequired": "Required field",
+  "@commonRequired": {},
+  "validationEmailInvalid": "Invalid email address",
+  "@validationEmailInvalid": {}
 }

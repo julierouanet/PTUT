@@ -15,8 +15,8 @@ services:
       DB_PATH: /data/auth.db
       DB_SERVICE_URL: http://db-service-dev:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
-      # iss réel émis par Keycloak (frontendUrl stockée en DB = dev.keycloak)
-      KC_ISSUER: https://dev.keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      # iss réel émis par Keycloak (login dev passe par l'instance partagée keycloak.lucaslopvet.fr — cf. Jenkinsfile)
+      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
       KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs
       KC_REALM: kabutare-hospital
       KC_ADMIN_URL: http://keycloak-dev:8081
@@ -45,8 +45,8 @@ services:
       DB_PATH: /data/hospital.db
       AUTH_SERVICE_URL: http://auth-service-dev:3001
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
-      # iss réel émis par Keycloak (frontendUrl stockée en DB = dev.keycloak)
-      KC_ISSUER: https://dev.keycloak.lucaslopvet.fr/realms/kabutare-hospital
+      # iss réel émis par Keycloak (login dev passe par l'instance partagée keycloak.lucaslopvet.fr — cf. Jenkinsfile)
+      KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
       KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs
       # Web Push VAPID — clés fixes pour l'environnement dev (non critiques)
       VAPID_PUBLIC_KEY:  BNSxWm6_z2kjIc654t4rmIOp62UcOP2WNbMXLTcdlEcAqYYtT--ctC6LEfDQLGCOfZDR_xcd2RhhKHfjl7Tr32M
@@ -75,7 +75,9 @@ services:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_HTTP_PORT: 8081
-      KC_HOSTNAME: https://dev.keycloak.lucaslopvet.fr
+      # Aligné sur l'instance partagée réellement utilisée par le login (cf. KC_TOKEN_URL Jenkinsfile) —
+      # dev.keycloak.lucaslopvet.fr n'a pas d'enregistrement DNS, les emails reset password étaient cassés.
+      KC_HOSTNAME: https://keycloak.lucaslopvet.fr
       KC_PROXY_HEADERS: xforwarded
       KC_HEALTH_ENABLED: "true"
       # ── Brevo SMTP (utilisées par keycloak/scripts/configure-realm.sh via kcadm) ──

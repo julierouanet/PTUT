@@ -584,6 +584,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       case IssueStatus.verified:         return AppColors.success;
       case IssueStatus.closed:           return AppColors.textSecondary;
       case IssueStatus.redirected:       return AppColors.primary;
+      case IssueStatus.rejected:         return AppColors.error;
     }
   }
 

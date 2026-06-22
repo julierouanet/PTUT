@@ -10,6 +10,7 @@ const { getDb }          = require('./database');
 const rolesRoutes        = require('./routes/roles');
 const internalRoutes     = require('./routes/internal');
 const featureFlagsRoutes = require('./routes/featureFlags');
+const appSettingsRoutes  = require('./routes/appSettings');
 
 const app = express();
 
@@ -98,6 +99,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/roles', rolesRoutes);
 app.use('/api/feature-flags', featureFlagsRoutes);
+app.use('/api/app-settings',  appSettingsRoutes);
 app.use('/internal', internalRoutes);
 app.use('/', debugRoutes);
 

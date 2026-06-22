@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../models/user_role.dart';
@@ -22,6 +24,7 @@ class DebugTestScreen extends StatefulWidget {
 class _DebugTestScreenState extends State<DebugTestScreen> {
   bool _isClearingIssues = false;
   bool _isReseeding = false;
+  bool _isReseedingFromFile = false;
 
   // ── État des tests de notifications ─────────────────────────────────────────
   bool   _isScheduleActive = false;
@@ -176,6 +179,82 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
       }
     } finally {
       if (mounted) setState(() => _isReseeding = false);
+    }
+  }
+
+  // ── Réinitialisation depuis un fichier XLSX uploadé ─────────────────────────
+  Future<void> _reseedFromFile() async {
+    final l10n = AppLocalizations.of(context)!;
+
+    final picked = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx'],
+      withData: true,
+    );
+    if (picked == null || picked.files.isEmpty) return;
+    final file = picked.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || !mounted) return;
+
+    // Dialogue de confirmation obligatoire — action destructive
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppColors.error),
+            const SizedBox(width: 12),
+            Text(l10n.debugReseedFileTitle),
+          ],
+        ),
+        content: Text(l10n.debugReseedFileMessage(file.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(l10n.debugReseedConfirm),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isReseedingFromFile = true);
+    try {
+      final result = await DbApiService.instance.debugReseedFromFile(
+        Uint8List.fromList(bytes),
+        file.name,
+      );
+      if (!mounted) return;
+      final after = result['after'] as Map<String, dynamic>? ?? const {};
+      await DataService().loadAll();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.debugReseedFileSuccess(after['equipment'] as int? ?? 0)),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.debugReseedError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _isReseedingFromFile = false);
     }
   }
 
@@ -416,6 +495,46 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
                           )
                         : const Icon(Icons.restart_alt),
                     label: Text(_isReseeding ? l10n.debugReseedLoading : l10n.debugReseedButton),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                  const Divider(height: 32),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.upload_file_outlined, color: AppColors.error, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.debugReseedFileLabel,
+                              style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              l10n.debugReseedFileDesc,
+                              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _isReseedingFromFile ? null : _reseedFromFile,
+                    icon: _isReseedingFromFile
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.upload_file_outlined),
+                    label: Text(_isReseedingFromFile ? l10n.debugReseedLoading : l10n.debugReseedFileButton),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.error,
                       foregroundColor: Colors.white,

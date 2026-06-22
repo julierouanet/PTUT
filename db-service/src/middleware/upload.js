@@ -38,4 +38,25 @@ const photoUpload = multer({
   limits: { fileSize: MAX_PHOTO_MB * 1024 * 1024, files: 5 },
 });
 
-module.exports = { documentUpload, photoUpload };
+// ── Profil XLSX (reseed admin depuis un fichier, 20 Mo max) ──────────────────
+// Stockage en mémoire (pas de persistance disque) : le fichier n'est utile
+// qu'une fois, le temps du parsing par xlsx.
+const XLSX_MIME = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+];
+const MAX_XLSX_MB = 20;
+
+const xlsxUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    if (XLSX_MIME.includes(file.mimetype) || file.originalname.toLowerCase().endsWith('.xlsx')) {
+      return cb(null, true);
+    }
+    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE',
+      `Type non supporté : ${file.mimetype}. Seul .xlsx est accepté.`));
+  },
+  limits: { fileSize: MAX_XLSX_MB * 1024 * 1024 },
+});
+
+module.exports = { documentUpload, photoUpload, xlsxUpload };

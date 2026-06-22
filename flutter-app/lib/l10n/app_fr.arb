@@ -522,6 +522,34 @@
   "issueStatusVerified": "Vérifié",
   "issueStatusClosed": "Clôturé",
   "issueStatusRedirected": "Redirigé",
+  "issueStatusRejected": "Rejeté",
+
+  "issueValidationSheetTitle": "Validation de l'incident",
+  "issueValidationSheetReporter": "Signaleur",
+  "issueValidationSheetObject": "Objet concerné",
+  "issueValidationSheetProblem": "Problème signalé",
+  "issueValidationSheetPhotos": "Photos",
+  "issueValidationSheetHistory": "Incidents précédents",
+  "issueValidationSheetNoPhoto": "Aucune photo",
+  "issueValidationSheetNoHistory": "Aucun incident précédent sur cet équipement",
+
+  "rejectConfirmTitle": "Ne pas valider l'incident",
+  "rejectConfirmButton": "Ne pas valider",
+  "rejectReasonLabel": "Motif du rejet",
+  "rejectReasonDuplicate": "Doublon",
+  "rejectReasonNotReproducible": "Non reproductible",
+  "rejectReasonOutOfScope": "Hors périmètre",
+  "rejectReasonFalseAlarm": "Fausse alerte",
+  "rejectReasonOther": "Autre",
+  "rejectCommentLabel": "Commentaire",
+  "rejectCommentRequired": "Un commentaire (min 5 caractères) est requis pour le motif \"Autre\"",
+  "rejectSuccess": "Incident rejeté",
+
+  "detachButton": "Détacher",
+  "detachDialogTitle": "Détacher l'incident",
+  "detachReasonLabel": "Motif du détachement",
+  "detachReasonMinLength": "Le motif doit contenir au moins 10 caractères",
+  "detachSuccess": "Incident remis dans le pool",
 
   "urgencyLow": "Faible",
   "urgencyMedium": "Moyen",
@@ -1729,6 +1757,15 @@
   "debugReseedError": "Erreur lors de la réinitialisation : {error}",
   "@debugReseedError": { "placeholders": { "error": { "type": "String" } } },
 
+  "debugReseedFileLabel": "Régénérer depuis un fichier",
+  "debugReseedFileDesc": "Vide tous les équipements et incidents actuels, puis réimporte intégralement depuis un fichier .xlsx au format Equipment Migration Template (mêmes feuilles que l'import inventaire physique). Cette action est irréversible.",
+  "debugReseedFileButton": "Choisir un fichier .xlsx",
+  "debugReseedFileTitle": "Confirmer la régénération",
+  "debugReseedFileMessage": "Cette action va supprimer TOUS les équipements et incidents actuels, puis réimporter depuis « {fileName} ». Cette opération est irréversible et ne peut pas être annulée.",
+  "@debugReseedFileMessage": { "placeholders": { "fileName": { "type": "String" } } },
+  "debugReseedFileSuccess": "Base de données régénérée : {equipment} équipement(s) importé(s)",
+  "@debugReseedFileSuccess": { "placeholders": { "equipment": { "type": "int" } } },
+
   "reportsArchivesSectionTitle": "Archives & Rapports Historiques",
   "@reportsArchivesSectionTitle": {},
   "reportsArchivesTypeMonthly": "Mensuel",
@@ -2083,5 +2120,75 @@
 
   "subcategoryDescriptionLabel": "Description",
   "subcategoryDescriptionHint": "Description métier de la sous-catégorie (affichée sur la fiche équipement)",
-  "subcategoryDescriptionSaved": "Description enregistrée"
+  "subcategoryDescriptionSaved": "Description enregistrée",
+
+  "settingsTabFeatureFlags": "Feature Flags",
+  "@settingsTabFeatureFlags": {},
+  "settingsTabAppSettings": "Paramètres généraux",
+  "@settingsTabAppSettings": {},
+
+  "appSettingsContactSection": "Contact affiché sur l'écran de connexion",
+  "@appSettingsContactSection": {},
+  "appSettingsContactTitle": "Titre / intitulé",
+  "@appSettingsContactTitle": {},
+  "appSettingsContactEmail": "Email de contact",
+  "@appSettingsContactEmail": {},
+  "appSettingsContactPhone": "Téléphone de contact",
+  "@appSettingsContactPhone": {},
+
+  "appSettingsBrevoSection": "Configuration email Brevo",
+  "@appSettingsBrevoSection": {},
+  "appSettingsBrevoApiKey": "Clé API Brevo",
+  "@appSettingsBrevoApiKey": {},
+  "appSettingsBrevoApiKeyHint": "Laisser vide pour ne pas modifier • ●●●● {hint} si configurée",
+  "@appSettingsBrevoApiKeyHint": {
+    "placeholders": { "hint": { "type": "String" } }
+  },
+  "appSettingsBrevoApiKeyHintNone": "Laisser vide pour ne pas modifier",
+  "@appSettingsBrevoApiKeyHintNone": {},
+  "appSettingsBrevoApiKeyClearLabel": "Effacer la clé",
+  "@appSettingsBrevoApiKeyClearLabel": {},
+  "appSettingsBrevoClearConfirm": "Voulez-vous vraiment effacer la clé API Brevo ? Les emails ne pourront plus être envoyés.",
+  "@appSettingsBrevoClearConfirm": {},
+  "appSettingsBrevoSenderEmail": "Email expéditeur",
+  "@appSettingsBrevoSenderEmail": {},
+  "appSettingsBrevoSenderName": "Nom expéditeur",
+  "@appSettingsBrevoSenderName": {},
+  "appSettingsBrevoConfigured": "Clé configurée",
+  "@appSettingsBrevoConfigured": {},
+  "appSettingsBrevoNotConfigured": "Clé non configurée",
+  "@appSettingsBrevoNotConfigured": {},
+
+  "appSettingsSave": "Enregistrer",
+  "@appSettingsSave": {},
+  "appSettingsSaveSuccess": "Paramètres enregistrés",
+  "@appSettingsSaveSuccess": {},
+  "appSettingsSaveError": "Erreur : {message}",
+  "@appSettingsSaveError": {
+    "placeholders": { "message": { "type": "String" } }
+  },
+
+  "appSettingsTestEmailBtn": "Envoyer un email de test",
+  "@appSettingsTestEmailBtn": {},
+  "appSettingsTestEmailDialogTitle": "Email de test Brevo",
+  "@appSettingsTestEmailDialogTitle": {},
+  "appSettingsTestEmailDialogHint": "Entrez l'adresse email qui recevra l'email de test.",
+  "@appSettingsTestEmailDialogHint": {},
+  "appSettingsTestEmailDialogLabel": "Adresse email",
+  "@appSettingsTestEmailDialogLabel": {},
+  "appSettingsTestEmailSend": "Envoyer",
+  "@appSettingsTestEmailSend": {},
+  "appSettingsTestEmailSuccess": "Email de test envoyé à {email}",
+  "@appSettingsTestEmailSuccess": {
+    "placeholders": { "email": { "type": "String" } }
+  },
+  "appSettingsTestEmailError": "Échec de l'envoi : {error}",
+  "@appSettingsTestEmailError": {
+    "placeholders": { "error": { "type": "String" } }
+  },
+
+  "commonRequired": "Champ requis",
+  "@commonRequired": {},
+  "validationEmailInvalid": "Adresse email invalide",
+  "@validationEmailInvalid": {}
 }

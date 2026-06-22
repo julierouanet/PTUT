@@ -1,10 +1,13 @@
 const express = require('express');
+const XLSX = require('xlsx');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET } = require('../config');
 const { sendPushToUser } = require('../utils/push_sender');
+const { xlsxUpload } = require('../middleware/upload');
 const { seed } = require('../../seed');
+const { seedReferences, importEquipment } = require('../../scripts/import_inventory');
 
 const router = express.Router();
 
@@ -81,6 +84,69 @@ router.post('/reseed', verifyToken, requireRole('admin'), (req, res) => {
   });
 
   res.json({ message: 'Base de données réinitialisée avec les données de démo', before, after });
+});
+
+// ── POST /reseed-from-file ───────────────────────────────────────────────────
+// Vide les équipements/incidents existants puis réimporte intégralement depuis
+// un fichier XLSX fourni par l'admin (format "Equipment Migration Template",
+// même structure que scripts/import_inventory.js : feuilles Standard_Departments,
+// Standard_Equipment_Names, Equipment Migration Template).
+router.post('/reseed-from-file', verifyToken, requireRole('admin'), xlsxUpload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Fichier .xlsx manquant (champ "file")' });
+  }
+
+  let workbook;
+  try {
+    workbook = XLSX.read(req.file.buffer, { cellDates: true });
+  } catch (err) {
+    return res.status(400).json({ error: `Fichier XLSX illisible : ${err.message}` });
+  }
+
+  const requiredSheets = ['Standard_Departments', 'Standard_Equipment_Names', 'Equipment Migration Template'];
+  const missing = requiredSheets.filter(s => !workbook.Sheets[s]);
+  if (missing.length) {
+    return res.status(400).json({ error: `Feuille(s) manquante(s) dans le fichier : ${missing.join(', ')}` });
+  }
+
+  const db = getDb();
+  const before = { equipment: db.prepare('SELECT COUNT(*) c FROM equipment').get().c };
+
+  let importResult;
+  try {
+    const runReseed = db.transaction(() => {
+      // `issues` puis `equipment` d'abord : equipment_tags, maintenance_records,
+      // preventive_maintenance_plans, equipment_documents sont en ON DELETE CASCADE.
+      db.prepare('DELETE FROM issues').run();
+      db.prepare('DELETE FROM equipment').run();
+      seedReferences(db, workbook, false);
+      importResult = importEquipment(db, workbook, { insertOnly: false });
+    });
+    runReseed();
+  } catch (err) {
+    return res.status(500).json({ error: `Échec de l'import : ${err.message}` });
+  }
+
+  const after = { equipment: db.prepare('SELECT COUNT(*) c FROM equipment').get().c };
+
+  logAction({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      'debug_reseed_from_file',
+    target_type: 'database',
+    target_id:   null,
+    target_name: req.file.originalname,
+    details:     JSON.stringify({ before, after, stats: importResult.stats, note: 'Réinitialisation équipements depuis fichier XLSX uploadé' }),
+    ...extractReqMeta(req),
+  });
+
+  res.json({
+    message: `Base de données régénérée depuis "${req.file.originalname}"`,
+    before, after,
+    stats: importResult.stats,
+    errors: importResult.errors.slice(0, 20),
+  });
 });
 
 // ── POST /notify-now ──────────────────────────────────────────────────────────
