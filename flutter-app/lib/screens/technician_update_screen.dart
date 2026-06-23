@@ -181,6 +181,15 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   @override
   Widget build(BuildContext context) {
+    // ListenableBuilder réagit aux notifyListeners() de DataService (ex: reloadIssues()
+    // après "Prendre en charge") pour rafraîchir l'onglet "Mes interventions" sans reload manuel.
+    return ListenableBuilder(
+      listenable: DataService(),
+      builder: (context, _) => _buildContent(context),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
     final l10n      = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.of(context).size.width >= AppBreakpoints.desktop;
 
