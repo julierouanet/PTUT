@@ -7400,6 +7400,12 @@ abstract class AppLocalizations {
   /// **'Rupture de stock'**
   String get techPartsOutOfStock;
 
+  /// No description provided for @techUnsavedChangesWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous avez des modifications non sauvegardées. Si vous quittez maintenant, elles seront perdues.'**
+  String get techUnsavedChangesWarning;
+
   /// No description provided for @techTakenAtLabel.
   ///
   /// In fr, this message translates to:

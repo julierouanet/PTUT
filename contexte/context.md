@@ -1044,7 +1044,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (26 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4)
+## 3.4 Ecrans (27 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4 — +1 le 2026-06-23 : technician_intervention_update, extrait de TechnicianUpdateScreen)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -1055,7 +1055,7 @@ status: StockStatus (normal, low, outOfStock)
 | 3  | IssueTrackingScreen      | trackIssues             | Liste unique tous les incidents, filtres statut/urgence/période/groupe, recherche, vue Kanban (desktop), split view, export CSV. Onglet "À valider" déplacé vers TechnicianUpdateScreen. |
 | 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte, panne, intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen). Actions admin/superviseur : **Valider** (si statut `reported` — choix groupe + urgence + délai depuis signalement, statut → Acknowledged), Réassigner (par groupe), Commenter. |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
-| 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | Onglets : "À valider" (premier, conditionnel `canApproveRequests`) / Disponibles / Mes interventions. Bouton calendrier (à droite du TabBar) → TechnicianScheduleScreen. Diagnostic, actions, pièces, chrono. L'onglet "À valider" propose un bouton unique "Examiner" qui ouvre IssueDetailScreen où se font validation + réassignation par groupe. |
+| 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | Onglets : "À valider" (premier, conditionnel `canApproveRequests`) / Disponibles / Mes interventions (liste cliquable plein-écran, plus de master-detail). Bouton calendrier (à droite du TabBar) → TechnicianScheduleScreen. Le clic sur une carte d'intervention ouvre TechnicianInterventionUpdateScreen. L'onglet "À valider" propose un bouton unique "Examiner" qui ouvre IssueDetailScreen où se font validation + réassignation par groupe. |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
 | 7  | ReportsScreen            | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
@@ -1072,6 +1072,7 @@ status: StockStatus (normal, low, outOfStock)
 | 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle — **n'a plus d'entrée sidebar autonome** ; réutilisé comme onglet 4 de SettingsScreen via `FeaturesTab` |
 | 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
 | 21 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
+| 22 | TechnicianInterventionUpdateScreen | updateRepairs OU approveRequests | Page dédiée à la mise à jour d'une intervention (diagnostic, actions, chrono, pièces, clôture/escalade/transfert/détachement), extraite du formulaire master-detail/inline de l'onglet "Mes interventions" de TechnicianUpdateScreen. Sélecteur de pièces masqué de façon réactive si le module `inventory` est désactivé (`FeatureService().isModuleEnabled`). `PopScope` + dialog de confirmation si modifications non sauvegardées. |
 
 ## 3.5 Navigation
 

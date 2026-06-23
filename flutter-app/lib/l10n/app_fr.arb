@@ -1477,6 +1477,7 @@
   "@techPartsStockLabel": { "placeholders": { "n": { "type": "int" }, "unit": { "type": "String" } } },
   "techPartsNoneSelected": "Aucune pièce sélectionnée",
   "techPartsOutOfStock": "Rupture de stock",
+  "techUnsavedChangesWarning": "Vous avez des modifications non sauvegardées. Si vous quittez maintenant, elles seront perdues.",
   "techTakenAtLabel": "Prise en charge le {date}",
   "@techTakenAtLabel": { "placeholders": { "date": { "type": "String" } } },
 

@@ -3979,6 +3979,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techPartsOutOfStock => 'Rupture de stock';
 
   @override
+  String get techUnsavedChangesWarning =>
+      'Vous avez des modifications non sauvegardées. Si vous quittez maintenant, elles seront perdues.';
+
+  @override
   String techTakenAtLabel(String date) {
     return 'Prise en charge le $date';
   }
