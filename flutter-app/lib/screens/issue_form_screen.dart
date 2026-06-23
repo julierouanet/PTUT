@@ -199,6 +199,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   String? _infraSubcategory;
   String? _infraIssue;
   int _infraSearchKey = 0;
+  bool get _infraCategoryIsOther => _infraCategory == 'Other';
 
   // ── Tab 2 : IT ────────────────────────────────────────────────────────────
   final _tagController = TextEditingController();
@@ -1002,7 +1003,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           'location_text': '${_infraBuildingController.text.trim()} — ${_infraLocationController.text.trim()}',
           if (infraTag.isNotEmpty) 'location_tag': infraTag,
           'department':    _infraDepartment!,
-          'type':          '$_infraCategory / $_infraSubcategory / $_infraIssue',
+          'type':          _infraCategoryIsOther
+              ? 'Other'
+              : '$_infraCategory / $_infraSubcategory / $_infraIssue',
           'issue_category': 'Infrastructure',
           'assigned_group': 'Infrastructure',
           ...commons,
@@ -1711,9 +1714,11 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       DropdownButtonFormField<String>(
         initialValue: _infraCategory,
         hint: Text(l10n.issueFormSelectProblemCategory),
-        items: _kInfraCatalog.keys
-            .map((cat) => DropdownMenuItem(value: cat, child: Text(cat)))
-            .toList(),
+        items: [
+          ..._kInfraCatalog.keys
+              .map((cat) => DropdownMenuItem(value: cat, child: Text(cat))),
+          DropdownMenuItem(value: 'Other', child: Text(l10n.issueFormOther)),
+        ],
         onChanged: (v) => setState(() {
           _infraCategory    = v;
           _infraSubcategory = null;
@@ -1724,38 +1729,45 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
       const SizedBox(height: 16),
 
-      Text(l10n.issueFormProblemSubcategory,
-          style: const TextStyle(fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      DropdownButtonFormField<String>(
-        initialValue: _infraSubcategory,
-        hint: Text(l10n.issueFormSelectProblemSubcategory),
-        items: _infraSubcategories
-            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-            .toList(),
-        onChanged: (v) =>
-            setState(() { _infraSubcategory = v; _infraIssue = null; }),
-        validator: (_) => _infraSubcategory == null
-            ? l10n.issueFormSubcategoryRequired
-            : null,
-      ),
-      const SizedBox(height: 16),
+      if (!_infraCategoryIsOther) ...[
+        Text(l10n.issueFormProblemSubcategory,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _infraSubcategory,
+          hint: Text(l10n.issueFormSelectProblemSubcategory),
+          items: _infraSubcategories
+              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+              .toList(),
+          onChanged: (v) =>
+              setState(() { _infraSubcategory = v; _infraIssue = null; }),
+          validator: (_) {
+            if (_infraCategoryIsOther) return null;
+            return _infraSubcategory == null
+                ? l10n.issueFormSubcategoryRequired
+                : null;
+          },
+        ),
+        const SizedBox(height: 16),
 
-      Text(l10n.issueFormSpecificIssue,
-          style: const TextStyle(fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      DropdownButtonFormField<String>(
-        initialValue: _infraIssue,
-        hint: Text(l10n.issueFormSelectSpecificIssue),
-        items: [
-          ..._infraIssues.map(
-              (issue) => DropdownMenuItem(value: issue, child: Text(issue))),
-          DropdownMenuItem(value: 'Other', child: Text(l10n.issueFormOther)),
-        ],
-        onChanged: (v) => setState(() => _infraIssue = v),
-        validator: (_) =>
-            _infraIssue == null ? l10n.issueFormIssueRequired : null,
-      ),
+        Text(l10n.issueFormSpecificIssue,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          initialValue: _infraIssue,
+          hint: Text(l10n.issueFormSelectSpecificIssue),
+          items: [
+            ..._infraIssues.map(
+                (issue) => DropdownMenuItem(value: issue, child: Text(issue))),
+            DropdownMenuItem(value: 'Other', child: Text(l10n.issueFormOther)),
+          ],
+          onChanged: (v) => setState(() => _infraIssue = v),
+          validator: (_) {
+            if (_infraCategoryIsOther) return null;
+            return _infraIssue == null ? l10n.issueFormIssueRequired : null;
+          },
+        ),
+      ],
     ];
   }
 

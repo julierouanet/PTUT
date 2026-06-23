@@ -131,6 +131,14 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       final dept = AuthService().currentUser?.department ?? '';
       return allOpen.where((i) => i.department == dept).toList();
     }
+    // Technicien avec droit de validation : limité aux incidents de son/ses groupe(s)
+    final myGroups = _myAssignableGroups;
+    if (myGroups.isNotEmpty) {
+      return allOpen.where((i) {
+        final group = i.assignedGroup;
+        return group == null || myGroups.contains(group);
+      }).toList();
+    }
     return [];
   }
 
