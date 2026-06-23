@@ -56,6 +56,7 @@ class _TechnicianInterventionUpdateScreenState
   bool _isEscalating     = false;
   bool _isDetaching      = false;
   bool _isClosingSession = false;
+  bool _planNextAction   = false;
 
   /// Vrai si une action API du formulaire d'intervention est en cours
   /// (désactive tous les boutons d'action pour éviter les appels concurrents).
@@ -399,15 +400,34 @@ class _TechnicianInterventionUpdateScreenState
         ),
         const SizedBox(height: 22),
 
-        // ── Actions à réaliser (uniquement si pas résolu) ────────────────────
-        Text(l10n.techNextActionsLabel,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _nextActionsController,
-          maxLines: 3,
-          decoration: InputDecoration(hintText: l10n.techNextActionsHint),
+        // ── Toggle + champ conditionnel "Actions à réaliser" ────────────────
+        Row(
+          children: [
+            Expanded(
+              child: Text(l10n.techNextActionsLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            Switch(
+              value: _planNextAction,
+              onChanged: _isBusy ? null : (v) => setState(() {
+                _planNextAction = v;
+                if (!v) _nextActionsController.clear();
+              }),
+              activeColor: AppColors.primary,
+            ),
+            const SizedBox(width: 6),
+            Text(l10n.techPlanNextActionToggle,
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          ],
         ),
+        if (_planNextAction) ...[
+          const SizedBox(height: 8),
+          TextFormField(
+            controller: _nextActionsController,
+            maxLines: 3,
+            decoration: InputDecoration(hintText: l10n.techNextActionsHint),
+          ),
+        ],
         const SizedBox(height: 28),
 
         // ── Sélecteur de pièces ─────────────────────────────────────────────
@@ -416,37 +436,19 @@ class _TechnicianInterventionUpdateScreenState
           const SizedBox(height: 28),
         ],
 
-        // ── Bouton Sauvegarder ───────────────────────────────────────────────
+        // ── Bouton fusionné Sauvegarder et fermer la session ─────────────────
         SizedBox(
           width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _isBusy
-                ? null
-                : () => _saveProgress(inventoryEnabled),
-            icon: _isSaving
-                ? _buttonSpinner(AppColors.primary)
+          child: ElevatedButton.icon(
+            onPressed: _isBusy ? null : () => _doSaveAndClose(issue, inventoryEnabled),
+            icon: _isClosingSession
+                ? _buttonSpinner(Colors.white)
                 : const Icon(Icons.save_outlined, size: 16),
-            label: Text(l10n.techSave),
-          ),
-        ),
-        const SizedBox(height: 10),
-
-        // ── Bouton Sauvegarder et fermer l'intervention ──────────────────────
-        // ListenableBuilder scoped au contrôleur pour éviter un rebuild complet
-        // de toute la colonne à chaque frappe dans le champ "Actions à réaliser".
-        ListenableBuilder(
-          listenable: _nextActionsController,
-          builder: (_, __) => SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: (_isBusy || _nextActionsController.text.trim().length < 10)
-                  ? null
-                  : () => _doSaveAndCloseIntervention(issue),
-              icon: _isClosingSession
-                  ? _buttonSpinner(AppColors.primary)
-                  : const Icon(Icons.pause_circle_outline, size: 16),
-              label: Text(l10n.techSaveAndCloseInterventionButton),
-            ),
+            label: Text(l10n.techSaveAndCloseButton),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12)),
           ),
         ),
         const SizedBox(height: 10),
@@ -1513,61 +1515,23 @@ class _TechnicianInterventionUpdateScreenState
     }
   }
 
-  Future<void> _saveProgress(bool inventoryEnabled) async {
-    final l10n = AppLocalizations.of(context)!;
-    setState(() => _isSaving = true);
-    try {
-      await DbApiService.instance.updateIssue(widget.issue.id, {
-        'status':              'In Progress',
-        'assigned_technician': _currentTechnicianName,
-        'diagnosis': _diagnosisController.text.trim().isNotEmpty
-            ? _diagnosisController.text.trim()
-            : null,
-        'actions': _actionsController.text.trim().isNotEmpty
-            ? _actionsController.text.trim()
-            : null,
-        'parts_replaced': inventoryEnabled && _serializeParts().isNotEmpty
-            ? _serializeParts()
-            : null,
-        // Pas de parts_consumed ici — le déstockage se fait uniquement à la clôture
-      });
-      await DbApiService.instance.saveActiveInterventionSession(widget.issue.id, {
-        if (_diagnosisController.text.trim().isNotEmpty)
-          'diagnosis': _diagnosisController.text.trim(),
-        if (_actionsController.text.trim().isNotEmpty)
-          'action_taken': _actionsController.text.trim(),
-        if (_outcomeController.text.trim().isNotEmpty)
-          'outcome': _outcomeController.text.trim(),
-      });
-      await _refreshAfterMutation();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Row(children: [
-          const Icon(Icons.save, color: Colors.white),
-          const SizedBox(width: 12),
-          Text(l10n.techProgressSaved),
-        ]),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-      ));
-      setState(() => _isDirty = false);
-      Navigator.pop(context);
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.commonApiError),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _doSaveAndCloseIntervention(Issue issue) async {
+  Future<void> _doSaveAndClose(Issue issue, bool inventoryEnabled) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isClosingSession = true);
     try {
+      // 1. Met à jour l'incident
+      await DbApiService.instance.updateIssue(issue.id, {
+        'status':              'In Progress',
+        'assigned_technician': _currentTechnicianName,
+        if (_diagnosisController.text.trim().isNotEmpty)
+          'diagnosis': _diagnosisController.text.trim(),
+        if (_actionsController.text.trim().isNotEmpty)
+          'actions': _actionsController.text.trim(),
+        if (inventoryEnabled && _serializeParts().isNotEmpty)
+          'parts_replaced': _serializeParts(),
+      });
+
+      // 2. Ferme la session active
       final sessionRaw = await DbApiService.instance.closeActiveInterventionSession(
         issue.id,
         {
@@ -1575,13 +1539,15 @@ class _TechnicianInterventionUpdateScreenState
           'outcome': _outcomeController.text.trim().isNotEmpty
               ? _outcomeController.text.trim()
               : null,
-          'next_actions': _nextActionsController.text.trim(),
+          'next_actions': _planNextAction && _nextActionsController.text.trim().isNotEmpty
+              ? _nextActionsController.text.trim()
+              : null,
         },
       );
+
+      // 3. Génère le PDF de boucle
       final session = IssueInterventionSession.fromApiJson(sessionRaw);
       final user = AuthService().currentUser;
-
-      // Génère le PDF de cette boucle
       final pdfBytes = await PdfReportService.generateInterventionSessionReport(
         session: session,
         issueId: issue.id,
@@ -1592,7 +1558,7 @@ class _TechnicianInterventionUpdateScreenState
             : '—',
       );
 
-      // Archive sur l'équipement si disponible
+      // 4. Archive PDF si équipement connu
       if (issue.equipmentId != null && issue.equipmentId!.isNotEmpty) {
         try {
           await DbApiService.instance.archiveInterventionPdf(
