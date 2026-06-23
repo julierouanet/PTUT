@@ -452,7 +452,7 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-        header: (context) => _buildInterventionHeader(now, generatedByName, generatedByRole, isFinalized),
+        header: (context) => _buildInterventionHeader(now, generatedByName, generatedByRole, isFinalized, issueId),
         footer: (context) => _buildFooter(context),
         build: (context) => [
           // ── Section 1 : Identité incident + équipement ─────────────────
@@ -507,7 +507,8 @@ class PdfReportService {
   }
 
   // En-tête dédié du rapport d'intervention
-  static pw.Widget _buildInterventionHeader(DateTime now, String byName, String byRole, bool isFinalized) {
+  static pw.Widget _buildInterventionHeader(
+      DateTime now, String byName, String byRole, bool isFinalized, String issueId) {
     return pw.Column(children: [
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -526,6 +527,8 @@ class PdfReportService {
                         color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
                 pw.Text('Hôpital de District de Kabutare — Rwanda',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('District Hospital: Kabutare — Formulaire N° INC-$issueId',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
             ),

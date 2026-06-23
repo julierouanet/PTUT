@@ -2078,6 +2078,7 @@
   "interventionReportArchived": "PDF archived in the equipment record",
   "interventionReportLockedHint": "Finalized report: editing restricted to administrators",
   "interventionReportEmptyReadonly": "No intervention report has been written yet",
+  "techWorkOrderReportGenerationFailed": "Issue closed, but the intervention report could not be generated automatically. You can create it manually from the issue detail screen.",
 
   "reportsMaintenanceCost": "Maintenance cost",
   "reportsMaintenanceCostHint": "Sum of finalized reports (period)",

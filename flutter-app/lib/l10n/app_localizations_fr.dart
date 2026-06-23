@@ -5337,6 +5337,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Aucun rapport d\'intervention n\'a encore été rédigé';
 
   @override
+  String get techWorkOrderReportGenerationFailed =>
+      'Incident clôturé, mais le rapport d\'intervention n\'a pas pu être généré automatiquement. Vous pouvez le créer manuellement depuis la fiche incident.';
+
+  @override
   String get reportsMaintenanceCost => 'Coût de maintenance';
 
   @override

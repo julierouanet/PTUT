@@ -7,7 +7,9 @@ import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
 import '../services/feature_service.dart';
 import '../services/notification_service.dart';
+import '../services/pdf_report_service.dart';
 import '../models/issue.dart';
+import '../models/issue_intervention_report.dart';
 import '../models/inventory_item.dart';
 import '../widgets/urgency_badge.dart';
 
@@ -1320,6 +1322,7 @@ class _TechnicianInterventionUpdateScreenState
         if (inventoryEnabled && _selectedParts.isNotEmpty)
           'parts_consumed': _buildPartsConsumed(),
       });
+      final reportOk = await _generateAndFinalizeReport(issue, finalActions);
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
@@ -1332,6 +1335,13 @@ class _TechnicianInterventionUpdateScreenState
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
+      if (!reportOk) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.techWorkOrderReportGenerationFailed),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
       _stopTimer();
       setState(() => _isDirty = false);
       Navigator.pop(context);
@@ -1344,6 +1354,56 @@ class _TechnicianInterventionUpdateScreenState
       ));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Génération automatique du rapport d'intervention à la clôture
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// Construit, sauvegarde et finalise le rapport d'intervention à partir des
+  /// données déjà saisies sur cet écran, puis archive son PDF sur l'équipement
+  /// si applicable. N'échoue jamais : la clôture du Bon de Travail ne doit pas
+  /// dépendre de cette étape annexe.
+  Future<bool> _generateAndFinalizeReport(Issue issue, String? finalActions) async {
+    try {
+      final takenAt = _currentIssueTakenAt ??
+          (issue.takenAt != null ? DateTime.tryParse(issue.takenAt!) : null);
+      final durationHours = takenAt == null
+          ? null
+          : double.parse(
+              (DateTime.now().difference(takenAt).inMinutes / 60.0).toStringAsFixed(1));
+      final diagnosis = _diagnosisController.text.trim();
+
+      await DbApiService.instance.saveInterventionReport(issue.id, {
+        'summary': finalActions,
+        'root_cause': diagnosis.isNotEmpty ? diagnosis : null,
+        'duration_hours': durationHours,
+        'returned_to_service_at': DateTime.now().toIso8601String().split('T').first,
+        'final_equipment_status': 'Operational',
+        'recommendations': null,
+        'estimated_cost': null,
+      });
+      final raw = await DbApiService.instance.finalizeInterventionReport(issue.id);
+      final report = IssueInterventionReport.fromApiJson(raw);
+
+      final user = AuthService().currentUser;
+      final pdfBytes = await PdfReportService.generateInterventionReport(
+        report: report.toReportPdfJson(),
+        issueId: issue.id,
+        generatedByName: user?.name ?? '—',
+        generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
+      );
+
+      final equipmentId = report.equipmentId;
+      if (equipmentId != null && equipmentId.isNotEmpty) {
+        await DbApiService.instance.archiveInterventionPdf(
+          equipmentId, pdfBytes, 'rapport_intervention_${issue.id}.pdf',
+        );
+      }
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 }

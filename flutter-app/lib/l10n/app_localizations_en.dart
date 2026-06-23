@@ -5282,6 +5282,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'No intervention report has been written yet';
 
   @override
+  String get techWorkOrderReportGenerationFailed =>
+      'Issue closed, but the intervention report could not be generated automatically. You can create it manually from the issue detail screen.';
+
+  @override
   String get reportsMaintenanceCost => 'Maintenance cost';
 
   @override

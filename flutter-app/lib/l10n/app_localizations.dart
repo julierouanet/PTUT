@@ -9774,6 +9774,12 @@ abstract class AppLocalizations {
   /// **'Aucun rapport d\'intervention n\'a encore été rédigé'**
   String get interventionReportEmptyReadonly;
 
+  /// No description provided for @techWorkOrderReportGenerationFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident clôturé, mais le rapport d\'intervention n\'a pas pu être généré automatiquement. Vous pouvez le créer manuellement depuis la fiche incident.'**
+  String get techWorkOrderReportGenerationFailed;
+
   /// No description provided for @reportsMaintenanceCost.
   ///
   /// In fr, this message translates to:

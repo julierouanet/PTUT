@@ -2101,6 +2101,7 @@
   "interventionReportArchived": "PDF archivé dans la fiche équipement",
   "interventionReportLockedHint": "Rapport finalisé : modification réservée aux administrateurs",
   "interventionReportEmptyReadonly": "Aucun rapport d'intervention n'a encore été rédigé",
+  "techWorkOrderReportGenerationFailed": "Incident clôturé, mais le rapport d'intervention n'a pas pu être généré automatiquement. Vous pouvez le créer manuellement depuis la fiche incident.",
 
   "reportsMaintenanceCost": "Coût de maintenance",
   "reportsMaintenanceCostHint": "Somme des rapports finalisés (période)",
