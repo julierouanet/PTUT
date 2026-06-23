@@ -1274,23 +1274,11 @@ abstract class AppLocalizations {
   /// **'Ex: Capteur O2, Pompe a vide...'**
   String get techPartsHint;
 
-  /// No description provided for @techSave.
-  ///
-  /// In fr, this message translates to:
-  /// **'Sauvegarder'**
-  String get techSave;
-
   /// No description provided for @techMarkResolved.
   ///
   /// In fr, this message translates to:
   /// **'Marquer resolu'**
   String get techMarkResolved;
-
-  /// No description provided for @techProgressSaved.
-  ///
-  /// In fr, this message translates to:
-  /// **'Progression sauvegardee'**
-  String get techProgressSaved;
 
   /// No description provided for @techIssueResolved.
   ///
@@ -10230,11 +10218,17 @@ abstract class AppLocalizations {
   /// **'Décrivez les actions nécessaires pour la prochaine intervention...'**
   String get techNextActionsHint;
 
-  /// No description provided for @techNextActionsMinLength.
+  /// No description provided for @techSaveAndCloseButton.
   ///
   /// In fr, this message translates to:
-  /// **'Les actions à réaliser doivent contenir au moins 10 caractères'**
-  String get techNextActionsMinLength;
+  /// **'Sauvegarder et fermer la session'**
+  String get techSaveAndCloseButton;
+
+  /// No description provided for @techPlanNextActionToggle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Planifier une prochaine action'**
+  String get techPlanNextActionToggle;
 
   /// No description provided for @techCompleteDiagnosisButton.
   ///
@@ -10253,12 +10247,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Informations complémentaires au diagnostic initial...'**
   String get techCompleteDiagnosisHint;
-
-  /// No description provided for @techSaveAndCloseInterventionButton.
-  ///
-  /// In fr, this message translates to:
-  /// **'Sauvegarder et fermer l\'intervention'**
-  String get techSaveAndCloseInterventionButton;
 
   /// No description provided for @techSaveAndCloseSuccess.
   ///

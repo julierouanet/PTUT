@@ -635,13 +635,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techPartsHint => 'Ex: Capteur O2, Pompe a vide...';
 
   @override
-  String get techSave => 'Sauvegarder';
-
-  @override
   String get techMarkResolved => 'Marquer resolu';
-
-  @override
-  String get techProgressSaved => 'Progression sauvegardee';
 
   @override
   String get techIssueResolved => 'Incident marque comme resolu !';
@@ -5592,8 +5586,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Décrivez les actions nécessaires pour la prochaine intervention...';
 
   @override
-  String get techNextActionsMinLength =>
-      'Les actions à réaliser doivent contenir au moins 10 caractères';
+  String get techSaveAndCloseButton => 'Sauvegarder et fermer la session';
+
+  @override
+  String get techPlanNextActionToggle => 'Planifier une prochaine action';
 
   @override
   String get techCompleteDiagnosisButton => 'Compléter le diagnostic';
@@ -5604,10 +5600,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get techCompleteDiagnosisHint =>
       'Informations complémentaires au diagnostic initial...';
-
-  @override
-  String get techSaveAndCloseInterventionButton =>
-      'Sauvegarder et fermer l\'intervention';
 
   @override
   String get techSaveAndCloseSuccess =>

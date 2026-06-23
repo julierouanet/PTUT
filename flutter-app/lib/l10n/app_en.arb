@@ -2214,7 +2214,6 @@
   "techCompleteDiagnosisButton": "Add to diagnosis",
   "techCompleteDiagnosisTitle": "Diagnosis addendum",
   "techCompleteDiagnosisHint": "Additional information to the initial diagnosis...",
-  "techSaveAndCloseInterventionButton": "Save and close intervention",
   "techSaveAndCloseSuccess": "Intervention closed. Issue remains in progress.",
   "techActionTakenLabel": "Action taken today",
   "techActionTakenHint": "Describe the actions taken during this visit...",

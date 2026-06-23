@@ -631,13 +631,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techPartsHint => 'E.g.: O2 sensor, Vacuum pump...';
 
   @override
-  String get techSave => 'Save';
-
-  @override
   String get techMarkResolved => 'Mark resolved';
-
-  @override
-  String get techProgressSaved => 'Progress saved';
 
   @override
   String get techIssueResolved => 'Issue marked as resolved!';
@@ -5533,8 +5527,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Describe the actions needed for the next intervention...';
 
   @override
-  String get techNextActionsMinLength =>
-      'Actions to perform must be at least 10 characters';
+  String get techSaveAndCloseButton => 'Save and close session';
+
+  @override
+  String get techPlanNextActionToggle => 'Plan next action';
 
   @override
   String get techCompleteDiagnosisButton => 'Add to diagnosis';
@@ -5545,10 +5541,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get techCompleteDiagnosisHint =>
       'Additional information to the initial diagnosis...';
-
-  @override
-  String get techSaveAndCloseInterventionButton =>
-      'Save and close intervention';
 
   @override
   String get techSaveAndCloseSuccess =>

@@ -413,7 +413,7 @@ class _TechnicianInterventionUpdateScreenState
                 _planNextAction = v;
                 if (!v) _nextActionsController.clear();
               }),
-              activeColor: AppColors.primary,
+              activeThumbColor: AppColors.primary,
             ),
             const SizedBox(width: 6),
             Text(l10n.techPlanNextActionToggle,
@@ -1519,29 +1519,28 @@ class _TechnicianInterventionUpdateScreenState
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isClosingSession = true);
     try {
+      final diagnosis   = _diagnosisController.text.trim();
+      final actions     = _actionsController.text.trim();
+      final outcome     = _outcomeController.text.trim();
+      final nextActions = _planNextAction ? _nextActionsController.text.trim() : '';
+      final serialized  = inventoryEnabled ? _serializeParts() : '';
+
       // 1. Met à jour l'incident
       await DbApiService.instance.updateIssue(issue.id, {
         'status':              'In Progress',
         'assigned_technician': _currentTechnicianName,
-        if (_diagnosisController.text.trim().isNotEmpty)
-          'diagnosis': _diagnosisController.text.trim(),
-        if (_actionsController.text.trim().isNotEmpty)
-          'actions': _actionsController.text.trim(),
-        if (inventoryEnabled && _serializeParts().isNotEmpty)
-          'parts_replaced': _serializeParts(),
+        if (diagnosis.isNotEmpty)  'diagnosis': diagnosis,
+        if (actions.isNotEmpty)    'actions':   actions,
+        if (serialized.isNotEmpty) 'parts_replaced': serialized,
       });
 
       // 2. Ferme la session active
       final sessionRaw = await DbApiService.instance.closeActiveInterventionSession(
         issue.id,
         {
-          'resolved': false,
-          'outcome': _outcomeController.text.trim().isNotEmpty
-              ? _outcomeController.text.trim()
-              : null,
-          'next_actions': _planNextAction && _nextActionsController.text.trim().isNotEmpty
-              ? _nextActionsController.text.trim()
-              : null,
+          'resolved':     false,
+          'outcome':      outcome.isNotEmpty     ? outcome     : null,
+          'next_actions': nextActions.isNotEmpty ? nextActions : null,
         },
       );
 
@@ -1553,9 +1552,7 @@ class _TechnicianInterventionUpdateScreenState
         issueId: issue.id,
         equipmentName: issue.equipmentName ?? issue.id,
         generatedByName: user?.name ?? '—',
-        generatedByRole: user?.roles.isNotEmpty == true
-            ? user!.roles.first.displayName
-            : '—',
+        generatedByRole: user?.roles.firstOrNull?.displayName ?? '—',
       );
 
       // 4. Archive PDF si équipement connu
