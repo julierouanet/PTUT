@@ -10343,6 +10343,90 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Erreur lors de la génération du PDF de boucle'**
   String get interventionSessionPdfError;
+
+  /// No description provided for @commonYes.
+  ///
+  /// In fr, this message translates to:
+  /// **'Oui'**
+  String get commonYes;
+
+  /// No description provided for @commonNo.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non'**
+  String get commonNo;
+
+  /// No description provided for @commonSkip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ignorer'**
+  String get commonSkip;
+
+  /// No description provided for @techViewLoopPdfQuestion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous consulter le rapport de cette boucle ?'**
+  String get techViewLoopPdfQuestion;
+
+  /// No description provided for @techViewReportPdfQuestion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voulez-vous consulter le compte-rendu d\'intervention ?'**
+  String get techViewReportPdfQuestion;
+
+  /// No description provided for @techAttachDocumentsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents complémentaires'**
+  String get techAttachDocumentsTitle;
+
+  /// No description provided for @techAttachDocumentsSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?'**
+  String get techAttachDocumentsSubtitle;
+
+  /// No description provided for @techAttachDocumentsSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents ajoutés à l\'incident'**
+  String get techAttachDocumentsSuccess;
+
+  /// No description provided for @interventionDocumentsSectionTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents d\'intervention'**
+  String get interventionDocumentsSectionTitle;
+
+  /// No description provided for @interventionDocumentsEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun document d\'intervention pour cet incident.'**
+  String get interventionDocumentsEmpty;
+
+  /// No description provided for @interventionDocumentsLoadError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors du chargement des documents'**
+  String get interventionDocumentsLoadError;
+
+  /// No description provided for @reportsDocumentedClosureRate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taux de clôture documentée'**
+  String get reportsDocumentedClosureRate;
+
+  /// No description provided for @reportsDocumentedClosureRateNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Données insuffisantes'**
+  String get reportsDocumentedClosureRateNoData;
+
+  /// No description provided for @reportsDocumentedClosureRateHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Part des incidents clôturés avec au moins un document PDF archivé'**
+  String get reportsDocumentedClosureRateHint;
 }
 
 class _AppLocalizationsDelegate

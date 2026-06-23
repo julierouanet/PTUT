@@ -6,7 +6,9 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 const { TECH_ROLES, rolesCsv, hasRole } = require('../utils/roles');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET, UPLOAD_DIR } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
-const { photoUpload } = require('../middleware/upload');
+const { photoUpload, documentUpload } = require('../middleware/upload');
+const { VALID_DOC_TYPES } = require('../utils/document_types');
+const { insertEquipmentDocument, sendStoredDocument } = require('../utils/documents_repo');
 
 // ── Helpers d'envoi d'email vers auth-service (fire-and-forget) ───────────────
 
@@ -90,7 +92,9 @@ router.get('/', verifyToken, (req, res) => {
   let query = `
     SELECT i.*,
            r.duration_hours AS report_duration_hours,
-           r.estimated_cost AS report_estimated_cost
+           r.estimated_cost AS report_estimated_cost,
+           (SELECT COUNT(*) FROM equipment_documents
+              WHERE issue_id = i.id AND deleted_at IS NULL) AS documents_count
     FROM issues i
     LEFT JOIN issue_intervention_reports r
       ON r.issue_id = i.id AND r.report_status = 'finalized'
@@ -769,6 +773,86 @@ router.get('/:id/photos/:photo_id/download', verifyToken, (req, res) => {
       res.status(404).json({ error: 'Fichier introuvable sur le serveur' });
     }
   });
+});
+
+// ── GET /api/issues/:id/documents ─────────────────────────────────────────────
+// Documents PDF d'intervention (rapport de boucle + compte-rendu final + pièces
+// jointes complémentaires) liés à l'incident via issue_id.
+router.get('/:id/documents', verifyToken, (req, res) => {
+  const db = getDb();
+  const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  const docs = db.prepare(`
+    SELECT id, document_type, original_name, mime_type, file_size_kb,
+           uploader_name, uploaded_at
+    FROM equipment_documents
+    WHERE issue_id = ? AND deleted_at IS NULL
+    ORDER BY uploaded_at DESC
+  `).all(req.params.id);
+
+  res.json(docs);
+});
+
+// ── POST /api/issues/:id/documents (multi-fichiers, max 5) ───────────────────
+router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
+  documentUpload.array('files', 5),
+  (req, res) => {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'Aucun fichier reçu (champ "files")' });
+    }
+
+    const db = getDb();
+    const issue = db.prepare('SELECT id, equipment_id FROM issues WHERE id = ?').get(req.params.id);
+    if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+    const docType = req.body.type || 'completion';
+    if (!VALID_DOC_TYPES.includes(docType)) {
+      return res.status(400).json({
+        error: `Type invalide. Valeurs acceptées : ${VALID_DOC_TYPES.join(', ')}`,
+      });
+    }
+
+    const inserted = req.files.map((file) => insertEquipmentDocument(db, {
+      equipmentId: issue.equipment_id,
+      issueId: req.params.id,
+      docType,
+      file,
+      userId: req.user.id,
+      userName: req.user.name,
+    }));
+
+    logAction({
+      user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+      action: 'upload_intervention_document',
+      target_type: 'issue', target_id: req.params.id, target_name: req.params.id,
+      details: JSON.stringify({ count: inserted.length, doc_type: docType }),
+      ...extractReqMeta(req),
+    });
+
+    res.status(201).json(inserted);
+  }
+);
+
+// ── GET /api/issues/:id/documents/:doc_id/download ────────────────────────────
+router.get('/:id/documents/:doc_id/download', verifyToken, (req, res) => {
+  const db = getDb();
+  const doc = db.prepare(`
+    SELECT * FROM equipment_documents
+    WHERE id = ? AND issue_id = ? AND deleted_at IS NULL
+  `).get(req.params.doc_id, req.params.id);
+
+  if (!doc) return res.status(404).json({ error: 'Document introuvable' });
+
+  logAction({
+    user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'download_intervention_document',
+    target_type: 'issue', target_id: req.params.id, target_name: doc.original_name,
+    details: JSON.stringify({ doc_id: doc.id }),
+    ...extractReqMeta(req),
+  });
+
+  sendStoredDocument(res, doc);
 });
 
 // DELETE /api/issues/:id (admin seulement)

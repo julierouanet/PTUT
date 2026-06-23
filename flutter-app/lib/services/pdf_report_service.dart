@@ -42,6 +42,7 @@ class PdfReportService {
     required List<MapEntry<String, int>> topDepartments,
     required List<InventoryItem> inventory,
     double maintenanceCost = 0,
+    double? documentedClosureRatePct,
   }) async {
     final doc  = pw.Document();
     final now  = DateTime.now();
@@ -295,6 +296,27 @@ class PdfReportService {
                 pw.Text(
                   'Somme des coûts estimés (estimated_cost) des rapports d\'intervention '
                   'finalisés sur la période.',
+                  style: const pw.TextStyle(fontSize: 7, color: _textMuted),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Text(
+                  documentedClosureRatePct == null
+                      ? 'Taux de clôture documentée : Données insuffisantes '
+                        '(aucun incident clôturé sur la période)'
+                      : 'Taux de clôture documentée : '
+                        '${documentedClosureRatePct.toStringAsFixed(0)}%',
+                  style: pw.TextStyle(
+                    fontSize: 10,
+                    fontWeight: pw.FontWeight.bold,
+                    color: documentedClosureRatePct == null
+                        ? _textMuted
+                        : (documentedClosureRatePct >= 80 ? _success : _warning),
+                  ),
+                ),
+                pw.SizedBox(height: 2),
+                pw.Text(
+                  'Part des incidents clôturés (Completed / Verified / Closed) sur la '
+                  'période disposant d\'au moins un document PDF d\'intervention archivé.',
                   style: const pw.TextStyle(fontSize: 7, color: _textMuted),
                 ),
               ],

@@ -5658,4 +5658,52 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get interventionSessionPdfError =>
       'Erreur lors de la génération du PDF de boucle';
+
+  @override
+  String get commonYes => 'Oui';
+
+  @override
+  String get commonNo => 'Non';
+
+  @override
+  String get commonSkip => 'Ignorer';
+
+  @override
+  String get techViewLoopPdfQuestion =>
+      'Voulez-vous consulter le rapport de cette boucle ?';
+
+  @override
+  String get techViewReportPdfQuestion =>
+      'Voulez-vous consulter le compte-rendu d\'intervention ?';
+
+  @override
+  String get techAttachDocumentsTitle => 'Documents complémentaires';
+
+  @override
+  String get techAttachDocumentsSubtitle =>
+      'Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?';
+
+  @override
+  String get techAttachDocumentsSuccess => 'Documents ajoutés à l\'incident';
+
+  @override
+  String get interventionDocumentsSectionTitle => 'Documents d\'intervention';
+
+  @override
+  String get interventionDocumentsEmpty =>
+      'Aucun document d\'intervention pour cet incident.';
+
+  @override
+  String get interventionDocumentsLoadError =>
+      'Erreur lors du chargement des documents';
+
+  @override
+  String get reportsDocumentedClosureRate => 'Taux de clôture documentée';
+
+  @override
+  String get reportsDocumentedClosureRateNoData => 'Données insuffisantes';
+
+  @override
+  String get reportsDocumentedClosureRateHint =>
+      'Part des incidents clôturés avec au moins un document PDF archivé';
 }

@@ -815,6 +815,48 @@ function initTables() {
       WHERE deleted_at IS NULL;
   `);
 
+  // ── Migration : equipment_documents.issue_id (documents PDF d'intervention) ──
+  // equipment_id devient nullable (un document peut être lié à un incident sans
+  // équipement) et issue_id est ajouté. SQLite ne permet pas de retirer un NOT NULL
+  // via ALTER TABLE : reconstruction de table, idempotente (vérifiée via PRAGMA
+  // table_info). Les documents archivés AVANT cette migration ont issue_id NULL :
+  // ils restent visibles dans l'onglet Documents de l'équipement mais sont absents
+  // du badge/KPI/section "documents d'intervention" côté incident (pas de backfill
+  // automatisable, aucune correspondance fiable equipment_id -> issue_id).
+  const eqDocsCols = db.prepare("PRAGMA table_info(equipment_documents)").all();
+  if (!eqDocsCols.some((c) => c.name === 'issue_id')) {
+    db.exec(`
+      CREATE TABLE equipment_documents_new (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        equipment_id  TEXT REFERENCES equipment(id) ON DELETE CASCADE,
+        issue_id      TEXT REFERENCES issues(id) ON DELETE CASCADE,
+        document_type TEXT NOT NULL DEFAULT 'technical',
+        original_name TEXT NOT NULL,
+        stored_name   TEXT NOT NULL UNIQUE,
+        mime_type     TEXT NOT NULL,
+        file_size_kb  INTEGER NOT NULL,
+        uploaded_by   TEXT NOT NULL,
+        uploader_name TEXT NOT NULL,
+        uploaded_at   TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+        deleted_at    TEXT
+      );
+      INSERT INTO equipment_documents_new
+        (id, equipment_id, document_type, original_name, stored_name, mime_type,
+         file_size_kb, uploaded_by, uploader_name, uploaded_at, deleted_at)
+      SELECT id, equipment_id, document_type, original_name, stored_name, mime_type,
+             file_size_kb, uploaded_by, uploader_name, uploaded_at, deleted_at
+      FROM equipment_documents;
+      DROP TABLE equipment_documents;
+      ALTER TABLE equipment_documents_new RENAME TO equipment_documents;
+      CREATE INDEX IF NOT EXISTS idx_eq_docs_equipment
+        ON equipment_documents(equipment_id)
+        WHERE deleted_at IS NULL;
+      CREATE INDEX IF NOT EXISTS idx_eq_docs_issue
+        ON equipment_documents(issue_id)
+        WHERE deleted_at IS NULL;
+    `);
+  }
+
   // ── Rapports d'intervention par incident (1:1 avec issues) ─────────────────
   // Construit tout au long de l'intervention puis figé à la clôture.
   // Ne duplique PAS diagnosis/actions/parts_replaced : ces champs sont lus en

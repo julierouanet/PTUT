@@ -1,6 +1,10 @@
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:printing/printing.dart';
 import '../l10n/app_localizations.dart';
+import '../utils/mime_from_extension.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
@@ -1515,6 +1519,85 @@ class _TechnicianInterventionUpdateScreenState
     }
   }
 
+  /// Propose au technicien de consulter immédiatement le PDF généré.
+  /// `null` (back/dismiss) est traité comme un refus — jamais comme un crash.
+  Future<void> _promptViewPdf(
+    AppLocalizations l10n, {
+    required String title,
+    required Uint8List pdfBytes,
+    required String fileName,
+  }) async {
+    if (!mounted) return;
+    final view = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonNo)),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.commonYes)),
+        ],
+      ),
+    );
+    if (view == true) {
+      await Printing.layoutPdf(onLayout: (_) async => pdfBytes, name: fileName);
+    }
+  }
+
+  /// Propose au technicien de joindre jusqu'à 5 documents complémentaires
+  /// (PDF/JPEG/PNG) à l'incident. Sélection annulée ou vide → aucun appel réseau.
+  Future<void> _promptAttachDocuments(AppLocalizations l10n, String issueId) async {
+    if (!mounted) return;
+    final wantsUpload = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.techAttachDocumentsTitle),
+        content: Text(l10n.techAttachDocumentsSubtitle),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonSkip)),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.commonYes)),
+        ],
+      ),
+    );
+    if (wantsUpload != true) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final picked = result.files.take(5).where((f) => f.bytes != null).toList();
+    if (picked.isEmpty) return;
+
+    try {
+      await DbApiService.instance.uploadInterventionDocuments(
+        issueId,
+        picked.map((f) => (
+          bytes: Uint8List.fromList(f.bytes!),
+          name: f.name,
+          mimeType: mimeFromExtension(f.extension ?? ''),
+        )).toList(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.techAttachDocumentsSuccess),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${l10n.commonApiError}: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
   Future<void> _doSaveAndClose(Issue issue, bool inventoryEnabled) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isClosingSession = true);
@@ -1534,7 +1617,14 @@ class _TechnicianInterventionUpdateScreenState
         if (serialized.isNotEmpty) 'parts_replaced': serialized,
       });
 
-      // 2. Ferme la session active
+      // 2. S'assure qu'une session active existe (créée si besoin) avant de la fermer
+      await DbApiService.instance.saveActiveInterventionSession(issue.id, {
+        if (diagnosis.isNotEmpty) 'diagnosis':    diagnosis,
+        if (actions.isNotEmpty)   'action_taken': actions,
+        if (outcome.isNotEmpty)   'outcome':      outcome,
+      });
+
+      // 3. Ferme la session active
       final sessionRaw = await DbApiService.instance.closeActiveInterventionSession(
         issue.id,
         {
@@ -1544,7 +1634,7 @@ class _TechnicianInterventionUpdateScreenState
         },
       );
 
-      // 3. Génère le PDF de boucle
+      // 4. Génère le PDF de boucle
       final session = IssueInterventionSession.fromApiJson(sessionRaw);
       final user = AuthService().currentUser;
       final pdfBytes = await PdfReportService.generateInterventionSessionReport(
@@ -1555,16 +1645,11 @@ class _TechnicianInterventionUpdateScreenState
         generatedByRole: user?.roles.firstOrNull?.displayName ?? '—',
       );
 
-      // 4. Archive PDF si équipement connu
-      if (issue.equipmentId != null && issue.equipmentId!.isNotEmpty) {
-        try {
-          await DbApiService.instance.archiveInterventionPdf(
-            issue.equipmentId!,
-            pdfBytes,
-            'rapport_boucle_${issue.id}_${session.loopNumber}.pdf',
-          );
-        } catch (_) { /* archivage non bloquant */ }
-      }
+      // 5. Archive le PDF sur l'incident (rattaché à l'équipement côté serveur si connu)
+      final loopFileName = 'rapport_boucle_${issue.id}_${session.loopNumber}.pdf';
+      try {
+        await DbApiService.instance.archiveInterventionPdf(issue.id, pdfBytes, loopFileName);
+      } catch (_) { /* archivage non bloquant */ }
 
       await _refreshAfterMutation();
       if (!mounted) return;
@@ -1578,6 +1663,16 @@ class _TechnicianInterventionUpdateScreenState
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
+
+      // Propose la consultation immédiate du PDF de boucle avant de quitter.
+      await _promptViewPdf(
+        l10n,
+        title: l10n.techViewLoopPdfQuestion,
+        pdfBytes: pdfBytes,
+        fileName: loopFileName,
+      );
+      if (!mounted) return;
+
       _stopTimer();
       setState(() => _isDirty = false);
       Navigator.pop(context);
@@ -1634,7 +1729,7 @@ class _TechnicianInterventionUpdateScreenState
         if (inventoryEnabled && _selectedParts.isNotEmpty)
           'parts_consumed': _buildPartsConsumed(),
       });
-      final reportOk = await _generateAndFinalizeReport(issue, finalActions);
+      final reportPdfBytes = await _generateAndFinalizeReport(issue, finalActions);
       await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1646,13 +1741,27 @@ class _TechnicianInterventionUpdateScreenState
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
-      if (!reportOk) {
+      if (reportPdfBytes == null) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l10n.techWorkOrderReportGenerationFailed),
           backgroundColor: AppColors.warning,
           behavior: SnackBarBehavior.floating,
         ));
+      } else {
+        await _promptViewPdf(
+          l10n,
+          title: l10n.techViewReportPdfQuestion,
+          pdfBytes: reportPdfBytes,
+          fileName: 'rapport_intervention_${issue.id}.pdf',
+        );
+        if (!mounted) return;
       }
+
+      // Upload optionnel de documents complémentaires, quelle que soit la
+      // réponse au dialogue de visualisation du PDF ci-dessus.
+      await _promptAttachDocuments(l10n, issue.id);
+      if (!mounted) return;
+
       _stopTimer();
       setState(() => _isDirty = false);
       Navigator.pop(context);
@@ -1673,10 +1782,12 @@ class _TechnicianInterventionUpdateScreenState
   // ─────────────────────────────────────────────────────────────────────────────
 
   /// Construit, sauvegarde et finalise le rapport d'intervention à partir des
-  /// données déjà saisies sur cet écran, puis archive son PDF sur l'équipement
-  /// si applicable. N'échoue jamais : la clôture du Bon de Travail ne doit pas
-  /// dépendre de cette étape annexe.
-  Future<bool> _generateAndFinalizeReport(Issue issue, String? finalActions) async {
+  /// données déjà saisies sur cet écran, puis archive son PDF sur l'incident.
+  /// N'échoue jamais : la clôture du Bon de Travail ne doit pas dépendre de
+  /// cette étape annexe. Retourne les octets du PDF généré (pour proposer sa
+  /// consultation immédiate sans le régénérer), ou `null` en cas d'échec.
+  Future<Uint8List?> _generateAndFinalizeReport(
+      Issue issue, String? finalActions) async {
     try {
       final takenAt = _currentIssueTakenAt ??
           (issue.takenAt != null ? DateTime.tryParse(issue.takenAt!) : null);
@@ -1721,15 +1832,12 @@ class _TechnicianInterventionUpdateScreenState
         generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
       );
 
-      final equipmentId = report.equipmentId;
-      if (equipmentId != null && equipmentId.isNotEmpty) {
-        await DbApiService.instance.archiveInterventionPdf(
-          equipmentId, pdfBytes, 'rapport_intervention_${issue.id}.pdf',
-        );
-      }
-      return true;
+      await DbApiService.instance.archiveInterventionPdf(
+        issue.id, pdfBytes, 'rapport_intervention_${issue.id}.pdf',
+      );
+      return pdfBytes;
     } catch (_) {
-      return false;
+      return null;
     }
   }
 }

@@ -2255,5 +2255,23 @@
   "interventionSessionBadgeResolved": "Résolu",
   "interventionSessionBadgeNotResolved": "Non résolu, poursuivi",
   "interventionSessionBadgeInProgress": "En cours",
-  "interventionSessionPdfError": "Erreur lors de la génération du PDF de boucle"
+  "interventionSessionPdfError": "Erreur lors de la génération du PDF de boucle",
+
+  "commonYes": "Oui",
+  "commonNo": "Non",
+  "commonSkip": "Ignorer",
+
+  "techViewLoopPdfQuestion": "Voulez-vous consulter le rapport de cette boucle ?",
+  "techViewReportPdfQuestion": "Voulez-vous consulter le compte-rendu d'intervention ?",
+  "techAttachDocumentsTitle": "Documents complémentaires",
+  "techAttachDocumentsSubtitle": "Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?",
+  "techAttachDocumentsSuccess": "Documents ajoutés à l'incident",
+
+  "interventionDocumentsSectionTitle": "Documents d'intervention",
+  "interventionDocumentsEmpty": "Aucun document d'intervention pour cet incident.",
+  "interventionDocumentsLoadError": "Erreur lors du chargement des documents",
+
+  "reportsDocumentedClosureRate": "Taux de clôture documentée",
+  "reportsDocumentedClosureRateNoData": "Données insuffisantes",
+  "reportsDocumentedClosureRateHint": "Part des incidents clôturés avec au moins un document PDF archivé"
 }

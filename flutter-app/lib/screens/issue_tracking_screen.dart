@@ -574,6 +574,17 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             IssueStatusBadge(status: issue.status.displayName),
             const SizedBox(height: 4),
             UrgencyBadge(urgency: issue.urgency, isCompact: true),
+            if (issue.documentsCount > 0) ...[
+              const SizedBox(height: 4),
+              Row(mainAxisSize: MainAxisSize.min, children: [
+                const Icon(Icons.picture_as_pdf_outlined,
+                    size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 3),
+                Text('${issue.documentsCount}',
+                    style: const TextStyle(
+                        color: AppColors.textMuted, fontSize: 11)),
+              ]),
+            ],
           ]),
           const SizedBox(width: 4),
           const Icon(Icons.chevron_right,

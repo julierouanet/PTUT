@@ -914,7 +914,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         ),
     ];
     try {
-      await ApiClient.postMultipartFiles(photosUrl, files);
+      await ApiClient.postMultipartFiles(photosUrl, files, fileField: 'photos');
       return null;
     } catch (e) {
       debugPrint('[IssueForm] Échec upload photos : $e');

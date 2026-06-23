@@ -557,7 +557,7 @@ Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, 
 | `backup_settings` + `backup_history` | :422, :429 | Configuration et historique des sauvegardes SQLite |
 | `equipment_macro_categories` / `equipment_subcategories` | :454, :467 | Taxonomie GMAO (3 macro-catégories) |
 | `pm_protocols` + `_pm_seeded` | :571, :589 | Protocoles PM par type d'équipement + marqueur de seed |
-| `equipment_documents` | :750 | Documents équipement (soft delete `deleted_at`) |
+| `equipment_documents` | :750 | Documents équipement (soft delete `deleted_at`). **[MODIFIÉ 2026-06-23]** colonne `issue_id TEXT` ajoutée (nullable), `equipment_id` rendu nullable (reconstruction de table idempotente) — un document peut désormais être rattaché à un incident sans équipement. Limitation connue : les documents archivés avant cette migration ont `issue_id IS NULL` (pas de backfill, aucune correspondance fiable) — restent visibles dans l'onglet Documents de l'équipement mais absents du badge/KPI/section "documents d'intervention" côté incident. |
 | `issue_photos` | :770 | Photos d'incidents (max 5) |
 | `notifications` | :793 | Notifications in-app |
 
@@ -716,7 +716,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 
 | Methode | Route                       | Auth           | Description                                              |
 |---------|-----------------------------|----------------|----------------------------------------------------------|
-| GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at. LEFT JOIN du rapport finalisé : ajoute `report_duration_hours` et `report_estimated_cost` (KPIs MTTR réel + coût) |
+| GET     | /api/issues                 | Auth           | Liste (filtres: status, department, equipment_id), tri DESC created_at. LEFT JOIN du rapport finalisé : ajoute `report_duration_hours` et `report_estimated_cost` (KPIs MTTR réel + coût). **[MODIFIÉ 2026-06-23]** ajoute aussi `documents_count` (sous-requête `equipment_documents` par `issue_id`), exposé côté Flutter via `Issue.documentsCount` (badge liste + KPI taux de clôture documentée) |
 | GET     | /api/issues/:id             | Auth           | Details incident enrichis : `{ ...issue, equipment, audit_log: [{id,timestamp,user_name,user_role,action,details}], maintenance_records: [{id,equipment_id,date,intervention,technician,is_future}] }` |
 | POST    | /api/issues                 | Auth           | Signaler. Required: `id`, `department`, `type`, `description`, `reporter`, et **(`equipment_id`+`equipment_name`) OU `location_id`**. Auto-derive `issue_category` & `assigned_group` (Biomedical si equipement, Infrastructure si lieu). Status initial = `Reported`. |
 | PUT     | /api/issues/:id             | Admin/Sup/Tech | Modifier (status, assigned_technician, diagnosis, actions, parts_replaced, urgency, taken_at). La 1ʳᵉ transition `status → Completed` pose `resolved_at` (ISO, idempotent via `COALESCE`) et l'inscrit dans l'audit `details`. Champ optionnel `parts_consumed: [{item_id, quantity}]` déclenche un déstockage transactionnel dans `inventory` (rollback si stock insuffisant → 409). |
@@ -736,6 +736,9 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | GET     | /api/issues/:id/sessions    | Auth           | **[NOUVEAU]** Liste toutes les boucles d'intervention (triées `loop_number ASC`). **404** si incident inexistant |
 | PUT     | /api/issues/:id/sessions/active | Admin/Sup/Tech | **[NOUVEAU]** Upsert transactionnel de la session active. **400** si incident n'est pas `In Progress`. Crée (loop_number auto) ou met à jour la session ouverte. Champs : `diagnosis`, `diagnosis_addendum`, `action_taken`, `outcome`. Audit trail `update_intervention_session` |
 | POST    | /api/issues/:id/sessions/active/close | Admin/Sup/Tech | **[NOUVEAU]** Ferme la session active. **400** si pas de session active, ou `resolved=false` sans `next_actions`. Calcule `duration_hours` via `julianday`. Audit trail `close_intervention_session` |
+| GET     | /api/issues/:id/documents   | Auth           | **[NOUVEAU 2026-06-23]** Liste les documents PDF d'intervention de l'incident (`equipment_documents` filtré par `issue_id`). Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at}]` |
+| POST    | /api/issues/:id/documents   | Admin/Sup/Tech | **[NOUVEAU 2026-06-23]** Upload multipart multi-fichiers (champ `files`, max 5, PDF/JPEG/PNG 10 Mo chacun). Body `type` (défaut `completion`, whitelist incluant `intervention`). Rattache aussi à `equipment_id` si l'incident en a un. Audit trail `upload_intervention_document` |
+| GET     | /api/issues/:id/documents/:doc_id/download | Auth | **[NOUVEAU 2026-06-23]** Téléchargement inline d'un document d'intervention. `Content-Disposition: inline`. Audit trail `download_intervention_document` |
 
 ### Lieux (`/api/locations`)
 
@@ -930,8 +933,10 @@ lib/
 │   └── locale_provider.dart     # FR/EN avec SharedPreferences
 ├── widgets/                     # Composants UI reutilisables
 │   ├── issue_category_selector.dart  # Selecteur de categorie avant IssueFormScreen
-│   └── equipment/
-│       └── equipment_documents_tab.dart  # [NOUVEAU] Onglet Documents (2 sections + upload/download/delete)
+│   ├── equipment/
+│   │   └── equipment_documents_tab.dart  # [NOUVEAU] Onglet Documents (2 sections + upload/download/delete)
+│   └── issue/
+│       └── intervention_documents_section.dart  # [NOUVEAU 2026-06-23] Liste des PDF d'intervention de l'incident — remplace InterventionReportSection (formulaire manuel retiré de issue_detail_screen, fichier/modèle conservés pour les routes /report*)
 ├── theme/                       # AppTheme, couleurs
 ├── l10n/                        # Traductions FR/EN
 ├── utils/                       # Utilitaires (file picker)

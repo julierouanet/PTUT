@@ -175,16 +175,18 @@ class ApiClient {
     return _parseMultipartResponse(result);
   }
 
-  /// Upload de plusieurs fichiers (champ multi-values "photos").
+  /// Upload de plusieurs fichiers (champ multi-values, ex. "photos" ou "files").
   static Future<Map<String, dynamic>> postMultipartFiles(
     String url,
-    List<({Uint8List bytes, String name, String mimeType})> files,
-  ) async {
-    final result = await _sendMultipartFiles(url, files);
+    List<({Uint8List bytes, String name, String mimeType})> files, {
+    required String fileField,
+    Map<String, String> fields = const {},
+  }) async {
+    final result = await _sendMultipartFiles(url, files, fileField, fields);
     if (result.statusCode == 401) {
       final refreshed = await _tryRefresh();
       if (refreshed) {
-        final retried = await _sendMultipartFiles(url, files);
+        final retried = await _sendMultipartFiles(url, files, fileField, fields);
         return _parseMultipartResponse(retried);
       }
     }
@@ -214,13 +216,16 @@ class ApiClient {
   static Future<http.StreamedResponse> _sendMultipartFiles(
     String url,
     List<({Uint8List bytes, String name, String mimeType})> files,
+    String fileField,
+    Map<String, String> fields,
   ) async {
     final token = await getAccessToken();
     final request = http.MultipartRequest('POST', Uri.parse(url));
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
+    fields.forEach((k, v) => request.fields[k] = v);
     for (final f in files) {
       request.files.add(http.MultipartFile.fromBytes(
-        'photos', f.bytes,
+        fileField, f.bytes,
         filename: f.name,
         contentType: _mediaType(f.mimeType),
       ));

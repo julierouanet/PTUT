@@ -17,7 +17,7 @@ import '../theme/app_theme.dart';
 import '../widgets/equipment_picker_field.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
-import '../widgets/issue/intervention_report_section.dart';
+import '../widgets/issue/intervention_documents_section.dart';
 import '../widgets/issue/intervention_sessions_timeline.dart';
 import 'equipment_detail_screen.dart';
 
@@ -65,8 +65,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
 
   bool get _isHospitalStaff =>
       _authService.currentRoles.contains(UserRole.hospitalStaff);
-
-  bool get _isAdmin => _authService.currentRoles.contains(UserRole.admin);
 
   /// Le rapport est éditable si l'incident est pris en charge ET que
   /// l'utilisateur est privilégié OU le technicien assigné.
@@ -302,11 +300,9 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               const SizedBox(height: 12),
               _buildSessionsTimelineCard(l10n, detail.issue),
               const SizedBox(height: 12),
-              InterventionReportSection(
-                key: ValueKey('report-${detail.issue.id}'),
+              InterventionDocumentsSection(
+                key: ValueKey('docs-${detail.issue.id}'),
                 issueId: detail.issue.id,
-                canEdit: _canEditReport(detail),
-                isAdmin: _isAdmin,
               ),
             ],
             if (detail.maintenanceRecords.isNotEmpty) ...[

@@ -12,6 +12,7 @@ import '../../services/api_client.dart';
 import '../../services/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/mime_from_extension.dart';
 
 /// Onglet Documents d'un équipement.
 ///
@@ -88,7 +89,7 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
     final bytes = file.bytes;
     if (bytes == null) return;
 
-    final mimeType = _mimeFromExtension(file.extension ?? '');
+    final mimeType = mimeFromExtension(file.extension ?? '');
 
     try {
       await ApiClient.postMultipart(
@@ -353,18 +354,6 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
     );
   }
 
-  static String _mimeFromExtension(String ext) {
-    switch (ext.toLowerCase()) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'pdf':
-      default:
-        return 'application/pdf';
-    }
-  }
 }
 
 // ── Section de documents ──────────────────────────────────────────────────────

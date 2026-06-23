@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
+import '../models/equipment_document.dart';
 import '../models/issue_detail.dart';
 
 /// Service de données — communique avec db-service.
@@ -302,20 +303,54 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  /// Archive le PDF du rapport dans l'historique documentaire de l'équipement.
-  /// Réutilise POST /api/equipment/:id/documents (type 'intervention').
+  /// Archive le PDF du rapport sur l'incident (POST /api/issues/:id/documents,
+  /// type 'intervention'). Le serveur rattache aussi le document à l'équipement
+  /// si l'incident en a un — sinon il reste consultable via l'incident seul.
   Future<void> archiveInterventionPdf(
-    String equipmentId,
+    String issueId,
     Uint8List pdfBytes,
     String fileName,
   ) async {
     await ApiClient.postMultipart(
-      '${ApiConfig.equipmentUrl}/$equipmentId/documents',
+      '${ApiConfig.issuesUrl}/$issueId/documents',
       pdfBytes,
       fileName,
       'application/pdf',
       {'type': 'intervention'},
+      fileField: 'files',
     );
+  }
+
+  /// Liste les documents PDF d'intervention archivés sur un incident.
+  Future<List<EquipmentDocument>> getInterventionDocuments(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/documents';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((j) => EquipmentDocument.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Upload de documents complémentaires (PDF/JPEG/PNG, 5 max) sur un incident.
+  Future<void> uploadInterventionDocuments(
+    String issueId,
+    List<({Uint8List bytes, String name, String mimeType})> files,
+  ) async {
+    await ApiClient.postMultipartFiles(
+      '${ApiConfig.issuesUrl}/$issueId/documents',
+      files,
+      fileField: 'files',
+      fields: const {'type': 'completion'},
+    );
+  }
+
+  /// Télécharge le contenu binaire d'un document d'intervention pour visualisation.
+  Future<Uint8List> downloadInterventionDocument(String issueId, int docId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/documents/$docId/download';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return response.bodyBytes;
   }
 
   // ── BOUCLES D'INTERVENTION (1:N par incident) ──────────────────────────────

@@ -239,11 +239,10 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
       );
 
       final fileName = 'rapport_intervention_${widget.issueId}.pdf';
-      final archived = archive && r.equipmentId != null && r.equipmentId!.isNotEmpty;
 
-      if (archived) {
-        // Archivage dans l'historique documentaire de l'équipement.
-        await DbApiService.instance.archiveInterventionPdf(r.equipmentId!, pdfBytes, fileName);
+      if (archive) {
+        // Archivage sur l'incident (rattaché à l'équipement côté serveur si lié).
+        await DbApiService.instance.archiveInterventionPdf(widget.issueId, pdfBytes, fileName);
         if (mounted) {
           messenger.showSnackBar(SnackBar(
             content: Text(l10n.interventionReportArchived),
@@ -254,7 +253,7 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
 
       // Dialogue interactif : si demandé explicitement, ou si rien n'a été
       // archivé (export simple sans équipement lié). Réutilise les mêmes octets.
-      if (alsoDownload || !archived) {
+      if (alsoDownload || !archive) {
         await Printing.layoutPdf(onLayout: (_) async => pdfBytes, name: fileName);
       }
     } catch (_) {

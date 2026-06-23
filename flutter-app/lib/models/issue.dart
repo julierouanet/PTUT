@@ -187,6 +187,8 @@ class Issue {
   // Données du rapport d'intervention finalisé (LEFT JOIN serveur — KPIs).
   final double? reportDurationHours;
   final double? reportEstimatedCost;
+  // Nombre de documents PDF d'intervention archivés sur cet incident (sous-requête serveur).
+  final int documentsCount;
 
   const Issue({
     required this.id,
@@ -213,6 +215,7 @@ class Issue {
     this.partsReplaced,
     this.reportDurationHours,
     this.reportEstimatedCost,
+    this.documentsCount = 0,
   });
 
   /// Meilleur libellé disponible pour cet incident (équipement, lieu, ou département).
@@ -255,6 +258,7 @@ class Issue {
       partsReplaced:      json['parts_replaced']       as String?,
       reportDurationHours: (json['report_duration_hours'] as num?)?.toDouble(),
       reportEstimatedCost: (json['report_estimated_cost'] as num?)?.toDouble(),
+      documentsCount:     (json['documents_count'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -283,6 +287,7 @@ class Issue {
     String? partsReplaced,
     double? reportDurationHours,
     double? reportEstimatedCost,
+    int? documentsCount,
   }) {
     return Issue(
       id:                 id                ?? this.id,
@@ -309,6 +314,7 @@ class Issue {
       partsReplaced:      partsReplaced     ?? this.partsReplaced,
       reportDurationHours: reportDurationHours ?? this.reportDurationHours,
       reportEstimatedCost: reportEstimatedCost ?? this.reportEstimatedCost,
+      documentsCount:     documentsCount ?? this.documentsCount,
     );
   }
 }

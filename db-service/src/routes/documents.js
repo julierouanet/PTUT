@@ -1,14 +1,12 @@
 const express = require('express');
-const path    = require('path');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { documentUpload } = require('../middleware/upload');
-const { UPLOAD_DIR } = require('../config');
+const { VALID_DOC_TYPES } = require('../utils/document_types');
+const { insertEquipmentDocument, sendStoredDocument } = require('../utils/documents_repo');
 
 const router = express.Router();
-
-const VALID_DOC_TYPES = ['technical', 'intervention', 'certification'];
 
 // ── GET /api/equipment/:id/documents ─────────────────────────────────────────
 router.get('/:id/documents', verifyToken,
@@ -54,39 +52,29 @@ router.post('/:id/documents', verifyToken,
       });
     }
 
-    const fileSizeKb = Math.ceil(req.file.size / 1024);
-
-    const result = db.prepare(`
-      INSERT INTO equipment_documents
-        (equipment_id, document_type, original_name, stored_name, mime_type,
-         file_size_kb, uploaded_by, uploader_name, uploaded_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))
-    `).run(
-      req.params.id,
+    const inserted = insertEquipmentDocument(db, {
+      equipmentId: req.params.id,
       docType,
-      req.file.originalname,
-      req.file.filename,
-      req.file.mimetype,
-      fileSizeKb,
-      req.user.id,
-      req.user.name,
-    );
+      file: req.file,
+      userId: req.user.id,
+      userName: req.user.name,
+    });
 
     logAction({
       user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles?.[0] || '',
       action: 'upload_document',
       target_type: 'equipment', target_id: req.params.id, target_name: eq.name,
-      details: JSON.stringify({ doc_type: docType, file: req.file.originalname, size_kb: fileSizeKb }),
+      details: JSON.stringify({ doc_type: docType, file: req.file.originalname, size_kb: inserted.file_size_kb }),
       ...extractReqMeta(req),
     });
 
     res.status(201).json({
-      id:           result.lastInsertRowid,
-      stored_name:  req.file.filename,
+      id:            inserted.id,
+      stored_name:   req.file.filename,
       original_name: req.file.originalname,
       document_type: docType,
-      mime_type:    req.file.mimetype,
-      file_size_kb: fileSizeKb,
+      mime_type:     req.file.mimetype,
+      file_size_kb:  inserted.file_size_kb,
     });
   }
 );
@@ -111,14 +99,7 @@ router.get('/:id/documents/:doc_id/download', verifyToken,
       ...extractReqMeta(req),
     });
 
-    const filePath = path.join(UPLOAD_DIR, doc.stored_name);
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.original_name)}"`);
-    res.setHeader('Content-Type', doc.mime_type);
-    res.sendFile(filePath, { root: '/' }, (err) => {
-      if (err && !res.headersSent) {
-        res.status(404).json({ error: 'Fichier introuvable sur le serveur' });
-      }
-    });
+    sendStoredDocument(res, doc);
   }
 );
 

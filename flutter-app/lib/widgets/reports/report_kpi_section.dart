@@ -23,6 +23,10 @@ class ReportKpiSection extends StatelessWidget {
   /// Coût de maintenance de la période (somme des rapports finalisés, RWF).
   final double maintenanceCost;
 
+  /// Taux de clôture documentée (% d'incidents clôturés avec ≥1 document PDF
+  /// d'intervention archivé). Null si aucun incident clôturé sur la période.
+  final double? documentedClosureRatePct;
+
   const ReportKpiSection({
     super.key,
     required this.mttrDays,
@@ -30,6 +34,7 @@ class ReportKpiSection extends StatelessWidget {
     required this.pmTotal,
     required this.topDepartments,
     this.maintenanceCost = 0,
+    this.documentedClosureRatePct,
   });
 
   @override
@@ -46,6 +51,8 @@ class ReportKpiSection extends StatelessWidget {
           const SizedBox(height: 16),
           _buildPmCard(l10n),
           const SizedBox(height: 16),
+          _buildDocumentedClosureCard(l10n),
+          const SizedBox(height: 16),
           _buildTopDeptsCard(l10n),
         ],
       );
@@ -60,8 +67,36 @@ class ReportKpiSection extends StatelessWidget {
         const SizedBox(width: 16),
         Expanded(child: _buildPmCard(l10n)),
         const SizedBox(width: 16),
+        Expanded(child: _buildDocumentedClosureCard(l10n)),
+        const SizedBox(width: 16),
         Expanded(flex: 2, child: _buildTopDeptsCard(l10n)),
       ],
+    );
+  }
+
+  // ── Taux de clôture documentée ─────────────────────────────────────────────
+
+  Widget _buildDocumentedClosureCard(AppLocalizations l10n) {
+    final hasData = documentedClosureRatePct != null;
+    final Color color;
+    if (!hasData) {
+      color = AppColors.textSecondary;
+    } else if (documentedClosureRatePct! >= 80) {
+      color = AppColors.success;
+    } else if (documentedClosureRatePct! >= 50) {
+      color = AppColors.warning;
+    } else {
+      color = AppColors.error;
+    }
+
+    return _KpiCard(
+      icon: Icons.picture_as_pdf_outlined,
+      color: color,
+      title: l10n.reportsDocumentedClosureRate,
+      value: hasData
+          ? '${documentedClosureRatePct!.toStringAsFixed(0)}%'
+          : l10n.reportsDocumentedClosureRateNoData,
+      subtitle: hasData ? l10n.reportsDocumentedClosureRateHint : '',
     );
   }
 

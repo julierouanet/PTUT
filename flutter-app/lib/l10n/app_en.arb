@@ -2232,5 +2232,23 @@
   "interventionSessionBadgeResolved": "Resolved",
   "interventionSessionBadgeNotResolved": "Unresolved, continued",
   "interventionSessionBadgeInProgress": "In progress",
-  "interventionSessionPdfError": "Error generating session PDF"
+  "interventionSessionPdfError": "Error generating session PDF",
+
+  "commonYes": "Yes",
+  "commonNo": "No",
+  "commonSkip": "Skip",
+
+  "techViewLoopPdfQuestion": "Would you like to view the report for this loop?",
+  "techViewReportPdfQuestion": "Would you like to view the intervention report?",
+  "techAttachDocumentsTitle": "Additional documents",
+  "techAttachDocumentsSubtitle": "Would you like to attach additional documents (photos, certificates...) to this intervention?",
+  "techAttachDocumentsSuccess": "Documents added to the issue",
+
+  "interventionDocumentsSectionTitle": "Intervention documents",
+  "interventionDocumentsEmpty": "No intervention documents for this issue.",
+  "interventionDocumentsLoadError": "Error loading documents",
+
+  "reportsDocumentedClosureRate": "Documented closure rate",
+  "reportsDocumentedClosureRateNoData": "Insufficient data",
+  "reportsDocumentedClosureRateHint": "Share of closed issues with at least one archived PDF document"
 }

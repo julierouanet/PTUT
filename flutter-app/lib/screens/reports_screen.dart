@@ -173,6 +173,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return (compliant, withPm.length);
   }
 
+  /// Taux de clôture documentée : parmi les incidents clôturés (completed /
+  /// verified / closed) sur la période, pourcentage disposant d'au moins un
+  /// document PDF d'intervention archivé (`documentsCount > 0`).
+  /// Retourne null si aucun incident clôturé sur la période (pas de division par zéro).
+  double? _computeDocumentedClosureRate(List<Issue> issues) {
+    final resolved = issues.where((i) =>
+        i.status == IssueStatus.completed ||
+        i.status == IssueStatus.verified  ||
+        i.status == IssueStatus.closed).toList();
+    if (resolved.isEmpty) return null;
+    final documented = resolved.where((i) => i.documentsCount > 0).length;
+    return documented / resolved.length * 100;
+  }
+
   /// Top 3 départements par nombre d'incidents sur la période.
   List<MapEntry<String, int>> _topDepartments(List<Issue> issues) {
     final counts = <String, int>{};
@@ -284,6 +298,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final cost         = _computeMaintenanceCost(issues);
       final (compliant, total) = _computePmCompliance();
       final topDepts     = _topDepartments(issues);
+      final docRate      = _computeDocumentedClosureRate(issues);
       final user         = AuthService().currentUser;
 
       final pdfBytes = await PdfReportService.generate(
@@ -301,6 +316,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         pmTotal:         total,
         topDepartments:  topDepts,
         inventory:       DataService().inventory,
+        documentedClosureRatePct: docRate,
       );
 
       final startStr = _fmtDate(range.start).replaceAll('/', '-');
@@ -471,6 +487,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
       final cost                  = _computeMaintenanceCost(issues);
       final (pmCompliant, pmTotal) = _computePmCompliance();
       final topDepts              = _topDepartments(issues);
+      final docRate                = _computeDocumentedClosureRate(issues);
       final user                  = AuthService().currentUser;
 
       final pdfBytes = await PdfReportService.generate(
@@ -488,6 +505,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         pmTotal:         pmTotal,
         topDepartments:  topDepts,
         inventory:       DataService().inventory,
+        documentedClosureRatePct: docRate,
       );
 
       // Libellé du fichier selon le type d'archive
@@ -741,6 +759,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final maintenanceCost           = _computeMaintenanceCost(periodIssues);
         final (pmCompliant, pmTotal)    = _computePmCompliance();
         final topDepts                  = _topDepartments(periodIssues);
+        final documentedClosureRate     = _computeDocumentedClosureRate(periodIssues);
 
         final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
         final pad      = isMobile ? 16.0 : 24.0;
@@ -777,6 +796,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 pmCompliant:     pmCompliant,
                 pmTotal:         pmTotal,
                 topDepartments:  topDepts,
+                documentedClosureRatePct: documentedClosureRate,
               ),
               const SizedBox(height: 24),
 

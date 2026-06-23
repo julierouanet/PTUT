@@ -5597,4 +5597,51 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get interventionSessionPdfError => 'Error generating session PDF';
+
+  @override
+  String get commonYes => 'Yes';
+
+  @override
+  String get commonNo => 'No';
+
+  @override
+  String get commonSkip => 'Skip';
+
+  @override
+  String get techViewLoopPdfQuestion =>
+      'Would you like to view the report for this loop?';
+
+  @override
+  String get techViewReportPdfQuestion =>
+      'Would you like to view the intervention report?';
+
+  @override
+  String get techAttachDocumentsTitle => 'Additional documents';
+
+  @override
+  String get techAttachDocumentsSubtitle =>
+      'Would you like to attach additional documents (photos, certificates...) to this intervention?';
+
+  @override
+  String get techAttachDocumentsSuccess => 'Documents added to the issue';
+
+  @override
+  String get interventionDocumentsSectionTitle => 'Intervention documents';
+
+  @override
+  String get interventionDocumentsEmpty =>
+      'No intervention documents for this issue.';
+
+  @override
+  String get interventionDocumentsLoadError => 'Error loading documents';
+
+  @override
+  String get reportsDocumentedClosureRate => 'Documented closure rate';
+
+  @override
+  String get reportsDocumentedClosureRateNoData => 'Insufficient data';
+
+  @override
+  String get reportsDocumentedClosureRateHint =>
+      'Share of closed issues with at least one archived PDF document';
 }
