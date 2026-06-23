@@ -825,7 +825,7 @@ final List<User> mockUsers = [
     roles: const [UserRole.technicianBiomedical, UserRole.technicianIt, UserRole.technicianInfra],
     permissions: const [
       Permission.viewEquipment, Permission.reportIssue, Permission.trackIssues,
-      Permission.updateRepairs, Permission.registerParts,
+      Permission.updateRepairs, Permission.registerParts, Permission.approveRequests,
     ],
     phone: '+250 788 123 004',
     createdAt: '2024-01-20',
@@ -840,7 +840,7 @@ final List<User> mockUsers = [
     roles: const [UserRole.technicianBiomedical, UserRole.technicianIt, UserRole.technicianInfra],
     permissions: const [
       Permission.viewEquipment, Permission.reportIssue, Permission.trackIssues,
-      Permission.updateRepairs, Permission.registerParts,
+      Permission.updateRepairs, Permission.registerParts, Permission.approveRequests,
     ],
     phone: '+250 788 123 005',
     createdAt: '2024-04-05',

@@ -89,7 +89,7 @@ void main() {
     test('technician gets repair-related permissions', () {
       final techPerms = getPermissionsForRole(UserRole.technician);
 
-      expect(techPerms.length, 5);
+      expect(techPerms.length, 6);
       expect(techPerms, contains(Permission.updateRepairs));
       expect(techPerms, contains(Permission.registerParts));
       expect(techPerms, contains(Permission.viewEquipment));
@@ -157,8 +157,8 @@ void main() {
         UserRole.technicianBiomedical,
         UserRole.technicianIt,
       ]);
-      // mêmes 5 permissions, dédupliquées
-      expect(perms.length, 5);
+      // mêmes 6 permissions, dédupliquées
+      expect(perms.length, 6);
       expect(perms, contains(Permission.updateRepairs));
     });
 
