@@ -2960,6 +2960,24 @@ abstract class AppLocalizations {
   /// **'Incident remis dans le pool'**
   String get detachSuccess;
 
+  /// No description provided for @linkEquipmentButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lier un équipement'**
+  String get linkEquipmentButton;
+
+  /// No description provided for @linkEquipmentDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Lier un équipement à cet incident'**
+  String get linkEquipmentDialogTitle;
+
+  /// No description provided for @linkEquipmentSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement lié à l\'incident'**
+  String get linkEquipmentSuccess;
+
   /// No description provided for @urgencyLow.
   ///
   /// In fr, this message translates to:
@@ -8179,6 +8197,36 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.'**
   String get issueFormPhotoGuide;
+
+  /// No description provided for @issueFormPhotoUploadFailedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photos non jointes'**
+  String get issueFormPhotoUploadFailedTitle;
+
+  /// No description provided for @issueFormPhotoUploadFailedMessage.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'incident a bien été créé, mais les photos n\'ont pas pu être envoyées : {error}'**
+  String issueFormPhotoUploadFailedMessage(String error);
+
+  /// No description provided for @issueFormPhotoUploadRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer l\'envoi des photos'**
+  String get issueFormPhotoUploadRetry;
+
+  /// No description provided for @issueFormPhotoUploadRetrying.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoi en cours...'**
+  String get issueFormPhotoUploadRetrying;
+
+  /// No description provided for @issueFormPhotoUploadRetrySuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photos envoyées avec succès'**
+  String get issueFormPhotoUploadRetrySuccess;
 
   /// No description provided for @notifPrefsTitle.
   ///

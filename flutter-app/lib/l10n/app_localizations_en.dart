@@ -1547,6 +1547,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detachSuccess => 'Issue returned to the pool';
 
   @override
+  String get linkEquipmentButton => 'Link equipment';
+
+  @override
+  String get linkEquipmentDialogTitle => 'Link equipment to this issue';
+
+  @override
+  String get linkEquipmentSuccess => 'Equipment linked to the issue';
+
+  @override
   String get urgencyLow => 'Low';
 
   @override
@@ -4377,6 +4386,23 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get issueFormPhotoGuide =>
       'Tip: take a photo of the error screen, the equipment label, or the defective area.';
+
+  @override
+  String get issueFormPhotoUploadFailedTitle => 'Photos not attached';
+
+  @override
+  String issueFormPhotoUploadFailedMessage(String error) {
+    return 'The issue was created, but the photos could not be uploaded: $error';
+  }
+
+  @override
+  String get issueFormPhotoUploadRetry => 'Retry sending photos';
+
+  @override
+  String get issueFormPhotoUploadRetrying => 'Sending...';
+
+  @override
+  String get issueFormPhotoUploadRetrySuccess => 'Photos sent successfully';
 
   @override
   String get notifPrefsTitle => 'Email alerts — Critical incidents';

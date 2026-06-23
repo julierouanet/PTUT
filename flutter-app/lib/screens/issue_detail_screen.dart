@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
+import '../models/equipment.dart' show Equipment;
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
 import '../models/issue_photo.dart';
@@ -13,6 +14,7 @@ import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/equipment_picker_field.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue/intervention_report_section.dart';
@@ -808,6 +810,58 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     }
   }
 
+  // ── Dialogue liaison tardive équipement ────────────────────────────────────
+
+  void _showLinkEquipmentDialog(IssueDetail detail) {
+    final l10n = AppLocalizations.of(context)!;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.linkEquipmentDialogTitle),
+        content: EquipmentPickerField(
+          onSelected: (eq) {
+            Navigator.pop(ctx);
+            _doLinkEquipment(l10n, detail.issue.id, eq);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _doLinkEquipment(
+      AppLocalizations l10n, String issueId, Equipment equipment) async {
+    setState(() => _submitting = true);
+    try {
+      await DbApiService.instance.linkEquipment(issueId, equipment.id);
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.linkEquipmentSuccess),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e is ApiException ? e.message : e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(msg),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
   // ── Carte En-tête ──────────────────────────────────────────────────────────
 
   Widget _buildHeaderCard(AppLocalizations l10n, IssueDetail detail) {
@@ -888,9 +942,26 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
                             size: 14, color: AppColors.primary),
                       ]),
                     )
-                  : Text(
-                      issue.locationId ?? locText ?? '—',
-                      style: const TextStyle(fontWeight: FontWeight.w500),
+                  : Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      children: [
+                        Text(
+                          issue.locationId ?? locText ?? '—',
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        if (_canEditReport(detail))
+                          TextButton.icon(
+                            onPressed: () => _showLinkEquipmentDialog(detail),
+                            icon: const Icon(Icons.link, size: 16),
+                            label: Text(l10n.linkEquipmentButton),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                      ],
                     ),
             ),
           ]),

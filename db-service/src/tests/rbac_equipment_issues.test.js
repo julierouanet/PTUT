@@ -870,3 +870,135 @@ describe('PATCH /api/issues/:id/detach', () => {
     expect(res.status).toBe(400);
   });
 });
+
+// =============================================================================
+// 13. PATCH /api/issues/:id/link-equipment — liaison tardive d'un incident
+//     créé sans équipement (admin, supervisor, technician* ; un technicien
+//     uniquement ses incidents 'In Progress')
+// =============================================================================
+describe('PATCH /api/issues/:id/link-equipment', () => {
+  let linkCounter = 0;
+  // Crée un incident sans équipement (equipment_id NULL), au statut/technicien donnés
+  const newUnlinkedIssue = (status, technicianName) => {
+    const id = `iss-link-${++linkCounter}`;
+    db.prepare(`
+      INSERT INTO issues (
+        id, equipment_id, equipment_name, issue_category, assigned_group,
+        department, type, description, reporter, urgency, status, assigned_technician, created_at
+      ) VALUES (
+        ?, NULL, NULL, 'Infrastructure', 'Infrastructure',
+        'OPD', 'Panne', 'Incident sans équipement identifié', 'Dr. Test', 'Moyen', ?, ?,
+        datetime('now','localtime')
+      )
+    `).run(id, status, technicianName);
+    return id;
+  };
+
+  const linkBody = { equipment_id: 'eq-rbac-test' };
+
+  test('✅ 200 lie l\'équipement avec succès', async () => {
+    setTestRole('technician_biomedical');
+    const id = newUnlinkedIssue('In Progress', 'Utilisateur Test');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(linkBody);
+
+    expect(res.status).toBe(200);
+    const iss = db.prepare(
+      'SELECT equipment_id, equipment_name, equipment_linked_at FROM issues WHERE id = ?'
+    ).get(id);
+    expect(iss.equipment_id).toBe('eq-rbac-test');
+    expect(iss.equipment_name).toBe('Moniteur cardiaque test');
+    expect(iss.equipment_linked_at).not.toBeNull();
+  });
+
+  test('🚫 400 equipment_id manquant', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({});
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 403 technicien non assigné', async () => {
+    setTestRole('technician_biomedical');
+    const id = newUnlinkedIssue('In Progress', 'Un Autre Technicien');
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(linkBody);
+
+    expect(res.status).toBe(403);
+  });
+
+  test('🚫 404 incident introuvable', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .patch('/api/issues/iss-inconnu/link-equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send(linkBody);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 404 équipement introuvable', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ equipment_id: 'eq-inconnu' });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 409 déjà lié', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+    db.prepare("UPDATE issues SET equipment_id = 'eq-rbac-test', equipment_name = 'Moniteur cardiaque test' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(linkBody);
+
+    expect(res.status).toBe(409);
+  });
+
+  test('🚫 409 incident clôturé', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Completed', null);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send(linkBody);
+
+    expect(res.status).toBe(409);
+  });
+
+  test('🚫 409 équipement Disposed', async () => {
+    setTestRole('admin');
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment (id, name, department, category, status)
+      VALUES ('eq-link-disposed', 'Équipement réformé test', 'OPD', 'Monitoring', 'Disposed')
+    `).run();
+    const id = newUnlinkedIssue('Reported', null);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ equipment_id: 'eq-link-disposed' });
+
+    expect(res.status).toBe(409);
+  });
+});

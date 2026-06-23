@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../l10n/app_localizations.dart';
+import '../mixins/auto_refresh_mixin.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
@@ -30,7 +31,7 @@ class IssueTrackingScreen extends StatefulWidget {
 }
 
 class _IssueTrackingScreenState extends State<IssueTrackingScreen>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, AutoRefreshMixin<IssueTrackingScreen> {
 
   // ── Services ───────────────────────────────────────────────────────────────
   final AuthService _authService = AuthService();
@@ -60,6 +61,14 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     _tabController.addListener(() {
       if (mounted && !_tabController.indexIsChanging) setState(() {});
     });
+    // Auto-refresh silencieux toutes les 5 minutes (même cadence que DashboardScreen)
+    startAutoRefresh(const Duration(minutes: 5), _refresh);
+  }
+
+  Future<void> _refresh() async {
+    if (!mounted) return;
+    await DataService().reloadIssues();
+    if (mounted) setState(() {});
   }
 
   @override

@@ -529,6 +529,10 @@
   "detachReasonMinLength": "The reason must be at least 10 characters",
   "detachSuccess": "Issue returned to the pool",
 
+  "linkEquipmentButton": "Link equipment",
+  "linkEquipmentDialogTitle": "Link equipment to this issue",
+  "linkEquipmentSuccess": "Equipment linked to the issue",
+
   "urgencyLow": "Low",
   "urgencyMedium": "Medium",
   "urgencyHigh": "High",
@@ -1656,6 +1660,12 @@
   "issueFormUnlistedEquipmentRequired": "Please enter the equipment name",
   "issueFormUnlistedWarning": "The technician will need to identify this equipment on site.",
   "issueFormPhotoGuide": "Tip: take a photo of the error screen, the equipment label, or the defective area.",
+  "issueFormPhotoUploadFailedTitle": "Photos not attached",
+  "issueFormPhotoUploadFailedMessage": "The issue was created, but the photos could not be uploaded: {error}",
+  "@issueFormPhotoUploadFailedMessage": { "placeholders": { "error": { "type": "String" } } },
+  "issueFormPhotoUploadRetry": "Retry sending photos",
+  "issueFormPhotoUploadRetrying": "Sending...",
+  "issueFormPhotoUploadRetrySuccess": "Photos sent successfully",
 
   "notifPrefsTitle": "Email alerts — Critical incidents",
   "@notifPrefsTitle": {},

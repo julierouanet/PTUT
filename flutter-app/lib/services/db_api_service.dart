@@ -255,6 +255,15 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  /// Lie tardivement un incident créé sans équipement (cas "Autre"/
+  /// "Infrastructure") à un équipement du catalogue. Pose equipment_id/
+  /// equipment_name/equipment_linked_at côté serveur.
+  Future<void> linkEquipment(String issueId, String equipmentId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/link-equipment';
+    final response = await ApiClient.patch(url, {'equipment_id': equipmentId});
+    _checkStatus(response, url);
+  }
+
   // ── RAPPORT D'INTERVENTION (1:1 avec incident) ─────────────────────────────
 
   /// Rapport d'intervention d'un incident (brouillon vide si inexistant).

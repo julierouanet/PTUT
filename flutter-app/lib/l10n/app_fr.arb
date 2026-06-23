@@ -551,6 +551,10 @@
   "detachReasonMinLength": "Le motif doit contenir au moins 10 caractères",
   "detachSuccess": "Incident remis dans le pool",
 
+  "linkEquipmentButton": "Lier un équipement",
+  "linkEquipmentDialogTitle": "Lier un équipement à cet incident",
+  "linkEquipmentSuccess": "Équipement lié à l'incident",
+
   "urgencyLow": "Faible",
   "urgencyMedium": "Moyen",
   "urgencyHigh": "Urgent",
@@ -1678,6 +1682,12 @@
   "issueFormUnlistedEquipmentRequired": "Veuillez saisir le nom de l'équipement",
   "issueFormUnlistedWarning": "Le technicien devra identifier cet équipement sur site.",
   "issueFormPhotoGuide": "Conseil : photographiez l'écran d'erreur, l'étiquette de l'équipement ou la zone défaillante.",
+  "issueFormPhotoUploadFailedTitle": "Photos non jointes",
+  "issueFormPhotoUploadFailedMessage": "L'incident a bien été créé, mais les photos n'ont pas pu être envoyées : {error}",
+  "@issueFormPhotoUploadFailedMessage": { "placeholders": { "error": { "type": "String" } } },
+  "issueFormPhotoUploadRetry": "Réessayer l'envoi des photos",
+  "issueFormPhotoUploadRetrying": "Envoi en cours...",
+  "issueFormPhotoUploadRetrySuccess": "Photos envoyées avec succès",
 
   "notifPrefsTitle": "Alertes emails — Incidents critiques",
   "@notifPrefsTitle": {},

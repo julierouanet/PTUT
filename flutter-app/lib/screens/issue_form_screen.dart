@@ -17,6 +17,7 @@ import '../models/departments.dart';
 import '../utils/file_picker.dart';
 import '../utils/image_compressor.dart';
 import '../widgets/urgency_badge.dart';
+import '../widgets/equipment_picker_field.dart';
 
 /// Catalogue infrastructure 3 niveaux : catégorie → sous-catégorie → problèmes.
 /// Valeurs en anglais (référence standard hospitalier), stockées telles quelles en DB.
@@ -748,79 +749,176 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     IssueUrgency.faible   => l10n.issueFormSla1week,
   };
 
-  Future<void> _showSuccessDialog(String ticketId, AppLocalizations l10n) async {
-    final sla       = _slaLabel(l10n);
+  Future<void> _showSuccessDialog(
+    String ticketId,
+    AppLocalizations l10n, {
+    String? photoUploadError,
+  }) async {
+    final sla = _slaLabel(l10n);
     final displayId = ticketId.startsWith('issue-')
         ? ticketId.substring('issue-'.length) : ticketId;
+    String? error = photoUploadError;
+    bool retrying = false;
+
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 72, height: 72,
-              decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.issueFormSuccessTitle,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  const Icon(Icons.confirmation_number, color: AppColors.primary, size: 18),
-                  const SizedBox(width: 8),
-                  Flexible(child: Text(l10n.issueFormSuccessTicketId(displayId),
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
-                ]),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(children: [
-                  const Icon(Icons.schedule, color: AppColors.warning, size: 18),
-                  const SizedBox(width: 8),
-                  Flexible(
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          Future<void> retryPhotoUpload() async {
+            setDialogState(() => retrying = true);
+            final result = await _uploadPhotos(ticketId);
+            setDialogState(() {
+              retrying = false;
+              error = result;
+            });
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            contentPadding: const EdgeInsets.fromLTRB(24, 32, 24, 8),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    color: AppColors.success.withValues(alpha: 0.12), shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_circle, color: AppColors.success, size: 48),
+                ),
+                const SizedBox(height: 16),
+                Text(l10n.issueFormSuccessTitle,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      const Icon(Icons.confirmation_number, color: AppColors.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(child: Text(l10n.issueFormSuccessTicketId(displayId),
+                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                    ]),
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
+                    Row(children: [
+                      const Icon(Icons.schedule, color: AppColors.warning, size: 18),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text(l10n.issueFormSuccessSlaLabel,
+                              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          Text(sla, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        ]),
+                      ),
+                    ]),
+                  ]),
+                ),
+                // Échec d'upload photo : visible et réessayable, sans recréer l'incident.
+                if (error != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                    ),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(l10n.issueFormSuccessSlaLabel,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                      Text(sla, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                      Row(children: [
+                        const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(child: Text(l10n.issueFormPhotoUploadFailedTitle,
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+                      ]),
+                      const SizedBox(height: 6),
+                      Text(l10n.issueFormPhotoUploadFailedMessage(error!),
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: retrying ? null : retryPhotoUpload,
+                          icon: retrying
+                              ? const SizedBox(
+                                  width: 14, height: 14,
+                                  child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.refresh, size: 16),
+                          label: Text(
+                              retrying ? l10n.issueFormPhotoUploadRetrying : l10n.issueFormPhotoUploadRetry,
+                              style: const TextStyle(fontSize: 12)),
+                        ),
+                      ),
                     ]),
                   ),
-                ]),
-              ]),
+                ] else if (photoUploadError != null) ...[
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    const Icon(Icons.check_circle, color: AppColors.success, size: 16),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text(l10n.issueFormPhotoUploadRetrySuccess,
+                        style: const TextStyle(fontSize: 12, color: AppColors.success))),
+                  ]),
+                ],
+              ],
             ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text(l10n.issueFormSuccessClose),
+                ),
               ),
-              child: Text(l10n.issueFormSuccessClose),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
+  }
+
+  /// Compresse et envoie les photos jointes pour [ticketId]. Retourne `null` en
+  /// cas de succès, ou un message d'erreur exploitable côté UI sinon (jamais
+  /// d'exception avalée silencieusement — voir `_showSuccessDialog`).
+  Future<String?> _uploadPhotos(String ticketId) async {
+    final photosUrl =
+        '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(ticketId)}/photos';
+    // Compression sur isolates séparés (ImageCompressor.compress → compute()) :
+    // les jusqu'à 5 photos sont traitées en parallèle plutôt que séquentiellement.
+    final compressedPhotos = await Future.wait(_photos.map((photo) {
+      final originalMime =
+          photo.name.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+      return ImageCompressor.compress(photo.bytes, originalMime);
+    }));
+    final files = [
+      for (var i = 0; i < _photos.length; i++)
+        (
+          bytes: compressedPhotos[i].bytes,
+          name: _photos[i].name,
+          mimeType: compressedPhotos[i].mimeType,
+        ),
+    ];
+    try {
+      await ApiClient.postMultipartFiles(photosUrl, files);
+      return null;
+    } catch (e) {
+      debugPrint('[IssueForm] Échec upload photos : $e');
+      return e.toString().replaceFirst('Exception: ', '');
+    }
   }
 
   // ── Types de problème ─────────────────────────────────────────────────────
@@ -952,30 +1050,16 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     try {
       await DbApiService.instance.createIssue(issueData);
 
-      // Upload des photos après création de l'incident (multipart, max 5)
-      if (_photos.isNotEmpty) {
-        final photosUrl =
-            '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(ticketId)}/photos';
-        final files = <({Uint8List bytes, String name, String mimeType})>[];
-        for (final photo in _photos) {
-          final compressed = await ImageCompressor.compress(photo.bytes);
-          final mime = photo.name.toLowerCase().endsWith('.png')
-              ? 'image/png'
-              : 'image/jpeg';
-          files.add((bytes: compressed, name: photo.name, mimeType: mime));
-        }
-        try {
-          await ApiClient.postMultipartFiles(photosUrl, files);
-        } catch (_) {
-          // L'upload photo échoue silencieusement — l'incident est déjà créé.
-          debugPrint('[IssueForm] Échec upload photos — incident créé sans photos');
-        }
-      }
+      // Upload des photos après création de l'incident (multipart, max 5).
+      // L'incident reste créé même en cas d'échec — l'utilisateur en est
+      // informé et peut réessayer depuis le dialogue de succès.
+      final String? photoUploadError =
+          _photos.isNotEmpty ? await _uploadPhotos(ticketId) : null;
 
       await DataService().reloadIssues();
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
-      await _showSuccessDialog(ticketId, l10n);
+      await _showSuccessDialog(ticketId, l10n, photoUploadError: photoUploadError);
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -1417,85 +1501,25 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                           ? l10n.issueFormUnlistedEquipmentRequired
                           : null,
                 )
-              : Autocomplete<Equipment>(
+              : EquipmentPickerField(
                   key: ValueKey(_bioAutocompleteKey),
-                  displayStringForOption: (eq) =>
-                      '${eq.name} - SN: ${eq.serialNumber}',
-                  optionsBuilder: (TextEditingValue value) {
-                    final query = value.text.toLowerCase().trim();
-                    if (query.isEmpty) {
-                      return const Iterable<Equipment>.empty();
-                    }
-                    return _bioEquipmentList.where((eq) =>
-                        eq.name.toLowerCase().contains(query) ||
-                        eq.serialNumber.toLowerCase().contains(query));
-                  },
+                  equipmentList: _bioEquipmentList,
+                  selectedEquipmentId: _bioEquipmentId,
+                  errorText: _bioEquipmentError
+                      ? l10n.issueFormEquipmentRequired
+                      : null,
                   onSelected: (eq) {
                     setState(() {
                       _bioEquipmentId    = eq.id;
                       _bioEquipmentError = false;
                     });
                   },
-                  fieldViewBuilder:
-                      (context, textController, focusNode, onSubmitted) {
-                    return TextField(
-                      controller: textController,
-                      focusNode: focusNode,
-                      onSubmitted: (_) => onSubmitted(),
-                      decoration: InputDecoration(
-                        hintText: l10n.issueFormSelectEquipment,
-                        prefixIcon: const Icon(Icons.search,
-                            color: AppColors.textSecondary),
-                        suffixIcon: _bioEquipmentId != null
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  textController.clear();
-                                  setState(() {
-                                    _bioEquipmentId    = null;
-                                    _bioEquipmentError = false;
-                                  });
-                                },
-                              )
-                            : null,
-                        errorText: _bioEquipmentError
-                            ? l10n.issueFormEquipmentRequired
-                            : null,
-                      ),
-                    );
+                  onClear: () {
+                    setState(() {
+                      _bioEquipmentId    = null;
+                      _bioEquipmentError = false;
+                    });
                   },
-                  optionsViewBuilder: (context, onSelected, options) => Align(
-                    alignment: Alignment.topLeft,
-                    child: Material(
-                      elevation: 4,
-                      borderRadius: BorderRadius.circular(8),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxHeight: 250),
-                        child: ListView.builder(
-                          padding: EdgeInsets.zero,
-                          shrinkWrap: true,
-                          itemCount: options.length,
-                          itemBuilder: (context, index) {
-                            final eq = options.elementAt(index);
-                            return ListTile(
-                              dense: true,
-                              leading: const Icon(
-                                  Icons.medical_services_outlined, size: 20),
-                              title: Text(eq.name,
-                                  style: const TextStyle(fontSize: 14)),
-                              subtitle: Text(
-                                'SN: ${eq.serialNumber} • ${eq.department}',
-                                style: const TextStyle(
-                                    fontSize: 12,
-                                    color: AppColors.textSecondary),
-                              ),
-                              onTap: () => onSelected(eq),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
         ),
         if (!_bioUnlisted) ...[

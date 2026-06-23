@@ -1557,6 +1557,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get detachSuccess => 'Incident remis dans le pool';
 
   @override
+  String get linkEquipmentButton => 'Lier un équipement';
+
+  @override
+  String get linkEquipmentDialogTitle => 'Lier un équipement à cet incident';
+
+  @override
+  String get linkEquipmentSuccess => 'Équipement lié à l\'incident';
+
+  @override
   String get urgencyLow => 'Faible';
 
   @override
@@ -4422,6 +4431,23 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get issueFormPhotoGuide =>
       'Conseil : photographiez l\'écran d\'erreur, l\'étiquette de l\'équipement ou la zone défaillante.';
+
+  @override
+  String get issueFormPhotoUploadFailedTitle => 'Photos non jointes';
+
+  @override
+  String issueFormPhotoUploadFailedMessage(String error) {
+    return 'L\'incident a bien été créé, mais les photos n\'ont pas pu être envoyées : $error';
+  }
+
+  @override
+  String get issueFormPhotoUploadRetry => 'Réessayer l\'envoi des photos';
+
+  @override
+  String get issueFormPhotoUploadRetrying => 'Envoi en cours...';
+
+  @override
+  String get issueFormPhotoUploadRetrySuccess => 'Photos envoyées avec succès';
 
   @override
   String get notifPrefsTitle => 'Alertes emails — Incidents critiques';

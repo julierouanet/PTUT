@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const multer = require('multer');
 const { PORT } = require('./config');
 const equipmentRoutes      = require('./routes/equipment');
 const issuesRoutes         = require('./routes/issues');
@@ -72,6 +73,32 @@ app.use('/api/equipment',      documentsRoutes);
 app.use('/api',                catalogRoutes);
 app.use('/api/debug',          debugRoutes);
 app.use('/',                   debugRoutes);
+
+// ── Gestion centralisée des erreurs Multer (taille/type/nombre de fichiers) ──
+// Sans ce middleware, une erreur Multer (ex. fichier > limite) provoquait une
+// page HTML 500 par défaut côté client au lieu d'un message JSON exploitable.
+const MULTER_ERROR_MESSAGES = {
+  LIMIT_FILE_SIZE: 'Fichier trop volumineux',
+  LIMIT_FILE_COUNT: 'Trop de fichiers envoyés',
+};
+app.use((err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    const message = err.code === 'LIMIT_UNEXPECTED_FILE'
+      ? (err.message || 'Type de fichier non supporté')
+      : (MULTER_ERROR_MESSAGES[err.code] || err.message);
+    return res.status(400).json({ error: message });
+  }
+  next(err);
+});
+
+// ── Gestion centralisée des erreurs non interceptées (catch-all) ─────────────
+// Sans ce middleware, Express renvoie son comportement par défaut (page HTML,
+// stack trace en dev) au lieu d'une réponse JSON exploitable. On ne renvoie
+// jamais le message brut ou la stack au client — uniquement dans les logs.
+app.use((err, req, res, next) => {
+  console.error('[DB] Erreur non interceptée :', err.stack || err.message);
+  res.status(500).json({ error: 'Erreur serveur interne' });
+});
 
 const server = app.listen(PORT, () => {
   console.log(`DB service running on port ${PORT}`);

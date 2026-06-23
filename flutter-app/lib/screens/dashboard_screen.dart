@@ -1,6 +1,6 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../mixins/auto_refresh_mixin.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
@@ -25,10 +25,9 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with AutoRefreshMixin<DashboardScreen> {
   DateTime _lastRefresh = DateTime.now();
   bool _isRefreshing = false;
-  Timer? _refreshTimer;
 
   // Statuts "ouverts" : non terminés, non clôturés
   static const _openStatuses = {
@@ -44,13 +43,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     // Auto-refresh silencieux toutes les 5 minutes
-    _refreshTimer = Timer.periodic(const Duration(minutes: 5), (_) => _refresh());
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
+    startAutoRefresh(const Duration(minutes: 5), _refresh);
   }
 
   Future<void> _refresh() async {

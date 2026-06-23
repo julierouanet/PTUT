@@ -24,6 +24,7 @@ const XLSX = require('xlsx');
 const { getDb, closeDb } = require('../src/database');
 const { logAction }      = require('../src/utils/logger');
 const N = require('./lib/inventory_normalizer');
+const { classifyMacro }  = require('./lib/macro_classifier');
 
 // ── Constantes du fichier source ─────────────────────────────────────────────
 const SHEET_DEPARTMENTS = 'Standard_Departments';
@@ -215,7 +216,8 @@ function importEquipment(db, workbook, opts) {
   const insertTag        = db.prepare('INSERT OR IGNORE INTO equipment_tags(equipment_id, tag_number) VALUES (?, ?)');
   const insertDepRuntime = db.prepare('INSERT OR IGNORE INTO departments(name) VALUES (?)');
   const insertCatRuntime = db.prepare('INSERT OR IGNORE INTO equipment_categories(name) VALUES (?)');
-  const insertSubRuntime = db.prepare('INSERT OR IGNORE INTO equipment_subcategories(name, macro_category_id) VALUES (?, (SELECT id FROM equipment_macro_categories WHERE name = \'Biomedical\'))');
+  const insertSubRuntime  = db.prepare('INSERT OR IGNORE INTO equipment_subcategories(name, macro_category_id) VALUES (?, ?)');
+  const findMacroIdByName = db.prepare('SELECT id FROM equipment_macro_categories WHERE name = ?');
   const findEquipById    = db.prepare('SELECT id FROM equipment WHERE id = ?');
 
   const stats = {
@@ -301,11 +303,19 @@ function importEquipment(db, workbook, opts) {
           subcategoryId   = subEntry.id;
           macroCategoryId = subEntry.macroId;
         } else {
-          // Ajouter la sous-catégorie à la volée (défaut Biomedical)
-          const result = insertSubRuntime.run(rawCat);
+          // Ajouter la sous-catégorie à la volée — classification par mots-clés
+          // (cf. lib/macro_classifier.js), défaut 'Biomedical' si aucun mot-clé
+          // ne correspond (le fichier source est l'inventaire médical : la
+          // quasi-totalité des noms non reconnus sont bien des dispositifs
+          // cliniques, contrairement au fichier infra/IT générique).
+          const { macro, confident } = classifyMacro(rawCat, 'Biomedical');
+          if (!confident) {
+            errors.push(`Ligne ${i + 1} : "${rawCat}" non reconnu par mots-clés — classé ${macro} par défaut, à vérifier`);
+          }
+          const macroRow = findMacroIdByName.get(macro);
+          const result = insertSubRuntime.run(rawCat, macroRow ? macroRow.id : null);
           if (result.changes === 1) {
             subcategoryId   = result.lastInsertRowid;
-            const macroRow  = db.prepare("SELECT id FROM equipment_macro_categories WHERE name = 'Biomedical'").get();
             macroCategoryId = macroRow ? macroRow.id : null;
             subMap.set(rawCat.toLowerCase(), { id: subcategoryId, macroId: macroCategoryId });
           } else {

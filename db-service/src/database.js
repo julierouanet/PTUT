@@ -265,6 +265,11 @@ function initTables() {
   // sans cette colonne, donc l'ALTER doit suivre pour survivre à un boot unique.
   try { db.exec("ALTER TABLE issues ADD COLUMN resolved_at TEXT"); } catch (_) {}
 
+  // Migration : date de liaison tardive à un équipement (incident créé sans
+  // equipment_id, puis rattaché depuis l'écran de détail). Alimente le futur
+  // KPI « taux de signalement sans équipement identifié » (reporting RHAS).
+  try { db.exec("ALTER TABLE issues ADD COLUMN equipment_linked_at TEXT"); } catch (_) {}
+
   // Migration : refonte des statuts d'issues (français → anglais, 5 → 9 valeurs).
   // Idempotent : ne touche que les lignes qui ont encore une valeur FR héritée.
   try {

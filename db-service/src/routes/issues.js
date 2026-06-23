@@ -613,6 +613,76 @@ router.patch('/:id/detach', verifyToken, requireRole('admin', 'supervisor', ...T
   res.json({ message: 'Incident détaché', id: req.params.id });
 });
 
+// ── PATCH /api/issues/:id/link-equipment ──────────────────────────────────────
+// Lie tardivement un incident créé sans équipement (cas "Autre"/"Infrastructure",
+// equipment_id IS NULL) à un équipement du catalogue. Horodate equipment_linked_at
+// pour alimenter le futur KPI « taux de signalement sans équipement identifié ».
+router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { equipment_id } = req.body;
+
+  // 1. Validation explicite
+  if (typeof equipment_id !== 'string' || !equipment_id.trim()) {
+    return res.status(400).json({ error: 'equipment_id est requis' });
+  }
+
+  // 2. Vérifier existence de l'incident
+  const existing = db.prepare(
+    'SELECT id, status, equipment_id, assigned_technician, equipment_name, location_id, department, actions FROM issues WHERE id = ?'
+  ).get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
+
+  // 3. Un seul rattachement tardif possible
+  if (existing.equipment_id) {
+    return res.status(409).json({ error: 'Cet incident est déjà lié à un équipement' });
+  }
+
+  // 4. Pas de rattachement sur un incident clôturé
+  if (existing.status === 'Completed' || existing.status === 'Rejected') {
+    return res.status(409).json({ error: 'Impossible de lier un équipement à un incident clôturé' });
+  }
+
+  // 5. Un technicien ne lie que ses propres incidents en cours (l'admin/supervisor n'ont pas cette restriction)
+  const isPrivileged = Array.isArray(req.user.roles) && (req.user.roles.includes('admin') || req.user.roles.includes('supervisor'));
+  if (!isPrivileged && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
+    return res.status(403).json({ error: 'Vous ne pouvez lier un équipement qu\'aux incidents qui vous sont assignés et en cours' });
+  }
+
+  // 6. Vérifier existence de l'équipement
+  const equipment = db.prepare('SELECT id, name, status FROM equipment WHERE id = ?').get(equipment_id.trim());
+  if (!equipment) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  // 7. Interdire le rattachement à un équipement réformé
+  if (equipment.status === 'Disposed') {
+    return res.status(409).json({ error: 'Impossible de lier un équipement réformé (statut Disposed)' });
+  }
+
+  // 8. Opération DB (synchrone) — pose equipment_id/equipment_name/equipment_linked_at + journal d'actions
+  const now = new Date();
+  const linkedAt = now.toISOString();
+  const linkLine = `[${linkedAt.replace('T', ' ').slice(0, 19)}] Liaison équipement par ${req.user.name} — ${equipment.name}`;
+  const appendedActions = existing.actions ? `${existing.actions}\n${linkLine}` : linkLine;
+
+  db.prepare(`
+    UPDATE issues
+    SET equipment_id        = ?,
+        equipment_name      = ?,
+        equipment_linked_at = ?,
+        actions             = ?,
+        updated_at          = datetime('now','localtime')
+    WHERE id = ?
+  `).run(equipment.id, equipment.name, linkedAt, appendedActions, req.params.id);
+
+  // 9. Audit trail
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'link_issue_equipment', target_type: 'issue', target_id: req.params.id,
+    target_name: equipment.name,
+    details: { equipment_id: equipment.id, equipment_name: equipment.name },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Équipement lié', equipment_id: equipment.id, equipment_name: equipment.name });
+});
+
 // ── POST /api/issues/:id/photos ──────────────────────────────────────────────
 router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), (req, res) => {
   if (!req.files || req.files.length === 0) {

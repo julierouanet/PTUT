@@ -27,6 +27,7 @@ const XLSX = require('xlsx');
 const { getDb, closeDb } = require('../src/database');
 const { logAction }      = require('../src/utils/logger');
 const N = require('./lib/inventory_normalizer');
+const { classifyMacro: classifyMacroShared } = require('./lib/macro_classifier');
 
 // ── Feuilles à traiter (dans l'ordre) ────────────────────────────────────────
 const SHEETS = ['Sheet1', 'Sheet2'];
@@ -45,45 +46,10 @@ const DEPARTMENT_ALIASES = {
 // ── Statuts reconnus dans ce fichier (mots-clés → recherché dans la cellule) ─
 const STATUS_TOKENS = ['good', 'fonctionnel', 'damaged', 'b'];
 
-// ── Classification macro-catégorie par mots-clés sur le nom d'équipement ────
-// Ordre de test : IT, puis Biomedical, puis défaut Infrastructure.
-// "Ondulaire"/"Ondureire" = onduleur/UPS (confirmé par numéro de série
-// BR1100C, modèle APC connu, sur la ligne source correspondante).
-const IT_KEYWORDS = [
-  'clavier', 'cpu', 'desktop', 'ecran', 'écran', 'flat screen', 'raptop',
-  'laptop', 'unite cental', 'unité cental', 'ups', 'ondurair', 'ondulair',
-  'machine desk top',
-];
-
-// Matériel de rééducation/physiothérapie + dispositifs thérapeutiques :
-// classé Biomedical (suivi PM / plan de remplacement biomédical), conforme
-// à la décision validée pour cette campagne d'import.
-const BIOMEDICAL_KEYWORDS = [
-  'aspirateur', 'balance adulte', 'balance bebe', 'balance bébé',
-  'blood warmer', 'ctg', 'doppler', 'echographie', 'échographie',
-  'frigo', 'refrigerator', 'réfrigérateur', 'glucometre', 'glucomètre',
-  'lampe chaufante', 'lampe gynecologique', 'lampe gynécologique',
-  'patient monitor', 'pulse  oxymeter', 'pulse oxymeter', 'radiant warmer',
-  'tansiometre', 'tansiomètre', 'tens', 'vibromasseur',
-  "tabled'accouchement", "table d'accouchement", 'blancard', 'brancard',
-  'infrared', 'monark', 'parrallel bar', 'parallel bar', 'standing frame',
-  'wall bar', 'mats', 'physioball', "table d'exercises", "tatble d'exercises",
-];
-
-// Mobilier courant : classé Infrastructure avec confiance (pas un warning).
-const FURNITURE_KEYWORDS = [
-  'armoire', 'armore', 'bed', 'lit', 'chair', 'chaise', 'table', 'etagere',
-  'étagère', 'chariot', 'long banc', 'banc', 'paravent', 'roll', 'stretcher',
-  'trolley', 'troly', 'wheel chair', 'whell chair', 'stabilisateur',
-];
-
+// Fichier combiné mobilier/IT : la majorité des noms non reconnus par les
+// mots-clés (cf. lib/macro_classifier.js) sont du mobilier → défaut Infrastructure.
 function classifyMacro(rawName) {
-  const s = String(rawName || '').trim().toLowerCase();
-  if (!s) return { macro: 'Infrastructure', confident: false };
-  if (IT_KEYWORDS.some(k => s.includes(k)))         return { macro: 'IT', confident: true };
-  if (BIOMEDICAL_KEYWORDS.some(k => s.includes(k))) return { macro: 'Biomedical', confident: true };
-  if (FURNITURE_KEYWORDS.some(k => s.includes(k)))  return { macro: 'Infrastructure', confident: true };
-  return { macro: 'Infrastructure', confident: false };
+  return classifyMacroShared(rawName, 'Infrastructure');
 }
 
 // ── Détection de cellule "code tag" : toute valeur contenant '/' (les codes

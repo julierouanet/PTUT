@@ -1,46 +1,73 @@
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show compute, debugPrint;
+import 'package:image/image.dart' as img;
 
 /// Compression d'images avant upload.
 ///
-/// Sur web : flutter_image_compress n'est pas disponible — les bytes originaux
-/// sont retournés directement (le serveur impose une limite à 5 Mo par fichier).
-/// Sur natif : placeholder (la feature de compression peut être activée en
-/// décommentant le bloc flutter_image_compress une fois le package ajouté au natif).
+/// Le serveur impose une limite de 5 Mo par photo (`MAX_PHOTO_MB` dans
+/// `db-service/src/middleware/upload.js`). Sans compression réelle, une photo
+/// brute prise depuis un smartphone (souvent 3 à 12 Mo) dépasse cette limite et
+/// l'upload échoue côté Multer — c'était la cause racine des photos jamais
+/// jointes à un incident. `package:image` est pur Dart : fonctionne identique
+/// sur web et natif (contrairement à flutter_image_compress, indisponible web).
+///
+/// Le décodage/redimensionnement/ré-encodage est CPU-bound : `compute()` le
+/// déporte sur un isolate séparé pour ne pas geler l'UI pendant la soumission
+/// du formulaire d'incident (jusqu'à 5 photos par signalement).
 class ImageCompressor {
-  /// Compresse une image JPEG/PNG.
-  /// Retourne toujours un résultat non-null : bytes originaux si compression
-  /// échoue ou si le résultat compressé est plus lourd.
-  static Future<Uint8List> compress(
-    Uint8List originalBytes, {
+  /// Compresse une image JPEG/PNG : redimensionne si elle dépasse [maxWidth]/
+  /// [maxHeight] (ratio préservé) et ré-encode en JPEG à [quality]. Retourne
+  /// toujours les bytes originaux + leur [originalMimeType] si le décodage
+  /// échoue ou si le résultat compressé est plus lourd que l'original — le
+  /// mimeType retourné reflète toujours l'encodage réel des bytes, jamais
+  /// déduit du nom de fichier d'origine.
+  static Future<({Uint8List bytes, String mimeType})> compress(
+    Uint8List originalBytes,
+    String originalMimeType, {
     int quality   = 70,
     int maxWidth  = 1920,
     int maxHeight = 1080,
-  }) async {
-    if (kIsWeb) {
-      // flutter_image_compress ne supporte pas le web — bypass direct.
-      return originalBytes;
+  }) {
+    return compute(
+      _compressSync,
+      _CompressInput(originalBytes, originalMimeType, quality, maxWidth, maxHeight),
+    );
+  }
+}
+
+class _CompressInput {
+  final Uint8List bytes;
+  final String mimeType;
+  final int quality;
+  final int maxWidth;
+  final int maxHeight;
+  const _CompressInput(this.bytes, this.mimeType, this.quality, this.maxWidth, this.maxHeight);
+}
+
+/// Fonction top-level (requise par `compute()`) exécutée sur l'isolate dédié.
+({Uint8List bytes, String mimeType}) _compressSync(_CompressInput input) {
+  try {
+    final decoded = img.decodeImage(input.bytes);
+    if (decoded == null) return (bytes: input.bytes, mimeType: input.mimeType);
+
+    final scale = [
+      input.maxWidth  / decoded.width,
+      input.maxHeight / decoded.height,
+      1.0, // jamais d'agrandissement
+    ].reduce((a, b) => a < b ? a : b);
+    final resized = scale < 1.0
+        ? img.copyResize(decoded, width: (decoded.width * scale).round())
+        : decoded;
+
+    final encoded = img.encodeJpg(resized, quality: input.quality);
+    if (encoded.length >= input.bytes.length) {
+      return (bytes: input.bytes, mimeType: input.mimeType);
     }
 
-    try {
-      // Sur natif : compression via flutter_image_compress si disponible.
-      // Pour activer, décommenter le bloc ci-dessous et ajouter
-      // flutter_image_compress: ^2.2.0 dans pubspec.yaml (natif uniquement).
-      //
-      // final result = await FlutterImageCompress.compressWithList(
-      //   originalBytes,
-      //   quality:   quality,
-      //   minWidth:  1,
-      //   minHeight: 1,
-      // );
-      // if (result.length < originalBytes.length) {
-      //   debugPrint('[ImageCompressor] ${originalBytes.length ~/ 1024} Ko → ${result.length ~/ 1024} Ko');
-      //   return result;
-      // }
-      return originalBytes;
-    } catch (e) {
-      debugPrint('[ImageCompressor] Échec : $e');
-      return originalBytes;
-    }
+    debugPrint('[ImageCompressor] ${input.bytes.length ~/ 1024} Ko → ${encoded.length ~/ 1024} Ko');
+    return (bytes: Uint8List.fromList(encoded), mimeType: 'image/jpeg');
+  } catch (e) {
+    debugPrint('[ImageCompressor] Échec : $e');
+    return (bytes: input.bytes, mimeType: input.mimeType);
   }
 }

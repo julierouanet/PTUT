@@ -213,6 +213,7 @@ PTUT/
 - **`pm_protocols`** : protocoles par *type* d'équipement (≠ `preventive_maintenance_plans` qui est par équipement individuel)
 - **Cycle de vie / réforme** (soft delete) : 7 colonnes sur `equipment` — `decommissioned_at`, `decommission_reason`, `disposal_method`, `decommissioned_by_id`, `decommissioned_by_name`, `decommission_notes`, `replaced_by_id` (FK logique vers `equipment(id)`, validée côté Node — pas de FK SQL via ALTER). Un équipement réformé passe `status='Disposed'`, sort des listes actives (`GET /api/equipment` l'exclut sauf `?include_disposed=true`) mais conserve tout son historique. Workflow proposition (`To be disposal`, tech/sup) → validation (`Disposed`, admin). Le hard delete (`DELETE`) est bloqué (`409 hasHistory`) si l'équipement a un historique, sauf `?force=true` (admin)
 - **`issues.taken_at`** (TEXT, Nullable) : horodatage ISO 8601 de la prise en charge par le technicien — permet le chronomètre persistant côté Flutter (`DateTime.now().difference(takenAt)` au rechargement)
+- **`issues.equipment_linked_at`** (TEXT, Nullable) : horodatage ISO 8601 posé une seule fois lors de la liaison tardive d'un incident créé sans équipement (`equipment_id IS NULL`) à un équipement du catalogue, via `PATCH /api/issues/:id/link-equipment`. Alimente le futur KPI « taux de signalement sans équipement identifié » (reporting RHAS)
 
 ### Enums principaux (whitelists serveur)
 
