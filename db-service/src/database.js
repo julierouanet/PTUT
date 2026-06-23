@@ -842,6 +842,35 @@ function initTables() {
       ON issue_intervention_reports(issue_id);
   `);
 
+  // ── Boucles d'intervention par incident (1:N avec issues) ──────────────────
+  // Chaque "passage" du technicien (diagnostic → action → outcome → résolu/à
+  // poursuivre) est une session. Une seule session active (closed_at NULL) par
+  // incident à la fois — garanti par l'index unique partiel ci-dessous.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS issue_intervention_sessions (
+      id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+      issue_id           TEXT    NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+      loop_number        INTEGER NOT NULL,
+      diagnosis          TEXT,
+      diagnosis_addendum TEXT,
+      action_taken       TEXT,
+      outcome            TEXT,
+      next_actions       TEXT,
+      resolved           INTEGER NOT NULL DEFAULT 0,
+      technician_id      TEXT,
+      technician_name    TEXT,
+      started_at         TEXT DEFAULT (datetime('now','localtime')),
+      closed_at          TEXT,
+      duration_hours     REAL,
+      created_at         TEXT DEFAULT (datetime('now','localtime')),
+      updated_at         TEXT DEFAULT (datetime('now','localtime'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_intervention_sessions_issue
+      ON issue_intervention_sessions(issue_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_intervention_sessions_active
+      ON issue_intervention_sessions(issue_id) WHERE closed_at IS NULL;
+  `);
+
   // ════════════════════════════════════════════════════════════════════════════
   // CATALOGUE FABRICANT → MODÈLE (fiche technique partagée)
   // Aligne l'app sur les GMAO du marché : la fiche technique appartient au couple

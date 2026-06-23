@@ -318,6 +318,31 @@ class DbApiService {
     );
   }
 
+  // ── BOUCLES D'INTERVENTION (1:N par incident) ──────────────────────────────
+
+  Future<List<dynamic>> getInterventionSessions(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/sessions';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> saveActiveInterventionSession(
+      String issueId, Map<String, dynamic> payload) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/sessions/active';
+    final response = await ApiClient.put(url, payload);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> closeActiveInterventionSession(
+      String issueId, Map<String, dynamic> payload) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/sessions/active/close';
+    final response = await ApiClient.post(url, payload);
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   // ── INVENTAIRE ─────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getInventory({

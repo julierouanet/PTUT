@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/notification.dart';
+import '../models/nav_item.dart';
 import '../services/notification_service.dart';
 
 /// Cloche de notifications avec badge et panneau déroulant
@@ -262,8 +263,10 @@ class _NotificationPanel extends StatelessWidget {
                     onTap: () {
                       NotificationService().markAsRead(notif.id);
                       onClose();
-                      if (notif.linkedIssueId != null) {
-                        // Naviguer vers l'écran Suivi des incidents (index 2)
+                      final screen = notif.type.targetScreen;
+                      if (screen != null) {
+                        onNavigate(ScreenType.values.indexOf(screen));
+                      } else if (notif.linkedIssueId != null) {
                         onNavigate(2, issueId: notif.linkedIssueId);
                       }
                     },
@@ -299,6 +302,7 @@ class _NotifTile extends StatelessWidget {
       NotificationType.issueInProgress => (AppColors.primary, Icons.build_rounded),
       NotificationType.issueResolved   => (AppColors.success, Icons.check_circle_rounded),
       NotificationType.deptRequest     => (AppColors.warning, Icons.swap_horiz_rounded),
+      NotificationType.roleRequest     => (AppColors.warning, Icons.badge_outlined),
     };
 
     final String title = switch (notif.type) {
@@ -306,6 +310,7 @@ class _NotifTile extends StatelessWidget {
       NotificationType.issueInProgress => l10n.notifInProgress,
       NotificationType.issueResolved   => l10n.notifResolved,
       NotificationType.deptRequest     => 'Demande de changement de département',
+      NotificationType.roleRequest     => l10n.notifRoleRequest,
     };
 
     final String body = switch (notif.type) {
@@ -317,6 +322,8 @@ class _NotifTile extends StatelessWidget {
         l10n.notifResolvedBody(notif.equipmentName),
       NotificationType.deptRequest =>
         '${notif.userName ?? 'Utilisateur'} : ${notif.department} → ${notif.equipmentName}',
+      NotificationType.roleRequest =>
+        '${notif.userName ?? 'Utilisateur'} → ${notif.equipmentName}',
     };
 
     return InkWell(

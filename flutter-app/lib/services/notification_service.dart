@@ -180,6 +180,24 @@ class NotificationService extends ChangeNotifier {
           createdAt:     reqDate,
         ));
       }
+
+      // ── Admins : demandes de rôle en attente ──
+      for (final req in DataService().roleRequests) {
+        DateTime reqDate;
+        try {
+          reqDate = DateTime.parse(req['created_at'] as String? ?? '');
+        } catch (_) {
+          reqDate = now;
+        }
+        generated.add(AppNotification(
+          id:            'notif-role-${req['id']}',
+          type:          NotificationType.roleRequest,
+          equipmentName: req['requested_role'] as String? ?? '',
+          department:    '',
+          userName:      req['user_name'] as String?,
+          createdAt:     reqDate,
+        ));
+      }
     }
 
     // Les plus récents en premier

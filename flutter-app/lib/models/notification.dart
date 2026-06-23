@@ -1,9 +1,12 @@
+import 'nav_item.dart';
+
 /// Types de notifications in-app
 enum NotificationType {
   newIssue,
   issueInProgress,
   issueResolved,
-  deptRequest;
+  deptRequest,
+  roleRequest;
 
   /// Conversion depuis le type string retourné par l'API backend
   static NotificationType fromApiString(String value) => switch (value) {
@@ -12,7 +15,15 @@ enum NotificationType {
     'issue_in_progress'  => NotificationType.issueInProgress,
     'issue_resolved'     => NotificationType.issueResolved,
     'dept_request'       => NotificationType.deptRequest,
+    'role_request'       => NotificationType.roleRequest,
     _                    => NotificationType.newIssue, // défaut sécurisé
+  };
+
+  /// Écran cible lors du tap sur la notification (null = pas de navigation directe)
+  ScreenType? get targetScreen => switch (this) {
+    NotificationType.deptRequest => ScreenType.users,
+    NotificationType.roleRequest => ScreenType.users,
+    _                            => null,
   };
 }
 

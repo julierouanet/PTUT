@@ -10,6 +10,7 @@ import '../services/notification_service.dart';
 import '../services/pdf_report_service.dart';
 import '../models/issue.dart';
 import '../models/issue_intervention_report.dart';
+import '../models/issue_intervention_session.dart';
 import '../models/inventory_item.dart';
 import '../widgets/urgency_badge.dart';
 
@@ -45,21 +46,29 @@ class _TechnicianInterventionUpdateScreenState
   String _legacyPartsText = ''; // pièces sauvegardées en texte libre
 
   final _diagnosisController   = TextEditingController();
-  final _actionsController     = TextEditingController();
+  final _actionsController     = TextEditingController(); // renommé action_taken dans les sessions
+  final _outcomeController     = TextEditingController();
+  final _nextActionsController = TextEditingController();
   final _partsSearchController = TextEditingController();
 
-  bool _isSaving      = false;
-  bool _isReassigning = false;
-  bool _isEscalating  = false;
-  bool _isDetaching   = false;
+  bool _isSaving         = false;
+  bool _isReassigning    = false;
+  bool _isEscalating     = false;
+  bool _isDetaching      = false;
+  bool _isClosingSession = false;
 
   /// Vrai si une action API du formulaire d'intervention est en cours
   /// (désactive tous les boutons d'action pour éviter les appels concurrents).
   bool get _isBusy =>
-      _isSaving || _isReassigning || _isEscalating || _isDetaching;
+      _isSaving || _isReassigning || _isEscalating || _isDetaching || _isClosingSession;
 
   // ── Suivi des modifications non sauvegardées ────────────────────────────────
   bool _isDirty = false;
+
+  // ── Session active et dernière session fermée ────────────────────────────────
+  IssueInterventionSession? _activeSession;
+  IssueInterventionSession? _lastClosedSession;
+  bool _sessionLoading = true;
 
   // ── Chronomètre d'intervention ───────────────────────────────────────────────
   Timer?    _timer;
@@ -78,15 +87,58 @@ class _TechnicianInterventionUpdateScreenState
   void initState() {
     super.initState();
     final issue = widget.issue;
-    _diagnosisController.text = issue.diagnosis     ?? '';
-    _actionsController.text   = issue.actions       ?? '';
-    _legacyPartsText          = issue.partsReplaced ?? '';
+    _legacyPartsText = issue.partsReplaced ?? '';
+    // Pré-peuple les contrôleurs de façon synchrone depuis les champs de
+    // l'incident (déjà disponibles) pour éviter un flash d'interface vide
+    // pendant l'appel async de _loadActiveOrLastSession.
+    _diagnosisController.text = issue.diagnosis ?? '';
+    _actionsController.text   = issue.actions   ?? '';
     if (issue.status == IssueStatus.inProgress) {
       final takenAt = issue.takenAt != null ? DateTime.tryParse(issue.takenAt!) : null;
       _startTimer(takenAt ?? DateTime.now());
     }
     _diagnosisController.addListener(_markDirty);
     _actionsController.addListener(_markDirty);
+    _outcomeController.addListener(_markDirty);
+    _loadActiveOrLastSession();
+  }
+
+  Future<void> _loadActiveOrLastSession() async {
+    try {
+      final raw = await DbApiService.instance.getInterventionSessions(widget.issue.id);
+      final sessions = raw
+          .map((e) => IssueInterventionSession.fromApiJson(e as Map<String, dynamic>))
+          .toList();
+      if (!mounted) return;
+
+      final active = sessions.where((s) => !s.isClosed).firstOrNull;
+      final lastClosed = sessions.where((s) => s.isClosed).lastOrNull;
+
+      setState(() {
+        _activeSession     = active;
+        _lastClosedSession = lastClosed;
+        _sessionLoading    = false;
+
+        if (active != null) {
+          // Reprise d'une session active existante
+          _diagnosisController.text = active.diagnosis ?? '';
+          _actionsController.text   = active.actionTaken ?? '';
+          _outcomeController.text   = active.outcome ?? '';
+        } else if (lastClosed != null && !lastClosed.resolved) {
+          // Réouverture après session non résolue : diagnostic en lecture seule
+          _diagnosisController.text = lastClosed.diagnosis ?? '';
+          // Champs action/outcome vides pour la nouvelle boucle
+          _actionsController.text  = '';
+          _outcomeController.text  = '';
+        } else {
+          // Premier passage ou après résolution : fallback issue fields
+          _diagnosisController.text = widget.issue.diagnosis ?? '';
+          _actionsController.text   = widget.issue.actions   ?? '';
+        }
+      });
+    } catch (_) {
+      if (mounted) setState(() => _sessionLoading = false);
+    }
   }
 
   @override
@@ -94,14 +146,36 @@ class _TechnicianInterventionUpdateScreenState
     _timer?.cancel();
     _diagnosisController.removeListener(_markDirty);
     _actionsController.removeListener(_markDirty);
+    _outcomeController.removeListener(_markDirty);
     _diagnosisController.dispose();
     _actionsController.dispose();
+    _outcomeController.dispose();
+    _nextActionsController.dispose();
     _partsSearchController.dispose();
     super.dispose();
   }
 
   void _markDirty() {
     if (!_isDirty) setState(() => _isDirty = true);
+  }
+
+  // ── Helpers de session ────────────────────────────────────────────────────────
+
+  /// Ferme silencieusement la session active. Ignoré si aucune session active.
+  Future<void> _tryCloseActiveSession(String issueId, {String? nextActions}) async {
+    try {
+      await DbApiService.instance.closeActiveInterventionSession(issueId, {
+        'resolved': false,
+        'outcome': null,
+        'next_actions': nextActions,
+      });
+    } catch (_) { /* ignoré si pas de session active */ }
+  }
+
+  /// Recharge les incidents et régénère les notifications après une mutation.
+  Future<void> _refreshAfterMutation() async {
+    await DataService().reloadIssues();
+    NotificationService().generateFromLoadedData();
   }
 
   // ── Chronomètre ─────────────────────────────────────────────────────────────
@@ -254,27 +328,87 @@ class _TechnicianInterventionUpdateScreenState
         ),
         const SizedBox(height: 22),
 
+        // ── Historique boucle précédente (réouverture) ──────────────────────
+        if (!_sessionLoading && _lastClosedSession != null &&
+            !_lastClosedSession!.resolved && _activeSession == null)
+          _buildLoopHistoryBlock(l10n, _lastClosedSession!),
+
         // ── Diagnostic ──────────────────────────────────────────────────────
-        Text(l10n.techDiagnosis,
-            style: const TextStyle(fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: _diagnosisController,
-          maxLines: 3,
-          decoration: InputDecoration(hintText: l10n.techDiagnosisHint),
+        Row(
+          children: [
+            Expanded(
+              child: Text(l10n.techDiagnosis,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+            // Bouton "Compléter le diagnostic" visible si diagnosis existant
+            if (_diagnosisController.text.isNotEmpty)
+              TextButton.icon(
+                onPressed: _isBusy ? null : () => _showCompleteDiagnosisDialog(issue),
+                icon: const Icon(Icons.add_comment_outlined, size: 15),
+                label: Text(l10n.techCompleteDiagnosisButton,
+                    style: const TextStyle(fontSize: 12)),
+              ),
+          ],
         ),
+        const SizedBox(height: 8),
+        // Diagnostic en lecture seule si réouverture (non-resolved last session)
+        if (!_sessionLoading && _lastClosedSession != null &&
+            !_lastClosedSession!.resolved && _activeSession == null)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Text(
+              _diagnosisController.text.isNotEmpty
+                  ? _diagnosisController.text
+                  : '—',
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          )
+        else
+          TextFormField(
+            controller: _diagnosisController,
+            maxLines: 3,
+            decoration: InputDecoration(hintText: l10n.techDiagnosisHint),
+          ),
         const SizedBox(height: 22),
 
-        // ── Actions ─────────────────────────────────────────────────────────
-        Text(l10n.techActionsTaken,
+        // ── Action réalisée aujourd'hui ──────────────────────────────────────
+        Text(l10n.techActionTakenLabel,
             style: const TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         TextFormField(
           controller: _actionsController,
           maxLines: 3,
-          decoration: InputDecoration(hintText: l10n.techActionsHint),
+          decoration: InputDecoration(hintText: l10n.techActionTakenHint),
         ),
         const SizedBox(height: 22),
+
+        // ── Outcome ─────────────────────────────────────────────────────────
+        Text(l10n.techOutcomeLabel,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _outcomeController,
+          maxLines: 2,
+          decoration: InputDecoration(hintText: l10n.techOutcomeHint),
+        ),
+        const SizedBox(height: 22),
+
+        // ── Actions à réaliser (uniquement si pas résolu) ────────────────────
+        Text(l10n.techNextActionsLabel,
+            style: const TextStyle(fontWeight: FontWeight.w500)),
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: _nextActionsController,
+          maxLines: 3,
+          decoration: InputDecoration(hintText: l10n.techNextActionsHint),
+        ),
+        const SizedBox(height: 28),
 
         // ── Sélecteur de pièces ─────────────────────────────────────────────
         if (inventoryEnabled) ...[
@@ -290,13 +424,29 @@ class _TechnicianInterventionUpdateScreenState
                 ? null
                 : () => _saveProgress(inventoryEnabled),
             icon: _isSaving
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.primary))
+                ? _buttonSpinner(AppColors.primary)
                 : const Icon(Icons.save_outlined, size: 16),
             label: Text(l10n.techSave),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Sauvegarder et fermer l'intervention ──────────────────────
+        // ListenableBuilder scoped au contrôleur pour éviter un rebuild complet
+        // de toute la colonne à chaque frappe dans le champ "Actions à réaliser".
+        ListenableBuilder(
+          listenable: _nextActionsController,
+          builder: (_, __) => SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: (_isBusy || _nextActionsController.text.trim().length < 10)
+                  ? null
+                  : () => _doSaveAndCloseIntervention(issue),
+              icon: _isClosingSession
+                  ? _buttonSpinner(AppColors.primary)
+                  : const Icon(Icons.pause_circle_outline, size: 16),
+              label: Text(l10n.techSaveAndCloseInterventionButton),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -326,11 +476,7 @@ class _TechnicianInterventionUpdateScreenState
                 ? null
                 : () => _showEscalateDialog(issue),
             icon: _isEscalating
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.error))
+                ? _buttonSpinner(AppColors.error)
                 : const Icon(Icons.report_problem_outlined,
                     size: 16, color: AppColors.error),
             label: Text(l10n.techEscalateButton,
@@ -351,11 +497,7 @@ class _TechnicianInterventionUpdateScreenState
                 ? null
                 : () => _showReassignDialog(issue),
             icon: _isReassigning
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.warning))
+                ? _buttonSpinner(AppColors.warning)
                 : const Icon(Icons.swap_horiz, size: 16, color: AppColors.warning),
             label: Text(l10n.techReassignButton,
                 style: const TextStyle(color: AppColors.warning)),
@@ -375,11 +517,7 @@ class _TechnicianInterventionUpdateScreenState
                 ? null
                 : () => _showDetachDialog(issue),
             icon: _isDetaching
-                ? const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: AppColors.textSecondary))
+                ? _buttonSpinner(AppColors.textSecondary)
                 : const Icon(Icons.link_off,
                     size: 16, color: AppColors.textSecondary),
             label: Text(l10n.detachButton,
@@ -394,6 +532,134 @@ class _TechnicianInterventionUpdateScreenState
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Bloc historique de la boucle précédente (lecture seule)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildLoopHistoryBlock(AppLocalizations l10n, IssueInterventionSession session) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 20),
+          decoration: BoxDecoration(
+            color: AppColors.warningLight,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                const Icon(Icons.history, size: 15, color: AppColors.warning),
+                const SizedBox(width: 6),
+                Text(l10n.techLoopHistoryTitle(session.loopNumber),
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.warning)),
+              ]),
+              if (session.diagnosis?.isNotEmpty == true) ...[
+                const SizedBox(height: 8),
+                Text(l10n.techLoopDiagnosisLabel,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+                Text(session.diagnosis!, style: const TextStyle(fontSize: 12)),
+              ],
+              if (session.actionTaken?.isNotEmpty == true) ...[
+                const SizedBox(height: 6),
+                Text(l10n.techLoopActionsLabel,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+                Text(session.actionTaken!, style: const TextStyle(fontSize: 12)),
+              ],
+              if (session.outcome?.isNotEmpty == true) ...[
+                const SizedBox(height: 6),
+                Text(l10n.techLoopOutcomeLabel,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+                Text(session.outcome!, style: const TextStyle(fontSize: 12)),
+              ],
+              if (session.nextActions?.isNotEmpty == true) ...[
+                const SizedBox(height: 6),
+                Text(l10n.techLoopNextActionsLabel,
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500)),
+                Text(session.nextActions!, style: const TextStyle(fontSize: 12)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Compléter le diagnostic
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  void _showCompleteDiagnosisDialog(Issue issue) {
+    final l10n = AppLocalizations.of(context)!;
+    final addendumCtl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.techCompleteDiagnosisTitle),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: addendumCtl,
+            maxLines: 4,
+            autofocus: true,
+            decoration: InputDecoration(hintText: l10n.techCompleteDiagnosisHint),
+            validator: (v) => (v == null || v.trim().isEmpty) ? l10n.commonRequired : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.commonCancel),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+              final addendum = addendumCtl.text.trim();
+              Navigator.pop(ctx);
+              try {
+                await DbApiService.instance.saveActiveInterventionSession(issue.id, {
+                  'diagnosis_addendum': addendum,
+                });
+                if (mounted) setState(() {});
+              } catch (_) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(l10n.commonApiError),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                }
+              }
+            },
+            child: Text(l10n.commonConfirm),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Helpers UI partagés
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  /// Spinner compact utilisé comme icône de bouton pendant une action en cours.
+  Widget _buttonSpinner(Color color) => SizedBox(
+        width: 14,
+        height: 14,
+        child: CircularProgressIndicator(strokeWidth: 2, color: color),
+      );
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Badge chronomètre
@@ -477,10 +743,10 @@ class _TechnicianInterventionUpdateScreenState
   Future<void> _doDetach(Issue issue, String reason) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isDetaching = true);
+    await _tryCloseActiveSession(issue.id, nextActions: reason);
     try {
       await DbApiService.instance.detachIssue(issue.id, reason);
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
+      await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -1188,8 +1454,7 @@ class _TechnicianInterventionUpdateScreenState
     setState(() => _isReassigning = true);
     try {
       await DbApiService.instance.reassignIssue(issue.id, newGroup, reason);
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
+      await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -1219,10 +1484,10 @@ class _TechnicianInterventionUpdateScreenState
       Issue issue, String escalStatus, String comment) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isEscalating = true);
+    await _tryCloseActiveSession(issue.id, nextActions: comment);
     try {
       await DbApiService.instance.escalateIssue(issue.id, escalStatus, comment);
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
+      await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -1266,8 +1531,15 @@ class _TechnicianInterventionUpdateScreenState
             : null,
         // Pas de parts_consumed ici — le déstockage se fait uniquement à la clôture
       });
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
+      await DbApiService.instance.saveActiveInterventionSession(widget.issue.id, {
+        if (_diagnosisController.text.trim().isNotEmpty)
+          'diagnosis': _diagnosisController.text.trim(),
+        if (_actionsController.text.trim().isNotEmpty)
+          'action_taken': _actionsController.text.trim(),
+        if (_outcomeController.text.trim().isNotEmpty)
+          'outcome': _outcomeController.text.trim(),
+      });
+      await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -1279,6 +1551,7 @@ class _TechnicianInterventionUpdateScreenState
         behavior: SnackBarBehavior.floating,
       ));
       setState(() => _isDirty = false);
+      Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1288,6 +1561,72 @@ class _TechnicianInterventionUpdateScreenState
       ));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _doSaveAndCloseIntervention(Issue issue) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _isClosingSession = true);
+    try {
+      final sessionRaw = await DbApiService.instance.closeActiveInterventionSession(
+        issue.id,
+        {
+          'resolved': false,
+          'outcome': _outcomeController.text.trim().isNotEmpty
+              ? _outcomeController.text.trim()
+              : null,
+          'next_actions': _nextActionsController.text.trim(),
+        },
+      );
+      final session = IssueInterventionSession.fromApiJson(sessionRaw);
+      final user = AuthService().currentUser;
+
+      // Génère le PDF de cette boucle
+      final pdfBytes = await PdfReportService.generateInterventionSessionReport(
+        session: session,
+        issueId: issue.id,
+        equipmentName: issue.equipmentName ?? issue.id,
+        generatedByName: user?.name ?? '—',
+        generatedByRole: user?.roles.isNotEmpty == true
+            ? user!.roles.first.displayName
+            : '—',
+      );
+
+      // Archive sur l'équipement si disponible
+      if (issue.equipmentId != null && issue.equipmentId!.isNotEmpty) {
+        try {
+          await DbApiService.instance.archiveInterventionPdf(
+            issue.equipmentId!,
+            pdfBytes,
+            'rapport_boucle_${issue.id}_${session.loopNumber}.pdf',
+          );
+        } catch (_) { /* archivage non bloquant */ }
+      }
+
+      await _refreshAfterMutation();
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.check_outlined, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techSaveAndCloseSuccess),
+        ]),
+        backgroundColor: AppColors.primary,
+        behavior: SnackBarBehavior.floating,
+      ));
+      _stopTimer();
+      setState(() => _isDirty = false);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${l10n.commonApiError}: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isClosingSession = false);
     }
   }
 
@@ -1308,6 +1647,16 @@ class _TechnicianInterventionUpdateScreenState
     }
 
     try {
+      // Ferme la session active avec resolved=true avant de clore l'incident
+      try {
+        await DbApiService.instance.closeActiveInterventionSession(issue.id, {
+          'resolved': true,
+          'outcome': _outcomeController.text.trim().isNotEmpty
+              ? _outcomeController.text.trim()
+              : null,
+        });
+      } catch (_) { /* ignoré si pas de session active */ }
+
       await DbApiService.instance.updateIssue(issue.id, {
         'status':              'Completed',
         'assigned_technician': _currentTechnicianName,
@@ -1323,8 +1672,7 @@ class _TechnicianInterventionUpdateScreenState
           'parts_consumed': _buildPartsConsumed(),
       });
       final reportOk = await _generateAndFinalizeReport(issue, finalActions);
-      await DataService().reloadIssues();
-      NotificationService().generateFromLoadedData();
+      await _refreshAfterMutation();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Row(children: [
@@ -1375,8 +1723,23 @@ class _TechnicianInterventionUpdateScreenState
               (DateTime.now().difference(takenAt).inMinutes / 60.0).toStringAsFixed(1));
       final diagnosis = _diagnosisController.text.trim();
 
+      // Construit un résumé compilé depuis toutes les boucles
+      String? compiledSummary = finalActions;
+      try {
+        final rawSessions = await DbApiService.instance.getInterventionSessions(issue.id);
+        final sessions = rawSessions
+            .map((e) => IssueInterventionSession.fromApiJson(e as Map<String, dynamic>))
+            .toList();
+        if (sessions.isNotEmpty) {
+          compiledSummary = sessions.map((s) {
+            final date = s.closedAt?.split('T').first ?? s.startedAt.split('T').first;
+            return 'Boucle ${s.loopNumber} ($date) : ${s.actionTaken ?? '—'} → ${s.outcome ?? '—'}';
+          }).join('\n');
+        }
+      } catch (_) { /* fallback sur finalActions si l'appel échoue */ }
+
       await DbApiService.instance.saveInterventionReport(issue.id, {
-        'summary': finalActions,
+        'summary': compiledSummary,
         'root_cause': diagnosis.isNotEmpty ? diagnosis : null,
         'duration_hours': durationHours,
         'returned_to_service_at': DateTime.now().toIso8601String().split('T').first,

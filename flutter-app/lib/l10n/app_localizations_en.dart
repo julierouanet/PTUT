@@ -1112,6 +1112,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get notifRoleRequest => 'Role request';
+
+  @override
   String get hubSelectModule => 'Select a module';
 
   @override
@@ -5477,4 +5480,91 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validationEmailInvalid => 'Invalid email address';
+
+  @override
+  String get techOutcomeLabel => 'Outcome';
+
+  @override
+  String get techOutcomeHint => 'Describe the outcome of this intervention...';
+
+  @override
+  String get techNextActionsLabel => 'Actions to perform (next loop)';
+
+  @override
+  String get techNextActionsHint =>
+      'Describe the actions needed for the next intervention...';
+
+  @override
+  String get techNextActionsMinLength =>
+      'Actions to perform must be at least 10 characters';
+
+  @override
+  String get techCompleteDiagnosisButton => 'Add to diagnosis';
+
+  @override
+  String get techCompleteDiagnosisTitle => 'Diagnosis addendum';
+
+  @override
+  String get techCompleteDiagnosisHint =>
+      'Additional information to the initial diagnosis...';
+
+  @override
+  String get techSaveAndCloseInterventionButton =>
+      'Save and close intervention';
+
+  @override
+  String get techSaveAndCloseSuccess =>
+      'Intervention closed. Issue remains in progress.';
+
+  @override
+  String get techActionTakenLabel => 'Action taken today';
+
+  @override
+  String get techActionTakenHint =>
+      'Describe the actions taken during this visit...';
+
+  @override
+  String techLoopHistoryTitle(int n) {
+    return 'Loop $n history';
+  }
+
+  @override
+  String get techLoopDiagnosisLabel => 'Initial diagnosis';
+
+  @override
+  String get techLoopActionsLabel => 'Actions taken';
+
+  @override
+  String get techLoopOutcomeLabel => 'Outcome';
+
+  @override
+  String get techLoopNextActionsLabel => 'Planned actions';
+
+  @override
+  String get interventionSessionsTitle => 'Intervention tracking';
+
+  @override
+  String interventionSessionsTotalTime(String h) {
+    return 'Total intervention time: ${h}h';
+  }
+
+  @override
+  String get interventionSessionEmpty => 'No intervention loops recorded';
+
+  @override
+  String interventionSessionLoop(int n, String date, String tech) {
+    return 'Loop $n — $date — $tech';
+  }
+
+  @override
+  String get interventionSessionBadgeResolved => 'Resolved';
+
+  @override
+  String get interventionSessionBadgeNotResolved => 'Unresolved, continued';
+
+  @override
+  String get interventionSessionBadgeInProgress => 'In progress';
+
+  @override
+  String get interventionSessionPdfError => 'Error generating session PDF';
 }

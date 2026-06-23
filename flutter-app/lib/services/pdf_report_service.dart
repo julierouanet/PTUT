@@ -6,6 +6,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../models/equipment.dart';
 import '../models/inventory_item.dart';
 import '../models/issue.dart';
+import '../models/issue_intervention_session.dart';
 
 /// Génère un rapport PDF GMAO pour l'Hôpital de District de Kabutare.
 ///
@@ -20,6 +21,10 @@ class PdfReportService {
   static const _bgLight   = PdfColors.grey100;
   static const _border    = PdfColors.grey300;
   static const _textMuted = PdfColors.grey600;
+
+  /// Retourne une chaîne affichable pour une valeur potentiellement nulle/vide.
+  /// Utilisé dans toutes les méthodes de génération PDF pour éviter les champs vides.
+  static String _s(dynamic v) => (v == null || v.toString().isEmpty) ? '—' : v.toString();
 
   // ── API publique ───────────────────────────────────────────────────────────
 
@@ -436,13 +441,12 @@ class PdfReportService {
     final doc = pw.Document();
     final now = DateTime.now();
 
-    String s(dynamic v) => (v == null || v.toString().isEmpty) ? '—' : v.toString();
     double? n(dynamic v) =>
         v == null ? null : (v is num ? v.toDouble() : double.tryParse(v.toString()));
 
-    final equipmentName = s(report['equipment_name']);
+    final equipmentName = _s(report['equipment_name']);
     final equipmentId   = report['equipment_id'] as String?;
-    final issueStatus   = s(report['issue_status']);
+    final issueStatus   = _s(report['issue_status']);
     final isFinalized   = (report['report_status'] as String?) == 'finalized';
 
     final durationHours = n(report['duration_hours']);
@@ -466,15 +470,15 @@ class PdfReportService {
 
           // ── Section 2 : Diagnostic & actions (live incident) ────────────
           _sectionTitle('2. DIAGNOSTIC, ACTIONS & PIÈCES'),
-          _labelledBlock('Diagnostic', s(report['diagnosis'])),
-          _labelledBlock('Actions réalisées', s(report['actions'])),
-          _labelledBlock('Pièces remplacées', s(report['parts_replaced'])),
+          _labelledBlock('Diagnostic', _s(report['diagnosis'])),
+          _labelledBlock('Actions réalisées', _s(report['actions'])),
+          _labelledBlock('Pièces remplacées', _s(report['parts_replaced'])),
 
           // ── Section 3 : Rapport structuré ──────────────────────────────
           _sectionTitle('3. RAPPORT D\'INTERVENTION'),
-          _labelledBlock('Résumé', s(report['summary'])),
-          _labelledBlock('Cause racine', s(report['root_cause'])),
-          _labelledBlock('Recommandations', s(report['recommendations'])),
+          _labelledBlock('Résumé', _s(report['summary'])),
+          _labelledBlock('Cause racine', _s(report['root_cause'])),
+          _labelledBlock('Recommandations', _s(report['recommendations'])),
           pw.SizedBox(height: 6),
           pw.Row(children: [
             pw.Expanded(child: _kpiBox('Durée (heures)',
@@ -484,19 +488,19 @@ class PdfReportService {
                 estimatedCost == null ? 'N/A' : estimatedCost.toStringAsFixed(0), _warning)),
             pw.SizedBox(width: 8),
             pw.Expanded(child: _kpiBox('État final équipement',
-                s(report['final_equipment_status']), _success)),
+                _s(report['final_equipment_status']), _success)),
           ]),
           pw.SizedBox(height: 6),
           _twoColTextTable([
-            MapEntry('Remise en service le', s(report['returned_to_service_at'])),
+            MapEntry('Remise en service le', _s(report['returned_to_service_at'])),
           ]),
 
           // ── Section 4 : Signatures ─────────────────────────────────────
           _sectionTitle('4. VALIDATION'),
           _twoColTextTable([
-            MapEntry('Rédigé par', s(report['author_name'])),
-            MapEntry('Validé par', s(report['validated_by_name'])),
-            MapEntry('Date de validation', s(report['validated_at'])),
+            MapEntry('Rédigé par', _s(report['author_name'])),
+            MapEntry('Validé par', _s(report['validated_by_name'])),
+            MapEntry('Date de validation', _s(report['validated_at'])),
             MapEntry('Statut du rapport', isFinalized ? 'Finalisé' : 'Brouillon'),
           ]),
         ],
@@ -504,6 +508,115 @@ class PdfReportService {
     );
 
     return doc.save();
+  }
+
+  // ── PDF par boucle d'intervention ───────────────────────────────────────────
+
+  static Future<Uint8List> generateInterventionSessionReport({
+    required IssueInterventionSession session,
+    required String issueId,
+    required String equipmentName,
+    required String generatedByName,
+    required String generatedByRole,
+  }) async {
+    final doc = pw.Document();
+    final now = DateTime.now();
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        header: (context) => _buildSessionHeader(
+            now, generatedByName, generatedByRole, issueId, session.loopNumber),
+        footer: (context) => _buildFooter(context),
+        build: (context) => [
+          // ── Section 1 : Identité incident / équipement / boucle ───────────
+          _sectionTitle('1. INCIDENT & ÉQUIPEMENT'),
+          _twoColTextTable([
+            MapEntry('Référence incident', issueId),
+            MapEntry('Équipement', equipmentName),
+            MapEntry('Boucle n°', session.loopNumber.toString()),
+            MapEntry('Technicien', _s(session.technicianName)),
+            MapEntry('Début', session.startedAt.split('T').first),
+            if (session.closedAt != null)
+              MapEntry('Fin', session.closedAt!.split('T').first),
+            if (session.durationHours != null)
+              MapEntry('Durée (h)', session.durationHours!.toStringAsFixed(1)),
+          ]),
+
+          // ── Section 2 : Diagnostic ────────────────────────────────────────
+          _sectionTitle('2. DIAGNOSTIC'),
+          _labelledBlock('Diagnostic', _s(session.diagnosis)),
+          if (session.diagnosisAddendum?.isNotEmpty == true)
+            _labelledBlock('Complément de diagnostic', _s(session.diagnosisAddendum)),
+
+          // ── Section 3 : Action & Outcome ──────────────────────────────────
+          _sectionTitle('3. ACTION RÉALISÉE & RÉSULTAT'),
+          _labelledBlock('Action réalisée', _s(session.actionTaken)),
+          _labelledBlock('Résultat (outcome)', _s(session.outcome)),
+
+          // ── Section 4 : Statut résolution ─────────────────────────────────
+          _sectionTitle('4. STATUT'),
+          if (session.resolved)
+            _labelledBlock('Résolution', '✔ Incident résolu lors de cette boucle')
+          else ...[
+            _labelledBlock('Résolution', '⚠ Incident non résolu — poursuite requise'),
+            _labelledBlock('Actions à réaliser', _s(session.nextActions)),
+          ],
+
+          // ── Section 5 : Signature ─────────────────────────────────────────
+          _sectionTitle('5. SIGNATURE'),
+          _twoColTextTable([
+            MapEntry('Généré par', generatedByName),
+            MapEntry('Rôle', generatedByRole),
+            MapEntry('Date de génération', '${_fmtDate(now)} à ${_fmtTime(now)}'),
+          ]),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  static pw.Widget _buildSessionHeader(DateTime now, String byName, String byRole,
+      String issueId, int loopNumber) {
+    return pw.Column(children: [
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const pw.BoxDecoration(
+          color: _primary,
+          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('RAPPORT DE BOUCLE D\'INTERVENTION — N° $loopNumber',
+                    style: pw.TextStyle(
+                        color: PdfColors.white, fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('Hôpital de District de Kabutare — Rwanda',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('Incident N° $issueId',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Par : $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      pw.SizedBox(height: 6),
+    ]);
   }
 
   // En-tête dédié du rapport d'intervention

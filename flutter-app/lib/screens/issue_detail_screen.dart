@@ -18,6 +18,7 @@ import '../widgets/equipment_picker_field.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue/intervention_report_section.dart';
+import '../widgets/issue/intervention_sessions_timeline.dart';
 import 'equipment_detail_screen.dart';
 
 /// Page complète de détail d'un incident — standard GMAO.
@@ -298,6 +299,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             const SizedBox(height: 12),
             _buildInterventionCard(l10n, detail.issue),
             if (!_isHospitalStaff) ...[
+              const SizedBox(height: 12),
+              _buildSessionsTimelineCard(l10n, detail.issue),
               const SizedBox(height: 12),
               InterventionReportSection(
                 key: ValueKey('report-${detail.issue.id}'),
@@ -1006,6 +1009,21 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
               style: const TextStyle(fontSize: 14, height: 1.5)),
         ),
       ]),
+    );
+  }
+
+  // ── Carte Suivi des interventions (boucles) ───────────────────────────────
+
+  Widget _buildSessionsTimelineCard(AppLocalizations l10n, Issue issue) {
+    return _SectionCard(
+      title: l10n.interventionSessionsTitle,
+      icon: Icons.timeline_outlined,
+      iconColor: AppColors.primary,
+      child: InterventionSessionsTimeline(
+        key: ValueKey('sessions-${issue.id}'),
+        issueId: issue.id,
+        equipmentName: issue.equipmentName ?? issue.id,
+      ),
     );
   }
 

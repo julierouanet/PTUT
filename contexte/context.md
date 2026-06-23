@@ -732,6 +732,9 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | PUT     | /api/issues/:id/report      | Admin/Sup/Tech | **[NOUVEAU]** UPSERT du rapport (`ON CONFLICT(issue_id)`). **409** si `report_status='finalized'` sauf `admin`. Valide `final_equipment_status` (whitelist statuts équipement → 400). Renseigne `author_id/name` au 1er enregistrement |
 | POST    | /api/issues/:id/report/finalize | Admin/Sup/Tech | **[NOUVEAU]** Fige le rapport (`finalized`). Exige `issues.status ∈ {Completed, Verified, Closed}` sinon **409**. Renseigne `validated_by_id/name` + `validated_at` |
 | PATCH   | /api/issues/:id/report/reopen | Admin        | **[NOUVEAU]** Rouvre un rapport figé (`report_status='draft'`) |
+| GET     | /api/issues/:id/sessions    | Auth           | **[NOUVEAU]** Liste toutes les boucles d'intervention (triées `loop_number ASC`). **404** si incident inexistant |
+| PUT     | /api/issues/:id/sessions/active | Admin/Sup/Tech | **[NOUVEAU]** Upsert transactionnel de la session active. **400** si incident n'est pas `In Progress`. Crée (loop_number auto) ou met à jour la session ouverte. Champs : `diagnosis`, `diagnosis_addendum`, `action_taken`, `outcome`. Audit trail `update_intervention_session` |
+| POST    | /api/issues/:id/sessions/active/close | Admin/Sup/Tech | **[NOUVEAU]** Ferme la session active. **400** si pas de session active, ou `resolved=false` sans `next_actions`. Calcule `duration_hours` via `julianday`. Audit trail `close_intervention_session` |
 
 ### Lieux (`/api/locations`)
 

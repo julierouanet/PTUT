@@ -33,6 +33,7 @@ class DataService extends ChangeNotifier {
   List<User>                  users         = [];
   List<Location>              locations     = [];
   List<Map<String, dynamic>>  deptRequests  = [];
+  List<Map<String, dynamic>>  roleRequests  = [];
 
   /// Ordre de la sidebar par rôle : { 'admin': ['dashboard', 'equipment', …] }
   Map<String, List<String>> sidebarOrder = {};
@@ -63,6 +64,7 @@ class DataService extends ChangeNotifier {
     await _loadSidebarConfig();
     await _loadRolesConfig();
     await _loadDeptRequests();
+    await _loadRoleRequests();
     await FeatureService().loadFeatures();
 
     isLoading    = false;
@@ -123,6 +125,23 @@ class DataService extends ChangeNotifier {
   /// Recharge les demandes de département en attente (admin seulement).
   Future<void> reloadDeptRequests() async {
     await _loadDeptRequests();
+    notifyListeners();
+  }
+
+  Future<void> _loadRoleRequests() async {
+    final user = AuthService().currentUser;
+    if (user == null || !user.hasRole(UserRole.admin)) return;
+    try {
+      roleRequests = await AuthApiService.instance.getRoleRequests(status: 'pending');
+    } catch (e) {
+      debugPrint('DataService: demandes de rôle — erreur ($e)');
+      roleRequests = [];
+    }
+  }
+
+  /// Recharge les demandes de rôle en attente (admin seulement).
+  Future<void> reloadRoleRequests() async {
+    await _loadRoleRequests();
     notifyListeners();
   }
 

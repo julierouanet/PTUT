@@ -1333,6 +1333,7 @@ class HomeHubScreen extends StatelessWidget {
     NotificationType.issueInProgress => Icons.build_outlined,
     NotificationType.issueResolved   => Icons.check_circle_outline,
     NotificationType.deptRequest     => Icons.swap_horiz_outlined,
+    NotificationType.roleRequest     => Icons.badge_outlined,
   };
 
   // ── Pied de page version ───────────────────────────────────────────────────

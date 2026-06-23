@@ -16,4 +16,14 @@ const rolesCsv = (req) =>
     .filter((r) => !SYSTEM_ROLES.has(r))
     .join(',');
 
-module.exports = { TECH_ROLES, rolesCsv };
+/**
+ * Vérifie si l'utilisateur de la requête possède au moins un des rôles spécifiés.
+ * Remplace les `Array.isArray(req.user.roles) && req.user.roles.includes(...)` inline.
+ * @param {import('express').Request} req
+ * @param {...string} roles
+ * @returns {boolean}
+ */
+const hasRole = (req, ...roles) =>
+  Array.isArray(req.user?.roles) && roles.some((r) => req.user.roles.includes(r));
+
+module.exports = { TECH_ROLES, rolesCsv, hasRole };

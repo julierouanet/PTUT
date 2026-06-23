@@ -2162,6 +2162,12 @@ abstract class AppLocalizations {
   /// **'Il y a {n} j'**
   String notifTimeDays(int n);
 
+  /// No description provided for @notifRoleRequest.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande de rôle'**
+  String get notifRoleRequest;
+
   /// No description provided for @hubSelectModule.
   ///
   /// In fr, this message translates to:
@@ -10127,6 +10133,156 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Adresse email invalide'**
   String get validationEmailInvalid;
+
+  /// No description provided for @techOutcomeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résultat / Outcome'**
+  String get techOutcomeLabel;
+
+  /// No description provided for @techOutcomeHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez le résultat de cette intervention...'**
+  String get techOutcomeHint;
+
+  /// No description provided for @techNextActionsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions à réaliser (prochaine boucle)'**
+  String get techNextActionsLabel;
+
+  /// No description provided for @techNextActionsHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez les actions nécessaires pour la prochaine intervention...'**
+  String get techNextActionsHint;
+
+  /// No description provided for @techNextActionsMinLength.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les actions à réaliser doivent contenir au moins 10 caractères'**
+  String get techNextActionsMinLength;
+
+  /// No description provided for @techCompleteDiagnosisButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Compléter le diagnostic'**
+  String get techCompleteDiagnosisButton;
+
+  /// No description provided for @techCompleteDiagnosisTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Complément de diagnostic'**
+  String get techCompleteDiagnosisTitle;
+
+  /// No description provided for @techCompleteDiagnosisHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations complémentaires au diagnostic initial...'**
+  String get techCompleteDiagnosisHint;
+
+  /// No description provided for @techSaveAndCloseInterventionButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sauvegarder et fermer l\'intervention'**
+  String get techSaveAndCloseInterventionButton;
+
+  /// No description provided for @techSaveAndCloseSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intervention fermée. L\'incident reste en cours.'**
+  String get techSaveAndCloseSuccess;
+
+  /// No description provided for @techActionTakenLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Action réalisée aujourd\'hui'**
+  String get techActionTakenLabel;
+
+  /// No description provided for @techActionTakenHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez les actions réalisées lors de ce passage...'**
+  String get techActionTakenHint;
+
+  /// No description provided for @techLoopHistoryTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique boucle {n}'**
+  String techLoopHistoryTitle(int n);
+
+  /// No description provided for @techLoopDiagnosisLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diagnostic initial'**
+  String get techLoopDiagnosisLabel;
+
+  /// No description provided for @techLoopActionsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions effectuées'**
+  String get techLoopActionsLabel;
+
+  /// No description provided for @techLoopOutcomeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résultat'**
+  String get techLoopOutcomeLabel;
+
+  /// No description provided for @techLoopNextActionsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions prévues'**
+  String get techLoopNextActionsLabel;
+
+  /// No description provided for @interventionSessionsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Suivi des interventions'**
+  String get interventionSessionsTitle;
+
+  /// No description provided for @interventionSessionsTotalTime.
+  ///
+  /// In fr, this message translates to:
+  /// **'Temps total d\'intervention : {h}h'**
+  String interventionSessionsTotalTime(String h);
+
+  /// No description provided for @interventionSessionEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune boucle d\'intervention enregistrée'**
+  String get interventionSessionEmpty;
+
+  /// No description provided for @interventionSessionLoop.
+  ///
+  /// In fr, this message translates to:
+  /// **'Boucle {n} — {date} — {tech}'**
+  String interventionSessionLoop(int n, String date, String tech);
+
+  /// No description provided for @interventionSessionBadgeResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu'**
+  String get interventionSessionBadgeResolved;
+
+  /// No description provided for @interventionSessionBadgeNotResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Non résolu, poursuivi'**
+  String get interventionSessionBadgeNotResolved;
+
+  /// No description provided for @interventionSessionBadgeInProgress.
+  ///
+  /// In fr, this message translates to:
+  /// **'En cours'**
+  String get interventionSessionBadgeInProgress;
+
+  /// No description provided for @interventionSessionPdfError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur lors de la génération du PDF de boucle'**
+  String get interventionSessionPdfError;
 }
 
 class _AppLocalizationsDelegate

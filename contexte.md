@@ -198,6 +198,7 @@ PTUT/
 | `model_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents de fiche technique d'un modèle — mêmes 3 types que `equipment_documents` — soft delete via `deleted_at` |
 | `model_pm_protocols` | `(model_id, protocol_id)` | **[NOUVEAU]** Liaison N-N modèle ↔ protocoles PM (en plus de ceux de la sous-catégorie) |
 | `issue_intervention_reports` | AUTOINCREMENT | **[NOUVEAU]** Rapport d'intervention 1:1 avec un incident (`issue_id` UNIQUE). Champs : `summary`, `root_cause`, `recommendations`, `duration_hours`, `returned_to_service_at`, `estimated_cost`, `final_equipment_status`, auteur + validateur, `report_status` (`draft`/`finalized`). Diagnostic/actions/pièces NON dupliqués (lus en direct depuis `issues`). PDF archivé dans `equipment_documents` (type `intervention`) à la finalisation |
+| `issue_intervention_sessions` | AUTOINCREMENT | **[NOUVEAU]** Boucles d'intervention 1:N avec un incident. Champs : `issue_id`, `loop_number`, `diagnosis`, `diagnosis_addendum`, `action_taken`, `outcome`, `next_actions`, `resolved` (0/1), `technician_id/name`, `started_at`, `closed_at`, `duration_hours`. Index unique partiel sur `(issue_id) WHERE closed_at IS NULL` — garantit une seule session active par incident |
 
 ### Points critiques
 

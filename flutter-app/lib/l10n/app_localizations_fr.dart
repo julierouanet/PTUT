@@ -1120,6 +1120,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get notifRoleRequest => 'Demande de rôle';
+
+  @override
   String get hubSelectModule => 'Selectionnez un module';
 
   @override
@@ -5536,4 +5539,93 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get validationEmailInvalid => 'Adresse email invalide';
+
+  @override
+  String get techOutcomeLabel => 'Résultat / Outcome';
+
+  @override
+  String get techOutcomeHint => 'Décrivez le résultat de cette intervention...';
+
+  @override
+  String get techNextActionsLabel => 'Actions à réaliser (prochaine boucle)';
+
+  @override
+  String get techNextActionsHint =>
+      'Décrivez les actions nécessaires pour la prochaine intervention...';
+
+  @override
+  String get techNextActionsMinLength =>
+      'Les actions à réaliser doivent contenir au moins 10 caractères';
+
+  @override
+  String get techCompleteDiagnosisButton => 'Compléter le diagnostic';
+
+  @override
+  String get techCompleteDiagnosisTitle => 'Complément de diagnostic';
+
+  @override
+  String get techCompleteDiagnosisHint =>
+      'Informations complémentaires au diagnostic initial...';
+
+  @override
+  String get techSaveAndCloseInterventionButton =>
+      'Sauvegarder et fermer l\'intervention';
+
+  @override
+  String get techSaveAndCloseSuccess =>
+      'Intervention fermée. L\'incident reste en cours.';
+
+  @override
+  String get techActionTakenLabel => 'Action réalisée aujourd\'hui';
+
+  @override
+  String get techActionTakenHint =>
+      'Décrivez les actions réalisées lors de ce passage...';
+
+  @override
+  String techLoopHistoryTitle(int n) {
+    return 'Historique boucle $n';
+  }
+
+  @override
+  String get techLoopDiagnosisLabel => 'Diagnostic initial';
+
+  @override
+  String get techLoopActionsLabel => 'Actions effectuées';
+
+  @override
+  String get techLoopOutcomeLabel => 'Résultat';
+
+  @override
+  String get techLoopNextActionsLabel => 'Actions prévues';
+
+  @override
+  String get interventionSessionsTitle => 'Suivi des interventions';
+
+  @override
+  String interventionSessionsTotalTime(String h) {
+    return 'Temps total d\'intervention : ${h}h';
+  }
+
+  @override
+  String get interventionSessionEmpty =>
+      'Aucune boucle d\'intervention enregistrée';
+
+  @override
+  String interventionSessionLoop(int n, String date, String tech) {
+    return 'Boucle $n — $date — $tech';
+  }
+
+  @override
+  String get interventionSessionBadgeResolved => 'Résolu';
+
+  @override
+  String get interventionSessionBadgeNotResolved => 'Non résolu, poursuivi';
+
+  @override
+  String get interventionSessionBadgeInProgress => 'En cours';
+
+  @override
+  String get interventionSessionPdfError =>
+      'Erreur lors de la génération du PDF de boucle';
 }

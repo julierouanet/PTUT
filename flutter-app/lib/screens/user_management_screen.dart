@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -40,6 +42,46 @@ class _DeptRequest {
   );
 }
 
+/// Modèle léger pour une demande de rôle.
+class _RoleRequest {
+  final String id;
+  final String userName;
+  final List<String> currentRoles;
+  final String requestedRole;
+  final String status;
+  final DateTime createdAt;
+
+  const _RoleRequest({
+    required this.id,
+    required this.userName,
+    required this.currentRoles,
+    required this.requestedRole,
+    required this.status,
+    required this.createdAt,
+  });
+
+  factory _RoleRequest.fromJson(Map<String, dynamic> j) {
+    List<String> roles = [];
+    try {
+      roles = (jsonDecode(j['current_roles'] as String? ?? '[]') as List).cast<String>();
+    } catch (_) {}
+    DateTime createdAt;
+    try {
+      createdAt = DateTime.parse(j['created_at'] as String? ?? '');
+    } catch (_) {
+      createdAt = DateTime.now();
+    }
+    return _RoleRequest(
+      id:            j['id']             as String,
+      userName:      j['user_name']      as String,
+      currentRoles:  roles,
+      requestedRole: j['requested_role'] as String,
+      status:        j['status']         as String,
+      createdAt:     createdAt,
+    );
+  }
+}
+
 /// Actions disponibles dans le menu contextuel d'une ligne utilisateur (mode compact).
 enum _UserAction { edit, permissions, toggle, delete }
 
@@ -60,10 +102,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   bool _deptRequestsExpanded = false;
   final _deptTileController = ExpansionTileController();
 
+  List<_RoleRequest> _roleRequests = [];
+  bool _roleRequestsLoading = false;
+  bool _roleRequestsExpanded = false;
+  final _roleTileController = ExpansionTileController();
+
   @override
   void initState() {
     super.initState();
     _loadDeptRequests();
+    _loadRoleRequests();
   }
 
   // ── Chargement données ────────────────────────────────────────────────────
@@ -90,6 +138,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     } catch (e) {
       setState(() => _deptRequestsLoading = false);
       debugPrint('UserManagement: erreur chargement demandes dept — $e');
+    }
+  }
+
+  Future<void> _loadRoleRequests() async {
+    setState(() => _roleRequestsLoading = true);
+    List<_RoleRequest> requests = [];
+    try {
+      await DataService().reloadRoleRequests();
+      requests = DataService().roleRequests.map(_RoleRequest.fromJson).toList();
+    } catch (e) {
+      debugPrint('UserManagement: erreur chargement demandes rôle — $e');
+    } finally {
+      if (mounted) setState(() { _roleRequests = requests; _roleRequestsLoading = false; });
+    }
+    NotificationService().generateFromLoadedData();
+    if (requests.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) { try { _roleTileController.expand(); } catch (_) {} }
+      });
     }
   }
 
@@ -245,6 +312,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             _buildDeptRequestsSection(),
             const SizedBox(height: 20),
 
+            // Section demandes de rôle
+            _buildRoleRequestsSection(),
+            const SizedBox(height: 20),
+
             // Users table
             _buildUsersTable(l10n),
           ],
@@ -333,6 +404,177 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         ],
       ),
     );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // ONGLET 1 — SECTION DEMANDES DE RÔLE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  Widget _buildRoleRequestsSection() {
+    final count = _roleRequests.length;
+    return Card(
+      child: ExpansionTile(
+        controller: _roleTileController,
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Icon(Icons.badge_outlined, color: AppColors.warning),
+            if (count > 0)
+              Positioned(
+                right: -6, top: -4,
+                child: Container(
+                  width: 16, height: 16,
+                  decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                  child: Center(
+                    child: Text('$count', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        title: const Text('Demandes de rôle en attente', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          _roleRequestsLoading ? 'Chargement…' : '$count demande${count > 1 ? 's' : ''} en attente',
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        initiallyExpanded: _roleRequestsExpanded,
+        onExpansionChanged: (v) => setState(() => _roleRequestsExpanded = v),
+        children: [
+          if (_roleRequestsLoading)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (_roleRequests.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Text('Aucune demande en attente.', style: TextStyle(color: AppColors.textSecondary)),
+            )
+          else
+            ..._roleRequests.map((req) {
+              final now  = DateTime.now();
+              final diff = now.difference(req.createdAt);
+              final ageText = diff.inDays == 0
+                  ? 'depuis ${diff.inHours}h'
+                  : 'depuis ${diff.inDays}j';
+              final ageColor = diff > const Duration(hours: 48)
+                  ? AppColors.error
+                  : AppColors.textMuted;
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                leading: CircleAvatar(
+                  radius: 18,
+                  backgroundColor: AppColors.warningLight,
+                  child: Text(
+                    req.userName.isNotEmpty ? req.userName[0].toUpperCase() : '?',
+                    style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                title: Text(req.userName, style: const TextStyle(fontWeight: FontWeight.w500)),
+                subtitle: Row(children: [
+                  Text(req.currentRoles.join(', '), style: const TextStyle(fontSize: 12)),
+                  const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward, size: 12, color: AppColors.textMuted)),
+                  Text(req.requestedRole, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  const SizedBox(width: 8),
+                  Text(ageText, style: TextStyle(fontSize: 11, color: ageColor)),
+                ]),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
+                      tooltip: 'Approuver',
+                      onPressed: () => _resolveRoleRequest(req, 'approved'),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
+                      tooltip: 'Rejeter',
+                      onPressed: () => _resolveRoleRequest(req, 'rejected'),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolveRoleRequest(_RoleRequest req, String status) async {
+    final noteCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(children: [
+          Icon(
+            status == 'approved' ? Icons.check_circle_outline : Icons.cancel_outlined,
+            color: status == 'approved' ? AppColors.success : AppColors.error,
+          ),
+          const SizedBox(width: 8),
+          Text(status == 'approved' ? 'Approuver la demande' : 'Rejeter la demande'),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            RichText(text: TextSpan(
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              children: [
+                TextSpan(text: req.userName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                const TextSpan(text: ' : '),
+                TextSpan(text: req.currentRoles.join(', ')),
+                const TextSpan(text: ' → '),
+                TextSpan(text: req.requestedRole, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+              ],
+            )),
+            const SizedBox(height: 12),
+            TextField(
+              controller: noteCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Note (optionnel)',
+                hintText: 'Raison de la décision…',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(status == 'approved' ? 'Approuver' : 'Rejeter'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AuthApiService.instance.resolveRoleRequest(req.id, status: status, adminNote: noteCtrl.text.trim());
+      await DataService().reloadUsers();
+      await _loadRoleRequests();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'approved'
+              ? 'Demande approuvée — rôle attribué'
+              : 'Demande rejetée'),
+          backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+        await _loadRoleRequests();
+      }
+    }
   }
 
   Future<void> _resolveDeptRequest(_DeptRequest req, String status) async {

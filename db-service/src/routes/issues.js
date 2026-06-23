@@ -3,7 +3,7 @@ const path    = require('path');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
-const { TECH_ROLES, rolesCsv } = require('../utils/roles');
+const { TECH_ROLES, rolesCsv, hasRole } = require('../utils/roles');
 const { AUTH_SERVICE_URL, INTERNAL_SECRET, UPLOAD_DIR } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
 const { photoUpload } = require('../middleware/upload');
@@ -12,6 +12,8 @@ const { photoUpload } = require('../middleware/upload');
 
 /**
  * Notifie un utilisateur spécifique via l'endpoint interne d'auth-service.
+ * Réservée aux notifications ciblées (ex: confirmation au signaleur d'un rejet).
+ * TODO: brancher sur PATCH /reject une fois la table reporter_email peuplée.
  * @param {object} opts - { type, to_email, to_name, user_id, payload }
  */
 async function _notifyUser({ type, to_email, to_name, user_id, payload }) {
@@ -44,6 +46,14 @@ async function _notifyRoles(roles, type, payload) {
 }
 
 const router = express.Router();
+
+/**
+ * Ajoute une ligne horodatée à une colonne texte existante (nullable).
+ * @param {string|null} existing - Valeur actuelle de la colonne
+ * @param {string}      line     - Nouvelle ligne à ajouter
+ * @returns {string}
+ */
+const appendLine = (existing, line) => existing ? `${existing}\n${line}` : line;
 
 const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected', 'Rejected'];
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
@@ -438,9 +448,7 @@ router.patch('/:id/escalate', verifyToken, requireRole('admin', 'supervisor', ..
 
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const labelMap = { 'Waiting Materials': 'Matériaux manquants', 'Redirected': 'Redirigé' };
-  const appendedActions = existing.actions
-    ? `${existing.actions}\n[${ts}] Escalade (${labelMap[escalation_status]}) — ${escalation_comment.trim()}`
-    : `[${ts}] Escalade (${labelMap[escalation_status]}) — ${escalation_comment.trim()}`;
+  const appendedActions = appendLine(existing.actions, `[${ts}] Escalade (${labelMap[escalation_status]}) — ${escalation_comment.trim()}`);
 
   db.prepare(`
     UPDATE issues
@@ -479,9 +487,7 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ..
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const appendedActions = existing.actions
-    ? `${existing.actions}\n[${ts}] Transféré vers ${new_group} — ${reason.trim()}`
-    : `[${ts}] Transféré vers ${new_group} — ${reason.trim()}`;
+  const appendedActions = appendLine(existing.actions, `[${ts}] Transféré vers ${new_group} — ${reason.trim()}`);
 
   db.prepare(`
     UPDATE issues
@@ -537,7 +543,7 @@ router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor'), (re
   // 4. Opération DB (synchrone) — append dans le journal d'actions
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const rejectLine = `[${ts}] Rejet (${reason_code})${trimmedComment ? ` — ${trimmedComment}` : ''}`;
-  const appendedActions = existing.actions ? `${existing.actions}\n${rejectLine}` : rejectLine;
+  const appendedActions = appendLine(existing.actions, rejectLine);
 
   db.prepare(`
     UPDATE issues
@@ -583,15 +589,14 @@ router.patch('/:id/detach', verifyToken, requireRole('admin', 'supervisor', ...T
   }
 
   // 4. Un technicien ne détache que ses propres incidents (l'admin n'a pas cette restriction)
-  const isAdmin = Array.isArray(req.user.roles) && req.user.roles.includes('admin');
-  if (!isAdmin && existing.assigned_technician !== req.user.name) {
+  if (!hasRole(req, 'admin') && existing.assigned_technician !== req.user.name) {
     return res.status(403).json({ error: 'Vous ne pouvez détacher que les incidents qui vous sont assignés' });
   }
 
   // 5. Opération DB (synchrone) — retour au pool + append journal d'actions
   const ts = new Date().toISOString().replace('T', ' ').slice(0, 19);
   const detachLine = `[${ts}] Détachement par ${req.user.name} — ${reason.trim()}`;
-  const appendedActions = existing.actions ? `${existing.actions}\n${detachLine}` : detachLine;
+  const appendedActions = appendLine(existing.actions, detachLine);
 
   db.prepare(`
     UPDATE issues
@@ -643,8 +648,7 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'superviso
   }
 
   // 5. Un technicien ne lie que ses propres incidents en cours (l'admin/supervisor n'ont pas cette restriction)
-  const isPrivileged = Array.isArray(req.user.roles) && (req.user.roles.includes('admin') || req.user.roles.includes('supervisor'));
-  if (!isPrivileged && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
+  if (!hasRole(req, 'admin', 'supervisor') && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
     return res.status(403).json({ error: 'Vous ne pouvez lier un équipement qu\'aux incidents qui vous sont assignés et en cours' });
   }
 
@@ -661,7 +665,7 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'superviso
   const now = new Date();
   const linkedAt = now.toISOString();
   const linkLine = `[${linkedAt.replace('T', ' ').slice(0, 19)}] Liaison équipement par ${req.user.name} — ${equipment.name}`;
-  const appendedActions = existing.actions ? `${existing.actions}\n${linkLine}` : linkLine;
+  const appendedActions = appendLine(existing.actions, linkLine);
 
   db.prepare(`
     UPDATE issues
@@ -837,11 +841,10 @@ router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TEC
     return res.status(400).json({ error: 'estimated_cost doit être un nombre positif' });
   }
 
-  const isAdmin = req.user.roles.includes('admin');
   const existing = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
 
   // Garde-fou : rapport figé non modifiable sauf admin
-  if (existing && existing.report_status === 'finalized' && !isAdmin) {
+  if (existing && existing.report_status === 'finalized' && !hasRole(req, 'admin')) {
     return res.status(409).json({ error: 'Rapport finalisé : modification réservée aux administrateurs (rouvrir le rapport au préalable)' });
   }
 
@@ -936,6 +939,122 @@ router.patch('/:id/report/reopen', verifyToken, requireRole('admin'), (req, res)
 
   const report = db.prepare('SELECT * FROM issue_intervention_reports WHERE issue_id = ?').get(req.params.id);
   res.json(_buildReportResponse(issue, report));
+});
+
+// ── GET /api/issues/:id/sessions ─────────────────────────────────────────────
+router.get('/:id/sessions', verifyToken, (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+  const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+  const sessions = db.prepare(
+    'SELECT * FROM issue_intervention_sessions WHERE issue_id = ? ORDER BY loop_number ASC'
+  ).all(id);
+  res.json(sessions);
+});
+
+// ── PUT /api/issues/:id/sessions/active ──────────────────────────────────────
+router.put('/:id/sessions/active', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+  const issue = db.prepare('SELECT id, status, equipment_name, department FROM issues WHERE id = ?').get(id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+  if (issue.status !== 'In Progress') {
+    return res.status(400).json({ error: "L'incident doit être en statut « In Progress »" });
+  }
+
+  const { diagnosis, diagnosis_addendum, action_taken, outcome } = req.body;
+
+  const upsertActiveSession = db.transaction((issueId, userId, userName, payload) => {
+    const active = db.prepare(
+      'SELECT * FROM issue_intervention_sessions WHERE issue_id = ? AND closed_at IS NULL'
+    ).get(issueId);
+
+    if (active) {
+      db.prepare(`UPDATE issue_intervention_sessions SET
+        diagnosis          = COALESCE(?, diagnosis),
+        diagnosis_addendum = COALESCE(?, diagnosis_addendum),
+        action_taken       = COALESCE(?, action_taken),
+        outcome            = COALESCE(?, outcome),
+        updated_at         = datetime('now','localtime')
+        WHERE id = ?`
+      ).run(payload.diagnosis, payload.diagnosis_addendum, payload.action_taken, payload.outcome, active.id);
+      return db.prepare('SELECT * FROM issue_intervention_sessions WHERE id = ?').get(active.id);
+    }
+
+    const { loop_number } = db.prepare(
+      `SELECT COALESCE(MAX(loop_number), 0) + 1 AS loop_number
+       FROM issue_intervention_sessions WHERE issue_id = ?`
+    ).get(issueId);
+
+    const info = db.prepare(`INSERT INTO issue_intervention_sessions
+      (issue_id, loop_number, diagnosis, diagnosis_addendum, action_taken, outcome, technician_id, technician_name)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(issueId, loop_number, payload.diagnosis, payload.diagnosis_addendum, payload.action_taken, payload.outcome, userId, userName);
+
+    return db.prepare('SELECT * FROM issue_intervention_sessions WHERE id = ?').get(info.lastInsertRowid);
+  });
+
+  const result = upsertActiveSession(id, req.user.id, req.user.name, {
+    diagnosis, diagnosis_addendum, action_taken, outcome,
+  });
+
+  logAction({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      'update_intervention_session',
+    target_type: 'issue',
+    target_id:   id,
+    target_name: issue.equipment_name || issue.department || id,
+    details:     JSON.stringify({ loop_number: result.loop_number }),
+    ...extractReqMeta(req),
+  });
+
+  res.json(result);
+});
+
+// ── POST /api/issues/:id/sessions/active/close ───────────────────────────────
+router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+  const { resolved, outcome, next_actions } = req.body;
+
+  const issueForClose = db.prepare('SELECT equipment_name, department FROM issues WHERE id = ?').get(id);
+  const active = db.prepare(
+    'SELECT * FROM issue_intervention_sessions WHERE issue_id = ? AND closed_at IS NULL'
+  ).get(id);
+  if (!active) return res.status(400).json({ error: 'Aucune session active pour cet incident' });
+
+  if (!resolved && (!next_actions || next_actions.trim() === '')) {
+    return res.status(400).json({ error: 'next_actions est obligatoire si l\'incident n\'est pas résolu' });
+  }
+
+  db.prepare(`UPDATE issue_intervention_sessions SET
+    closed_at      = datetime('now','localtime'),
+    resolved       = ?,
+    outcome        = COALESCE(?, outcome),
+    next_actions   = ?,
+    duration_hours = ROUND((julianday(datetime('now','localtime')) - julianday(started_at)) * 24, 1),
+    updated_at     = datetime('now','localtime')
+    WHERE id = ?`
+  ).run(resolved ? 1 : 0, outcome || null, next_actions || null, active.id);
+
+  const closed = db.prepare('SELECT * FROM issue_intervention_sessions WHERE id = ?').get(active.id);
+
+  logAction({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      'close_intervention_session',
+    target_type: 'issue',
+    target_id:   id,
+    target_name: issueForClose?.equipment_name || issueForClose?.department || id,
+    details:     JSON.stringify({ resolved, loop_number: active.loop_number }),
+    ...extractReqMeta(req),
+  });
+
+  res.json(closed);
 });
 
 module.exports = router;
