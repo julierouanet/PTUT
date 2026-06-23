@@ -1389,6 +1389,44 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentManufacturerHint => 'Ex : Philips Healthcare';
 
   @override
+  String get equipmentBrandLabel => 'Fabricant';
+
+  @override
+  String get equipmentNoBrand => 'Aucun fabricant';
+
+  @override
+  String get equipmentAddBrand => 'Ajouter un fabricant';
+
+  @override
+  String get equipmentModelLabel => 'Modèle catalogue';
+
+  @override
+  String get equipmentNoModel => 'Aucun modèle';
+
+  @override
+  String get equipmentAddModel => 'Ajouter un modèle';
+
+  @override
+  String get equipmentTagNumber => 'Numéro de tag (étiquette physique)';
+
+  @override
+  String get equipmentTagHint => 'Ex. : TAG-0042';
+
+  @override
+  String get equipmentBuilding => 'Bâtiment';
+
+  @override
+  String get equipmentBuildingHint => 'Ex. : Bloc A';
+
+  @override
+  String get equipmentPmRequired => 'Maintenance préventive requise';
+
+  @override
+  String equipmentPmFreqRecommended(num months) {
+    return 'Fréquence recommandée : $months mois (depuis le protocole du modèle)';
+  }
+
+  @override
   String get equipmentModel => 'Modèle';
 
   @override

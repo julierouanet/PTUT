@@ -2630,6 +2630,78 @@ abstract class AppLocalizations {
   /// **'Ex : Philips Healthcare'**
   String get equipmentManufacturerHint;
 
+  /// No description provided for @equipmentBrandLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricant'**
+  String get equipmentBrandLabel;
+
+  /// No description provided for @equipmentNoBrand.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun fabricant'**
+  String get equipmentNoBrand;
+
+  /// No description provided for @equipmentAddBrand.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un fabricant'**
+  String get equipmentAddBrand;
+
+  /// No description provided for @equipmentModelLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modèle catalogue'**
+  String get equipmentModelLabel;
+
+  /// No description provided for @equipmentNoModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun modèle'**
+  String get equipmentNoModel;
+
+  /// No description provided for @equipmentAddModel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter un modèle'**
+  String get equipmentAddModel;
+
+  /// No description provided for @equipmentTagNumber.
+  ///
+  /// In fr, this message translates to:
+  /// **'Numéro de tag (étiquette physique)'**
+  String get equipmentTagNumber;
+
+  /// No description provided for @equipmentTagHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. : TAG-0042'**
+  String get equipmentTagHint;
+
+  /// No description provided for @equipmentBuilding.
+  ///
+  /// In fr, this message translates to:
+  /// **'Bâtiment'**
+  String get equipmentBuilding;
+
+  /// No description provided for @equipmentBuildingHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex. : Bloc A'**
+  String get equipmentBuildingHint;
+
+  /// No description provided for @equipmentPmRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive requise'**
+  String get equipmentPmRequired;
+
+  /// No description provided for @equipmentPmFreqRecommended.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fréquence recommandée : {months} mois (depuis le protocole du modèle)'**
+  String equipmentPmFreqRecommended(num months);
+
   /// No description provided for @equipmentModel.
   ///
   /// In fr, this message translates to:

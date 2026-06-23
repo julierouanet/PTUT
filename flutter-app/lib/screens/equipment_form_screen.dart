@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../models/equipment.dart';
+import '../services/auth_service.dart';
 import '../services/config_service.dart';
 import '../services/data_service.dart';
 import '../services/db_api_service.dart';
@@ -33,14 +34,30 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
 
   // ── Étape 2 : Infos techniques ───────────────────────────────────────────
   final _serialController = TextEditingController();
-  final _manufacturerController = TextEditingController();
-  final _modelController = TextEditingController();
   final _manufYearController = TextEditingController();
   final _locationController = TextEditingController();
   final _step2Key = GlobalKey<FormState>();
 
+  // ── Catalogue fabricant / modèle (FEAT-065) ───────────────────────────
+  int? _selectedBrandId;
+  int? _selectedModelId;
+  List<Map<String, dynamic>> _brands = [];
+  List<Map<String, dynamic>> _models = [];
+  bool _brandsLoading = false;
+
+  // ── Nouveaux champs texte ──────────────────────────────────────────────
+  final _tagController = TextEditingController();
+  final _buildingController = TextEditingController();
+
+  // ── Sous-catégorie pré-remplie depuis le modèle sélectionné ───────────
+  int? _subcategoryId;
+
+  // ── Fréquence PM pré-remplie depuis le protocole du modèle sélectionné
+  int? _pmFrequencyFromModel;
+
   // ── Étape 3 : GMAO & Maintenance ─────────────────────────────────────────
   EquipmentCriticality? _selectedCriticality;
+  bool _pmRequired = false;
   String? _installDate;
   String? _lastPmDate;
   String? _nextPmDate;
@@ -57,8 +74,6 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     if (eq != null) {
       _nameController.text = eq.name;
       _serialController.text = eq.serialNumber;
-      _manufacturerController.text = eq.manufacturer ?? '';
-      _modelController.text = eq.model ?? '';
       _manufYearController.text = eq.manufYear?.toString() ?? '';
       _locationController.text = eq.location;
       _selectedDepartment = eq.department;
@@ -69,7 +84,17 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       _lastPmDate = eq.lastPreventiveMaintenance;
       _nextPmDate = eq.nextPreventiveMaintenance;
       _nextRevisionDate = eq.nextRevisionDate;
+      _buildingController.text = eq.building ?? '';
+      _tagController.text = eq.tags.isNotEmpty ? eq.tags.first : '';
+      _selectedBrandId = eq.brandId;
+      _selectedModelId = eq.modelId;
+      _subcategoryId = eq.subcategoryId;
+      if (eq.nextPreventiveMaintenance != null || eq.lastPreventiveMaintenance != null) {
+        _pmRequired = true;
+      }
     }
+    // Charge la liste des fabricants (et les modèles du brand si édition)
+    _loadBrands();
   }
 
   @override
@@ -91,11 +116,62 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   void dispose() {
     _nameController.dispose();
     _serialController.dispose();
-    _manufacturerController.dispose();
-    _modelController.dispose();
     _manufYearController.dispose();
     _locationController.dispose();
+    _tagController.dispose();
+    _buildingController.dispose();
     super.dispose();
+  }
+
+  // ── Chargement catalogue fabricant/modèle ─────────────────────────────
+
+  Future<void> _loadBrands() async {
+    if (mounted) setState(() => _brandsLoading = true);
+    try {
+      final brands = await DbApiService.instance.getBrands();
+      List<Map<String, dynamic>> models = [];
+      // En mode édition, charger aussi les modèles du fabricant sélectionné
+      if (_selectedBrandId != null) {
+        models = await DbApiService.instance.getModels(brandId: _selectedBrandId!);
+      }
+      if (mounted) setState(() { _brands = brands; _models = models; });
+    } catch (_) {}
+    if (mounted) setState(() => _brandsLoading = false);
+  }
+
+  Future<void> _onBrandSelected(int? brandId) async {
+    setState(() {
+      _selectedBrandId = brandId;
+      _selectedModelId = null;
+      _models = [];
+      _pmFrequencyFromModel = null;
+    });
+    if (brandId == null) return;
+    try {
+      final list = await DbApiService.instance.getModels(brandId: brandId);
+      if (mounted) setState(() => _models = list);
+    } catch (_) {}
+  }
+
+  Future<void> _onModelSelected(int? modelId) async {
+    setState(() { _selectedModelId = modelId; _pmFrequencyFromModel = null; });
+    if (modelId == null) return;
+    try {
+      final detail = await DbApiService.instance.getModelDetail(modelId);
+      // Pré-remplir la sous-catégorie depuis le modèle
+      final rawSubId = detail['subcategory_id'];
+      if (rawSubId != null) {
+        final subId = rawSubId is int ? rawSubId : int.tryParse(rawSubId.toString());
+        if (subId != null && mounted) setState(() => _subcategoryId = subId);
+      }
+      // Pré-remplir la fréquence PM depuis le 1er protocole du modèle
+      final protocols = detail['protocols'] as List? ?? [];
+      if (protocols.isNotEmpty) {
+        final freq = (protocols.first as Map)['frequency_months'];
+        final freqInt = freq is int ? freq : int.tryParse(freq?.toString() ?? '');
+        if (freqInt != null && mounted) setState(() => _pmFrequencyFromModel = freqInt);
+      }
+    } catch (_) {}
   }
 
   // ── Navigation entre étapes ───────────────────────────────────────────────
@@ -141,20 +217,31 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       'serial_number': _serialController.text.trim(),
     };
 
-    final manufacturer = _manufacturerController.text.trim();
-    final model        = _modelController.text.trim();
-    final location     = _locationController.text.trim();
-    final manufYear    = int.tryParse(_manufYearController.text);
+    final location  = _locationController.text.trim();
+    final manufYear = int.tryParse(_manufYearController.text);
+    final building  = _buildingController.text.trim();
+    final tagNumber = _tagController.text.trim();
 
-    if (manufacturer.isNotEmpty) data['manufacturer'] = manufacturer;
-    if (model.isNotEmpty)        data['model'] = model;
-    if (location.isNotEmpty)     data['location'] = location;
-    if (manufYear != null)       data['manuf_year'] = manufYear;
-    if (_installDate != null)    data['install_date'] = _installDate;
-    if (_lastPmDate != null)     data['last_preventive_maintenance'] = _lastPmDate;
-    if (_nextPmDate != null)     data['next_preventive_maintenance'] = _nextPmDate;
+    if (location.isNotEmpty)   data['location']    = location;
+    if (manufYear != null)     data['manuf_year']  = manufYear;
+    if (_installDate != null)  data['install_date'] = _installDate;
     if (_nextRevisionDate != null) data['next_revision_date'] = _nextRevisionDate;
     if (_selectedCriticality != null) data['criticality'] = _selectedCriticality!.displayName;
+    if (building.isNotEmpty)   data['building']    = building;
+    if (tagNumber.isNotEmpty)  data['tag_number']  = tagNumber;
+    if (_selectedBrandId != null) data['brand_id'] = _selectedBrandId;
+    if (_selectedModelId != null) data['model_id'] = _selectedModelId;
+    if (_subcategoryId != null)   data['subcategory_id'] = _subcategoryId;
+
+    // Dates PM : visibles et sauvegardées uniquement si PM requise
+    if (_pmRequired) {
+      if (_lastPmDate != null) data['last_preventive_maintenance'] = _lastPmDate;
+      if (_nextPmDate != null) data['next_preventive_maintenance'] = _nextPmDate;
+    } else {
+      // Effacer les dates PM existantes si le toggle est désactivé
+      data['last_preventive_maintenance'] = null;
+      data['next_preventive_maintenance'] = null;
+    }
 
     try {
       if (_isEdit) {
@@ -332,18 +419,102 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   // ── Étape 2 : Infos techniques ────────────────────────────────────────────
 
   Widget _buildStep2(AppLocalizations l10n) {
+    final canManage = AuthService().canManageEquipment;
     return Column(
       children: [
+        // ── Fabricant (dropdown catalogue) ───────────────────────────────
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _brandsLoading
+                  ? const LinearProgressIndicator()
+                  : DropdownButtonFormField<int?>(
+                      value: _brands.any((b) => b['id'] == _selectedBrandId)
+                          ? _selectedBrandId
+                          : null,
+                      decoration: InputDecoration(
+                        labelText: l10n.equipmentBrandLabel,
+                        prefixIcon: const Icon(Icons.precision_manufacturing),
+                      ),
+                      items: [
+                        DropdownMenuItem<int?>(
+                            value: null,
+                            child: Text('— ${l10n.equipmentNoBrand} —')),
+                        ..._brands.map((b) => DropdownMenuItem<int?>(
+                              value: b['id'] as int,
+                              child: Text(b['name'] as String),
+                            )),
+                      ],
+                      onChanged: (v) => _onBrandSelected(v),
+                    ),
+            ),
+            if (canManage)
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: l10n.equipmentAddBrand,
+                onPressed: () => _showCreateBrandDialog(l10n),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // ── Modèle (dropdown cascade, activé après sélection d'un fabricant)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<int?>(
+                value: _models.any((m) => m['id'] == _selectedModelId)
+                    ? _selectedModelId
+                    : null,
+                decoration: InputDecoration(
+                  labelText: l10n.equipmentModelLabel,
+                  prefixIcon: const Icon(Icons.developer_board),
+                ),
+                items: [
+                  DropdownMenuItem<int?>(
+                      value: null, child: Text('— ${l10n.equipmentNoModel} —')),
+                  ..._models.map((m) => DropdownMenuItem<int?>(
+                        value: m['id'] as int,
+                        child: Text(m['name'] as String),
+                      )),
+                ],
+                onChanged: _selectedBrandId == null ? null : (v) => _onModelSelected(v),
+              ),
+            ),
+            if (canManage)
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                tooltip: l10n.equipmentAddModel,
+                onPressed:
+                    _selectedBrandId == null ? null : () => _showCreateModelDialog(l10n),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // ── Tag physique ──────────────────────────────────────────────────
         TextFormField(
-          controller: _manufacturerController,
+          controller: _tagController,
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
-            labelText: l10n.equipmentManufacturer,
-            hintText: l10n.equipmentManufacturerHint,
-            prefixIcon: const Icon(Icons.precision_manufacturing),
+            labelText: l10n.equipmentTagNumber,
+            hintText: l10n.equipmentTagHint,
+            prefixIcon: const Icon(Icons.label_outline),
           ),
         ),
         const SizedBox(height: 16),
+        // ── Bâtiment ─────────────────────────────────────────────────────
+        TextField(
+          controller: _buildingController,
+          textInputAction: TextInputAction.next,
+          decoration: InputDecoration(
+            labelText: l10n.equipmentBuilding,
+            hintText: l10n.equipmentBuildingHint,
+            prefixIcon: const Icon(Icons.apartment),
+          ),
+        ),
+        const SizedBox(height: 16),
+        // ── Numéro de série ───────────────────────────────────────────────
         TextFormField(
           controller: _serialController,
           textInputAction: TextInputAction.next,
@@ -356,6 +527,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
               (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
         ),
         const SizedBox(height: 16),
+        // ── Localisation (salle / pièce) ──────────────────────────────────
         TextField(
           controller: _locationController,
           textInputAction: TextInputAction.next,
@@ -366,16 +538,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        TextField(
-          controller: _modelController,
-          textInputAction: TextInputAction.next,
-          decoration: InputDecoration(
-            labelText: l10n.equipmentModel,
-            hintText: l10n.equipmentModelHint,
-            prefixIcon: const Icon(Icons.developer_board),
-          ),
-        ),
-        const SizedBox(height: 16),
+        // ── Année de fabrication ──────────────────────────────────────────
         TextFormField(
           controller: _manufYearController,
           keyboardType: TextInputType.number,
@@ -397,11 +560,113 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     );
   }
 
+  // ── Mini-dialog : créer un fabricant à la volée ───────────────────────────
+
+  Future<void> _showCreateBrandDialog(AppLocalizations l10n) async {
+    final ctrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.equipmentAddBrand),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: InputDecoration(labelText: l10n.equipmentBrandLabel),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              try {
+                final created =
+                    await DbApiService.instance.createBrand(ctrl.text.trim());
+                await _loadBrands();
+                final newId = created['id'] as int;
+                await _onBrandSelected(newId);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (_) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: Text(l10n.commonApiError),
+                    backgroundColor: AppColors.error,
+                  ));
+                }
+              }
+            },
+            child: Text(l10n.commonSave),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+  }
+
+  // ── Mini-dialog : créer un modèle à la volée ─────────────────────────────
+
+  Future<void> _showCreateModelDialog(AppLocalizations l10n) async {
+    if (_selectedBrandId == null) return;
+    final ctrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.equipmentAddModel),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: InputDecoration(labelText: l10n.equipmentModelLabel),
+            validator: (v) =>
+                (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
+          ElevatedButton(
+            onPressed: () async {
+              if (!(formKey.currentState?.validate() ?? false)) return;
+              try {
+                final created = await DbApiService.instance.createModel(
+                  brandId: _selectedBrandId!,
+                  name: ctrl.text.trim(),
+                );
+                // Recharge les modèles du fabricant courant puis sélectionne le nouveau
+                await _onBrandSelected(_selectedBrandId);
+                await _onModelSelected(created['id'] as int);
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (_) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                    content: Text(l10n.commonApiError),
+                    backgroundColor: AppColors.error,
+                  ));
+                }
+              }
+            },
+            child: Text(l10n.commonSave),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+  }
+
   // ── Étape 3 : GMAO & Maintenance ─────────────────────────────────────────
 
   Widget _buildStep3(AppLocalizations l10n) {
     return Column(
       children: [
+        // ── Criticité ABC ─────────────────────────────────────────────────
         DropdownButtonFormField<EquipmentCriticality?>(
           value: _selectedCriticality,
           decoration: InputDecoration(
@@ -422,44 +687,71 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
           onChanged: (v) => setState(() => _selectedCriticality = v),
         ),
         const SizedBox(height: 16),
-        _buildDateField(
-          label: l10n.equipmentInstallDate,
-          iso: _installDate,
-          onPicked: (v) => setState(() => _installDate = v),
-          icon: Icons.event_available,
-          firstDate: DateTime(1980),
-          lastDate: DateTime.now(),
-          l10n: l10n,
+        // ── Toggle maintenance préventive ─────────────────────────────────
+        SwitchListTile(
+          title: Text(l10n.equipmentPmRequired),
+          value: _pmRequired,
+          activeColor: AppColors.primary,
+          onChanged: (v) => setState(() => _pmRequired = v),
         ),
-        const SizedBox(height: 16),
-        _buildDateField(
-          label: l10n.lastPreventiveDate,
-          iso: _lastPmDate,
-          onPicked: (v) => setState(() => _lastPmDate = v),
-          icon: Icons.history,
-          firstDate: DateTime(1980),
-          lastDate: DateTime.now(),
-          l10n: l10n,
-        ),
-        const SizedBox(height: 16),
-        _buildDateField(
-          label: l10n.nextPreventiveDate,
-          iso: _nextPmDate,
-          onPicked: (v) => setState(() => _nextPmDate = v),
-          icon: Icons.event_available,
-          firstDate: DateTime.now(),
-          lastDate: DateTime(DateTime.now().year + 10),
-          l10n: l10n,
-        ),
-        const SizedBox(height: 16),
-        _buildDateField(
-          label: l10n.equipmentNextRevision,
-          iso: _nextRevisionDate,
-          onPicked: (v) => setState(() => _nextRevisionDate = v),
-          icon: Icons.event,
-          firstDate: DateTime.now(),
-          lastDate: DateTime(DateTime.now().year + 10),
-          l10n: l10n,
+        // Chip fréquence recommandée (depuis le protocole du modèle sélectionné)
+        if (_pmRequired && _pmFrequencyFromModel != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Chip(
+              avatar: const Icon(Icons.info_outline, size: 16),
+              label: Text(l10n.equipmentPmFreqRecommended(_pmFrequencyFromModel!)),
+              backgroundColor: AppColors.primary.withOpacity(0.08),
+            ),
+          ),
+        // Les 4 champs de dates sont masqués si PM non requise
+        Visibility(
+          visible: _pmRequired,
+          maintainState: true,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              _buildDateField(
+                label: l10n.equipmentInstallDate,
+                iso: _installDate,
+                onPicked: (v) => setState(() => _installDate = v),
+                icon: Icons.event_available,
+                firstDate: DateTime(1980),
+                lastDate: DateTime.now(),
+                l10n: l10n,
+              ),
+              const SizedBox(height: 16),
+              _buildDateField(
+                label: l10n.lastPreventiveDate,
+                iso: _lastPmDate,
+                onPicked: (v) => setState(() => _lastPmDate = v),
+                icon: Icons.history,
+                firstDate: DateTime(1980),
+                lastDate: DateTime.now(),
+                l10n: l10n,
+              ),
+              const SizedBox(height: 16),
+              _buildDateField(
+                label: l10n.nextPreventiveDate,
+                iso: _nextPmDate,
+                onPicked: (v) => setState(() => _nextPmDate = v),
+                icon: Icons.event_available,
+                firstDate: DateTime.now(),
+                lastDate: DateTime(DateTime.now().year + 10),
+                l10n: l10n,
+              ),
+              const SizedBox(height: 16),
+              _buildDateField(
+                label: l10n.equipmentNextRevision,
+                iso: _nextRevisionDate,
+                onPicked: (v) => setState(() => _nextRevisionDate = v),
+                icon: Icons.event,
+                firstDate: DateTime.now(),
+                lastDate: DateTime(DateTime.now().year + 10),
+                l10n: l10n,
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
       ],

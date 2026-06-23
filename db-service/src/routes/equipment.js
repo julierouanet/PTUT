@@ -250,6 +250,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     manufacturer, model, manuf_year, install_date, next_revision_date,
     last_preventive_maintenance, next_preventive_maintenance,
     subcategory_id, macro_category_id, warranty_end_date, criticality,
+    building, model_id, tag_number,
   } = req.body;
 
   if (!id || !name || !department || !category) {
@@ -285,9 +286,10 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
         id, name, department, category, serial_number, status, location,
         manufacturer, model, manuf_year, install_date, next_revision_date,
         last_preventive_maintenance, next_preventive_maintenance,
-        subcategory_id, macro_category_id, warranty_end_date, criticality
+        subcategory_id, macro_category_id, warranty_end_date, criticality,
+        building, model_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, name, department, category,
       serial_number || null,
@@ -301,10 +303,20 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       resolvedMacroCategoryId,
       warranty_end_date || null,
       criticality || null,
+      building || null,
+      model_id ? parseInt(model_id, 10) : null,
     );
+
+    // Enregistrement du tag physique si fourni (INSERT OR IGNORE = pas d'erreur sur doublon)
+    const tagVal = typeof tag_number === 'string' ? tag_number.trim() : null;
+    if (tagVal) {
+      db.prepare('INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES (?, ?)')
+        .run(id, tagVal);
+    }
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
+      details: JSON.stringify({ building: building || null, tag_number: tagVal || null, model_id: model_id || null }),
       ...extractReqMeta(req) });
 
     res.status(201).json({ message: 'Équipement créé', id });
@@ -324,6 +336,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     manufacturer, model, manuf_year, install_date, next_revision_date,
     last_preventive_maintenance, next_preventive_maintenance,
     subcategory_id, macro_category_id, warranty_end_date, criticality,
+    building, model_id, tag_number,
   } = req.body;
 
   const existing = db.prepare('SELECT * FROM equipment WHERE id = ?').get(req.params.id);
@@ -356,6 +369,10 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     resolvedMacro = parseInt(macro_category_id, 10) || null;
   }
 
+  const modelIdInt = model_id !== undefined
+    ? (model_id ? parseInt(model_id, 10) : null)
+    : undefined;
+
   db.prepare(`
     UPDATE equipment
     SET name                        = COALESCE(?, name),
@@ -375,6 +392,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         macro_category_id           = COALESCE(?, macro_category_id),
         warranty_end_date           = COALESCE(?, warranty_end_date),
         criticality                 = COALESCE(?, criticality),
+        building                    = COALESCE(?, building),
+        model_id                    = COALESCE(?, model_id),
         updated_at                  = datetime('now','localtime')
     WHERE id = ?
   `).run(
@@ -385,8 +404,17 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     resolvedMacro !== undefined ? resolvedMacro : null,
     warranty_end_date !== undefined ? warranty_end_date : null,
     criticality || null,
+    building !== undefined ? building || null : null,
+    modelIdInt !== undefined ? modelIdInt : null,
     req.params.id,
   );
+
+  // Enregistrement du tag physique si fourni
+  const tagVal = typeof tag_number === 'string' ? tag_number.trim() : null;
+  if (tagVal) {
+    db.prepare('INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES (?, ?)')
+      .run(req.params.id, tagVal);
+  }
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,
@@ -398,6 +426,8 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         last_preventive_maintenance: existing.last_preventive_maintenance,
         next_preventive_maintenance: existing.next_preventive_maintenance,
       },
+      building: building || null,
+      tag_number: tagVal || null,
     },
     ...extractReqMeta(req) });
 

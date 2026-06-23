@@ -184,6 +184,10 @@ class Equipment {
   /// Nom de l'équipement réformé que CET équipement remplace
   final String? replacesName;
 
+  // ── Localisation physique étendue ─────────────────────────────────────
+  /// Bâtiment / aile de l'hôpital (texte libre, ex : « Bloc A »)
+  final String? building;
+
   // ── Métadonnées système (lecture seule) ───────────────────────────────
   final String? createdAt;
   final String? updatedAt;
@@ -235,6 +239,7 @@ class Equipment {
     this.replacedByName,
     this.replacesId,
     this.replacesName,
+    this.building,
     this.createdAt,
     this.updatedAt,
     this.tags = const [],
@@ -337,6 +342,7 @@ class Equipment {
       replacedByName:      json['replaced_by_name']       as String?,
       replacesId:          json['replaces_id']            as String?,
       replacesName:        json['replaces_name']          as String?,
+      building:            json['building']               as String?,
       createdAt:          json['created_at']           as String?,
       updatedAt:          json['updated_at']           as String?,
       tags:               tags,
@@ -421,6 +427,7 @@ class Equipment {
     String? replacedByName,
     String? replacesId,
     String? replacesName,
+    String? building,
     String? createdAt,
     String? updatedAt,
     List<String>? tags,
@@ -463,6 +470,7 @@ class Equipment {
       replacedByName: replacedByName ?? this.replacedByName,
       replacesId: replacesId ?? this.replacesId,
       replacesName: replacesName ?? this.replacesName,
+      building: building ?? this.building,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tags: tags ?? this.tags,

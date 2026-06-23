@@ -395,6 +395,7 @@ Config Brevo : priorité valeur DB non vide → fallback variable d'environnemen
 | category_id        | INTEGER | Nullable, FK -> equipment_categories(id), ajoute via migration |
 | last_preventive_maintenance | TEXT | Nullable, ajoute via migration (ISO YYYY-MM-DD)        |
 | next_preventive_maintenance | TEXT | Nullable, ajoute via migration (denormalise depuis `preventive_maintenance_plans`) |
+| building           | TEXT    | Nullable, ajoute via migration (batiment / aile, ex : "Bloc A") |
 
 > **Migration `supplier` -> `manufacturer`** : la colonne `supplier` a ete supprimee (`ALTER TABLE equipment DROP COLUMN supplier`). Les valeurs ont ete copiees dans `manufacturer` quand celui-ci etait NULL. Le XLSX d'inventaire physique ne distingue pas les deux concepts.
 
@@ -1135,7 +1136,9 @@ status: StockStatus (normal, low, outOfStock)
 
 ### CRUD Equipement
 - Create: `DbApiService.createEquipment()` -> POST /api/equipment -> `DataService.reloadEquipment()`
+  - Champs nouveaux (FEAT-097) : `building`, `model_id`, `tag_number` (insere dans equipment_tags via INSERT OR IGNORE)
 - Update: `DbApiService.updateEquipment()` -> PUT /api/equipment/{id}
+  - Memes champs nouveaux ; COALESCE sur building/model_id ; tag_number toujours via INSERT OR IGNORE
 - Delete: `DbApiService.deleteEquipment()` -> DELETE /api/equipment/{id}?reason=
 
 ## 3.7 Clés i18n ajoutées (lib/l10n/)

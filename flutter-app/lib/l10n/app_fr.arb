@@ -491,6 +491,23 @@
 
   "equipmentManufacturer": "Fabricant",
   "equipmentManufacturerHint": "Ex : Philips Healthcare",
+  "equipmentBrandLabel": "Fabricant",
+  "equipmentNoBrand": "Aucun fabricant",
+  "equipmentAddBrand": "Ajouter un fabricant",
+  "equipmentModelLabel": "Modèle catalogue",
+  "equipmentNoModel": "Aucun modèle",
+  "equipmentAddModel": "Ajouter un modèle",
+  "equipmentTagNumber": "Numéro de tag (étiquette physique)",
+  "equipmentTagHint": "Ex. : TAG-0042",
+  "equipmentBuilding": "Bâtiment",
+  "equipmentBuildingHint": "Ex. : Bloc A",
+  "equipmentPmRequired": "Maintenance préventive requise",
+  "equipmentPmFreqRecommended": "Fréquence recommandée : {months} mois (depuis le protocole du modèle)",
+  "@equipmentPmFreqRecommended": {
+    "placeholders": {
+      "months": { "type": "num" }
+    }
+  },
   "equipmentModel": "Modèle",
   "equipmentModelHint": "Ex : IntelliVue MX450",
   "equipmentManufYear": "Année de fabrication",

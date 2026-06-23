@@ -469,6 +469,23 @@
 
   "equipmentManufacturer": "Manufacturer",
   "equipmentManufacturerHint": "Ex: Philips Healthcare",
+  "equipmentBrandLabel": "Manufacturer",
+  "equipmentNoBrand": "No manufacturer",
+  "equipmentAddBrand": "Add manufacturer",
+  "equipmentModelLabel": "Catalog model",
+  "equipmentNoModel": "No model",
+  "equipmentAddModel": "Add model",
+  "equipmentTagNumber": "Tag number (physical label)",
+  "equipmentTagHint": "e.g. TAG-0042",
+  "equipmentBuilding": "Building",
+  "equipmentBuildingHint": "e.g. Block A",
+  "equipmentPmRequired": "Preventive maintenance required",
+  "equipmentPmFreqRecommended": "Recommended frequency: {months} months (from model protocol)",
+  "@equipmentPmFreqRecommended": {
+    "placeholders": {
+      "months": { "type": "num" }
+    }
+  },
   "equipmentModel": "Model",
   "equipmentModelHint": "Ex: IntelliVue MX450",
   "equipmentManufYear": "Manufacturing year",

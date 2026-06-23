@@ -578,6 +578,7 @@ function initTables() {
   // Index : les sous-requêtes corrélées du lien inverse « remplace » (BASE_SELECT)
   // filtrent sur replaced_by_id pour chaque ligne ; sans index → full scan.
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_equipment_replaced_by ON equipment(replaced_by_id)"); } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN building TEXT"); } catch (_) {}
 
   // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────
   // Durée de vie de référence d'une sous-catégorie (en années). NULL = non
