@@ -165,7 +165,7 @@ describe('RBAC — GET /api/auth/me', () => {
     expect(perms).not.toContain('manageUsers');
   });
 
-  test('✅ tous les rôles techniciens ont updateRepairs et registerParts', async () => {
+  test('✅ tous les rôles techniciens ont updateRepairs, registerParts et approveRequests', async () => {
     const techRoles = ['technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
     for (const role of techRoles) {
       setTestRole(role);
@@ -176,6 +176,7 @@ describe('RBAC — GET /api/auth/me', () => {
       expect(res.status).toBe(200);
       expect(res.body.permissions).toContain('updateRepairs');
       expect(res.body.permissions).toContain('registerParts');
+      expect(res.body.permissions).toContain('approveRequests');
     }
   });
 

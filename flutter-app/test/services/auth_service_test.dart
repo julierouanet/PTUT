@@ -123,14 +123,14 @@ void main() {
       expect(authService.hasPermission(Permission.generateReports), isFalse);
     });
 
-    test('technician spécialisé can update repairs but not manage users', () {
+    test('technician spécialisé can update repairs and approve requests but not manage users', () {
       final tech = mockUsers.firstWhere((u) => u.hasRole(UserRole.technicianBiomedical));
       authService.switchUser(tech);
 
       expect(authService.hasPermission(Permission.updateRepairs), isTrue);
       expect(authService.hasPermission(Permission.registerParts), isTrue);
+      expect(authService.hasPermission(Permission.approveRequests), isTrue);
       expect(authService.hasPermission(Permission.manageUsers), isFalse);
-      expect(authService.hasPermission(Permission.approveRequests), isFalse);
     });
 
     test('supervisor can approve requests but not update repairs', () {

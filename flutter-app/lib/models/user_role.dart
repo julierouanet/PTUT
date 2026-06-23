@@ -182,6 +182,7 @@ List<Permission> getPermissionsForRole(UserRole role) {
     Permission.trackIssues,
     Permission.updateRepairs,
     Permission.registerParts,
+    Permission.approveRequests,
   ];
   switch (role) {
     case UserRole.hospitalStaff:

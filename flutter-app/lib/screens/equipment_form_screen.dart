@@ -128,15 +128,19 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   Future<void> _loadBrands() async {
     if (mounted) setState(() => _brandsLoading = true);
     try {
-      final brands = await DbApiService.instance.getBrands();
-      List<Map<String, dynamic>> models = [];
-      // En mode édition, charger aussi les modèles du fabricant sélectionné
-      if (_selectedBrandId != null) {
-        models = await DbApiService.instance.getModels(brandId: _selectedBrandId!);
-      }
-      if (mounted) setState(() { _brands = brands; _models = models; });
-    } catch (_) {}
-    if (mounted) setState(() => _brandsLoading = false);
+      // Paralléliser les deux requêtes indépendantes
+      final modelsF = _selectedBrandId != null
+          ? DbApiService.instance.getModels(brandId: _selectedBrandId!)
+          : Future.value(<Map<String, dynamic>>[]);
+      final results = await Future.wait([DbApiService.instance.getBrands(), modelsF]);
+      if (mounted) setState(() {
+        _brands = results[0];
+        _models = results[1];
+        _brandsLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _brandsLoading = false);
+    }
   }
 
   Future<void> _onBrandSelected(int? brandId) async {
@@ -229,7 +233,6 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     if (_selectedCriticality != null) data['criticality'] = _selectedCriticality!.displayName;
     if (building.isNotEmpty)   data['building']    = building;
     if (tagNumber.isNotEmpty)  data['tag_number']  = tagNumber;
-    if (_selectedBrandId != null) data['brand_id'] = _selectedBrandId;
     if (_selectedModelId != null) data['model_id'] = _selectedModelId;
     if (_subcategoryId != null)   data['subcategory_id'] = _subcategoryId;
 
@@ -416,6 +419,28 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     );
   }
 
+  // ── Dropdown avec bouton + inline (fabricant ou modèle) ──────────────────
+
+  Widget _buildDropdownWithAdd({
+    required Widget dropdown,
+    required bool canAdd,
+    required String tooltip,
+    required VoidCallback? onAdd,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(child: dropdown),
+        if (canAdd)
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline),
+            tooltip: tooltip,
+            onPressed: onAdd,
+          ),
+      ],
+    );
+  }
+
   // ── Étape 2 : Infos techniques ────────────────────────────────────────────
 
   Widget _buildStep2(AppLocalizations l10n) {
@@ -423,73 +448,55 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     return Column(
       children: [
         // ── Fabricant (dropdown catalogue) ───────────────────────────────
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: _brandsLoading
-                  ? const LinearProgressIndicator()
-                  : DropdownButtonFormField<int?>(
-                      value: _brands.any((b) => b['id'] == _selectedBrandId)
-                          ? _selectedBrandId
-                          : null,
-                      decoration: InputDecoration(
-                        labelText: l10n.equipmentBrandLabel,
-                        prefixIcon: const Icon(Icons.precision_manufacturing),
-                      ),
-                      items: [
-                        DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text('— ${l10n.equipmentNoBrand} —')),
-                        ..._brands.map((b) => DropdownMenuItem<int?>(
-                              value: b['id'] as int,
-                              child: Text(b['name'] as String),
-                            )),
-                      ],
-                      onChanged: (v) => _onBrandSelected(v),
-                    ),
-            ),
-            if (canManage)
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                tooltip: l10n.equipmentAddBrand,
-                onPressed: () => _showCreateBrandDialog(l10n),
-              ),
-          ],
+        _buildDropdownWithAdd(
+          canAdd: canManage,
+          tooltip: l10n.equipmentAddBrand,
+          onAdd: () => _showCreateBrandDialog(l10n),
+          dropdown: _brandsLoading
+              ? const LinearProgressIndicator()
+              : DropdownButtonFormField<int?>(
+                  value: _brands.any((b) => b['id'] == _selectedBrandId)
+                      ? _selectedBrandId
+                      : null,
+                  decoration: InputDecoration(
+                    labelText: l10n.equipmentBrandLabel,
+                    prefixIcon: const Icon(Icons.precision_manufacturing),
+                  ),
+                  items: [
+                    DropdownMenuItem<int?>(
+                        value: null, child: Text('— ${l10n.equipmentNoBrand} —')),
+                    ..._brands.map((b) => DropdownMenuItem<int?>(
+                          value: b['id'] as int,
+                          child: Text(b['name'] as String),
+                        )),
+                  ],
+                  onChanged: (v) => _onBrandSelected(v),
+                ),
         ),
         const SizedBox(height: 16),
         // ── Modèle (dropdown cascade, activé après sélection d'un fabricant)
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<int?>(
-                value: _models.any((m) => m['id'] == _selectedModelId)
-                    ? _selectedModelId
-                    : null,
-                decoration: InputDecoration(
-                  labelText: l10n.equipmentModelLabel,
-                  prefixIcon: const Icon(Icons.developer_board),
-                ),
-                items: [
-                  DropdownMenuItem<int?>(
-                      value: null, child: Text('— ${l10n.equipmentNoModel} —')),
-                  ..._models.map((m) => DropdownMenuItem<int?>(
-                        value: m['id'] as int,
-                        child: Text(m['name'] as String),
-                      )),
-                ],
-                onChanged: _selectedBrandId == null ? null : (v) => _onModelSelected(v),
-              ),
+        _buildDropdownWithAdd(
+          canAdd: canManage,
+          tooltip: l10n.equipmentAddModel,
+          onAdd: _selectedBrandId == null ? null : () => _showCreateModelDialog(l10n),
+          dropdown: DropdownButtonFormField<int?>(
+            value: _models.any((m) => m['id'] == _selectedModelId)
+                ? _selectedModelId
+                : null,
+            decoration: InputDecoration(
+              labelText: l10n.equipmentModelLabel,
+              prefixIcon: const Icon(Icons.developer_board),
             ),
-            if (canManage)
-              IconButton(
-                icon: const Icon(Icons.add_circle_outline),
-                tooltip: l10n.equipmentAddModel,
-                onPressed:
-                    _selectedBrandId == null ? null : () => _showCreateModelDialog(l10n),
-              ),
-          ],
+            items: [
+              DropdownMenuItem<int?>(
+                  value: null, child: Text('— ${l10n.equipmentNoModel} —')),
+              ..._models.map((m) => DropdownMenuItem<int?>(
+                    value: m['id'] as int,
+                    child: Text(m['name'] as String),
+                  )),
+            ],
+            onChanged: _selectedBrandId == null ? null : (v) => _onModelSelected(v),
+          ),
         ),
         const SizedBox(height: 16),
         // ── Tag physique ──────────────────────────────────────────────────
@@ -560,37 +567,37 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     );
   }
 
-  // ── Mini-dialog : créer un fabricant à la volée ───────────────────────────
+  // ── Dialog générique de création catalogue (brand ou model) ──────────────
 
-  Future<void> _showCreateBrandDialog(AppLocalizations l10n) async {
+  Future<void> _showCreateCatalogDialog({
+    required AppLocalizations l10n,
+    required String title,
+    required String labelText,
+    required Future<void> Function(String name) onCreate,
+  }) async {
     final ctrl = TextEditingController();
     final formKey = GlobalKey<FormState>();
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.equipmentAddBrand),
+        title: Text(title),
         content: Form(
           key: formKey,
           child: TextFormField(
             controller: ctrl,
             autofocus: true,
-            decoration: InputDecoration(labelText: l10n.equipmentBrandLabel),
+            decoration: InputDecoration(labelText: labelText),
             validator: (v) =>
                 (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
           ),
         ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
           ElevatedButton(
             onPressed: () async {
               if (!(formKey.currentState?.validate() ?? false)) return;
               try {
-                final created =
-                    await DbApiService.instance.createBrand(ctrl.text.trim());
-                await _loadBrands();
-                final newId = created['id'] as int;
-                await _onBrandSelected(newId);
+                await onCreate(ctrl.text.trim());
                 if (ctx.mounted) Navigator.pop(ctx);
               } catch (_) {
                 if (ctx.mounted) {
@@ -609,56 +616,41 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     ctrl.dispose();
   }
 
-  // ── Mini-dialog : créer un modèle à la volée ─────────────────────────────
+  // Crée un fabricant, l'ajoute localement et le sélectionne sans re-fetcher la liste.
+  Future<void> _showCreateBrandDialog(AppLocalizations l10n) => _showCreateCatalogDialog(
+    l10n: l10n,
+    title: l10n.equipmentAddBrand,
+    labelText: l10n.equipmentBrandLabel,
+    onCreate: (name) async {
+      final created = await DbApiService.instance.createBrand(name);
+      final newId = created['id'] as int;
+      if (mounted) setState(() {
+        _brands = [..._brands, {'id': newId, 'name': name}];
+        _selectedBrandId = newId;
+        _selectedModelId = null;
+        _models = [];
+        _pmFrequencyFromModel = null;
+      });
+    },
+  );
 
-  Future<void> _showCreateModelDialog(AppLocalizations l10n) async {
-    if (_selectedBrandId == null) return;
-    final ctrl = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.equipmentAddModel),
-        content: Form(
-          key: formKey,
-          child: TextFormField(
-            controller: ctrl,
-            autofocus: true,
-            decoration: InputDecoration(labelText: l10n.equipmentModelLabel),
-            validator: (v) =>
-                (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
-          ),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx), child: Text(l10n.commonCancel)),
-          ElevatedButton(
-            onPressed: () async {
-              if (!(formKey.currentState?.validate() ?? false)) return;
-              try {
-                final created = await DbApiService.instance.createModel(
-                  brandId: _selectedBrandId!,
-                  name: ctrl.text.trim(),
-                );
-                // Recharge les modèles du fabricant courant puis sélectionne le nouveau
-                await _onBrandSelected(_selectedBrandId);
-                await _onModelSelected(created['id'] as int);
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (_) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                    content: Text(l10n.commonApiError),
-                    backgroundColor: AppColors.error,
-                  ));
-                }
-              }
-            },
-            child: Text(l10n.commonSave),
-          ),
-        ],
-      ),
+  // Crée un modèle, l'ajoute localement puis charge son protocole via _onModelSelected.
+  Future<void> _showCreateModelDialog(AppLocalizations l10n) {
+    if (_selectedBrandId == null) return Future.value();
+    return _showCreateCatalogDialog(
+      l10n: l10n,
+      title: l10n.equipmentAddModel,
+      labelText: l10n.equipmentModelLabel,
+      onCreate: (name) async {
+        final created = await DbApiService.instance.createModel(
+          brandId: _selectedBrandId!,
+          name: name,
+        );
+        final newId = created['id'] as int;
+        if (mounted) setState(() => _models = [..._models, {'id': newId, 'name': name}]);
+        await _onModelSelected(newId);
+      },
     );
-    ctrl.dispose();
   }
 
   // ── Étape 3 : GMAO & Maintenance ─────────────────────────────────────────

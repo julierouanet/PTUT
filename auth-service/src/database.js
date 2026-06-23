@@ -169,7 +169,7 @@ function initTables() {
   try { db.exec("ALTER TABLE access_requests ADD COLUMN phone TEXT"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
-  const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts'];
+  const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts', 'approveRequests'];
   const defaultPerms = {
     hospitalStaff:         ['viewEquipment', 'reportIssue', 'trackIssues'],
     supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks'],

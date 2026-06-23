@@ -106,10 +106,10 @@ void main() {
       }
     });
 
-    test('technician does NOT get supervisor/admin permissions', () {
+    test('technician gets approveRequests but not assignTasks/manageUsers', () {
       final techPerms = getPermissionsForRole(UserRole.technician);
 
-      expect(techPerms, isNot(contains(Permission.approveRequests)));
+      expect(techPerms, contains(Permission.approveRequests));
       expect(techPerms, isNot(contains(Permission.assignTasks)));
       expect(techPerms, isNot(contains(Permission.manageUsers)));
     });

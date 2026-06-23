@@ -242,6 +242,17 @@ router.get('/:id', verifyToken, (req, res) => {
   res.json({ ...eq, maintenanceHistory: history, futureMaintenance: future, tags, pmProtocols, pmPlan });
 });
 
+// Insère un tag physique si fourni ; retourne la valeur nettoyée (ou null).
+// Utilisé par POST et PUT pour éviter la duplication.
+function insertTagIfProvided(db, equipmentId, tagNumber) {
+  const tagVal = typeof tagNumber === 'string' ? tagNumber.trim() : null;
+  if (tagVal) {
+    db.prepare('INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES (?, ?)')
+      .run(equipmentId, tagVal);
+  }
+  return tagVal;
+}
+
 // ── POST /api/equipment ───────────────────────────────────────────────────────
 router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
   const db = getDb();
@@ -307,12 +318,7 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       model_id ? parseInt(model_id, 10) : null,
     );
 
-    // Enregistrement du tag physique si fourni (INSERT OR IGNORE = pas d'erreur sur doublon)
-    const tagVal = typeof tag_number === 'string' ? tag_number.trim() : null;
-    if (tagVal) {
-      db.prepare('INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES (?, ?)')
-        .run(id, tagVal);
-    }
+    const tagVal = insertTagIfProvided(db, id, tag_number);
 
     logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
       action: 'create_equipment', target_type: 'equipment', target_id: id, target_name: name,
@@ -386,35 +392,31 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
         manuf_year                  = COALESCE(?, manuf_year),
         install_date                = COALESCE(?, install_date),
         next_revision_date          = COALESCE(?, next_revision_date),
-        last_preventive_maintenance = COALESCE(?, last_preventive_maintenance),
-        next_preventive_maintenance = COALESCE(?, next_preventive_maintenance),
+        last_preventive_maintenance = ?,
+        next_preventive_maintenance = ?,
         subcategory_id              = COALESCE(?, subcategory_id),
         macro_category_id           = COALESCE(?, macro_category_id),
         warranty_end_date           = COALESCE(?, warranty_end_date),
         criticality                 = COALESCE(?, criticality),
-        building                    = COALESCE(?, building),
-        model_id                    = COALESCE(?, model_id),
+        building                    = ?,
+        model_id                    = ?,
         updated_at                  = datetime('now','localtime')
     WHERE id = ?
   `).run(
     name, department, category, serial_number, status, location,
     manufacturer, model, manufYearInt, install_date, next_revision_date,
-    last_preventive_maintenance, next_preventive_maintenance,
+    last_preventive_maintenance !== undefined ? last_preventive_maintenance || null : existing.last_preventive_maintenance,
+    next_preventive_maintenance !== undefined ? next_preventive_maintenance || null : existing.next_preventive_maintenance,
     subIdInt !== undefined ? subIdInt : null,
     resolvedMacro !== undefined ? resolvedMacro : null,
     warranty_end_date !== undefined ? warranty_end_date : null,
     criticality || null,
-    building !== undefined ? building || null : null,
-    modelIdInt !== undefined ? modelIdInt : null,
+    building !== undefined ? building || null : existing.building,
+    modelIdInt !== undefined ? modelIdInt : existing.model_id,
     req.params.id,
   );
 
-  // Enregistrement du tag physique si fourni
-  const tagVal = typeof tag_number === 'string' ? tag_number.trim() : null;
-  if (tagVal) {
-    db.prepare('INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES (?, ?)')
-      .run(req.params.id, tagVal);
-  }
+  const tagVal = insertTagIfProvided(db, req.params.id, tag_number);
 
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'update_equipment', target_type: 'equipment', target_id: req.params.id,

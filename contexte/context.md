@@ -118,10 +118,10 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 |-----------------------|-------------------------------------------------------------------------------------|
 | hospitalStaff         | viewEquipment, reportIssue, trackIssues                                             |
 | supervisor            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks               |
-| technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
-| technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
-| technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
-| technician_infra      | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts               |
+| technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
+| technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
+| technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
+| technician_infra      | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
 | admin                 | TOUTES les permissions (14)                                                         |
 
 **SYSTEM_ROLES** filtrés des tokens : `offline_access`, `uma_authorization`, `default-roles-kabutare-hospital`
