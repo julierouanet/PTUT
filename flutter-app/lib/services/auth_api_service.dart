@@ -341,6 +341,14 @@ class AuthApiService {
     }
   }
 
+  // ── Mode debug ────────────────────────────────────────────────────────────────
+
+  /// Vérifie le mot de passe de déverrouillage du mode debug. Retourne true si valide.
+  Future<bool> verifyDebugModePassword(String password) async {
+    final response = await ApiClient.post(ApiConfig.debugModeVerifyUrl, {'password': password});
+    return response.statusCode == 200;
+  }
+
   // ── Détail d'un rôle (hiérarchie, permissions, utilisateurs) ─────────────────
 
   /// Permissions applicatives d'un rôle.

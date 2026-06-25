@@ -86,6 +86,7 @@ services:
       DB_PATH: /data/auth.db
       DB_SERVICE_URL: http://db-service:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DEBUG_MODE_PASSWORD: ${DEBUG_MODE_PASSWORD}
       # Keycloak — issuer = URL externe (dans le JWT), JWKS = URL interne HTTP
       KC_ISSUER:      ${KC_PUBLIC_URL}/keycloak/realms/kabutare-hospital
       KC_JWKS_URI:    http://keycloak:8080/keycloak/realms/kabutare-hospital/protocol/openid-connect/certs

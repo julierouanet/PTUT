@@ -1033,6 +1033,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsProfileUpdated => 'Profile updated';
 
   @override
+  String get settingsDebugModeTitle => 'Debug mode';
+
+  @override
+  String get settingsDebugModeEnabled => 'Enabled for this session';
+
+  @override
+  String get settingsDebugModeDisabled =>
+      'Disabled — reserved for technical interventions';
+
+  @override
+  String get debugModeDialogTitle => 'Enable debug mode';
+
+  @override
+  String get debugModeDialogPasswordLabel => 'Unlock password';
+
+  @override
+  String get debugModeDialogError => 'Incorrect password';
+
+  @override
+  String get debugModeDialogConfirm => 'Enable';
+
+  @override
+  String get debugModeDialogSuccess => 'Debug mode enabled for this session';
+
+  @override
   String get settingsAdminSection => 'Administration';
 
   @override

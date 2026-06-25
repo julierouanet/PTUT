@@ -8,7 +8,7 @@
 
 const express = require('express');
 const { getDb } = require('../database');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireAdmin } = require('../middleware/auth');
 const { kcAdminFetch, assignRolesToUser } = require('../utils/keycloakAdmin');
 const { sendLog, reqMeta } = require('../utils/logger');
 
@@ -53,6 +53,35 @@ router.get('/me', verifyToken, (req, res) => {
     roles:          req.user.roles,
     permissions,
   });
+});
+
+// ── POST /api/auth/debug-mode/verify — déverrouillage du mode Debug & Test ───
+// Vérifie le mot de passe de déverrouillage du mode debug (variable d'env définie au
+// déploiement). Si DEBUG_MODE_PASSWORD n'est pas configuré côté serveur, retourne
+// systématiquement invalide (jamais d'erreur 500 — comportement intentionnel).
+router.post('/debug-mode/verify', verifyToken, requireAdmin, (req, res) => {
+  const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Mot de passe requis' });
+  }
+
+  const expected = process.env.DEBUG_MODE_PASSWORD;
+  const valid = !!expected && password === expected;
+
+  sendLog({
+    user_id:     req.user.id,
+    user_name:   req.user.name,
+    user_role:   req.user.roles[0],
+    action:      valid ? 'debug_mode_unlocked' : 'debug_mode_unlock_failed',
+    target_type: 'debug_mode',
+    target_id:   'debug_mode',
+    target_name: 'Mode debug',
+    details:     '{}',
+    ...reqMeta(req),
+  });
+
+  if (!valid) return res.status(401).json({ valid: false, error: 'Mot de passe incorrect' });
+  res.json({ valid: true });
 });
 
 // ── POST /api/auth/register — inscription libre ───────────────────────────────

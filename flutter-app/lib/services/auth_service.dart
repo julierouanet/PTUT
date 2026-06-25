@@ -27,6 +27,8 @@ class AuthService extends ChangeNotifier {
   bool _needsPreferencesSetup = false;
   // Indique si le popup de sélection de rôle doit être affiché après création de compte
   bool _needsRoleSelectionSetup = false;
+  // Mode debug déverrouillé pour la session courante (admin uniquement) — reset au logout
+  bool _debugModeEnabled = false;
 
   User?   get currentUser               => _currentUser;
   bool    get isLoggedIn                => _currentUser != null;
@@ -36,6 +38,7 @@ class AuthService extends ChangeNotifier {
   NotificationPreferences? get notificationPreferences => _notificationPreferences;
   bool    get needsPreferencesSetup     => _needsPreferencesSetup;
   bool    get needsRoleSelectionSetup   => _needsRoleSelectionSetup;
+  bool    get debugModeEnabled          => _debugModeEnabled;
 
   void clearSessionExpiredMessage() {
     _sessionExpiredMessage = null;
@@ -201,19 +204,20 @@ class AuthService extends ChangeNotifier {
         .catchError((_) {});
     // Supprimer les tokens locaux puis notifier immédiatement
     await AuthApiService.instance.logout();
-    _currentUser = null;
-    _notificationPreferences = null;
-    _needsPreferencesSetup = false;
-    FeatureService().clear();
-    EquipmentFilterState().reset();
-    notifyListeners();
+    _resetSessionState();
   }
 
   /// Déconnexion simple (mock).
   void logout() {
+    _resetSessionState();
+  }
+
+  /// Réinitialise l'état de session locale — partagé par les deux flux de déconnexion.
+  void _resetSessionState() {
     _currentUser = null;
     _notificationPreferences = null;
     _needsPreferencesSetup = false;
+    _debugModeEnabled = false;
     FeatureService().clear();
     EquipmentFilterState().reset();
     notifyListeners();
@@ -310,6 +314,23 @@ class AuthService extends ChangeNotifier {
     try {
       await AuthApiService.instance.updateUser(_currentUser!.id, {'password': newPassword});
       return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ── Mode debug ─────────────────────────────────────────────────────────────
+
+  /// Vérifie le mot de passe de mode debug auprès du serveur et active l'état si valide.
+  /// Valide pour la durée de la session — réinitialisé à la déconnexion.
+  Future<bool> unlockDebugMode(String password) async {
+    try {
+      final ok = await AuthApiService.instance.verifyDebugModePassword(password);
+      if (ok) {
+        _debugModeEnabled = true;
+        notifyListeners();
+      }
+      return ok;
     } catch (_) {
       return false;
     }

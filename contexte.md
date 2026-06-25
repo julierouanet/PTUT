@@ -329,6 +329,7 @@ Réseau LAN hôpital + Internet
 | Variable | Service | Rôle |
 |---|---|---|
 | `INTERNAL_SECRET` | auth + db | Authentification service-à-service |
+| `DEBUG_MODE_PASSWORD` | auth | Mot de passe de déverrouillage de l'item sidebar « Debug & Test » (admin), généré par `setup_ubuntu.sh`, partagé prod/dev, jamais piloté depuis l'UI |
 | `DB_PATH` | auth + db | Chemin SQLite (`/data/auth.db` / `/data/hospital.db`) |
 | `KC_ISSUER` | auth + db | URL realm (IP-only : `https://<IP>/keycloak/realms/kabutare-hospital`) |
 | `KC_ADMIN_URL` | auth | URL Admin API Keycloak |

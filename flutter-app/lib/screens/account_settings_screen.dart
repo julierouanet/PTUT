@@ -219,6 +219,25 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
                     onTap: () => _showRoleRequestDialog(l10n),
                   ),
+                  if (currentUser?.hasRole(UserRole.admin) == true) ...[
+                    const Divider(height: 1, indent: 16, endIndent: 16),
+                    ListenableBuilder(
+                      listenable: _authService,
+                      builder: (context, _) => ListTile(
+                        leading: Icon(
+                          Icons.bug_report_outlined,
+                          color: _authService.debugModeEnabled ? AppColors.error : AppColors.textSecondary,
+                        ),
+                        title: Text(l10n.settingsDebugModeTitle, style: const TextStyle(fontWeight: FontWeight.w500)),
+                        subtitle: Text(
+                          _authService.debugModeEnabled ? l10n.settingsDebugModeEnabled : l10n.settingsDebugModeDisabled,
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                        trailing: const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+                        onTap: _authService.debugModeEnabled ? null : () => _showDebugModeDialog(l10n),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -788,6 +807,104 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         }
                       },
                       child: Text(l10n.commonSave),
+                    ),
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Dialog : déverrouillage du mode debug (admin) ──────────────────────────
+
+  void _showDebugModeDialog(AppLocalizations l10n) {
+    final passwordCtrl = TextEditingController();
+    bool obscure = true;
+    bool loading = false;
+    String? errorMsg;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => Dialog(
+          insetPadding: const EdgeInsets.all(16),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 420),
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(l10n.debugModeDialogTitle, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    IconButton(onPressed: loading ? null : () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: passwordCtrl,
+                  obscureText: obscure,
+                  onChanged: (_) => setDialogState(() {}),
+                  decoration: InputDecoration(
+                    labelText: l10n.debugModeDialogPasswordLabel,
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                      onPressed: () => setDialogState(() => obscure = !obscure),
+                    ),
+                  ),
+                ),
+                if (errorMsg != null) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: AppColors.errorLight, borderRadius: BorderRadius.circular(8)),
+                    child: Row(children: [
+                      const Icon(Icons.error_outline, color: AppColors.error, size: 16),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(errorMsg!, style: const TextStyle(color: AppColors.error, fontSize: 13))),
+                    ]),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                Row(children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: loading ? null : () => Navigator.pop(ctx),
+                      child: Text(l10n.commonCancel),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: loading || passwordCtrl.text.isEmpty ? null : () async {
+                        setDialogState(() => loading = true);
+                        final ok = await _authService.unlockDebugMode(passwordCtrl.text);
+                        if (ok) {
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(l10n.debugModeDialogSuccess),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                            ));
+                          }
+                        } else {
+                          passwordCtrl.clear();
+                          setDialogState(() {
+                            loading = false;
+                            errorMsg = l10n.debugModeDialogError;
+                          });
+                        }
+                      },
+                      child: loading
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(l10n.debugModeDialogConfirm),
                     ),
                   ),
                 ]),

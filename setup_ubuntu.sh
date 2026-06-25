@@ -144,6 +144,10 @@ if [[ -f ".env" ]]; then
   else
     echo "KC_PUBLIC_URL=${KC_PUBLIC_URL}" >> .env
   fi
+  # Ne JAMAIS régénérer un mot de passe existant — uniquement le créer s'il manque
+  if ! grep -q "^DEBUG_MODE_PASSWORD=" .env; then
+    echo "DEBUG_MODE_PASSWORD=$(openssl rand -hex 16)" >> .env
+  fi
 else
   echo "      Création du fichier .env..."
 
@@ -152,6 +156,7 @@ else
   read -rp "      Mot de passe PostgreSQL Keycloak : " -s KC_DB_PASSWORD_INPUT; echo
 
   INTERNAL_SECRET_GEN=$(openssl rand -hex 32)
+  DEBUG_MODE_PASSWORD_GEN=$(openssl rand -hex 16)
 
   cat > .env <<EOF
 SERVER_IP=${SERVER_IP}
@@ -161,6 +166,7 @@ KC_PUBLIC_URL=${KC_PUBLIC_URL}
 DOCKER_USER=${DOCKER_USER_INPUT}
 
 INTERNAL_SECRET=${INTERNAL_SECRET_GEN}
+DEBUG_MODE_PASSWORD=${DEBUG_MODE_PASSWORD_GEN}
 
 KC_ADMIN_USER=admin
 KC_ADMIN_PASSWORD=${KC_ADMIN_PASSWORD_INPUT}

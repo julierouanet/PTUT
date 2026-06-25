@@ -118,6 +118,7 @@ class ApiConfig {
   static String get accessRequestUrl       => '$authBaseUrl/api/auth/access-request';
   static String get roleRequestsUrl        => '$authBaseUrl/api/users/role-requests';
   static String get notificationPrefsUrl   => '$authBaseUrl/api/users/me/notifications';
+  static String get debugModeVerifyUrl     => '$authBaseUrl/api/auth/debug-mode/verify';
 
   // ── DB endpoints ──────────────────────────────────────────────────────────────
   static String get locationsUrl  => '$dbBaseUrl/api/locations';

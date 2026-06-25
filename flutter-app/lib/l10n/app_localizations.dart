@@ -2030,6 +2030,54 @@ abstract class AppLocalizations {
   /// **'Profil mis a jour'**
   String get settingsProfileUpdated;
 
+  /// No description provided for @settingsDebugModeTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode debug'**
+  String get settingsDebugModeTitle;
+
+  /// No description provided for @settingsDebugModeEnabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activé pour cette session'**
+  String get settingsDebugModeEnabled;
+
+  /// No description provided for @settingsDebugModeDisabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Désactivé — réservé aux interventions techniques'**
+  String get settingsDebugModeDisabled;
+
+  /// No description provided for @debugModeDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer le mode debug'**
+  String get debugModeDialogTitle;
+
+  /// No description provided for @debugModeDialogPasswordLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe de déverrouillage'**
+  String get debugModeDialogPasswordLabel;
+
+  /// No description provided for @debugModeDialogError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mot de passe incorrect'**
+  String get debugModeDialogError;
+
+  /// No description provided for @debugModeDialogConfirm.
+  ///
+  /// In fr, this message translates to:
+  /// **'Activer'**
+  String get debugModeDialogConfirm;
+
+  /// No description provided for @debugModeDialogSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mode debug activé pour cette session'**
+  String get debugModeDialogSuccess;
+
   /// No description provided for @settingsAdminSection.
   ///
   /// In fr, this message translates to:

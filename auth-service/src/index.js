@@ -86,6 +86,16 @@ const accessRequestLimiter = rateLimit({
 });
 app.use('/api/auth/access-request', accessRequestLimiter);
 
+// Rate limiter pour la vérification du mode debug : max 10 tentatives par IP par 15 min
+const debugModeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Trop de tentatives. Réessayez dans 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/debug-mode/verify', debugModeLimiter);
+
 // Rate limiter pour les endpoints d'écriture/administration
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute

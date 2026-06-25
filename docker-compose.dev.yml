@@ -15,6 +15,7 @@ services:
       DB_PATH: /data/auth.db
       DB_SERVICE_URL: http://db-service-dev:3002
       INTERNAL_SECRET: ${INTERNAL_SECRET_DEV:-kabutare-internal-dev-secret}
+      DEBUG_MODE_PASSWORD: ${DEBUG_MODE_PASSWORD}
       # iss réel émis par Keycloak (login dev passe par l'instance partagée keycloak.lucaslopvet.fr — cf. Jenkinsfile)
       KC_ISSUER: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital
       KC_JWKS_URI: https://keycloak.lucaslopvet.fr/realms/kabutare-hospital/protocol/openid-connect/certs

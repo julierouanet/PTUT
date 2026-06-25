@@ -1093,6 +1093,78 @@ describe('PUT /api/roles/:name/permissions', () => {
 });
 
 // =============================================================================
+//  17b. POST /api/auth/debug-mode/verify (admin)
+// =============================================================================
+
+describe('POST /api/auth/debug-mode/verify', () => {
+  const ORIGINAL_PASSWORD = process.env.DEBUG_MODE_PASSWORD;
+
+  afterEach(() => {
+    process.env.DEBUG_MODE_PASSWORD = ORIGINAL_PASSWORD;
+  });
+
+  test('sans token → 401', async () => {
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .send({ password: 'whatever' });
+    expect(res.status).toBe(401);
+  });
+
+  test('non-admin → 403', async () => {
+    asUser(STAFF);
+    process.env.DEBUG_MODE_PASSWORD = 'secret-debug';
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .set('Authorization', 'Bearer fake')
+      .send({ password: 'secret-debug' });
+    expect(res.status).toBe(403);
+  });
+
+  test('champ password absent → 400', async () => {
+    asUser(ADMIN);
+    process.env.DEBUG_MODE_PASSWORD = 'secret-debug';
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .set('Authorization', 'Bearer fake')
+      .send({});
+    expect(res.status).toBe(400);
+  });
+
+  test('mot de passe incorrect → 401', async () => {
+    asUser(ADMIN);
+    process.env.DEBUG_MODE_PASSWORD = 'secret-debug';
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .set('Authorization', 'Bearer fake')
+      .send({ password: 'mauvais-mot-de-passe' });
+    expect(res.status).toBe(401);
+    expect(res.body.valid).toBe(false);
+  });
+
+  test('DEBUG_MODE_PASSWORD non défini côté serveur → 401, pas de 500', async () => {
+    asUser(ADMIN);
+    delete process.env.DEBUG_MODE_PASSWORD;
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .set('Authorization', 'Bearer fake')
+      .send({ password: 'peu-importe' });
+    expect(res.status).toBe(401);
+    expect(res.body.valid).toBe(false);
+  });
+
+  test('mot de passe correct → 200, valid: true', async () => {
+    asUser(ADMIN);
+    process.env.DEBUG_MODE_PASSWORD = 'secret-debug';
+    const res = await request(app)
+      .post('/api/auth/debug-mode/verify')
+      .set('Authorization', 'Bearer fake')
+      .send({ password: 'secret-debug' });
+    expect(res.status).toBe(200);
+    expect(res.body.valid).toBe(true);
+  });
+});
+
+// =============================================================================
 //  18. SÉCURITÉ — Configuration et endpoints
 // =============================================================================
 

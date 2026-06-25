@@ -298,6 +298,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     final filter = widget.moduleFilter;
     final visible = _allNavItems(l10n).where((item) {
       if (filter != null && !filter.contains(item.screenType)) return false;
+      if (item.screenType == ScreenType.debugTest && !_authService.debugModeEnabled) return false;
       if (item.requiredPermission == null) return true;
       return _authService.hasPermission(item.requiredPermission!) ||
              (item.alternativePermission != null &&
