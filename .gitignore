@@ -34,6 +34,9 @@ backups/
 # ── Prompts de développement (notes internes, non versionnées) ─
 prompts/
 
+# ── Préparation soutenance (notes perso, non versionnées) ─────
+soutenance/
+
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

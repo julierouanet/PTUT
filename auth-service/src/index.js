@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { PORT } = require('./config');
 const authRoutes         = require('./routes/auth');
@@ -19,6 +20,9 @@ getDb();
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
+// Compression gzip des réponses JSON — pas de gzip nginx côté API pour éviter
+// une double compression (cf. nginx/conf.d/ip.conf).
+app.use(compression());
 
 // CORS doit être AVANT les rate limiters pour que les réponses 429 aient les headers CORS
 app.use(cors({

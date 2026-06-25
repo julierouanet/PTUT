@@ -1288,6 +1288,9 @@
   "@forgotPasswordHint": {},
 
   "commonNext": "Suivant",
+  "commonPrevious": "Précédent",
+  "commonPageOf": "Page {page} sur {totalPages}",
+  "@commonPageOf": { "placeholders": { "page": { "type": "int" }, "totalPages": { "type": "int" } } },
   "commonBack": "Retour",
 
   "dashboardRefreshedJustNow": "À l'instant",

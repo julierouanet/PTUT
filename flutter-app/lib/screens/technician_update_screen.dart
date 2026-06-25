@@ -13,6 +13,7 @@ import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
 import '../widgets/issue_validation_sheet.dart';
+import '../widgets/pagination_footer.dart';
 import 'issue_detail_screen.dart';
 import 'technician_intervention_update_screen.dart';
 import 'technician_schedule_screen.dart';
@@ -42,6 +43,23 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   // Index de l'onglet "Mes interventions" — dépend de la présence de "À valider"
   int get _myInterventionsIndex => _canValidate ? 2 : 1;
+  // Index de l'onglet "Disponibles" — dépend de la présence de "À valider"
+  int get _availableTabIndex => _canValidate ? 1 : 0;
+
+  // ── Pagination serveur : onglets "À valider" et "Mes interventions" ────────
+  // L'onglet "Disponibles" reste sur DataService().issues (vue groupée par
+  // département, hors scope de la pagination — cf. CLAUDE.md/spec).
+  static const int _pageSize = 20;
+  int _pageValidation = 1, _pageMyIssues = 1;
+  PagedResult<Issue>? _pagedValidation, _pagedMyIssues;
+  bool _loadingValidation = false, _loadingMyIssues = false;
+
+  bool get _isLoadingActiveTab {
+    final idx = _tabController.index;
+    if (_canValidate && idx == 0) return _loadingValidation;
+    if (idx == _myInterventionsIndex) return _loadingMyIssues;
+    return false;
+  }
 
   // ── Getters de données ────────────────────────────────────────────────────────
 
@@ -99,48 +117,115 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     return DataService().equipment.where((e) => e.id == eid).firstOrNull;
   }
 
-  List<Issue> get _myIssues => DataService().issues
-      .where((i) =>
-          i.status == IssueStatus.inProgress &&
-          i.assignedTechnician == _currentTechnicianName)
-      .toList();
+  /// Charge la fiche complète d'un équipement (DataService().equipment est en
+  /// mode léger : tags/maintenance vides) avant d'ouvrir le dialogue détail.
+  Future<void> _showEquipmentDetail(String equipmentId) async {
+    try {
+      final json = await DbApiService.instance.getEquipmentById(equipmentId);
+      if (!mounted) return;
+      EquipmentDetailDialog.show(context, Equipment.fromApiJson(json));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${AppLocalizations.of(context)!.commonError} : $e'),
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
 
-  List<Issue> get _filteredIssues {
-    final query  = _interventionSearch.toLowerCase();
-    final issues = _myIssues;
-    if (query.isEmpty) return issues;
-    return issues.where((i) =>
-        i.displayName.toLowerCase().contains(query) ||
-        i.description.toLowerCase().contains(query) ||
-        i.department.toLowerCase().contains(query)  ||
-        i.type.toLowerCase().contains(query),
-    ).toList();
+  // ── Pagination serveur — onglet "Mes interventions" ─────────────────────────
+
+  /// Récupère la page courante des interventions du technicien (statut
+  /// In Progress, assigné à lui) avec la recherche [_interventionSearch].
+  Future<void> _fetchMyIssuesPage({bool resetPage = false}) async {
+    if (resetPage) _pageMyIssues = 1;
+    setState(() => _loadingMyIssues = true);
+    try {
+      final result = await DbApiService.instance.getIssuesPaged(
+        page: _pageMyIssues,
+        limit: _pageSize,
+        status: 'In Progress',
+        assignedTechnician: _currentTechnicianName,
+        search: _interventionSearch.isEmpty ? null : _interventionSearch,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pagedMyIssues = result;
+        _loadingMyIssues = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingMyIssues = false);
+    }
+  }
+
+  void _goToMyIssuesPage(int page) {
+    _pageMyIssues = page;
+    _fetchMyIssuesPage();
+  }
+
+  // ── Pagination serveur — onglet "À valider" ─────────────────────────────────
+  // Reproduit exactement la logique de visibilité par rôle (admin > superviseur
+  // > technicien avec groupe(s) assignable(s) > aucun accès).
+
+  Future<void> _fetchValidationPage({bool resetPage = false}) async {
+    if (resetPage) _pageValidation = 1;
+    final roles = AuthService().currentRoles;
+    final isAdmin = roles.contains(UserRole.admin);
+    final isSupervisor = !isAdmin && roles.contains(UserRole.supervisor);
+    final myGroups = _myAssignableGroups;
+    final isGroupTech = !isAdmin && !isSupervisor && myGroups.isNotEmpty;
+
+    if (!isAdmin && !isSupervisor && !isGroupTech) {
+      setState(() {
+        _pagedValidation = const PagedResult<Issue>(
+            items: [], total: 0, page: 1, limit: _pageSize, totalPages: 1);
+        _loadingValidation = false;
+      });
+      return;
+    }
+
+    setState(() => _loadingValidation = true);
+    try {
+      final result = await DbApiService.instance.getIssuesPaged(
+        page: _pageValidation,
+        limit: _pageSize,
+        status: 'Reported',
+        department: isSupervisor ? AuthService().currentUser?.department : null,
+        assignedGroupIn: isGroupTech ? myGroups.join(',') : null,
+      );
+      if (!mounted) return;
+      setState(() {
+        _pagedValidation = result;
+        _loadingValidation = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingValidation = false);
+    }
+  }
+
+  void _goToValidationPage(int page) {
+    _pageValidation = page;
+    _fetchValidationPage();
+  }
+
+  /// Recharge l'onglet actuellement sélectionné — "Disponibles" garde le
+  /// comportement legacy (DataService().reloadIssues()), "À valider" et
+  /// "Mes interventions" relancent leur requête paginée à la page courante.
+  Future<void> _refreshActiveTab() async {
+    final idx = _tabController.index;
+    if (_canValidate && idx == 0) {
+      await _fetchValidationPage();
+    } else if (idx == _availableTabIndex) {
+      await DataService().reloadIssues();
+      if (mounted) setState(() {});
+    } else if (idx == _myInterventionsIndex) {
+      await _fetchMyIssuesPage();
+    }
   }
 
   // ── Init / Dispose ──────────────────────────────────────────────────────────
-
-  // ── Incidents en attente de validation (statut 'reported') ─────────────────
-
-  List<Issue> get _openIssuesForValidation {
-    final roles   = AuthService().currentRoles;
-    final allOpen = DataService().issues
-        .where((i) => i.status == IssueStatus.reported)
-        .toList();
-    if (roles.contains(UserRole.admin)) return allOpen;
-    if (roles.contains(UserRole.supervisor)) {
-      final dept = AuthService().currentUser?.department ?? '';
-      return allOpen.where((i) => i.department == dept).toList();
-    }
-    // Technicien avec droit de validation : limité aux incidents de son/ses groupe(s)
-    final myGroups = _myAssignableGroups;
-    if (myGroups.isNotEmpty) {
-      return allOpen.where((i) {
-        final group = i.assignedGroup;
-        return group == null || myGroups.contains(group);
-      }).toList();
-    }
-    return [];
-  }
 
   @override
   void initState() {
@@ -152,11 +237,18 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     // Deep-link incident → on atterrit sur "Mes interventions" (dernier onglet)
     final startTab = widget.issueId != null ? _myInterventionsIndex : 0;
     _tabController = TabController(length: tabCount, vsync: this, initialIndex: startTab);
+    // Rebuild (spinner Actualiser, badges) au changement d'onglet stabilisé.
+    _tabController.addListener(() {
+      if (mounted && !_tabController.indexIsChanging) setState(() {});
+    });
     if (widget.issueId != null) {
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _openIssueUpdateScreen(widget.issueId!),
       );
     }
+    // Chargement initial des onglets paginés (Disponibles reste sur DataService).
+    _fetchMyIssuesPage();
+    if (_canValidate) _fetchValidationPage();
   }
 
   @override
@@ -223,7 +315,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                           isMobile: isMobileTab,
                           icon: Icons.pending_actions_outlined,
                           label: l10n.issueValidationTab,
-                          badgeCount: _openIssuesForValidation.length,
+                          badgeCount: _pagedValidation?.total ?? 0,
                         ),
                       ),
                     Tab(
@@ -241,11 +333,22 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                         isMobile: isMobileTab,
                         icon: Icons.build_outlined,
                         label: l10n.techMyInterventionsTab,
-                        badgeCount: _myIssues.length,
+                        badgeCount: _pagedMyIssues?.total ?? 0,
                       ),
                     ),
                   ],
                 ),
+              ),
+              // Actualiser — recharge la page courante de l'onglet actif.
+              IconButton(
+                icon: _isLoadingActiveTab
+                    ? const SizedBox(
+                        width: 18, height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.refresh),
+                color: AppColors.textSecondary,
+                tooltip: l10n.dashboardRefreshTooltip,
+                onPressed: _isLoadingActiveTab ? null : _refreshActiveTab,
               ),
               // Bouton planning — accessible quelle que soit la config d'onglets
               IconButton(
@@ -382,7 +485,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                                     isMobile: isMobile,
                                     onTakeOver: () => _showTakeOverDialog(i),
                                     onViewSheet: _equipmentFor(i) != null
-                                        ? () => EquipmentDetailDialog.show(context, _equipmentFor(i)!)
+                                        ? () => _showEquipmentDetail(_equipmentFor(i)!.id)
                                         : null,
                                   ))
                               .toList(),
@@ -405,8 +508,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildDesktopInterventionsTab(AppLocalizations l10n) {
-    final myIssues = _myIssues;
-    final filtered = _filteredIssues;
+    final items = _pagedMyIssues?.items ?? const <Issue>[];
+    final total = _pagedMyIssues?.total ?? 0;
+    final totalPages = _pagedMyIssues?.totalPages ?? 1;
+    final noInterventionsAtAll = total == 0 && _interventionSearch.isEmpty;
+    final noSearchResults = total == 0 && _interventionSearch.isNotEmpty;
 
     return Padding(
       padding: const EdgeInsets.all(24),
@@ -428,7 +534,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
           SizedBox(
             width: 300,
             child: TextField(
-              onChanged: (v) => setState(() => _interventionSearch = v),
+              onChanged: (v) {
+                setState(() => _interventionSearch = v);
+                _fetchMyIssuesPage(resetPage: true);
+              },
               decoration: InputDecoration(
                 hintText: l10n.techSearchHint,
                 prefixIcon: const Icon(Icons.search, size: 18),
@@ -440,25 +549,34 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
           // ── Liste des incidents (plein-écran) ────────────────────────────
           Expanded(
-            child: myIssues.isEmpty
-                ? _buildEmptyInterventions(l10n)
-                : filtered.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Text(l10n.techNoResults,
-                              style: const TextStyle(
-                                  color: AppColors.textSecondary)),
-                        ),
-                      )
-                    : ListView.separated(
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 8),
-                        itemBuilder: (_, i) =>
-                            _buildInterventionCard(filtered[i], false, l10n),
-                      ),
+            child: _loadingMyIssues && items.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : noInterventionsAtAll
+                    ? _buildEmptyInterventions(l10n)
+                    : noSearchResults
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(l10n.techNoResults,
+                                  style: const TextStyle(
+                                      color: AppColors.textSecondary)),
+                            ),
+                          )
+                        : ListView.separated(
+                            itemCount: items.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (_, i) =>
+                                _buildInterventionCard(items[i], false, l10n),
+                          ),
           ),
+          if (total > 0)
+            PaginationFooter(
+              currentPage: _pageMyIssues,
+              totalPages: totalPages,
+              isLoading: _loadingMyIssues,
+              onPageChange: _goToMyIssuesPage,
+            ),
         ],
       ),
     );
@@ -469,8 +587,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildMobileInterventionsTab(AppLocalizations l10n) {
-    final myIssues = _myIssues;
-    final filtered = _filteredIssues;
+    final items = _pagedMyIssues?.items ?? const <Issue>[];
+    final total = _pagedMyIssues?.total ?? 0;
+    final totalPages = _pagedMyIssues?.totalPages ?? 1;
+    final noInterventionsAtAll = total == 0 && _interventionSearch.isEmpty;
+    final noSearchResults = total == 0 && _interventionSearch.isNotEmpty;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -488,7 +609,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
           const SizedBox(height: 16),
 
           TextField(
-            onChanged: (v) => setState(() => _interventionSearch = v),
+            onChanged: (v) {
+              setState(() => _interventionSearch = v);
+              _fetchMyIssuesPage(resetPage: true);
+            },
             decoration: InputDecoration(
               hintText: l10n.techSearchHint,
               prefixIcon: const Icon(Icons.search),
@@ -497,9 +621,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
           ),
           const SizedBox(height: 16),
 
-          if (myIssues.isEmpty)
+          if (_loadingMyIssues && items.isEmpty)
+            const Center(child: CircularProgressIndicator())
+          else if (noInterventionsAtAll)
             _buildEmptyInterventions(l10n)
-          else if (filtered.isEmpty)
+          else if (noSearchResults)
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -508,11 +634,18 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               ),
             )
           else
-            ...filtered.map(
+            ...items.map(
               (issue) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _buildInterventionCard(issue, false, l10n),
               ),
+            ),
+          if (total > 0)
+            PaginationFooter(
+              currentPage: _pageMyIssues,
+              totalPages: totalPages,
+              isLoading: _loadingMyIssues,
+              onPageChange: _goToMyIssuesPage,
             ),
         ],
       ),
@@ -715,6 +848,8 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
       NotificationService().generateFromLoadedData();
       if (!mounted) return;
       _tabController.animateTo(_myInterventionsIndex);
+      await _fetchMyIssuesPage(resetPage: true);
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
             AppLocalizations.of(context)!
@@ -738,7 +873,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   Widget _buildValidationTab(bool isMobile) {
     final l10n    = AppLocalizations.of(context)!;
-    final issues  = _openIssuesForValidation;
+    final issues  = _pagedValidation?.items ?? const <Issue>[];
+    final total   = _pagedValidation?.total ?? 0;
+    final totalPages = _pagedValidation?.totalPages ?? 1;
     final isAdmin = AuthService().currentRoles.contains(UserRole.admin);
     final dept    = AuthService().currentUser?.department ?? '';
 
@@ -773,13 +910,13 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text('${issues.length}',
+                  Text('$total',
                       style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: AppColors.error)),
                   const SizedBox(width: 8),
-                  Text(l10n.issueValidationOpenCount(issues.length),
+                  Text(l10n.issueValidationOpenCount(total),
                       style: const TextStyle(
                           color: AppColors.error,
                           fontWeight: FontWeight.w500)),
@@ -790,28 +927,40 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
             SizedBox(
               width: double.infinity,
               child: Card(
-                child: issues.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(32),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.check_circle_outline,
-                                color: AppColors.success, size: 24),
-                            const SizedBox(width: 12),
-                            Text(l10n.issueValidationNone,
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary)),
-                          ],
-                        ),
+                child: _loadingValidation && issues.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(child: CircularProgressIndicator()),
                       )
-                    : Column(
-                        children: issues
-                            .map((issue) => _buildValidationIssueItem(issue, isMobile))
-                            .toList(),
-                      ),
+                    : issues.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle_outline,
+                                    color: AppColors.success, size: 24),
+                                const SizedBox(width: 12),
+                                Text(l10n.issueValidationNone,
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary)),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            children: issues
+                                .map((issue) => _buildValidationIssueItem(issue, isMobile))
+                                .toList(),
+                          ),
               ),
             ),
+            if (total > 0)
+              PaginationFooter(
+                currentPage: _pageValidation,
+                totalPages: totalPages,
+                isLoading: _loadingValidation,
+                onPageChange: _goToValidationPage,
+              ),
           ],
         ),
       ),
@@ -950,7 +1099,9 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   Future<void> _showValidationIssueDetail(Issue issue) async {
     await showIssueValidationSheet(context, issue);
     await DataService().reloadIssues();
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
+    await _fetchValidationPage();
   }
 
   ({Color color, IconData icon, String label}) _validationGroupMeta(

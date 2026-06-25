@@ -17,6 +17,16 @@ const VALID_STATUSES_EQ = [
 ];
 const VALID_CRITICALITIES = ['A', 'B', 'C'];
 
+// Pagination serveur GET /api/equipment (whitelists pour ORDER BY)
+const VALID_SORT_BY_EQ = ['name', 'status', 'department', 'install_date'];
+const VALID_SORT_DIR = ['asc', 'desc'];
+const SORT_BY_COLUMN_EQ = {
+  name: 'e.name',
+  status: 'e.status',
+  department: 'e.department',
+  install_date: 'e.install_date',
+};
+
 // Cycle de vie : motifs de réforme et méthodes d'élimination (whitelists serveur).
 // Toute valeur hors liste est rejetée en 400. disposal_method reste extensible
 // (ex. 'recycled' futur) mais on ne l'ajoute pas tant que le module déchets
@@ -55,53 +65,115 @@ function resolveMacroCategoryId(db, subcategoryId, explicitMacroCategoryId) {
   return sub ? sub.macro_category_id : null;
 }
 
+// Enrichit une liste d'équipements avec maintenanceHistory/futureMaintenance/tags.
+// En mode léger (isLight), ces 3 tableaux N+1 restent vides — aucune requête
+// supplémentaire n'est exécutée. Partagé par les modes legacy et paginé.
+function hydrateEquipmentList(db, equipment, isLight) {
+  if (isLight) {
+    return equipment.map(eq => ({ ...eq, maintenanceHistory: [], futureMaintenance: [], tags: [] }));
+  }
+  const histStmt   = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC');
+  const futureStmt = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC');
+  const tagsStmt   = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC');
+  return equipment.map(eq => ({
+    ...eq,
+    maintenanceHistory: histStmt.all(eq.id),
+    futureMaintenance:  futureStmt.all(eq.id),
+    tags:               tagsStmt.all(eq.id).map(r => r.tag_number),
+  }));
+}
+
 // ── GET /api/equipment ────────────────────────────────────────────────────────
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
   const {
     department, status, category, macro_category, macro_category_id,
     subcategory_id, brand_id, model_id, include_disposed,
+    search, sort_by, sort_dir, page, limit, light,
   } = req.query;
 
-  let query = `${BASE_SELECT} WHERE 1=1`;
+  // Mode léger : omet les 3 requêtes N+1 (maintenanceHistory/futureMaintenance/tags),
+  // gardées vides — toutes les colonnes scalaires de BASE_SELECT restent présentes
+  // (les écrans de liste/dashboards en dépendent). Utilisé au login (cf. data_service.dart).
+  const isLight = light === 'true';
+
+  // Validation des whitelists de tri (toujours, même sans pagination)
+  if (sort_by !== undefined && !VALID_SORT_BY_EQ.includes(sort_by)) {
+    return res.status(400).json({ error: `sort_by invalide. Valeurs acceptées : ${VALID_SORT_BY_EQ.join(', ')}` });
+  }
+  if (sort_dir !== undefined && !VALID_SORT_DIR.includes(sort_dir)) {
+    return res.status(400).json({ error: `sort_dir invalide. Valeurs acceptées : ${VALID_SORT_DIR.join(', ')}` });
+  }
+
+  // Clause WHERE construite isolément du SELECT : réutilisée pour le COUNT(*)
+  // de pagination (évite d'évaluer les jointures/sous-requêtes corrélées de
+  // BASE_SELECT juste pour compter des lignes).
+  let whereClause = 'WHERE 1=1';
   const params = [];
 
   // Les équipements réformés (Disposed) sortent des listes actives par défaut.
   // ?include_disposed=true pour les inclure (vue « équipements réformés »).
   // Un filtre status explicite a priorité (permet de cibler les Disposed).
   if (include_disposed !== 'true' && status !== 'Disposed') {
-    query += " AND e.status != 'Disposed'";
+    whereClause += " AND e.status != 'Disposed'";
   }
 
-  if (department)        { query += ' AND e.department = ?';         params.push(department); }
-  if (status)            { query += ' AND e.status = ?';             params.push(status); }
-  if (category)          { query += ' AND e.category = ?';           params.push(category); }
-  if (macro_category)    { query += ' AND emc.name = ?';             params.push(macro_category); }
-  if (macro_category_id) { query += ' AND e.macro_category_id = ?';  params.push(parseInt(macro_category_id, 10)); }
-  if (subcategory_id)    { query += ' AND e.subcategory_id = ?';     params.push(parseInt(subcategory_id, 10)); }
-  if (model_id)          { query += ' AND e.model_id = ?';           params.push(parseInt(model_id, 10)); }
+  if (department)        { whereClause += ' AND e.department = ?';         params.push(department); }
+  if (status)            { whereClause += ' AND e.status = ?';             params.push(status); }
+  if (category)          { whereClause += ' AND e.category = ?';           params.push(category); }
+  if (macro_category)    { whereClause += ' AND emc.name = ?';             params.push(macro_category); }
+  if (macro_category_id) { whereClause += ' AND e.macro_category_id = ?';  params.push(parseInt(macro_category_id, 10)); }
+  if (subcategory_id)    { whereClause += ' AND e.subcategory_id = ?';     params.push(parseInt(subcategory_id, 10)); }
+  if (model_id)          { whereClause += ' AND e.model_id = ?';           params.push(parseInt(model_id, 10)); }
   // Filtre par fabricant : via le modèle rattaché à l'équipement.
   if (brand_id) {
-    query += ' AND e.model_id IN (SELECT id FROM equipment_models WHERE brand_id = ?)';
+    whereClause += ' AND e.model_id IN (SELECT id FROM equipment_models WHERE brand_id = ?)';
     params.push(parseInt(brand_id, 10));
   }
+  if (search) {
+    whereClause += ' AND (e.name LIKE ? COLLATE NOCASE OR e.department LIKE ? COLLATE NOCASE OR e.category LIKE ? COLLATE NOCASE OR e.manufacturer LIKE ? COLLATE NOCASE OR e.model LIKE ? COLLATE NOCASE)';
+    const term = `%${search}%`;
+    params.push(term, term, term, term, term);
+  }
 
-  query += ' ORDER BY e.name ASC';
+  const selectQuery = `${BASE_SELECT} ${whereClause}`;
 
-  const equipment = db.prepare(query).all(...params);
+  // Mode legacy : pas de pagination demandée → réponse = tableau brut (rétro-compatibilité)
+  if (page === undefined) {
+    const equipment = db.prepare(`${selectQuery} ORDER BY e.name ASC`).all(...params);
+    return res.json(hydrateEquipmentList(db, equipment, isLight));
+  }
 
-  const histStmt   = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 0 ORDER BY date DESC');
-  const futureStmt = db.prepare('SELECT * FROM maintenance_records WHERE equipment_id = ? AND is_future = 1 ORDER BY date ASC');
-  const tagsStmt   = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC');
+  // Mode paginé
+  const pageInt = parseInt(page, 10);
+  if (!Number.isFinite(pageInt) || pageInt < 1) {
+    return res.status(400).json({ error: 'page invalide' });
+  }
+  let limitInt = limit !== undefined ? parseInt(limit, 10) : 20;
+  if (!Number.isFinite(limitInt) || limitInt < 1) {
+    return res.status(400).json({ error: 'limit invalide' });
+  }
+  if (limitInt > 100) limitInt = 100;
 
-  const result = equipment.map(eq => ({
-    ...eq,
-    maintenanceHistory: histStmt.all(eq.id),
-    futureMaintenance:  futureStmt.all(eq.id),
-    tags:               tagsStmt.all(eq.id).map(r => r.tag_number),
-  }));
+  // COUNT minimal : mêmes filtres, mais sans les jointures/sous-requêtes de BASE_SELECT.
+  const countRow = db.prepare(`
+    SELECT COUNT(*) AS total
+    FROM equipment e
+    LEFT JOIN equipment_macro_categories emc ON emc.id = e.macro_category_id
+    ${whereClause}
+  `).get(...params);
+  const total = countRow.total;
+  const totalPages = Math.max(1, Math.ceil(total / limitInt));
 
-  res.json(result);
+  const sortColumn = SORT_BY_COLUMN_EQ[sort_by || 'name'];
+  const sortDirection = (sort_dir || 'asc').toUpperCase();
+  const offset = (pageInt - 1) * limitInt;
+
+  const pagedQuery = `${selectQuery} ORDER BY ${sortColumn} ${sortDirection} LIMIT ? OFFSET ?`;
+  const equipment = db.prepare(pagedQuery).all(...params, limitInt, offset);
+  const items = hydrateEquipmentList(db, equipment, isLight);
+
+  res.json({ items, total, page: pageInt, limit: limitInt, total_pages: totalPages });
 });
 
 // ── GET /api/equipment/replacement-plan ──────────────────────────────────────

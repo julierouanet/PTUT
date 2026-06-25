@@ -16,6 +16,7 @@ import '../theme/app_theme.dart';
 import '../utils/csv_export.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/replacement_badge.dart';
+import '../widgets/pagination_footer.dart';
 import 'equipment_detail_screen.dart';
 import 'equipment_form_screen.dart';
 
@@ -180,10 +181,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   bool _filterPmSoon    = false;
 
   // ── Cycle de vie : affichage des équipements réformés (Disposed) ─────────
-  // Exclus du cache DataService par défaut (filtre serveur) ; chargés à la
-  // demande lorsque l'utilisateur active la chip « Afficher les réformés ».
+  // Exclus du serveur par défaut ; ?include_disposed=true lève l'exclusion
+  // sur la page courante (pagination serveur, pas de fusion client).
   bool _showDisposed = false;
-  List<Equipment> _disposedEquipment = [];
 
   // ── Tri ────────────────────────────────────────────────────────────────
   _SortCol _sortCol = _SortCol.name;
@@ -192,9 +192,11 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ── Mode d'affichage ───────────────────────────────────────────────────
   bool _isGridView = false;
 
-  // ── Pagination en mémoire ──────────────────────────────────────────────
+  // ── Pagination serveur ─────────────────────────────────────────────────
   static const int _pageSize = 20;
-  int _visibleCount = _pageSize;
+  int _currentPage = 1;
+  PagedResult<Equipment>? _pagedResult;
+  bool _isLoadingPage = false;
 
   // ── Contrôleur de recherche (restaure le texte après rebuild) ─────────
   late final TextEditingController _searchCtrl;
@@ -254,22 +256,56 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     if (_auth.canGenerateReports) {
       _loadReplacementPlan();
     }
+
+    // 4. Première page (pagination serveur)
+    _fetchPage();
   }
 
-  /// Charge les équipements réformés (Disposed) à la demande pour la chip.
-  /// Échec silencieux : la chip reste active mais sans données supplémentaires.
-  Future<void> _loadDisposed() async {
+  /// Mappe la colonne de tri UI vers le paramètre `sort_by` serveur.
+  String get _sortByParam {
+    switch (_sortCol) {
+      case _SortCol.name:        return 'name';
+      case _SortCol.status:      return 'status';
+      case _SortCol.department:  return 'department';
+      case _SortCol.installDate: return 'install_date';
+    }
+  }
+
+  /// Récupère la page courante depuis le serveur avec les filtres actifs.
+  /// [resetPage] : remet la pagination à la page 1 (changement de filtre/tri).
+  Future<void> _fetchPage({bool resetPage = false}) async {
+    if (resetPage) _currentPage = 1;
+    final l10n = AppLocalizations.of(context)!;
+    final all  = l10n.commonAll;
+
+    setState(() => _isLoadingPage = true);
     try {
-      // status=Disposed cible directement les réformés (le serveur lève alors
-      // l'exclusion par défaut) → pas de refetch des actifs, pas de filtre client.
-      final raw = await DbApiService.instance.getEquipment(status: 'Disposed');
+      final result = await DbApiService.instance.getEquipmentPaged(
+        page: _currentPage,
+        limit: _pageSize,
+        search: _searchTerm.isEmpty ? null : _searchTerm,
+        sortBy: _sortByParam,
+        sortDir: _sortAsc ? 'asc' : 'desc',
+        department: _departmentFilter == all ? null : _departmentFilter,
+        status: _statusFilter == all ? null : _statusFilter,
+        category: _categoryFilter == all ? null : _categoryFilter,
+        macroCategory: _macroCategoryFilter,
+        includeDisposed: _showDisposed,
+      );
       if (mounted) {
-        setState(() =>
-            _disposedEquipment = raw.map(Equipment.fromApiJson).toList());
+        setState(() {
+          _pagedResult  = result;
+          _isLoadingPage = false;
+        });
       }
     } catch (_) {
-      // Ignoré : pas de réformés affichés si l'appel échoue.
+      if (mounted) setState(() => _isLoadingPage = false);
     }
+  }
+
+  void _goToPage(int page) {
+    setState(() => _currentPage = page);
+    _fetchPage();
   }
 
   /// Récupère le plan de remplacement et indexe les items par equipment.id.
@@ -308,7 +344,6 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ── Persistance session ────────────────────────────────────────────────
 
   void _saveFilters({bool resetPage = false}) {
-    if (resetPage) _visibleCount = _pageSize;
     final s = EquipmentFilterState();
     s.searchTerm          = _searchTerm;
     s.departmentFilter    = _departmentFilter;
@@ -321,6 +356,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     s.sortColIndex        = _sortCol.index;
     s.sortAsc             = _sortAsc;
     s.isGridView          = _isGridView;
+    // Tout changement de filtre/tri/recherche réinitialise la pagination serveur à la page 1.
+    if (resetPage) _fetchPage(resetPage: true);
   }
 
   // ── Sources de données pour les dropdowns ──────────────────────────────
@@ -351,19 +388,42 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     return [all, ...units];
   }
 
-  // ── Liste filtrée + triée ──────────────────────────────────────────────
-
+  // ── Liste de la page courante (serveur) + filtres client-only ───────────
+  //
+  // department/status/category/macroCategory/search/tri sont appliqués côté
+  // serveur (getEquipmentPaged). filterPmOverdue/filterPmSoon et locationFilter
+  // (réservé hospitalStaff) restent appliqués côté client UNIQUEMENT sur la
+  // page reçue, car non supportés par l'API — ils ne filtrent donc que les
+  // 20 éléments de la page courante, pas l'ensemble du parc (limitation
+  // documentée, hors scope d'ajouter ces filtres serveur).
   List<Equipment> get _filteredEquipment {
+    final source = _pagedResult?.items ?? const <Equipment>[];
+
+    return source.where((eq) {
+      bool matchPm = true;
+      if (_filterPmOverdue || _filterPmSoon) {
+        final level = eq.preventiveMaintenanceAlertLevel;
+        matchPm = (_filterPmOverdue && level == 'due') ||
+                  (_filterPmSoon    && level == 'soon');
+      }
+
+      final matchLocation = _locationFilter == null ||
+          eq.location.toLowerCase() == _locationFilter!.toLowerCase();
+
+      return matchPm && matchLocation;
+    }).toList();
+  }
+
+  /// Liste complète filtrée pour l'export CSV (indépendante de la pagination
+  /// serveur — l'export doit couvrir tout le parc correspondant aux filtres,
+  /// pas seulement la page de 20 affichée à l'écran). S'appuie sur le cache
+  /// complet [DataService] avec la même logique de filtrage que l'écran.
+  List<Equipment> get _filteredEquipmentForExport {
     final l10n = AppLocalizations.of(context)!;
     final term = _searchTerm.toLowerCase();
     final all  = l10n.commonAll;
 
-    // Source : cache actif + réformés chargés à la demande si la chip est active.
-    final source = _showDisposed
-        ? [...DataService().equipment, ..._disposedEquipment]
-        : DataService().equipment;
-
-    var list = source.where((eq) {
+    var list = DataService().equipment.where((eq) {
       final matchSearch = term.isEmpty ||
           eq.name.toLowerCase().contains(term) ||
           eq.serialNumber.toLowerCase().contains(term) ||
@@ -413,9 +473,9 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   Widget build(BuildContext context) {
     final l10n     = AppLocalizations.of(context)!;
     final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
-    final filtered = _filteredEquipment;
-    // Tranche visible pour la pagination en mémoire
-    final visible  = filtered.take(_visibleCount).toList();
+    final visible  = _filteredEquipment;
+    final total    = _pagedResult?.total ?? 0;
+    final totalPages = _pagedResult?.totalPages ?? 1;
 
     return CustomScrollView(
       slivers: [
@@ -439,12 +499,12 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           sliver: SliverToBoxAdapter(child: _buildSearchBar(l10n, isMobile)),
         ),
 
-        // Compteur + sélecteur de tri (mobile)
+        // Compteur (total serveur) + sélecteur de tri (mobile)
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
               isMobile ? 16 : 24, 16, isMobile ? 16 : 24, 0),
           sliver: SliverToBoxAdapter(
-              child: _buildCountAndSort(l10n, filtered.length, isMobile)),
+              child: _buildCountAndSort(l10n, total, isMobile)),
         ),
 
         // En-têtes de colonnes triables (desktop, vue liste uniquement)
@@ -454,65 +514,59 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             sliver: SliverToBoxAdapter(child: _buildTableHeader(l10n)),
           ),
 
-        // Lignes virtualisées (liste ou grille) — sur la tranche visible
+        // Lignes virtualisées (liste ou grille) — page courante (serveur)
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
               isMobile ? 16 : 24, isMobile ? 8 : 4,
               isMobile ? 16 : 24, 0),
-          sliver: filtered.isEmpty
-              ? SliverToBoxAdapter(child: _buildEmptyState(l10n))
-              : (!isMobile && _isGridView)
-                  ? SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithMaxCrossAxisExtent(
-                        maxCrossAxisExtent: 300,
-                        mainAxisExtent: 185,
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                      ),
-                      delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => _buildGridCard(visible[i], l10n),
-                        childCount: visible.length,
-                      ),
-                    )
-                  : SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (ctx, i) => isMobile
-                            ? _buildMobileCard(visible[i], l10n)
-                            : _buildDesktopRow(visible[i], l10n),
-                        childCount: visible.length,
-                      ),
-                    ),
+          sliver: _isLoadingPage && visible.isEmpty
+              ? const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                )
+              : visible.isEmpty
+                  ? SliverToBoxAdapter(child: _buildEmptyState(l10n))
+                  : (!isMobile && _isGridView)
+                      ? SliverGrid(
+                          gridDelegate:
+                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                            maxCrossAxisExtent: 300,
+                            mainAxisExtent: 185,
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                          ),
+                          delegate: SliverChildBuilderDelegate(
+                            (ctx, i) => _buildGridCard(visible[i], l10n),
+                            childCount: visible.length,
+                          ),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (ctx, i) => isMobile
+                                ? _buildMobileCard(visible[i], l10n)
+                                : _buildDesktopRow(visible[i], l10n),
+                            childCount: visible.length,
+                          ),
+                        ),
         ),
 
-        // Pied de pagination : bouton "Afficher plus" ou fin de liste
+        // Pied de pagination serveur : Précédent / Page X sur Y / Suivant
         SliverPadding(
           padding: EdgeInsets.fromLTRB(
               isMobile ? 16 : 24, 8, isMobile ? 16 : 24, isMobile ? 16 : 24),
           sliver: SliverToBoxAdapter(
-            child: filtered.isEmpty
+            child: total == 0
                 ? const SizedBox.shrink()
-                : _visibleCount < filtered.length
-                    ? Center(
-                        child: TextButton(
-                          onPressed: () =>
-                              setState(() => _visibleCount += _pageSize),
-                          child: Text(l10n.showMore),
-                        ),
-                      )
-                    : filtered.length > _pageSize
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                l10n.allEquipmentDisplayed,
-                                style: const TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12),
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
+                : Center(
+                    child: PaginationFooter(
+                      currentPage: _currentPage,
+                      totalPages: totalPages,
+                      isLoading: _isLoadingPage,
+                      onPageChange: _goToPage,
+                    ),
+                  ),
           ),
         ),
       ],
@@ -554,6 +608,18 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       color: AppColors.textSecondary,
     );
 
+    // Actualiser : recharge la page courante (sans la remettre à 1).
+    final refreshBtn = IconButton(
+      icon: _isLoadingPage
+          ? const SizedBox(
+              width: 18, height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.refresh),
+      onPressed: _isLoadingPage ? null : () => _fetchPage(),
+      tooltip: l10n.dashboardRefreshTooltip,
+      color: AppColors.textSecondary,
+    );
+
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -566,6 +632,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                       fontWeight: FontWeight.bold,
                       color: AppColors.textPrimary)),
             ),
+            refreshBtn,
             qrBtn,
           ]),
           const SizedBox(height: 2),
@@ -605,6 +672,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             tooltip: _isGridView ? l10n.equipmentViewList : l10n.equipmentViewGrid,
             color: AppColors.textSecondary,
           ),
+          refreshBtn,
           qrBtn,
           if (addBtn != null) ...[const SizedBox(width: 4), addBtn],
         ]),
@@ -662,9 +730,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             selectedColor: AppColors.success.withValues(alpha: 0.15),
             checkmarkColor: AppColors.success,
             deleteIcon: const Icon(Icons.close, size: 14),
+            // Filtre unité client-only : appliqué sur la page courante (non supporté serveur).
             onDeleted: () => setState(() {
               _locationFilter = null;
-              _saveFilters(resetPage: true);
+              _saveFilters();
             }),
             onSelected: (_) {},
           ),
@@ -677,9 +746,11 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             selected: _filterPmOverdue,
             selectedColor: AppColors.error.withValues(alpha: 0.15),
             checkmarkColor: AppColors.error,
+            // Filtre PM client-only : appliqué sur la page courante uniquement
+            // (non supporté côté serveur, cf. CLAUDE.md/spec — pas de refetch).
             onSelected: (v) => setState(() {
               _filterPmOverdue = v;
-              _saveFilters(resetPage: true);
+              _saveFilters();
             }),
           ),
           FilterChip(
@@ -688,25 +759,24 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             selected: _filterPmSoon,
             selectedColor: AppColors.warning.withValues(alpha: 0.15),
             checkmarkColor: AppColors.warning,
+            // Filtre PM client-only : appliqué sur la page courante uniquement.
             onSelected: (v) => setState(() {
               _filterPmSoon = v;
-              _saveFilters(resetPage: true);
+              _saveFilters();
             }),
           ),
-          // Afficher les équipements réformés (charge la liste à la demande)
+          // Afficher les équipements réformés : lève l'exclusion par défaut
+          // côté serveur sur la page courante (?include_disposed=true).
           FilterChip(
             label: Text(l10n.equipmentFilterShowDisposed),
             avatar: const Icon(Icons.delete_sweep_outlined, size: 16),
             selected: _showDisposed,
             selectedColor: AppColors.textMuted.withValues(alpha: 0.2),
             checkmarkColor: AppColors.textSecondary,
-            onSelected: (v) {
-              setState(() {
-                _showDisposed = v;
-                _visibleCount = _pageSize;
-              });
-              if (v && _disposedEquipment.isEmpty) _loadDisposed();
-            },
+            onSelected: (v) => setState(() {
+              _showDisposed = v;
+              _saveFilters(resetPage: true);
+            }),
           ),
         ],
       ],
@@ -726,9 +796,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             l10n.equipmentFilterUnit,
             _locationFilter ?? all,
             _availableUnits(all),
+            // Filtre unité client-only : appliqué sur la page courante (non supporté serveur).
             (v) => setState(() {
               _locationFilter = (v == all) ? null : v;
-              _saveFilters(resetPage: true);
+              _saveFilters();
             }),
           )
         : null;
@@ -802,8 +873,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         controller: _searchCtrl,
         onChanged: (v) => setState(() {
           _searchTerm = v;
-          _visibleCount = _pageSize;
-          _saveFilters();
+          _saveFilters(resetPage: true);
         }),
         decoration: InputDecoration(
           hintText: l10n.commonSearch,
@@ -846,7 +916,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
                 _sortCol = col;
                 _sortAsc = true;
               }
-              _saveFilters();
+              _saveFilters(resetPage: true);
             }),
             itemBuilder: (_) => [
               _sortMenuItem(l10n.equipmentName, _SortCol.name),
@@ -916,7 +986,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             _sortCol = col;
             _sortAsc = true;
           }
-          _saveFilters();
+          _saveFilters(resetPage: true);
         }),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(label,
@@ -1327,8 +1397,11 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         builder: (_) => EquipmentDetailScreen(
           equipmentId: eq.id,
           initialEquipment: eq,
-          // Techniciens + admin peuvent accéder au formulaire d'édition
-          onEdit: _canEdit ? () => _editEquipment(eq) : null,
+          // Techniciens + admin peuvent accéder au formulaire d'édition.
+          // fullEq = équipement complet rechargé par EquipmentDetailScreen
+          // (pas le `eq` léger capturé ici) — évite un formulaire pré-rempli
+          // avec un tag vide (cf. data_service.dart en mode ?light=true).
+          onEdit: _canEdit ? (fullEq) => _editEquipment(fullEq) : null,
           onReport: () => widget.onNavigate(3, equipmentId: eq.id),
         ),
       ),
@@ -1394,7 +1467,22 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Future<void> _exportCsv(AppLocalizations l10n) async {
-    final list = _filteredEquipment;
+    final list = _filteredEquipmentForExport;
+
+    // DataService().equipment est chargé en mode léger (tags vides) — on
+    // récupère les tags réels en une requête dédiée à l'export (full payload),
+    // déclenchée uniquement à la demande, pas au login.
+    Map<String, List<String>> tagsById = {};
+    try {
+      final fullRaw = await DbApiService.instance.getEquipment(includeDisposed: true);
+      tagsById = {
+        for (final m in fullRaw)
+          m['id'] as String: List<String>.from(m['tags'] as List? ?? []),
+      };
+    } catch (_) {
+      // En cas d'échec, la colonne Tags sera simplement vide dans l'export.
+    }
+
     final buffer = StringBuffer();
 
     // BOM UTF-8 pour compatibilité Excel français
@@ -1420,7 +1508,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         eq.lastPreventiveMaintenance ?? '',
         eq.nextPreventiveMaintenance ?? '',
         eq.criticality?.displayName ?? '',
-        eq.tags.join(' | '),
+        (tagsById[eq.id] ?? eq.tags).join(' | '),
       ].map(_csvEsc).join(';'));
     }
 

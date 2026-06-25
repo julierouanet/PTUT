@@ -3,7 +3,9 @@ import 'package:table_calendar/table_calendar.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
+import '../services/db_api_service.dart';
 import '../services/auth_service.dart';
+import '../models/equipment.dart';
 import '../models/issue.dart';
 
 // ── Modèle interne ────────────────────────────────────────────────────────────
@@ -41,7 +43,29 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> {
   DateTime _focusedDay  = DateTime.now();
   DateTime _selectedDay = DateTime.now();
 
+  // DataService().equipment est chargé en mode léger (maintenanceHistory/
+  // futureMaintenance vides) — ce calendrier a besoin de l'historique complet,
+  // donc on recharge le parc en entier (full) à l'ouverture de cet écran.
+  List<Equipment> _fullEquipment = [];
+  bool _loadingEquipment = true;
+
   String get _currentTechnicianName => AuthService().currentUser?.fullName ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFullEquipment();
+  }
+
+  Future<void> _loadFullEquipment() async {
+    try {
+      final raw = await DbApiService.instance.getEquipment();
+      _fullEquipment = raw.map(Equipment.fromApiJson).toList();
+    } catch (_) {
+      _fullEquipment = [];
+    }
+    if (mounted) setState(() => _loadingEquipment = false);
+  }
 
   // ── Construction des événements ─────────────────────────────────────────────
 
@@ -76,7 +100,7 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> {
       ));
     }
 
-    for (final eq in DataService().equipment) {
+    for (final eq in _fullEquipment) {
       for (final rec in eq.maintenanceHistory) {
         if (rec.technician != techName) continue;
         final date = _parseDate(rec.date);
@@ -150,6 +174,9 @@ class _TechnicianScheduleScreenState extends State<TechnicianScheduleScreen> {
   }
 
   Widget _buildBody(AppLocalizations l10n) {
+    if (_loadingEquipment) {
+      return const Center(child: CircularProgressIndicator());
+    }
     final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
     // Calculé une seule fois par build puis filtré localement (cf. _eventsForDay)
     final allEvents      = _allAgendaEvents;

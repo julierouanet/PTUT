@@ -75,7 +75,9 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadEquipment() async {
     try {
-      final raw = await DbApiService.instance.getEquipment();
+      // Mode léger au login : la fiche détail (EquipmentDetailScreen) recharge
+      // l'objet complet via getEquipmentById à l'ouverture.
+      final raw = await DbApiService.instance.getEquipment(light: true);
       equipment = raw.map(Equipment.fromApiJson).toList();
     } catch (e) {
       debugPrint('DataService: équipements — fallback mock ($e)');
@@ -187,13 +189,11 @@ class DataService extends ChangeNotifier {
 
   Future<void> _loadSidebarConfig() async {
     try {
-      final roles = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'hospitalStaff'];
-      final results = <String, List<String>>{};
-      for (final role in roles) {
-        final order = await DbApiService.instance.getSidebarConfig(role);
-        if (order.isNotEmpty) results[role] = order;
-      }
-      sidebarOrder = results;
+      final all = await DbApiService.instance.getAllSidebarConfigs();
+      sidebarOrder = {
+        for (final entry in all.entries)
+          if (entry.value.isNotEmpty) entry.key: entry.value,
+      };
     } catch (e) {
       debugPrint('DataService: sidebar config — fallback default ($e)');
     }

@@ -5,10 +5,12 @@ import '../mixins/auto_refresh_mixin.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
 import '../services/auth_service.dart';
+import '../services/db_api_service.dart';
 import '../models/issue.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue_category_selector.dart';
+import '../widgets/pagination_footer.dart';
 import '../utils/csv_export.dart';
 import 'issue_detail_screen.dart';
 import 'issue_staff_detail_screen.dart';
@@ -47,6 +49,18 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   _PeriodFilter _periodFilter = _PeriodFilter.all;
   String? _departmentFilter;
 
+  // ── Pagination serveur indépendante par onglet ──────────────────────────────
+  static const int _pageSize = 20;
+  int _pageMine = 1, _pageAll = 1, _pageCompleted = 1;
+  PagedResult<Issue>? _pagedMine, _pagedAll, _pagedCompleted;
+  bool _loadingMine = false, _loadingAll = false, _loadingCompleted = false;
+
+  bool get _isLoadingActiveTab => switch (_tabController.index) {
+        0 => _loadingMine,
+        1 => _loadingAll,
+        _ => _loadingCompleted,
+      };
+
   @override
   void initState() {
     super.initState();
@@ -58,17 +72,136 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
     );
     // Rebuild du footer (compteur + export) une fois l'onglet stabilisé —
     // le garde indexIsChanging évite un setState à chaque frame du swipe.
+    // Charge aussi à la demande la pagination de l'onglet nouvellement actif
+    // (chaque onglet garde sa propre page tant qu'on ne change pas les filtres).
     _tabController.addListener(() {
-      if (mounted && !_tabController.indexIsChanging) setState(() {});
+      if (mounted && !_tabController.indexIsChanging) {
+        setState(() {});
+        _ensureTabLoaded(_tabController.index);
+      }
     });
     // Auto-refresh silencieux toutes les 5 minutes (même cadence que DashboardScreen)
     startAutoRefresh(const Duration(minutes: 5), _refresh);
+    _fetchTab(_tabController.index, resetPage: true);
   }
 
   Future<void> _refresh() async {
     if (!mounted) return;
     await DataService().reloadIssues();
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    await _fetchTab(_tabController.index);
+  }
+
+  void _ensureTabLoaded(int tabIndex) {
+    final loaded = switch (tabIndex) {
+      0 => _pagedMine != null,
+      1 => _pagedAll != null,
+      _ => _pagedCompleted != null,
+    };
+    if (!loaded) _fetchTab(tabIndex, resetPage: true);
+  }
+
+  /// Invalide les 3 onglets (filtres partagés) et recharge l'onglet actif.
+  /// [apply] mute les variables de filtre dans le même setState.
+  void _onFilterChanged(VoidCallback apply) {
+    setState(() {
+      apply();
+      _pagedMine = null;
+      _pagedAll = null;
+      _pagedCompleted = null;
+      _pageMine = 1;
+      _pageAll = 1;
+      _pageCompleted = 1;
+    });
+    _fetchTab(_tabController.index, resetPage: true);
+  }
+
+  /// Récupère une page d'incidents pour l'onglet [tabIndex] (0=Mine, 1=Tous, 2=Terminés).
+  Future<void> _fetchTab(int tabIndex, {bool resetPage = false}) async {
+    final user = _authService.currentUser;
+
+    // Onglet "Mine" sans utilisateur connu → liste vide (pas d'appel serveur).
+    if (tabIndex == 0 && user == null) {
+      setState(() {
+        _pagedMine = const PagedResult<Issue>(items: [], total: 0, page: 1, limit: _pageSize, totalPages: 1);
+        _loadingMine = false;
+      });
+      return;
+    }
+
+    String? createdAfter;
+    if (_periodFilter != _PeriodFilter.all) {
+      final days = _periodFilter == _PeriodFilter.last7Days ? 7 : 30;
+      createdAfter = DateTime.now().subtract(Duration(days: days)).toIso8601String();
+    }
+
+    setState(() {
+      switch (tabIndex) {
+        case 0:
+          if (resetPage) _pageMine = 1;
+          _loadingMine = true;
+        case 1:
+          if (resetPage) _pageAll = 1;
+          _loadingAll = true;
+        default:
+          if (resetPage) _pageCompleted = 1;
+          _loadingCompleted = true;
+      }
+    });
+    final page = switch (tabIndex) { 0 => _pageMine, 1 => _pageAll, _ => _pageCompleted };
+
+    try {
+      final result = await DbApiService.instance.getIssuesPaged(
+        page: page,
+        limit: _pageSize,
+        search: _searchQuery.isEmpty ? null : _searchQuery,
+        urgency: _urgencyFilter?.displayName,
+        assignedGroup: _groupFilter,
+        department: _departmentFilter,
+        createdAfter: createdAfter,
+        reporterId: tabIndex == 0 ? user?.id : null,
+        statusNe: tabIndex == 1 ? 'Completed' : null,
+        status: tabIndex == 2 ? 'Completed' : null,
+      );
+      if (!mounted) return;
+      setState(() {
+        switch (tabIndex) {
+          case 0:
+            _pagedMine = result;
+            _loadingMine = false;
+          case 1:
+            _pagedAll = result;
+            _loadingAll = false;
+          default:
+            _pagedCompleted = result;
+            _loadingCompleted = false;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        switch (tabIndex) {
+          case 0:
+            _loadingMine = false;
+          case 1:
+            _loadingAll = false;
+          default:
+            _loadingCompleted = false;
+        }
+      });
+    }
+  }
+
+  void _goToTabPage(int tabIndex, int page) {
+    switch (tabIndex) {
+      case 0:
+        _pageMine = page;
+      case 1:
+        _pageAll = page;
+      default:
+        _pageCompleted = page;
+    }
+    _fetchTab(tabIndex);
   }
 
   @override
@@ -210,9 +343,9 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildIssueList(mine,      l10n, isMobile, 0),
-          _buildIssueList(all,       l10n, isMobile, 1),
-          _buildIssueList(completed, l10n, isMobile, 2),
+          _buildIssueList(_pagedMine?.items ?? const [], l10n, isMobile, 0, _pagedMine, _loadingMine),
+          _buildIssueList(_pagedAll?.items ?? const [], l10n, isMobile, 1, _pagedAll, _loadingAll),
+          _buildIssueList(_pagedCompleted?.items ?? const [], l10n, isMobile, 2, _pagedCompleted, _loadingCompleted),
         ],
       ),
     );
@@ -241,11 +374,28 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       label: Text(l10n.issuesReport),
     );
 
+    // Actualiser : recharge la page courante de l'onglet actif.
+    final refreshBtn = IconButton(
+      icon: _isLoadingActiveTab
+          ? const SizedBox(
+              width: 18, height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2))
+          : const Icon(Icons.refresh),
+      onPressed: _isLoadingActiveTab
+          ? null
+          : () => _fetchTab(_tabController.index),
+      tooltip: l10n.dashboardRefreshTooltip,
+      color: AppColors.textSecondary,
+    );
+
     if (isMobile) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          titleBlock,
+          Row(children: [
+            Expanded(child: titleBlock),
+            refreshBtn,
+          ]),
           const SizedBox(height: 12),
           SizedBox(width: double.infinity, child: reportButton),
         ],
@@ -254,6 +404,8 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
     return Row(children: [
       Expanded(child: titleBlock),
+      refreshBtn,
+      const SizedBox(width: 8),
       reportButton,
     ]);
   }
@@ -263,7 +415,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
   Widget _buildSearchBar(AppLocalizations l10n) {
     return TextField(
       controller: _searchController,
-      onChanged: (v) => setState(() => _searchQuery = v.trim()),
+      onChanged: (v) => _onFilterChanged(() => _searchQuery = v.trim()),
       decoration: InputDecoration(
         hintText: l10n.issuesSearchHint,
         prefixIcon: const Icon(Icons.search, size: 20),
@@ -272,7 +424,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
                 icon: const Icon(Icons.clear, size: 18),
                 onPressed: () {
                   _searchController.clear();
-                  setState(() => _searchQuery = '');
+                  _onFilterChanged(() => _searchQuery = '');
                 },
               )
             : null,
@@ -332,7 +484,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             selected: _urgencyFilter == u,
             label:
                 Text(urgencyLabel(u), style: const TextStyle(fontSize: 12)),
-            onSelected: (_) => setState(() => _urgencyFilter = u),
+            onSelected: (_) => _onFilterChanged(() => _urgencyFilter = u),
             selectedColor: AppColors.primaryLight,
             checkmarkColor: AppColors.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -351,7 +503,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
             selected: _periodFilter == p,
             label:
                 Text(periodLabel(p), style: const TextStyle(fontSize: 12)),
-            onSelected: (_) => setState(() => _periodFilter = p),
+            onSelected: (_) => _onFilterChanged(() => _periodFilter = p),
             selectedColor: AppColors.primaryLight,
             checkmarkColor: AppColors.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -369,7 +521,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
           child: FilterChip(
             selected: _groupFilter == g,
             label: Text(groupLabel(g), style: const TextStyle(fontSize: 12)),
-            onSelected: (_) => setState(() => _groupFilter = g),
+            onSelected: (_) => _onFilterChanged(() => _groupFilter = g),
             selectedColor: AppColors.primaryLight,
             checkmarkColor: AppColors.primary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -443,11 +595,18 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
   // ── Liste d'incidents (fonction unique réutilisée par les 3 onglets) ─────────
 
-  Widget _buildIssueList(
-      List<Issue> issues, AppLocalizations l10n, bool isMobile, int tabIndex) {
+  Widget _buildIssueList(List<Issue> issues, AppLocalizations l10n,
+      bool isMobile, int tabIndex, PagedResult<Issue>? paged, bool isLoading) {
     final pad = isMobile ? 16.0 : 24.0;
     final storageKey = PageStorageKey('issues_tab_$tabIndex');
     const physics = ClampingScrollPhysics();
+    final total      = paged?.total ?? 0;
+    final totalPages = paged?.totalPages ?? 1;
+    final currentPage = switch (tabIndex) { 0 => _pageMine, 1 => _pageAll, _ => _pageCompleted };
+
+    if (isLoading && issues.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     if (issues.isEmpty) {
       return ListView(
@@ -466,16 +625,31 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
 
     return Padding(
       padding: EdgeInsets.fromLTRB(pad, 12, pad, pad),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: ListView.builder(
-          key: storageKey,
-          physics: physics,
-          padding: EdgeInsets.zero,
-          itemCount: issues.length,
-          itemBuilder: (_, i) => _buildIssueItem(issues[i], l10n),
+      child: Column(children: [
+        Expanded(
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            child: ListView.builder(
+              key: storageKey,
+              physics: physics,
+              padding: EdgeInsets.zero,
+              itemCount: issues.length,
+              itemBuilder: (_, i) => _buildIssueItem(issues[i], l10n),
+            ),
+          ),
         ),
-      ),
+        // Pied de pagination serveur, indépendant par onglet.
+        if (total > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: PaginationFooter(
+              currentPage: currentPage,
+              totalPages: totalPages,
+              isLoading: isLoading,
+              onPageChange: (page) => _goToTabPage(tabIndex, page),
+            ),
+          ),
+      ]),
     );
   }
 

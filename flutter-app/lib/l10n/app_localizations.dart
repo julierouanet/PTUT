@@ -6398,6 +6398,18 @@ abstract class AppLocalizations {
   /// **'Suivant'**
   String get commonNext;
 
+  /// No description provided for @commonPrevious.
+  ///
+  /// In fr, this message translates to:
+  /// **'Précédent'**
+  String get commonPrevious;
+
+  /// No description provided for @commonPageOf.
+  ///
+  /// In fr, this message translates to:
+  /// **'Page {page} sur {totalPages}'**
+  String commonPageOf(int page, int totalPages);
+
   /// No description provided for @commonBack.
   ///
   /// In fr, this message translates to:

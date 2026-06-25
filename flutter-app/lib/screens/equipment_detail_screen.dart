@@ -36,7 +36,10 @@ import '../widgets/equipment/equipment_staff_view.dart';
 class EquipmentDetailScreen extends StatefulWidget {
   final String equipmentId;
   final Equipment? initialEquipment;
-  final VoidCallback? onEdit;
+  // Reçoit l'équipement complet actuellement affiché (chargé via getEquipmentById) —
+  // ne JAMAIS réutiliser un Equipment capturé avant l'ouverture de cet écran,
+  // qui peut provenir d'une liste en mode léger (tags/maintenance vides).
+  final ValueChanged<Equipment>? onEdit;
   final VoidCallback? onReport;
 
   const EquipmentDetailScreen({
@@ -281,7 +284,7 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                 tooltip: l10n.commonEdit,
                 onPressed: () {
                   Navigator.pop(context);
-                  widget.onEdit!();
+                  widget.onEdit!(eq);
                 },
               ),
             // Réforme (soft delete) — admin only, masquée si déjà réformé

@@ -50,10 +50,61 @@ class ApiClient {
     };
   }
 
+  // ── Cache conditionnel ETag/304 ───────────────────────────────────────────
+  // ApiClient reste un client HTTP générique : c'est l'appelant (db_api_service)
+  // qui décide, via `conditional: true` sur [get], qu'une URL donnée est un GET
+  // lourd et stable (équipement léger, lieux) éligible — PAS sur les endpoints
+  // volatils (ex. /api/issues). Un 304 ne renvoie aucun corps : on persiste donc
+  // {etag, body} pour reconstruire une réponse 200 localement.
+  static const _etagCachePrefix = 'etag_cache:';
+
+  static String _etagCacheKey(String url) => '$_etagCachePrefix$url';
+
+  static Future<Map<String, dynamic>?> _readEtagCache(String url) async {
+    try {
+      final raw = await SecureTokenStorage.read(_etagCacheKey(url));
+      if (raw == null) return null;
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      if (decoded['etag'] is! String || decoded['body'] is! String) return null;
+      return decoded;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> _writeEtagCache(String url, String etag, String body) async {
+    try {
+      await SecureTokenStorage.write(_etagCacheKey(url), jsonEncode({'etag': etag, 'body': body}));
+    } catch (_) {
+      // Quota de stockage dépassé (localStorage web) ou autre erreur d'écriture :
+      // on vide cette entrée plutôt que de planter — la requête reste utilisable,
+      // simplement sans bénéfice de cache à la prochaine visite.
+      await _clearEtagCache(url);
+    }
+  }
+
+  static Future<void> _clearEtagCache(String url) async {
+    try {
+      await SecureTokenStorage.delete(_etagCacheKey(url));
+    } catch (_) {}
+  }
+
+  /// Invalide le cache conditionnel de la liste équipement (légère, login).
+  /// À appeler après toute mutation POST/PUT/DELETE sur /api/equipment.
+  static Future<void> invalidateEquipmentCache() async {
+    await _clearEtagCache('${ApiConfig.equipmentUrl}?light=true');
+  }
+
   /// GET avec authentification — rafraîchit le token si expiré (401).
-  static Future<http.Response> get(String url, {Map<String, String>? extra}) async {
+  /// [conditional] : à activer par l'appelant pour les GET lourds et stables
+  /// (ex. équipement léger, lieux) — envoie `If-None-Match` si un ETag est en
+  /// cache et reconstruit une réponse 200 depuis le corps caché en cas de 304.
+  static Future<http.Response> get(String url, {Map<String, String>? extra, bool conditional = false}) async {
     final headers = await _authHeaders();
     if (extra != null) headers.addAll(extra);
+
+    final cached = conditional ? await _readEtagCache(url) : null;
+    if (cached != null) headers['If-None-Match'] = cached['etag'] as String;
 
     var response = await http.get(Uri.parse(url), headers: headers)
         .timeout(const Duration(seconds: 30));
@@ -62,8 +113,19 @@ class ApiClient {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final newHeaders = await _authHeaders();
+        if (cached != null) newHeaders['If-None-Match'] = cached['etag'] as String;
         response = await http.get(Uri.parse(url), headers: newHeaders)
             .timeout(const Duration(seconds: 30));
+      }
+    }
+
+    if (conditional) {
+      if (response.statusCode == 304 && cached != null) {
+        return http.Response(cached['body'] as String, 200, headers: response.headers);
+      }
+      if (response.statusCode == 200) {
+        final etag = response.headers['etag'];
+        if (etag != null) await _writeEtagCache(url, etag, response.body);
       }
     }
     return response;

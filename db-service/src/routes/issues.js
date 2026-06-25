@@ -74,6 +74,11 @@ const ISSUE_REPORT_SELECT =
 const VALID_ISSUE_TYPES = ['Panne', 'Maintenance', 'Inspection', 'Autre'];
 const VALID_GROUPS      = ['Biomédical', 'Infrastructure', 'IT'];
 
+// Pagination serveur GET /api/issues (whitelists tri)
+const VALID_SORT_BY_ISSUES = ['created_at', 'urgency'];
+const VALID_SORT_DIR = ['asc', 'desc'];
+const SORT_BY_COLUMN_ISSUES = { created_at: 'i.created_at', urgency: 'i.urgency' };
+
 // Mapping groupe d'incident -> rôle spécialisé requis pour l'assignation.
 const GROUP_TO_ROLE = {
   'Biomédical':     'technician_biomedical',
@@ -85,11 +90,72 @@ const GROUP_TO_ROLE = {
 // GET /api/issues
 router.get('/', verifyToken, (req, res) => {
   const db = getDb();
-  const { status, department, equipment_id } = req.query;
+  const {
+    status, department, equipment_id,
+    search, status_ne, urgency, assigned_group, assigned_group_in,
+    assigned_technician, reporter_id, created_after, created_before,
+    sort_by, sort_dir, page, limit,
+  } = req.query;
+
+  // Validation des whitelists d'enum
+  if (status && !VALID_STATUSES.includes(status)) {
+    return res.status(400).json({ error: `status invalide. Valeurs acceptées : ${VALID_STATUSES.join(', ')}` });
+  }
+  if (status_ne && !VALID_STATUSES.includes(status_ne)) {
+    return res.status(400).json({ error: `status_ne invalide. Valeurs acceptées : ${VALID_STATUSES.join(', ')}` });
+  }
+  if (urgency && !VALID_URGENCIES.includes(urgency)) {
+    return res.status(400).json({ error: `urgency invalide. Valeurs acceptées : ${VALID_URGENCIES.join(', ')}` });
+  }
+  if (assigned_group && !VALID_GROUPS.includes(assigned_group)) {
+    return res.status(400).json({ error: `assigned_group invalide. Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
+  }
+  let assignedGroupInList = null;
+  if (assigned_group_in) {
+    assignedGroupInList = assigned_group_in.split(',').map(g => g.trim()).filter(Boolean);
+    const invalid = assignedGroupInList.filter(g => !VALID_GROUPS.includes(g));
+    if (invalid.length > 0) {
+      return res.status(400).json({ error: `assigned_group_in invalide (${invalid.join(', ')}). Valeurs acceptées : ${VALID_GROUPS.join(', ')}` });
+    }
+  }
+  if (sort_by !== undefined && !VALID_SORT_BY_ISSUES.includes(sort_by)) {
+    return res.status(400).json({ error: `sort_by invalide. Valeurs acceptées : ${VALID_SORT_BY_ISSUES.join(', ')}` });
+  }
+  if (sort_dir !== undefined && !VALID_SORT_DIR.includes(sort_dir)) {
+    return res.status(400).json({ error: `sort_dir invalide. Valeurs acceptées : ${VALID_SORT_DIR.join(', ')}` });
+  }
+
+  // Clause WHERE construite isolément du SELECT : réutilisée pour le COUNT(*)
+  // de pagination (évite d'évaluer le LEFT JOIN + la sous-requête documents_count
+  // juste pour compter des lignes).
+  let whereClause = 'WHERE 1=1';
+  const params = [];
+
+  if (status)       { whereClause += ' AND i.status = ?';       params.push(status); }
+  if (department)   { whereClause += ' AND i.department = ?';   params.push(department); }
+  if (equipment_id) { whereClause += ' AND i.equipment_id = ?'; params.push(equipment_id); }
+  if (status_ne)    { whereClause += ' AND i.status != ?';      params.push(status_ne); }
+  if (urgency)       { whereClause += ' AND i.urgency = ?';              params.push(urgency); }
+  if (assigned_group) { whereClause += ' AND i.assigned_group = ?';      params.push(assigned_group); }
+  // Réplique la logique technicien actuelle : un technicien voit aussi les incidents sans groupe assigné
+  if (assignedGroupInList && assignedGroupInList.length > 0) {
+    const placeholders = assignedGroupInList.map(() => '?').join(', ');
+    whereClause += ` AND (i.assigned_group IN (${placeholders}) OR i.assigned_group IS NULL)`;
+    params.push(...assignedGroupInList);
+  }
+  if (assigned_technician) { whereClause += ' AND i.assigned_technician = ?'; params.push(assigned_technician); }
+  if (reporter_id)         { whereClause += ' AND i.reporter_id = ?';         params.push(reporter_id); }
+  if (created_after)       { whereClause += ' AND i.created_at >= ?';         params.push(created_after); }
+  if (created_before)      { whereClause += ' AND i.created_at <= ?';         params.push(created_before); }
+  if (search) {
+    whereClause += ' AND (i.type LIKE ? COLLATE NOCASE OR i.description LIKE ? COLLATE NOCASE OR i.reporter LIKE ? COLLATE NOCASE OR i.department LIKE ? COLLATE NOCASE OR i.equipment_name LIKE ? COLLATE NOCASE)';
+    const term = `%${search}%`;
+    params.push(term, term, term, term, term);
+  }
 
   // LEFT JOIN du rapport d'intervention finalisé : alimente les KPIs (MTTR réel,
   // coût de maintenance) côté Flutter sans appel supplémentaire.
-  let query = `
+  const selectQuery = `
     SELECT i.*,
            r.duration_hours AS report_duration_hours,
            r.estimated_cost AS report_estimated_cost,
@@ -98,16 +164,36 @@ router.get('/', verifyToken, (req, res) => {
     FROM issues i
     LEFT JOIN issue_intervention_reports r
       ON r.issue_id = i.id AND r.report_status = 'finalized'
-    WHERE 1=1`;
-  const params = [];
+    ${whereClause}`;
 
-  if (status)       { query += ' AND i.status = ?';       params.push(status); }
-  if (department)   { query += ' AND i.department = ?';   params.push(department); }
-  if (equipment_id) { query += ' AND i.equipment_id = ?'; params.push(equipment_id); }
+  // Mode legacy : pas de pagination demandée → réponse = tableau brut (rétro-compatibilité)
+  if (page === undefined) {
+    return res.json(db.prepare(`${selectQuery} ORDER BY i.created_at DESC`).all(...params));
+  }
 
-  query += ' ORDER BY i.created_at DESC';
+  // Mode paginé
+  const pageInt = parseInt(page, 10);
+  if (!Number.isFinite(pageInt) || pageInt < 1) {
+    return res.status(400).json({ error: 'page invalide' });
+  }
+  let limitInt = limit !== undefined ? parseInt(limit, 10) : 20;
+  if (!Number.isFinite(limitInt) || limitInt < 1) {
+    return res.status(400).json({ error: 'limit invalide' });
+  }
+  if (limitInt > 100) limitInt = 100;
 
-  res.json(db.prepare(query).all(...params));
+  const countRow = db.prepare(`SELECT COUNT(*) AS total FROM issues i ${whereClause}`).get(...params);
+  const total = countRow.total;
+  const totalPages = Math.max(1, Math.ceil(total / limitInt));
+
+  const sortColumn = SORT_BY_COLUMN_ISSUES[sort_by || 'created_at'];
+  const sortDirection = (sort_dir || 'desc').toUpperCase();
+  const offset = (pageInt - 1) * limitInt;
+
+  const pagedQuery = `${selectQuery} ORDER BY ${sortColumn} ${sortDirection} LIMIT ? OFFSET ?`;
+  const items = db.prepare(pagedQuery).all(...params, limitInt, offset);
+
+  res.json({ items, total, page: pageInt, limit: limitInt, total_pages: totalPages });
 });
 
 // GET /api/issues/:id — retourne l'incident enrichi avec équipement, logs d'audit et maintenance

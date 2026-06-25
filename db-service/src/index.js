@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const multer = require('multer');
 const { PORT } = require('./config');
 const equipmentRoutes      = require('./routes/equipment');
@@ -33,6 +34,9 @@ startPmReminderJob();
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());
+// Compression gzip des réponses JSON (ex. /api/equipment) — pas de gzip nginx
+// côté API pour éviter une double compression (cf. ip.conf).
+app.use(compression());
 
 app.use(cors({
   origin: function (origin, callback) {

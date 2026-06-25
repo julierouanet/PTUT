@@ -13,6 +13,32 @@ function primaryRole(req) {
   return userRoles[0] || null;
 }
 
+// Rôles couverts par la sidebar — synchronisé avec ROLE_PRIORITY (sans 'technician'
+// générique, redondant avec les variantes technician_*).
+const ALL_SIDEBAR_ROLES = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra', 'hospitalStaff'];
+
+// Requête partagée par GET /api/sidebar/config et GET /api/sidebar/config/all.
+function fetchSidebarOrder(db, role) {
+  return db.prepare(
+    'SELECT screen_type FROM sidebar_config WHERE role = ? ORDER BY sort_order ASC'
+  ).all(role).map(r => r.screen_type);
+}
+
+/**
+ * GET /api/sidebar/config/all
+ * Retourne la configuration sidebar de TOUS les rôles en un seul appel
+ * (remplace 6 requêtes GET /api/sidebar/config?role=... au login).
+ * Résultat : { admin: string[], supervisor: string[], ... }
+ */
+router.get('/all', verifyToken, (req, res) => {
+  const db = getDb();
+  const result = {};
+  for (const role of ALL_SIDEBAR_ROLES) {
+    result[role] = fetchSidebarOrder(db, role);
+  }
+  res.json(result);
+});
+
 /**
  * GET /api/sidebar/config
  * Retourne la configuration sidebar pour le rôle "principal" de l'utilisateur
@@ -25,10 +51,7 @@ router.get('/', verifyToken, (req, res) => {
   if (!role) {
     return res.json({ role: null, order: [] });
   }
-  const rows = db.prepare(
-    'SELECT screen_type FROM sidebar_config WHERE role = ? ORDER BY sort_order ASC'
-  ).all(role);
-  res.json({ role, order: rows.map(r => r.screen_type) });
+  res.json({ role, order: fetchSidebarOrder(db, role) });
 });
 
 /**

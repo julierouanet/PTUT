@@ -4,15 +4,47 @@ import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
 import '../models/equipment_document.dart';
+import '../models/issue.dart';
 import '../models/issue_detail.dart';
+
+/// Résultat paginé générique pour les listes en pagination serveur
+/// (GET /api/equipment et GET /api/issues avec ?page=).
+class PagedResult<T> {
+  final List<T> items;
+  final int total;
+  final int page;
+  final int limit;
+  final int totalPages;
+
+  const PagedResult({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.limit,
+    required this.totalPages,
+  });
+}
 
 /// Service de données — communique avec db-service.
 ///
-/// Retourne des Map<String, dynamic> bruts pour rester découplé des modèles.
+/// Retourne des `Map<String, dynamic>` bruts pour rester découplé des modèles.
 /// Les écrans peuvent parser avec leurs modèles existants ou utiliser les maps directement.
 class DbApiService {
   DbApiService._();
   static final DbApiService instance = DbApiService._();
+
+  /// Construit une query string à partir d'une map de paramètres, en omettant
+  /// les valeurs `null` et les chaînes vides. Encode chaque valeur (`Uri.encodeComponent`).
+  /// Utilisé par les méthodes de pagination serveur (getEquipmentPaged/getIssuesPaged).
+  String _buildQuery(Map<String, dynamic> params) {
+    final parts = <String>[];
+    params.forEach((key, value) {
+      if (value == null) return;
+      if (value is String && value.isEmpty) return;
+      parts.add('$key=${Uri.encodeComponent(value.toString())}');
+    });
+    return parts.join('&');
+  }
 
   // ── ÉQUIPEMENTS ────────────────────────────────────────────────────────────
 
@@ -21,6 +53,7 @@ class DbApiService {
     String? status,
     String? category,
     bool includeDisposed = false,
+    bool light = false,
   }) async {
     var url = ApiConfig.equipmentUrl;
     final params = <String>[];
@@ -29,11 +62,68 @@ class DbApiService {
     if (category   != null) params.add('category=${Uri.encodeComponent(category)}');
     // Par défaut le serveur masque les équipements réformés (Disposed).
     if (includeDisposed)    params.add('include_disposed=true');
+    // Mode léger : tableaux maintenanceHistory/futureMaintenance/tags vides
+    // (toutes les colonnes scalaires restent présentes). Utilisé au login.
+    if (light)               params.add('light=true');
     if (params.isNotEmpty)  url += '?${params.join('&')}';
 
-    final response = await ApiClient.get(url);
+    // Cache conditionnel ETag/304 (ApiClient) : réservé à l'appel exact du
+    // login (light, sans autre filtre) — un GET filtré reste toujours frais.
+    final conditional = light && department == null && status == null &&
+        category == null && !includeDisposed;
+    final response = await ApiClient.get(url, conditional: conditional);
     _checkStatus(response, url);
     return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Pagination serveur (page/limit/search/tri) — utilisée par
+  /// EquipmentListScreen. Ne remplace pas [getEquipment] (cache DataService).
+  Future<PagedResult<Equipment>> getEquipmentPaged({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? sortBy,
+    String? sortDir,
+    String? department,
+    String? status,
+    String? category,
+    String? macroCategory,
+    int? macroCategoryId,
+    int? subcategoryId,
+    int? brandId,
+    int? modelId,
+    bool includeDisposed = false,
+  }) async {
+    final query = _buildQuery({
+      'page': page,
+      'limit': limit,
+      'search': search,
+      'sort_by': sortBy,
+      'sort_dir': sortDir,
+      'department': department,
+      'status': status,
+      'category': category,
+      'macro_category': macroCategory,
+      'macro_category_id': macroCategoryId,
+      'subcategory_id': subcategoryId,
+      'brand_id': brandId,
+      'model_id': modelId,
+      'include_disposed': includeDisposed ? true : null,
+    });
+    final url = '${ApiConfig.equipmentUrl}?$query';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (data['items'] as List)
+        .map((j) => Equipment.fromApiJson(j as Map<String, dynamic>))
+        .toList();
+    return PagedResult<Equipment>(
+      items: items,
+      total: data['total'] as int,
+      page: data['page'] as int,
+      limit: data['limit'] as int,
+      totalPages: data['total_pages'] as int,
+    );
   }
 
   Future<Map<String, dynamic>> getEquipmentById(String id) async {
@@ -53,20 +143,20 @@ class DbApiService {
 
   Future<Map<String, dynamic>> createEquipment(Map<String, dynamic> data) async {
     final response = await ApiClient.post(ApiConfig.equipmentUrl, data);
-    _checkStatus(response, ApiConfig.equipmentUrl);
+    await _checkEquipmentMutation(response, ApiConfig.equipmentUrl);
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<void> updateEquipment(String id, Map<String, dynamic> data) async {
     final url = '${ApiConfig.equipmentUrl}/$id';
     final response = await ApiClient.put(url, data);
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   Future<void> updateEquipmentStatus(String id, String status) async {
     final url = '${ApiConfig.equipmentUrl}/$id';
     final response = await ApiClient.put(url, {'status': status});
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   /// Suppression définitive (hard delete). Lève une ApiException 409 si
@@ -79,7 +169,7 @@ class DbApiService {
     if (force) params.add('force=true');
     if (params.isNotEmpty) url += '?${params.join('&')}';
     final response = await ApiClient.delete(url);
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   /// Étape 1 du workflow de réforme : proposition de mise au rebut.
@@ -87,7 +177,7 @@ class DbApiService {
   Future<void> proposeDisposal(String id, String reason) async {
     final url = '${ApiConfig.equipmentUrl}/$id/propose-disposal';
     final response = await ApiClient.post(url, {'decommission_reason': reason});
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   /// Étape 2 (admin) : réforme effective (soft delete → status 'Disposed').
@@ -106,7 +196,7 @@ class DbApiService {
       if (notes != null && notes.isNotEmpty) 'decommission_notes': notes,
       if (replacedById != null && replacedById.isNotEmpty) 'replaced_by_id': replacedById,
     });
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   Future<void> addMaintenanceRecord(
@@ -123,7 +213,7 @@ class DbApiService {
       'technician': technician,
       'is_future': isFuture,
     });
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   /// Valide une maintenance préventive (POST enrichi v3).
@@ -143,7 +233,7 @@ class DbApiService {
       'parts_used': partsUsed,
       'maintenance_type': 'preventive',
     });
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
@@ -151,13 +241,13 @@ class DbApiService {
   Future<void> updatePmPlan(String equipmentId, int frequencyMonths) async {
     final url = ApiConfig.equipmentPmPlanUrl(equipmentId);
     final response = await ApiClient.put(url, {'frequency_months': frequencyMonths});
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   // ── LIEUX ─────────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getLocations() async {
-    final response = await ApiClient.get(ApiConfig.locationsUrl);
+    final response = await ApiClient.get(ApiConfig.locationsUrl, conditional: true);
     _checkStatus(response, ApiConfig.locationsUrl);
     return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
   }
@@ -179,6 +269,60 @@ class DbApiService {
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return List<Map<String, dynamic>>.from(jsonDecode(response.body) as List);
+  }
+
+  /// Pagination serveur (page/limit/search/filtres avancés/tri) — utilisée par
+  /// IssueTrackingScreen et TechnicianUpdateScreen. Ne remplace pas [getIssues].
+  Future<PagedResult<Issue>> getIssuesPaged({
+    int page = 1,
+    int limit = 20,
+    String? search,
+    String? status,
+    String? statusNe,
+    String? urgency,
+    String? assignedGroup,
+    String? assignedGroupIn,
+    String? assignedTechnician,
+    String? reporterId,
+    String? createdAfter,
+    String? createdBefore,
+    String? department,
+    String? equipmentId,
+    String? sortBy,
+    String? sortDir,
+  }) async {
+    final query = _buildQuery({
+      'page': page,
+      'limit': limit,
+      'search': search,
+      'status': status,
+      'status_ne': statusNe,
+      'urgency': urgency,
+      'assigned_group': assignedGroup,
+      'assigned_group_in': assignedGroupIn,
+      'assigned_technician': assignedTechnician,
+      'reporter_id': reporterId,
+      'created_after': createdAfter,
+      'created_before': createdBefore,
+      'department': department,
+      'equipment_id': equipmentId,
+      'sort_by': sortBy,
+      'sort_dir': sortDir,
+    });
+    final url = '${ApiConfig.issuesUrl}?$query';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (data['items'] as List)
+        .map((j) => Issue.fromApiJson(j as Map<String, dynamic>))
+        .toList();
+    return PagedResult<Issue>(
+      items: items,
+      total: data['total'] as int,
+      page: data['page'] as int,
+      limit: data['limit'] as int,
+      totalPages: data['total_pages'] as int,
+    );
   }
 
   Future<Map<String, dynamic>> getIssueById(String id) async {
@@ -446,13 +590,13 @@ class DbApiService {
   Future<void> restoreEquipment(Map<String, dynamic> snapshot) async {
     final url = '${ApiConfig.equipmentUrl}/restore';
     final response = await ApiClient.post(url, snapshot);
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   Future<void> restoreEquipmentState(String id, Map<String, dynamic> oldValues) async {
     final url = '${ApiConfig.equipmentUrl}/$id';
     final response = await ApiClient.put(url, oldValues);
-    _checkStatus(response, url);
+    await _checkEquipmentMutation(response, url);
   }
 
   Future<Map<String, dynamic>> restoreDeletedUser(Map<String, dynamic> snapshot) async {
@@ -539,6 +683,13 @@ class DbApiService {
         url: url,
       );
     }
+  }
+
+  /// Valide le statut d'une mutation équipement puis purge le cache conditionnel
+  /// de la liste légère (ApiClient) — toute mutation equipment doit invalider.
+  Future<void> _checkEquipmentMutation(dynamic response, String url) async {
+    _checkStatus(response, url);
+    await ApiClient.invalidateEquipmentCache();
   }
 
   String _extractError(String body) {
@@ -807,6 +958,16 @@ class DbApiService {
     } catch (_) {
       return [];
     }
+  }
+
+  /// Récupère l'ordre de la sidebar pour TOUS les rôles en un seul appel
+  /// (remplace 6 requêtes GET /api/sidebar/config?role=...). Retourne
+  /// { role: order[] } ; rôles sans config explicite → liste vide.
+  Future<Map<String, List<String>>> getAllSidebarConfigs() async {
+    final response = await ApiClient.get(ApiConfig.sidebarAllUrl);
+    _checkStatus(response, ApiConfig.sidebarAllUrl);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return data.map((role, order) => MapEntry(role, List<String>.from(order as List)));
   }
 
   /// Sauvegarde l'ordre de la sidebar pour [role] (admin seulement).

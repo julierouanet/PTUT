@@ -3423,6 +3423,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonNext => 'Suivant';
 
   @override
+  String get commonPrevious => 'Précédent';
+
+  @override
+  String commonPageOf(int page, int totalPages) {
+    return 'Page $page sur $totalPages';
+  }
+
+  @override
   String get commonBack => 'Retour';
 
   @override

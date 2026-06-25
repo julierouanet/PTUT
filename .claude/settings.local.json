@@ -56,7 +56,8 @@
       "PowerShell(where.exe flutter 2>$null; if \\($LASTEXITCODE -ne 0\\) { Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue })",
       "Bash(\"E:\\\\stage rwanda *)",
       "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue)",
-      "PowerShell(Get-ChildItem \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue)"
+      "PowerShell(Get-ChildItem \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue)",
+      "Bash(ls -R \"E:/stage rwanda fichier/rapport s2/travail/\" 2>/dev/null | head -80)"
     ]
   }
 }
