@@ -21,13 +21,13 @@ echo ""
 
 # ── Arrêt et suppression de la stack Docker ───────────────────
 echo "[1/3] Arrêt et suppression de la stack Docker Compose..."
-if docker compose -f docker-compose.ip.yml ps -q 2>/dev/null | grep -q .; then
-  docker compose -f docker-compose.ip.yml down -v --remove-orphans 2>/dev/null && \
+if docker compose -f docker-compose.ip.secured.yml ps -q 2>/dev/null | grep -q .; then
+  docker compose -f docker-compose.ip.secured.yml down -v --remove-orphans 2>/dev/null && \
     echo "      ✓ Containers, volumes et réseau supprimés." || \
     echo "      ⚠ Erreur lors du down (stack peut-être déjà arrêtée)."
 else
   # Tenter quand même le down au cas où des volumes résiduels existent
-  docker compose -f docker-compose.ip.yml down -v --remove-orphans 2>/dev/null || true
+  docker compose -f docker-compose.ip.secured.yml down -v --remove-orphans 2>/dev/null || true
   echo "      Aucun container actif trouvé — nettoyage des volumes résiduels effectué."
 fi
 
