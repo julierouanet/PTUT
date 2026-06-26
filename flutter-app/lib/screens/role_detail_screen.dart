@@ -6,12 +6,6 @@ import '../services/auth_api_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
-/// Liste de tous les écrans disponibles dans la sidebar (identiques à _allScreens du RolesTab).
-const List<String> _kAllScreens = [
-  'dashboard', 'equipment', 'issueTracking', 'issueForm',
-  'technician', 'inventory', 'reports', 'users', 'settings', 'logs',
-];
-
 const Map<String, IconData> _kScreenIcons = {
   'dashboard':     Icons.dashboard_outlined,
   'equipment':     Icons.inventory_2_outlined,
@@ -25,8 +19,32 @@ const Map<String, IconData> _kScreenIcons = {
   'logs':          Icons.history_outlined,
 };
 
-/// Affiche l'écran de détail d'un rôle avec 4 onglets :
-/// Hiérarchie | Fonctionnalités | Menu | Utilisateurs
+/// Regroupement des écrans par module applicatif (source : home_hub_screen.dart),
+/// utilisé pour l'ordre par défaut du sidebar et pour grouper l'onglet Page Access.
+const Map<String, List<String>> _kScreensByModule = {
+  'equipment':  ['dashboard', 'equipment', 'issueTracking', 'issueForm', 'technician', 'reports'],
+  'inventory':  ['inventory'],
+  'settings':   ['settings', 'users', 'logs'],
+};
+
+/// Liste de tous les écrans disponibles dans la sidebar, dans l'ordre groupé par module.
+final List<String> _kAllScreens = _kScreensByModule.values.expand((s) => s).toList();
+
+const Map<String, List<Permission>> _pagePermissions = {
+  'dashboard':     [Permission.viewEquipment],
+  'equipment':     [Permission.viewEquipment, Permission.manageEquipment],
+  'issueTracking': [Permission.trackIssues, Permission.approveRequests, Permission.assignTasks],
+  'issueForm':     [Permission.reportIssue],
+  'technician':    [Permission.updateRepairs, Permission.registerParts],
+  'inventory':     [Permission.viewInventory],
+  'reports':       [Permission.generateReports],
+  'users':         [Permission.manageUsers],
+  'settings':      [Permission.manageDepartments, Permission.manageCategories],
+  'logs':          [Permission.manageUsers],
+};
+
+/// Affiche l'écran de détail d'un rôle avec 5 onglets :
+/// Hiérarchie | Fonctionnalités | Page Access | Menu | Utilisateurs
 class RoleDetailScreen extends StatefulWidget {
   final String roleName;
   final String displayName;
@@ -73,7 +91,7 @@ class _RoleDetailScreenState extends State<RoleDetailScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _loadAll();
   }
 
@@ -254,6 +272,7 @@ class _RoleDetailScreenState extends State<RoleDetailScreen>
           tabs: [
             Tab(text: l10n.roleDetailTabHierarchy),
             Tab(text: l10n.roleDetailTabFeatures),
+            Tab(text: l10n.roleDetailTabPageAccess),
             Tab(text: l10n.roleDetailTabMenu),
             Tab(text: l10n.roleDetailTabUsers),
           ],
@@ -268,6 +287,7 @@ class _RoleDetailScreenState extends State<RoleDetailScreen>
                   children: [
                     _buildHierarchyTab(l10n),
                     _buildFeaturesTab(l10n),
+                    _buildPageAccessTab(l10n),
                     _buildMenuTab(l10n),
                     _buildUsersTab(l10n),
                   ],
@@ -443,6 +463,81 @@ class _RoleDetailScreenState extends State<RoleDetailScreen>
       ],
     );
   }
+
+  // ── Onglet 2bis : Accès aux pages (permissions groupées par module) ─────────
+
+  Widget _buildPageAccessTab(AppLocalizations l10n) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      children: [
+        if (_isAdmin)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.warningLight,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+            ),
+            child: Row(children: [
+              const Icon(Icons.lock, size: 16, color: AppColors.error),
+              const SizedBox(width: 8),
+              Expanded(child: Text(l10n.roleDetailAdminLocked,
+                  style: const TextStyle(fontSize: 12, color: AppColors.error))),
+            ]),
+          ),
+        for (final moduleEntry in _kScreensByModule.entries) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 8),
+            child: Text(_moduleLabel(moduleEntry.key, l10n),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+          ),
+          Card(
+            child: Column(
+              children: moduleEntry.value.map((screenKey) {
+                final icon = _kScreenIcons[screenKey] ?? Icons.circle_outlined;
+                final pagePerms = _pagePermissions[screenKey] ?? [];
+                return Theme(
+                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  child: ExpansionTile(
+                    leading: Icon(icon, size: 18, color: AppColors.primary),
+                    title: Text(_pageLabel(screenKey, l10n),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                    children: pagePerms.isEmpty
+                        ? [Padding(
+                            padding: const EdgeInsets.fromLTRB(56, 0, 16, 12),
+                            child: Text(l10n.settingsNoSpecificFunction,
+                                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          )]
+                        : pagePerms.map((perm) {
+                            final enabled = _isAdmin ? true : _permissions.contains(perm.name);
+                            return CheckboxListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.fromLTRB(56, 0, 16, 0),
+                              value: enabled,
+                              activeColor: AppColors.primary,
+                              controlAffinity: ListTileControlAffinity.leading,
+                              title: Text(perm.localizedName(l10n), style: const TextStyle(fontSize: 13)),
+                              onChanged: _isAdmin ? null : (v) => _togglePermission(perm.name, v ?? false),
+                            );
+                          }).toList(),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+
+  String _moduleLabel(String moduleKey, AppLocalizations l10n) => switch (moduleKey) {
+        'equipment' => l10n.roleDetailModuleEquipment,
+        'inventory' => l10n.roleDetailModuleInventory,
+        'settings'  => l10n.roleDetailModuleSettings,
+        _           => moduleKey,
+      };
 
   // ── Onglet 3 : Menu (ordre sidebar) ─────────────────────────────────────────
 

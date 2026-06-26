@@ -1242,29 +1242,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueValidationRedirectLabel => 'Redirect to another team';
 
   @override
-  String get settingsMenuOrder => 'Menu order';
-
-  @override
-  String get settingsMenuOrderRole => 'Configure for role:';
-
-  @override
-  String get settingsMenuOrderHint =>
-      'Drag items to change their order in the navigation bar.';
-
-  @override
-  String get settingsMenuOrderReset => 'Reset';
-
-  @override
-  String get settingsMenuOrderResetDone =>
-      'Default order restored (not yet saved)';
-
-  @override
-  String get settingsMenuOrderSave => 'Save';
-
-  @override
-  String get settingsMenuOrderSaved => 'Menu order saved';
-
-  @override
   String get backToModules => '← Modules';
 
   @override
@@ -2302,20 +2279,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsBuiltinRole => 'Built-in role';
 
   @override
-  String get settingsAccessByRole => 'Page access by role';
-
-  @override
-  String get settingsAccessDesc =>
-      'Check the pages and functions accessible for the selected role.';
-
-  @override
-  String get settingsRoleLabel => 'Role';
-
-  @override
-  String get settingsAdminAllAccess =>
-      'Administrator has access to all pages and functions without restriction.';
-
-  @override
   String get settingsNoSpecificFunction => 'No specific function';
 
   @override
@@ -2353,12 +2316,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String settingsRolePermissionsUpdated(String role) {
     return 'Permissions for $role updated';
   }
-
-  @override
-  String get settingsRoleConfigSaved => 'Configuration saved';
-
-  @override
-  String get settingsRoleConfigSaveError => 'Error while saving';
 
   @override
   String get settingsResetDone => 'Reset to defaults';
@@ -2946,9 +2903,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTabRoles => 'Roles & Permissions';
-
-  @override
-  String get settingsTabActivity => 'Activity log';
 
   @override
   String get settingsDeptDescription => 'Description (optional)';
@@ -4951,10 +4905,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get roleDetailTabFeatures => 'Features';
 
   @override
+  String get roleDetailTabPageAccess => 'Page Access';
+
+  @override
   String get roleDetailTabMenu => 'Menu order';
 
   @override
   String get roleDetailTabUsers => 'Users';
+
+  @override
+  String get roleDetailModuleEquipment => 'Equipment';
+
+  @override
+  String get roleDetailModuleInventory => 'Inventory';
+
+  @override
+  String get roleDetailModuleSettings => 'Administration';
 
   @override
   String get roleDetailParentRole => 'Parent role';

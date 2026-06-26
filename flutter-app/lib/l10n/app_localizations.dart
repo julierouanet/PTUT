@@ -2372,48 +2372,6 @@ abstract class AppLocalizations {
   /// **'Rediriger vers une autre equipe'**
   String get issueValidationRedirectLabel;
 
-  /// No description provided for @settingsMenuOrder.
-  ///
-  /// In fr, this message translates to:
-  /// **'Ordre du menu'**
-  String get settingsMenuOrder;
-
-  /// No description provided for @settingsMenuOrderRole.
-  ///
-  /// In fr, this message translates to:
-  /// **'Configurer pour le role :'**
-  String get settingsMenuOrderRole;
-
-  /// No description provided for @settingsMenuOrderHint.
-  ///
-  /// In fr, this message translates to:
-  /// **'Faites glisser les elements pour changer leur ordre dans la barre de navigation.'**
-  String get settingsMenuOrderHint;
-
-  /// No description provided for @settingsMenuOrderReset.
-  ///
-  /// In fr, this message translates to:
-  /// **'Reinitialiser'**
-  String get settingsMenuOrderReset;
-
-  /// No description provided for @settingsMenuOrderResetDone.
-  ///
-  /// In fr, this message translates to:
-  /// **'Ordre par defaut restaure (non encore sauvegarde)'**
-  String get settingsMenuOrderResetDone;
-
-  /// No description provided for @settingsMenuOrderSave.
-  ///
-  /// In fr, this message translates to:
-  /// **'Sauvegarder'**
-  String get settingsMenuOrderSave;
-
-  /// No description provided for @settingsMenuOrderSaved.
-  ///
-  /// In fr, this message translates to:
-  /// **'Ordre du menu sauvegarde'**
-  String get settingsMenuOrderSaved;
-
   /// No description provided for @backToModules.
   ///
   /// In fr, this message translates to:
@@ -4382,30 +4340,6 @@ abstract class AppLocalizations {
   /// **'Rôle intégré'**
   String get settingsBuiltinRole;
 
-  /// No description provided for @settingsAccessByRole.
-  ///
-  /// In fr, this message translates to:
-  /// **'Accès aux pages par rôle'**
-  String get settingsAccessByRole;
-
-  /// No description provided for @settingsAccessDesc.
-  ///
-  /// In fr, this message translates to:
-  /// **'Cochez les pages et fonctions accessibles pour le rôle sélectionné.'**
-  String get settingsAccessDesc;
-
-  /// No description provided for @settingsRoleLabel.
-  ///
-  /// In fr, this message translates to:
-  /// **'Rôle'**
-  String get settingsRoleLabel;
-
-  /// No description provided for @settingsAdminAllAccess.
-  ///
-  /// In fr, this message translates to:
-  /// **'L\'administrateur a accès à toutes les pages et fonctions sans restriction.'**
-  String get settingsAdminAllAccess;
-
   /// No description provided for @settingsNoSpecificFunction.
   ///
   /// In fr, this message translates to:
@@ -4471,18 +4405,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Permissions de {role} mises à jour'**
   String settingsRolePermissionsUpdated(String role);
-
-  /// No description provided for @settingsRoleConfigSaved.
-  ///
-  /// In fr, this message translates to:
-  /// **'Configuration sauvegardée'**
-  String get settingsRoleConfigSaved;
-
-  /// No description provided for @settingsRoleConfigSaveError.
-  ///
-  /// In fr, this message translates to:
-  /// **'Erreur lors de la sauvegarde'**
-  String get settingsRoleConfigSaveError;
 
   /// No description provided for @settingsResetDone.
   ///
@@ -5581,12 +5503,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Rôles & Permissions'**
   String get settingsTabRoles;
-
-  /// No description provided for @settingsTabActivity.
-  ///
-  /// In fr, this message translates to:
-  /// **'Journal d\'activité'**
-  String get settingsTabActivity;
 
   /// No description provided for @settingsDeptDescription.
   ///
@@ -9194,6 +9110,12 @@ abstract class AppLocalizations {
   /// **'Fonctionnalités'**
   String get roleDetailTabFeatures;
 
+  /// No description provided for @roleDetailTabPageAccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Accès pages'**
+  String get roleDetailTabPageAccess;
+
   /// No description provided for @roleDetailTabMenu.
   ///
   /// In fr, this message translates to:
@@ -9205,6 +9127,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Utilisateurs'**
   String get roleDetailTabUsers;
+
+  /// No description provided for @roleDetailModuleEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement'**
+  String get roleDetailModuleEquipment;
+
+  /// No description provided for @roleDetailModuleInventory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Inventaire'**
+  String get roleDetailModuleInventory;
+
+  /// No description provided for @roleDetailModuleSettings.
+  ///
+  /// In fr, this message translates to:
+  /// **'Administration'**
+  String get roleDetailModuleSettings;
 
   /// No description provided for @roleDetailParentRole.
   ///
