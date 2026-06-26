@@ -381,6 +381,16 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
+  Future<void> closeIssueAsDisposed(
+      String issueId, String reason, String disposalMethod) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/close-as-disposed';
+    final response = await ApiClient.patch(url, {
+      'reason': reason,
+      'disposal_method': disposalMethod,
+    });
+    _checkStatus(response, url);
+  }
+
   /// Rejette un incident en file de validation (statut 'Reported' requis serveur).
   /// [reasonCode] ∈ REJECT_REASONS ; [comment] obligatoire si reasonCode == 'other'.
   Future<void> rejectIssue(String id, String reasonCode, String? comment) async {

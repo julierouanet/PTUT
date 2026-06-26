@@ -57,7 +57,9 @@
       "Bash(\"E:\\\\stage rwanda *)",
       "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue)",
       "PowerShell(Get-ChildItem \"C:\\\\src\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue)",
-      "Bash(ls -R \"E:/stage rwanda fichier/rapport s2/travail/\" 2>/dev/null | head -80)"
+      "Bash(ls -R \"E:/stage rwanda fichier/rapport s2/travail/\" 2>/dev/null | head -80)",
+      "Bash(\"E:/stage rwanda *)",
+      "Bash(python -X utf8 scripts/log_feature.py --nom \"Rapport intervention PDF : header/footer + regroupement documents\" --desc \"Retrait Parts Replaced du PDF final, n° incident en pied de page \\(INC-xxx sur chaque page\\), documents d'intervention groupés par incident avec ExpansionTile sur la fiche équipement\")"
     ]
   }
 }

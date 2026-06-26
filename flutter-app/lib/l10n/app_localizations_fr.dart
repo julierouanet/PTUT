@@ -4086,6 +4086,38 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get techCloseAsDisposedButton => 'Équipement irréparable';
+
+  @override
+  String get techCloseAsDisposedTitle => 'Clôturer — Équipement irréparable';
+
+  @override
+  String get techCloseAsDisposedSubtitle =>
+      'L\'équipement sera définitivement réformé (Disposed). Cette action est irréversible.';
+
+  @override
+  String get techCloseAsDisposedReasonLabel => 'Raison (obligatoire)';
+
+  @override
+  String get techCloseAsDisposedReasonHint =>
+      'Décrivez pourquoi l\'équipement ne peut pas être réparé';
+
+  @override
+  String get techCloseAsDisposedReasonMin =>
+      'La raison doit contenir au moins 10 caractères';
+
+  @override
+  String get techCloseAsDisposedMethodLabel => 'Méthode de mise au rebut';
+
+  @override
+  String get techCloseAsDisposedMethodRequired =>
+      'La méthode de mise au rebut est obligatoire';
+
+  @override
+  String get techCloseAsDisposedSuccess =>
+      'Intervention clôturée — équipement réformé';
+
+  @override
   String get techWorkOrderTitle => 'Bon de Travail — Clôture formelle';
 
   @override
@@ -4480,10 +4512,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get notifPrefsSubtitle =>
-      'Toutes les notifications portent sur les incidents de niveau Critique uniquement.';
+      'Les seuils d\'urgence ci-dessous sont personnalisables par notification.';
 
   @override
-  String get notifPrefsScope => 'Incidents de niveau Critique seulement';
+  String get notifPrefsScope => 'Seuils personnalisés par notification';
 
   @override
   String get notifPrefsFirstSetupSubtitle =>
@@ -4511,11 +4543,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get notifPrefsSectionSupervisor => 'Alertes superviseur';
 
   @override
-  String get notifPrefsCriticalNewIssue => 'Nouvel incident critique signalé';
+  String get notifPrefsCriticalNewIssue => 'Nouvel incident signalé';
 
   @override
   String get notifPrefsCriticalNewIssueDesc =>
-      'Email dès qu\'un incident CRITIQUE est signalé dans votre groupe technique.';
+      'Email dès qu\'un incident est signalé dans votre groupe technique, à partir du seuil d\'urgence choisi.';
+
+  @override
+  String get notifPrefsNewIssueMinUrgencyLabel => 'À partir de :';
 
   @override
   String get notifPrefsCriticalAcknowledged =>
@@ -4810,6 +4845,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get docNoDocuments => 'Aucun document dans cette section';
+
+  @override
+  String docInterventionGroupTitle(String issueId, int count) {
+    return 'Incident $issueId ($count)';
+  }
+
+  @override
+  String docOtherDocuments(int count) {
+    return 'Autres documents ($count)';
+  }
 
   @override
   String get docRestrictedAccess =>

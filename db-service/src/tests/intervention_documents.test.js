@@ -162,3 +162,64 @@ describe('GET /api/issues/:id/documents/:doc_id/download', () => {
     expect(res.status).toBe(404);
   });
 });
+
+// =============================================================================
+// GET /api/equipment/:id/documents — champs issue_id / issue_status / issue_created_at
+// =============================================================================
+describe('GET /api/equipment/:id/documents — jointure issues', () => {
+  const EQ_ID = 'eq-join-test';
+  const ISSUE_ID = 'iss-join-test';
+  let docWithIssueId;
+  let docNoIssueId;
+
+  beforeAll(() => {
+    // Seed équipement + incident liés
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment (id, name, department, category, status)
+      VALUES (?, 'Testeur JOIN', 'OPD', 'Monitoring', 'Operational')
+    `).run(EQ_ID);
+    seedIssue(ISSUE_ID, { status: 'Resolved', equipmentId: EQ_ID });
+
+    // Document d'intervention avec issue_id renseigné
+    const r1 = db.prepare(`
+      INSERT INTO equipment_documents
+        (equipment_id, issue_id, document_type, stored_name, original_name, mime_type, file_size_kb, uploaded_by, uploader_name, uploaded_at)
+      VALUES (?, ?, 'intervention', 'stored-j1.pdf', 'rapport.pdf', 'application/pdf', 12, 'u1', 'Tech Test', datetime('now','localtime'))
+    `).run(EQ_ID, ISSUE_ID);
+    docWithIssueId = r1.lastInsertRowid;
+
+    // Document historique sans issue_id
+    const r2 = db.prepare(`
+      INSERT INTO equipment_documents
+        (equipment_id, issue_id, document_type, stored_name, original_name, mime_type, file_size_kb, uploaded_by, uploader_name, uploaded_at)
+      VALUES (?, NULL, 'intervention', 'stored-j2.pdf', 'ancien.pdf', 'application/pdf', 8, 'u1', 'Tech Test', datetime('now','localtime'))
+    `).run(EQ_ID);
+    docNoIssueId = r2.lastInsertRowid;
+  });
+
+  test('✅ document lié à un incident → issue_id, issue_status, issue_created_at non nuls', async () => {
+    const res = await request(app)
+      .get(`/api/equipment/${EQ_ID}/documents`)
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const doc = res.body.find((d) => d.id === docWithIssueId);
+    expect(doc).toBeDefined();
+    expect(doc.issue_id).toBe(ISSUE_ID);
+    expect(doc.issue_status).toBe('Resolved');
+    expect(doc.issue_created_at).toBeTruthy();
+  });
+
+  test('✅ document sans issue_id → issue_id, issue_status, issue_created_at à null (pas de 500)', async () => {
+    const res = await request(app)
+      .get(`/api/equipment/${EQ_ID}/documents`)
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const doc = res.body.find((d) => d.id === docNoIssueId);
+    expect(doc).toBeDefined();
+    expect(doc.issue_id).toBeNull();
+    expect(doc.issue_status).toBeNull();
+    expect(doc.issue_created_at).toBeNull();
+  });
+});

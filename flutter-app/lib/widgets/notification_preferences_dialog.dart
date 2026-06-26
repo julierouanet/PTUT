@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
+import '../models/issue.dart';
 import '../models/notification_preferences.dart';
 import '../models/user_role.dart';
 import '../services/auth_service.dart';
@@ -168,9 +169,16 @@ class _NotificationPreferencesDialogState
                       iconColor: AppColors.error,
                       title: l10n.notifPrefsCriticalNewIssue,
                       subtitle: l10n.notifPrefsCriticalNewIssueDesc,
-                      value: _prefs.notifyCriticalNewIssue,
+                      value: _prefs.notifyNewIssue,
                       onChanged: (v) => setState(
-                          () => _prefs = _prefs.copyWith(notifyCriticalNewIssue: v)),
+                          () => _prefs = _prefs.copyWith(notifyNewIssue: v)),
+                      extra: _UrgencyThresholdSelector(
+                        minUrgencyLabel: l10n.notifPrefsNewIssueMinUrgencyLabel,
+                        enabled: _prefs.notifyNewIssue,
+                        urgency: _prefs.minUrgencyNewIssue,
+                        onUrgencyChanged: (u) => setState(
+                            () => _prefs = _prefs.copyWith(minUrgencyNewIssue: u)),
+                      ),
                     ),
                     _PrefTile(
                       icon: Icons.engineering_outlined,
@@ -308,6 +316,59 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Sélecteur de seuil d'urgence minimal — passé en [_PrefTile.extra] pour
+/// la préférence "nouvel incident".
+class _UrgencyThresholdSelector extends StatelessWidget {
+  final String minUrgencyLabel;
+  final bool enabled;
+  final IssueUrgency urgency;
+  final ValueChanged<IssueUrgency> onUrgencyChanged;
+
+  const _UrgencyThresholdSelector({
+    required this.minUrgencyLabel,
+    required this.enabled,
+    required this.urgency,
+    required this.onUrgencyChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        children: [
+          Text(
+            minUrgencyLabel,
+            style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 6),
+          Opacity(
+            opacity: enabled ? 1 : 0.4,
+            child: DropdownButton<IssueUrgency>(
+              value: urgency,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+              items: IssueUrgency.values
+                  .map((u) => DropdownMenuItem(
+                        value: u,
+                        child: Text(u.localizedName(l10n)),
+                      ))
+                  .toList(),
+              onChanged: enabled
+                  ? (u) {
+                      if (u != null) onUrgencyChanged(u);
+                    }
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _PrefTile extends StatelessWidget {
   final IconData icon;
   final Color iconColor;
@@ -315,6 +376,8 @@ class _PrefTile extends StatelessWidget {
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
+  /// Widget optionnel rendu sous le sous-titre (ex: sélecteur de seuil d'urgence).
+  final Widget? extra;
 
   const _PrefTile({
     required this.icon,
@@ -323,6 +386,7 @@ class _PrefTile extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
+    this.extra,
   });
 
   @override
@@ -364,6 +428,7 @@ class _PrefTile extends StatelessWidget {
                       color: AppColors.textSecondary,
                       height: 1.3),
                 ),
+                if (extra != null) extra!,
               ],
             ),
           ),

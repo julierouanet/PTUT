@@ -6,6 +6,9 @@ class EquipmentDocument {
   final int fileSizeKb;
   final String uploaderName;
   final String uploadedAt;
+  final String? issueId;
+  final String? issueStatus;
+  final String? issueCreatedAt;
 
   const EquipmentDocument({
     required this.id,
@@ -15,16 +18,22 @@ class EquipmentDocument {
     required this.fileSizeKb,
     required this.uploaderName,
     required this.uploadedAt,
+    this.issueId,
+    this.issueStatus,
+    this.issueCreatedAt,
   });
 
   factory EquipmentDocument.fromJson(Map<String, dynamic> j) => EquipmentDocument(
-    id:           j['id'] as int,
-    documentType: j['document_type'] as String,
-    originalName: j['original_name'] as String,
-    mimeType:     j['mime_type'] as String,
-    fileSizeKb:   j['file_size_kb'] as int,
-    uploaderName: j['uploader_name'] as String,
-    uploadedAt:   j['uploaded_at'] as String,
+    id:             j['id'] as int,
+    documentType:   j['document_type'] as String,
+    originalName:   j['original_name'] as String,
+    mimeType:       j['mime_type'] as String,
+    fileSizeKb:     j['file_size_kb'] as int,
+    uploaderName:   j['uploader_name'] as String,
+    uploadedAt:     j['uploaded_at'] as String,
+    issueId:        j['issue_id'] as String?,
+    issueStatus:    j['issue_status'] as String?,
+    issueCreatedAt: j['issue_created_at'] as String?,
   );
 
   String get displaySize => fileSizeKb < 1024

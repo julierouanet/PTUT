@@ -18,17 +18,19 @@ router.get('/:id/documents', verifyToken,
 
     const { type } = req.query;
     let query = `
-      SELECT id, document_type, original_name, mime_type, file_size_kb,
-             uploader_name, uploaded_at
-      FROM equipment_documents
-      WHERE equipment_id = ? AND deleted_at IS NULL
+      SELECT ed.id, ed.document_type, ed.original_name, ed.mime_type, ed.file_size_kb,
+             ed.uploader_name, ed.uploaded_at, ed.issue_id,
+             i.status AS issue_status, i.created_at AS issue_created_at
+      FROM equipment_documents ed
+      LEFT JOIN issues i ON i.id = ed.issue_id
+      WHERE ed.equipment_id = ? AND ed.deleted_at IS NULL
     `;
     const params = [req.params.id];
     if (type && VALID_DOC_TYPES.includes(type)) {
-      query += ' AND document_type = ?';
+      query += ' AND ed.document_type = ?';
       params.push(type);
     }
-    query += ' ORDER BY uploaded_at DESC';
+    query += ' ORDER BY i.created_at DESC NULLS LAST, ed.uploaded_at DESC';
 
     res.json(db.prepare(query).all(...params));
   }

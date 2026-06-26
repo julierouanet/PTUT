@@ -501,7 +501,8 @@ describe('RBAC — PUT /api/users/me/notifications', () => {
         .put('/api/users/me/notifications')
         .set('Authorization', 'Bearer fake-token')
         .send({
-          notify_critical_new_issue:    true,
+          notify_new_issue:             true,
+          min_urgency_new_issue:        'Urgent',
           notify_critical_acknowledged: false,
           notify_pm_due:                true,
         });
@@ -510,6 +511,18 @@ describe('RBAC — PUT /api/users/me/notifications', () => {
       expect(res.body).toHaveProperty('message');
     }
   );
+
+  test('🚫 min_urgency_new_issue invalide → 400', async () => {
+    setTestRole('technicianBiomedical');
+
+    const res = await request(app)
+      .put('/api/users/me/notifications')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ min_urgency_new_issue: 'Catastrophique' });
+
+    expect(res.status).toBe(400);
+    expect(res.body).toHaveProperty('error');
+  });
 });
 
 // =============================================================================

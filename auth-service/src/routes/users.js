@@ -16,6 +16,7 @@ const {
   getUserRoleNames,
   mapKcUser,
 } = require('../utils/keycloakAdmin');
+const { isValidUrgency } = require('../utils/urgency');
 
 const router = express.Router();
 
@@ -565,9 +566,9 @@ router.get('/me/notifications', verifyToken, (req, res) => {
   if (!prefs) {
     db.prepare(`
       INSERT INTO user_notification_preferences
-        (user_id, notify_critical_new_issue, notify_critical_acknowledged,
+        (user_id, notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged,
          notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, preferences_set)
-      VALUES (?, 1, 1, 1, 1, 1, 0)
+      VALUES (?, 1, 'Critique', 1, 1, 1, 1, 0)
     `).run(userId);
     prefs = db.prepare(
       'SELECT * FROM user_notification_preferences WHERE user_id = ?'
@@ -575,7 +576,8 @@ router.get('/me/notifications', verifyToken, (req, res) => {
   }
 
   res.json({
-    notify_critical_new_issue:    !!prefs.notify_critical_new_issue,
+    notify_new_issue:             !!prefs.notify_new_issue,
+    min_urgency_new_issue:        prefs.min_urgency_new_issue,
     notify_critical_acknowledged: !!prefs.notify_critical_acknowledged,
     notify_critical_diagnosed:    !!prefs.notify_critical_diagnosed,
     notify_critical_resolved:     !!prefs.notify_critical_resolved,
@@ -595,30 +597,38 @@ router.put('/me/notifications', verifyToken, (req, res) => {
     (val === undefined || val === null) ? fallback : (val ? 1 : 0);
 
   const {
-    notify_critical_new_issue,
+    notify_new_issue,
+    min_urgency_new_issue,
     notify_critical_acknowledged,
     notify_critical_diagnosed,
     notify_critical_resolved,
     notify_pm_due,
   } = req.body;
 
+  if (min_urgency_new_issue !== undefined && !isValidUrgency(min_urgency_new_issue)) {
+    return res.status(400).json({ error: 'min_urgency_new_issue invalide' });
+  }
+  const urgencyThreshold = min_urgency_new_issue || 'Critique';
+
   db.prepare(`
     INSERT INTO user_notification_preferences
-      (user_id, notify_critical_new_issue, notify_critical_acknowledged,
+      (user_id, notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged,
        notify_critical_diagnosed, notify_critical_resolved, notify_pm_due,
        preferences_set, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
     ON CONFLICT(user_id) DO UPDATE SET
-      notify_critical_new_issue    = excluded.notify_critical_new_issue,
-      notify_critical_acknowledged = excluded.notify_critical_acknowledged,
-      notify_critical_diagnosed    = excluded.notify_critical_diagnosed,
-      notify_critical_resolved     = excluded.notify_critical_resolved,
-      notify_pm_due                = excluded.notify_pm_due,
-      preferences_set              = 1,
-      updated_at                   = excluded.updated_at
+      notify_new_issue              = excluded.notify_new_issue,
+      min_urgency_new_issue         = excluded.min_urgency_new_issue,
+      notify_critical_acknowledged  = excluded.notify_critical_acknowledged,
+      notify_critical_diagnosed     = excluded.notify_critical_diagnosed,
+      notify_critical_resolved      = excluded.notify_critical_resolved,
+      notify_pm_due                 = excluded.notify_pm_due,
+      preferences_set               = 1,
+      updated_at                    = excluded.updated_at
   `).run(
     userId,
-    toInt(notify_critical_new_issue),
+    toInt(notify_new_issue),
+    urgencyThreshold,
     toInt(notify_critical_acknowledged),
     toInt(notify_critical_diagnosed),
     toInt(notify_critical_resolved),

@@ -60,6 +60,9 @@ const appendLine = (existing, line) => existing ? `${existing}\n${line}` : line;
 const VALID_STATUSES    = ['Reported', 'Acknowledged', 'Assigned', 'In Progress', 'Waiting Materials', 'Completed', 'Verified', 'Closed', 'Redirected', 'Rejected'];
 const VALID_URGENCIES   = ['Faible', 'Moyen', 'Urgent', 'Critique'];
 
+// Miroir de equipment.js — garder en sync si les méthodes de mise au rebut évoluent
+const DISPOSAL_METHODS_ISSUE = ['destroyed', 'sold', 'donated', 'returned', 'cannibalized'];
+
 // Motifs de rejet catégorisés (alimentent un futur KPI « taux de demandes invalides »)
 const REJECT_REASONS    = ['duplicate', 'not_reproducible', 'out_of_scope', 'false_alarm', 'other'];
 
@@ -354,8 +357,8 @@ router.post('/', verifyToken, (req, res) => {
       });
     }
 
-    // ── Email aux techniciens du groupe si incident CRITIQUE (fire-and-forget) ─
-    if (urgencyValue === 'Critique' && targetRoles.length) {
+    // ── Email aux techniciens du groupe selon leur seuil d'urgence (fire-and-forget) ─
+    if (targetRoles.length) {
       setImmediate(() => {
         _notifyRoles(targetRoles, 'critical_new_issue', {
           issue_id:       id,
@@ -561,6 +564,87 @@ router.patch('/:id/escalate', verifyToken, requireRole('admin', 'supervisor', ..
     ...extractReqMeta(req) });
 
   res.json({ message: 'Incident escaladé', id: req.params.id, new_status: escalation_status });
+});
+
+// ── PATCH /api/issues/:id/close-as-disposed ──────────────────────────────────
+// Clôture un incident en marquant l'équipement lié comme irréparable (Disposed).
+// Issue → Completed, Equipment → Disposed, session active fermée silencieusement.
+router.patch('/:id/close-as-disposed', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { reason, disposal_method } = req.body;
+
+  // Validation du corps avant toute lecture DB (même ordre que /:id/escalate)
+  if (!disposal_method || !DISPOSAL_METHODS_ISSUE.includes(disposal_method)) {
+    return res.status(400).json({ error: `disposal_method invalide. Valeurs acceptées : ${DISPOSAL_METHODS_ISSUE.join(', ')}` });
+  }
+  if (!reason || reason.trim().length < 10) {
+    return res.status(400).json({ error: 'La raison doit contenir au moins 10 caractères' });
+  }
+  const trimmedReason = reason.trim();
+
+  const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(req.params.id);
+  if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
+
+  if (!issue.equipment_id) {
+    return res.status(400).json({ error: "Cet incident n'est pas lié à un équipement" });
+  }
+
+  const equipment = db.prepare('SELECT * FROM equipment WHERE id = ?').get(issue.equipment_id);
+  if (!equipment) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  if (equipment.status === 'Disposed') {
+    return res.status(409).json({ error: 'Équipement déjà réformé' });
+  }
+
+  // Transaction atomique : les 3 tables s'écrivent ensemble ou pas du tout
+  db.transaction(() => {
+    // Fermeture silencieuse de la session active si elle existe
+    db.prepare(`
+      UPDATE issue_intervention_sessions
+      SET closed_at    = datetime('now','localtime'),
+          resolved     = 0,
+          next_actions = 'Équipement irréparable — réformé',
+          updated_at   = datetime('now','localtime')
+      WHERE issue_id = ? AND closed_at IS NULL
+    `).run(req.params.id);
+
+    db.prepare(`
+      UPDATE issues
+      SET status      = 'Completed',
+          resolved_at = datetime('now','localtime'),
+          updated_at  = datetime('now','localtime')
+      WHERE id = ?
+    `).run(req.params.id);
+
+    db.prepare(`
+      UPDATE equipment
+      SET status                 = 'Disposed',
+          decommissioned_at      = datetime('now','localtime'),
+          decommission_reason    = 'irreparable',
+          disposal_method        = ?,
+          decommission_notes     = ?,
+          decommissioned_by_id   = ?,
+          decommissioned_by_name = ?,
+          updated_at             = datetime('now','localtime')
+      WHERE id = ?
+    `).run(disposal_method, trimmedReason, req.user.id, req.user.name, issue.equipment_id);
+  })();
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'issue_closed_equipment_disposed',
+    target_type: 'issue', target_id: req.params.id,
+    target_name: issue.equipment_name || issue.location_id || issue.department,
+    details: { equipment_id: issue.equipment_id, disposal_method, reason: trimmedReason },
+    ...extractReqMeta(req) });
+
+  logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'decommission_equipment',
+    target_type: 'equipment', target_id: issue.equipment_id,
+    target_name: equipment.name,
+    details: { decommission_reason: 'irreparable', disposal_method, decommission_notes: trimmedReason },
+    ...extractReqMeta(req) });
+
+  res.json({ message: 'Intervention clôturée — équipement réformé', id: req.params.id });
 });
 
 // ── PATCH /api/issues/:id/reassign ────────────────────────────────────────

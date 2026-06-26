@@ -17,6 +17,8 @@ import '../models/issue_intervention_report.dart';
 import '../models/issue_intervention_session.dart';
 import '../models/inventory_item.dart';
 import '../widgets/urgency_badge.dart';
+import '../widgets/equipment/equipment_decommission_dialog.dart'
+    show kDisposalMethods, disposalMethodLabel;
 
 /// Pièce sélectionnée depuis le catalogue d'inventaire.
 class _SelectedPart {
@@ -55,17 +57,19 @@ class _TechnicianInterventionUpdateScreenState
   final _nextActionsController = TextEditingController();
   final _partsSearchController = TextEditingController();
 
-  bool _isSaving         = false;
-  bool _isReassigning    = false;
-  bool _isEscalating     = false;
-  bool _isDetaching      = false;
-  bool _isClosingSession = false;
-  bool _planNextAction   = false;
+  bool _isSaving             = false;
+  bool _isReassigning        = false;
+  bool _isEscalating         = false;
+  bool _isDetaching          = false;
+  bool _isClosingSession     = false;
+  bool _isClosingAsDisposed  = false;
+  bool _planNextAction       = false;
 
   /// Vrai si une action API du formulaire d'intervention est en cours
   /// (désactive tous les boutons d'action pour éviter les appels concurrents).
   bool get _isBusy =>
-      _isSaving || _isReassigning || _isEscalating || _isDetaching || _isClosingSession;
+      _isSaving || _isReassigning || _isEscalating || _isDetaching ||
+      _isClosingSession || _isClosingAsDisposed;
 
   // ── Suivi des modifications non sauvegardées ────────────────────────────────
   bool _isDirty = false;
@@ -486,6 +490,24 @@ class _TechnicianInterventionUpdateScreenState
                 : const Icon(Icons.report_problem_outlined,
                     size: 16, color: AppColors.error),
             label: Text(l10n.techEscalateButton,
+                style: const TextStyle(color: AppColors.error)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: AppColors.error),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+
+        // ── Bouton Équipement irréparable → Disposed ─────────────────────────
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isBusy ? null : () => _showCloseAsDisposedDialog(issue),
+            icon: _isClosingAsDisposed
+                ? _buttonSpinner(AppColors.error)
+                : const Icon(Icons.delete_forever, size: 16, color: AppColors.error),
+            label: Text(l10n.techCloseAsDisposedButton,
                 style: const TextStyle(color: AppColors.error)),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.error),
@@ -1373,6 +1395,137 @@ class _TechnicianInterventionUpdateScreenState
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
+  // Dialog : Clôture intervention — Équipement irréparable → Disposed
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  void _showCloseAsDisposedDialog(Issue issue) {
+    final l10n      = AppLocalizations.of(context)!;
+    final formKey   = GlobalKey<FormState>();
+    String? selectedMethod;
+    final reasonCtl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Row(children: [
+            const Icon(Icons.delete_forever, color: AppColors.error, size: 20),
+            const SizedBox(width: 8),
+            Text(l10n.techCloseAsDisposedTitle,
+                style: const TextStyle(fontSize: 16)),
+          ]),
+          content: SizedBox(
+            width: 480,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l10n.techCloseAsDisposedSubtitle,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13)),
+                  const SizedBox(height: 16),
+
+                  // Raison
+                  TextFormField(
+                    controller: reasonCtl,
+                    maxLines: 3,
+                    decoration: InputDecoration(
+                      labelText: l10n.techCloseAsDisposedReasonLabel,
+                      hintText: l10n.techCloseAsDisposedReasonHint,
+                    ),
+                    validator: (v) {
+                      if (v == null || v.trim().length < 10) {
+                        return l10n.techCloseAsDisposedReasonMin;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Méthode de mise au rebut — labels partagés avec equipment_decommission_dialog
+                  DropdownButtonFormField<String>(
+                    value: selectedMethod,
+                    hint: Text(l10n.techCloseAsDisposedMethodLabel),
+                    items: kDisposalMethods
+                        .map((m) => DropdownMenuItem(
+                              value: m,
+                              child: Text(disposalMethodLabel(l10n, m)),
+                            ))
+                        .toList(),
+                    onChanged: (v) => setDialogState(() => selectedMethod = v),
+                    validator: (v) =>
+                        v == null ? l10n.techCloseAsDisposedMethodRequired : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                reasonCtl.dispose();
+                Navigator.pop(ctx);
+              },
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton.icon(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final reason = reasonCtl.text.trim();
+                final method = selectedMethod!;
+                reasonCtl.dispose();
+                Navigator.pop(ctx);
+                await _doCloseAsDisposed(issue, reason, method);
+              },
+              icon: const Icon(Icons.delete_forever, size: 16),
+              label: Text(l10n.commonConfirm),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _doCloseAsDisposed(
+      Issue issue, String reason, String disposalMethod) async {
+    final l10n = AppLocalizations.of(context)!;
+    setState(() => _isClosingAsDisposed = true);
+    try {
+      await DbApiService.instance
+          .closeIssueAsDisposed(issue.id, reason, disposalMethod);
+      await _refreshAfterMutation();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.delete_forever, color: Colors.white),
+          const SizedBox(width: 12),
+          Text(l10n.techCloseAsDisposedSuccess),
+        ]),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+      _stopTimer();
+      setState(() => _isDirty = false);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('${l10n.commonApiError}: $e'),
+        backgroundColor: AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    } finally {
+      if (mounted) setState(() => _isClosingAsDisposed = false);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
   // Dialog : Transfert de groupe (réassignation)
   // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1705,15 +1858,24 @@ class _TechnicianInterventionUpdateScreenState
     }
 
     try {
-      // Ferme la session active avec resolved=true avant de clore l'incident
-      try {
-        await DbApiService.instance.closeActiveInterventionSession(issue.id, {
-          'resolved': true,
-          'outcome': _outcomeController.text.trim().isNotEmpty
-              ? _outcomeController.text.trim()
-              : null,
-        });
-      } catch (_) { /* ignoré si pas de session active */ }
+      final diagnosis = _diagnosisController.text.trim();
+      final outcome   = _outcomeController.text.trim();
+
+      // S'assure qu'une session active existe (créée si besoin) avant de la fermer.
+      // DOIT s'exécuter avant l'updateIssue qui suit : la route PUT /sessions/active
+      // exige que l'incident soit encore au statut "In Progress".
+      // Utilise `finalActions` (notes de clôture déjà fusionnées) et non le texte brut
+      // du contrôleur, pour que le PDF (_generateAndFinalizeReport) conserve les notes.
+      await DbApiService.instance.saveActiveInterventionSession(issue.id, {
+        if (diagnosis.isNotEmpty)             'diagnosis':    diagnosis,
+        if (finalActions?.isNotEmpty == true) 'action_taken': finalActions,
+        if (outcome.isNotEmpty)               'outcome':      outcome,
+      });
+
+      await DbApiService.instance.closeActiveInterventionSession(issue.id, {
+        'resolved': true,
+        'outcome': outcome.isNotEmpty ? outcome : null,
+      });
 
       await DbApiService.instance.updateIssue(issue.id, {
         'status':              'Completed',

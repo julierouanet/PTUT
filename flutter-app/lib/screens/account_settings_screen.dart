@@ -174,7 +174,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         final flags = prefs == null
                             ? const <bool>[]
                             : [
-                                prefs.notifyCriticalNewIssue,
+                                prefs.notifyNewIssue,
                                 prefs.notifyCriticalAcknowledged,
                                 prefs.notifyCriticalDiagnosed,
                                 prefs.notifyCriticalResolved,

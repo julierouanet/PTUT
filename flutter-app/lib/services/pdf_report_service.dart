@@ -496,7 +496,7 @@ class PdfReportService {
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
         header: (context) => _buildInterventionHeader(
             now, generatedByName, generatedByRole, isFinalized, logo, reportNo),
-        footer: (context) => _buildFooter(context),
+        footer: (context) => _buildFooter(context, reference: 'Incident $issueId'),
         build: (context) => [
           // ── Section 1 : Identité incident + équipement ─────────────────
           _sectionTitle('1. INCIDENT & EQUIPMENT'),
@@ -508,10 +508,9 @@ class PdfReportService {
           ]),
 
           // ── Section 2 : Diagnostic & actions (live incident) ────────────
-          _sectionTitle('2. DIAGNOSIS, ACTIONS & PARTS'),
+          _sectionTitle('2. DIAGNOSIS & ACTIONS'),
           _labelledBlock('Diagnosis', _s(report['diagnosis'])),
           _labelledBlock('Actions taken', _s(report['actions'])),
-          _labelledBlock('Parts replaced', _s(report['parts_replaced'])),
 
           // ── Section 3 : Rapport structuré ──────────────────────────────
           _sectionTitle('3. INTERVENTION REPORT'),
@@ -956,7 +955,7 @@ class PdfReportService {
     );
   }
 
-  static pw.Widget _buildFooter(pw.Context context) {
+  static pw.Widget _buildFooter(pw.Context context, {String? reference}) {
     return pw.Container(
       margin: const pw.EdgeInsets.only(top: 6),
       decoration: const pw.BoxDecoration(
@@ -971,7 +970,8 @@ class PdfReportService {
             style: const pw.TextStyle(fontSize: 7, color: _textMuted),
           ),
           pw.Text(
-            'Page ${context.pageNumber} / ${context.pagesCount}',
+            'Page ${context.pageNumber} / ${context.pagesCount}'
+            '${reference != null ? ' — $reference' : ''}',
             style: const pw.TextStyle(fontSize: 7, color: _textMuted),
           ),
         ],

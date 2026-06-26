@@ -336,10 +336,8 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
             ),
             const SizedBox(height: 16),
 
-            // ── Section documents d'intervention ────────────────────────────
-            _DocumentSection(
-              title: l10n.docInterventionSection,
-              icon: Icons.build_outlined,
+            // ── Section documents d'intervention (regroupés par incident) ──
+            _InterventionDocumentsSection(
               docs: interDocs,
               canManage: _canManage,
               emptyLabel: l10n.docNoDocuments,
@@ -356,7 +354,63 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
 
 }
 
-// ── Section de documents ──────────────────────────────────────────────────────
+// ── Helpers partagés ─────────────────────────────────────────────────────────
+
+String _formatDocDate(String raw) {
+  if (raw.isEmpty) return '—';
+  try {
+    return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
+  } catch (_) {
+    return raw;
+  }
+}
+
+// ── En-tête de section mutualisé ─────────────────────────────────────────────
+
+class _DocumentSectionHeader extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final int count;
+  final bool canManage;
+  final VoidCallback? onAdd;
+
+  const _DocumentSectionHeader({
+    required this.title,
+    required this.icon,
+    required this.count,
+    required this.canManage,
+    this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [
+      Icon(icon, size: 18, color: AppColors.primary),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          '$title ($count)',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      ),
+      if (canManage && onAdd != null)
+        TextButton.icon(
+          onPressed: onAdd,
+          icon: const Icon(Icons.upload_file, size: 16),
+          label: const Text('Ajouter', style: TextStyle(fontSize: 12)),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          ),
+        ),
+    ]);
+  }
+}
+
+// ── Section de documents (technique / certifications) ────────────────────────
 
 class _DocumentSection extends StatelessWidget {
   final String title;
@@ -388,49 +442,16 @@ class _DocumentSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // En-tête section
-            Row(children: [
-              Icon(icon, size: 18, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  '$title (${docs.length})',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-              ),
-              if (canManage && onAdd != null)
-                TextButton.icon(
-                  onPressed: onAdd,
-                  icon: const Icon(Icons.upload_file, size: 16),
-                  label: const Text('Ajouter', style: TextStyle(fontSize: 12)),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  ),
-                ),
-            ]),
+            _DocumentSectionHeader(
+              title: title,
+              icon: icon,
+              count: docs.length,
+              canManage: canManage,
+              onAdd: onAdd,
+            ),
             const Divider(height: 20),
-
-            // Liste ou état vide
             if (docs.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(children: [
-                  const Icon(Icons.folder_open, color: AppColors.textMuted, size: 18),
-                  const SizedBox(width: 8),
-                  Text(
-                    emptyLabel,
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontStyle: FontStyle.italic,
-                      fontSize: 13,
-                    ),
-                  ),
-                ]),
-              )
+              _emptyRow(emptyLabel)
             else
               ...docs.map((doc) => _DocumentTile(
                 doc: doc,
@@ -444,6 +465,157 @@ class _DocumentSection extends StatelessWidget {
     );
   }
 }
+
+// ── Regroupement et tri des documents d'intervention ─────────────────────────
+
+/// Groupe [docs] par issueId et trie les groupes nommés par issueCreatedAt desc.
+/// Le groupe null (documents orphelins, sans incident) est toujours le dernier.
+typedef _DocGroup = MapEntry<String?, List<EquipmentDocument>>;
+
+({List<_DocGroup> named, List<EquipmentDocument>? orphans}) _groupInterventionDocs(
+    List<EquipmentDocument> docs) {
+  final Map<String?, List<EquipmentDocument>> grouped = {};
+  for (final d in docs) {
+    grouped.putIfAbsent(d.issueId, () => []).add(d);
+  }
+
+  // Pré-calcul du max uploadedAt par groupe (évite un reduce dans le comparateur)
+  String _maxUpload(List<EquipmentDocument> g) =>
+      g.map((d) => d.uploadedAt).reduce((a, b) => a.compareTo(b) >= 0 ? a : b);
+
+  final named = grouped.entries.where((e) => e.key != null).toList();
+  // Associer la date de tri en avance pour ne pas recalculer dans le comparateur
+  final withSortKey = named.map((e) {
+    final dateIssue = e.value.first.issueCreatedAt ?? ''; // liste tjrs non vide (putIfAbsent+add)
+    final sortKey = dateIssue.isNotEmpty ? dateIssue : _maxUpload(e.value);
+    return (entry: e, sortKey: sortKey, hasIssueDate: dateIssue.isNotEmpty);
+  }).toList()
+    ..sort((a, b) {
+      // Groupes avec date d'incident connue avant ceux en repli uploadedAt
+      if (a.hasIssueDate != b.hasIssueDate) return a.hasIssueDate ? -1 : 1;
+      return b.sortKey.compareTo(a.sortKey);
+    });
+
+  return (
+    named: withSortKey.map((x) => x.entry).toList(),
+    orphans: grouped[null],
+  );
+}
+
+// ── Section documents d'intervention (regroupée par incident) ────────────────
+
+class _InterventionDocumentsSection extends StatelessWidget {
+  final List<EquipmentDocument> docs;
+  final bool canManage;
+  final String emptyLabel;
+  final void Function(EquipmentDocument) onOpen;
+  final void Function(EquipmentDocument) onDelete;
+  final VoidCallback? onAdd;
+
+  const _InterventionDocumentsSection({
+    required this.docs,
+    required this.canManage,
+    required this.emptyLabel,
+    required this.onOpen,
+    required this.onDelete,
+    this.onAdd,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final (:named, :orphans) = _groupInterventionDocs(docs);
+
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DocumentSectionHeader(
+              title: l10n.docInterventionSection,
+              icon: Icons.build_outlined,
+              count: docs.length,
+              canManage: canManage,
+              onAdd: onAdd,
+            ),
+            const Divider(height: 20),
+
+            if (docs.isEmpty)
+              _emptyRow(emptyLabel)
+            else ...[
+              for (var i = 0; i < named.length; i++)
+                _groupTile(
+                  context: context,
+                  issueId: named[i].key!,
+                  groupDocs: named[i].value,
+                  initiallyExpanded: i == 0,
+                ),
+              if (orphans != null)
+                _groupTile(
+                  context: context,
+                  issueId: null,
+                  groupDocs: orphans,
+                  initiallyExpanded: false,
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _groupTile({
+    required BuildContext context,
+    required String? issueId,
+    required List<EquipmentDocument> groupDocs,
+    required bool initiallyExpanded,
+  }) {
+    final l10n = AppLocalizations.of(context)!;
+    final title = issueId != null
+        ? l10n.docInterventionGroupTitle(issueId, groupDocs.length)
+        : l10n.docOtherDocuments(groupDocs.length);
+    final subtitle = issueId != null
+        ? '${groupDocs.first.issueStatus ?? "—"} · ${_formatDocDate(groupDocs.first.issueCreatedAt ?? "")}'
+        : null;
+
+    return ExpansionTile(
+      key: ValueKey(issueId ?? '__orphans__'),
+      initiallyExpanded: initiallyExpanded,
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: EdgeInsets.zero,
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      subtitle: subtitle != null
+          ? Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))
+          : null,
+      children: groupDocs.map((doc) => _DocumentTile(
+        doc: doc,
+        canManage: canManage,
+        onOpen: () => onOpen(doc),
+        onDelete: () => onDelete(doc),
+      )).toList(),
+    );
+  }
+}
+
+// ── État vide partagé ─────────────────────────────────────────────────────────
+
+Widget _emptyRow(String label) => Padding(
+  padding: const EdgeInsets.symmetric(vertical: 8),
+  child: Row(children: [
+    const Icon(Icons.folder_open, color: AppColors.textMuted, size: 18),
+    const SizedBox(width: 8),
+    Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.textSecondary,
+        fontStyle: FontStyle.italic,
+        fontSize: 13,
+      ),
+    ),
+  ]),
+);
 
 // ── Tuile d'un document ───────────────────────────────────────────────────────
 
@@ -459,14 +631,6 @@ class _DocumentTile extends StatelessWidget {
     required this.onOpen,
     required this.onDelete,
   });
-
-  static String _formatDate(String raw) {
-    try {
-      return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
-    } catch (_) {
-      return raw;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -496,7 +660,7 @@ class _DocumentTile extends StatelessWidget {
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        '${doc.displaySize} · ${doc.uploaderName} · ${_formatDate(doc.uploadedAt)}',
+        '${doc.displaySize} · ${doc.uploaderName} · ${_formatDocDate(doc.uploadedAt)}',
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       ),
       trailing: Row(

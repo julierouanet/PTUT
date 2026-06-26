@@ -146,12 +146,15 @@ function initTables() {
 
   // ── Préférences de notifications email par utilisateur ────────────────────
   // Pas de FK vers users : Keycloak gère les utilisateurs.
-  // Toutes les notifications sont centrées sur les incidents CRITIQUES uniquement.
+  // Les notifications superviseur restent centrées sur les incidents CRITIQUES ;
+  // la notification technicien "nouvel incident" applique désormais un seuil
+  // d'urgence minimal configurable (min_urgency_new_issue).
   // preferences_set = 0 indique une première connexion (modal de configuration à afficher).
   db.exec(`
     CREATE TABLE IF NOT EXISTS user_notification_preferences (
       user_id                     TEXT PRIMARY KEY,
-      notify_critical_new_issue   INTEGER NOT NULL DEFAULT 1,
+      notify_new_issue            INTEGER NOT NULL DEFAULT 1,
+      min_urgency_new_issue       TEXT NOT NULL DEFAULT 'Critique',
       notify_critical_acknowledged INTEGER NOT NULL DEFAULT 1,
       notify_critical_diagnosed   INTEGER NOT NULL DEFAULT 1,
       notify_critical_resolved    INTEGER NOT NULL DEFAULT 1,
@@ -167,6 +170,9 @@ function initTables() {
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_diagnosed INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_critical_resolved INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
   try { db.exec("ALTER TABLE access_requests ADD COLUMN phone TEXT"); } catch (_) {}
+  // FEAT — Seuil d'urgence minimal pour la notification technicien "nouvel incident"
+  try { db.exec("ALTER TABLE user_notification_preferences RENAME COLUMN notify_critical_new_issue TO notify_new_issue"); } catch (_) {}
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN min_urgency_new_issue TEXT NOT NULL DEFAULT 'Critique'"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts', 'approveRequests'];

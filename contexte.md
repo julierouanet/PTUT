@@ -166,7 +166,7 @@ PTUT/
 | `department_change_requests` | UUID TEXT | Demandes de changement de département (`pending` / `approved` / `rejected`) |
 | `role_change_requests` | UUID TEXT | Demandes de rôle supplémentaire (`pending` / `approved` / `rejected`) |
 | `access_requests` | AUTOINCREMENT | Traçabilité des comptes auto-créés via demande d'accès |
-| `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur (5 flags booléens + `preferences_set`) |
+| `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur — `notify_new_issue` (ex-`notify_critical_new_issue`, renommé) + `min_urgency_new_issue` TEXT (`Faible`/`Moyen`/`Urgent`/`Critique`, défaut `Critique`) pour le seuil d'urgence minimal déclenchant l'email "nouvel incident" technicien, 4 flags booléens superviseur (`notify_critical_acknowledged/diagnosed/resolved`, `notify_pm_due`) + `preferences_set` |
 | `feature_flags` | `id` TEXT | État global par module désactivable (`equipment`, `inventory`) — `enabled` INTEGER |
 | `feature_flag_overrides` | `(flag_id, role)` | Overrides par rôle Keycloak — permet de désactiver un module pour un rôle spécifique |
 | `app_settings` | `key` TEXT | **[NOUVEAU]** Paramètres applicatifs clé/valeur pilotés depuis l'UI admin — 6 clés : `login_contact_title`, `login_contact_email`, `login_contact_phone` (publics), `brevo_api_key` (secret), `brevo_sender_email`, `brevo_sender_name`. Brevo : priorité DB non vide → fallback env. |

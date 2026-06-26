@@ -227,17 +227,19 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 #### GET /api/users/me/notifications (Auth — supervisor/technician/admin)
 - Retourne les préférences de notification email de l'utilisateur connecté
 - Crée une entrée par défaut si absente (`preferences_set = false`)
-- **Réponse** : `{ notify_new_issue, notify_issue_assigned, notify_issue_resolved, notify_issue_status_update, notify_pm_due, preferences_set, updated_at }`
+- **Réponse** : `{ notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged, notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, preferences_set, updated_at }`
+- `min_urgency_new_issue` (`Faible`/`Moyen`/`Urgent`/`Critique`, défaut `Critique`) : seuil d'urgence minimal déclenchant l'email "nouvel incident" — filtré côté `send-email`/`send-to-roles`, indépendamment des push (non filtrées)
 
 #### PUT /api/users/me/notifications (Auth — supervisor/technician/admin)
 - Met à jour les préférences + marque `preferences_set = 1`
-- **Body** : `{ notify_new_issue?, notify_issue_assigned?, notify_issue_resolved?, notify_issue_status_update?, notify_pm_due? }` (tous optionnels, booléens)
+- **Body** : `{ notify_new_issue?, min_urgency_new_issue?, notify_critical_acknowledged?, notify_critical_diagnosed?, notify_critical_resolved?, notify_pm_due? }` (tous optionnels)
+- `min_urgency_new_issue` validé contre `['Faible','Moyen','Urgent','Critique']` → `400` si invalide
 
 #### POST /internal/notifications/send-email (x-internal-secret)
 - Appelé par db-service — envoie un email à un utilisateur si ses préférences le permettent
 - **Body** : `{ type, to_email, to_name, user_id, payload }`
-- Types : `new_issue`, `issue_assigned`, `issue_resolved`, `issue_status_update`, `pm_due`
-- Répond immédiatement `{ sent: bool, reason? }`
+- Types : `critical_new_issue` (seuil `min_urgency_new_issue` comparé à `payload.urgency`), `critical_acknowledged`, `critical_diagnosed`, `critical_resolved`, `pm_due`
+- Répond immédiatement `{ sent: bool, reason? }` (`reason` : `preference_disabled` ou `below_urgency_threshold`)
 
 #### POST /internal/notifications/send-to-roles (x-internal-secret)
 - Notifie tous les utilisateurs des rôles spécifiés ayant la préférence activée
@@ -668,7 +670,7 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | GET     | /api/equipment/:id/maintenance-label/:record_id | Admin/Sup/Tech | Génère un PDF A6 paysage (pdfkit). `Content-Type: application/pdf`. Inclut équipement, technicien, dates maint. |
 | GET     | /api/equipment/replacement-plan | Admin/Sup         | **[NOUVEAU]** Plan de remplacement biomédical (RA3 S5). Calcul serveur âge/statut/horizon. Retourne `{summary:{biomedical_count, avg_age_years, end_of_life_count, end_of_life_pct, by_horizon, by_criticality}, items:[{id, name, subcategory, criticality, age, lifespan, overshoot, status_replacement, horizon}]}`. Statut: `a_remplacer`/`bientot`/`ok`/`donnee_manquante` ; tri criticité A>B>C puis dépassement |
 | POST    | /api/equipment/restore          | Admin             | Restaurer equipement supprime                     |
-| GET     | /api/equipment/:id/documents    | Auth (non-staff)  | **[NOUVEAU]** Liste des documents actifs. Filtre optionnel: `?type=technical\|intervention\|certification`. Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at}]` |
+| GET     | /api/equipment/:id/documents    | Auth (non-staff)  | Liste des documents actifs. Filtre optionnel: `?type=technical\|intervention\|certification`. Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at, issue_id, issue_status, issue_created_at}]` — `issue_*` nuls pour les documents sans incident associé (LEFT JOIN issues) |
 | POST    | /api/equipment/:id/documents    | Admin/Sup/Tech    | **[NOUVEAU]** Upload multipart (`file` + `type`). Stockage physique `/data/uploads/documents/` avec nom UUID. Retourne `{id, stored_name, original_name, document_type, mime_type, file_size_kb}` |
 | GET     | /api/equipment/:id/documents/:doc_id/download | Auth (non-staff) | **[NOUVEAU]** Téléchargement inline (`Content-Disposition: inline`). 404 si soft-deleted |
 | DELETE  | /api/equipment/:id/documents/:doc_id | Admin/Sup    | **[NOUVEAU]** Soft delete (`deleted_at`). Fichier physique conservé |
@@ -732,6 +734,7 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | PATCH   | /api/issues/:id/reject      | Admin/Sup      | Rejet rapide d'un incident en file de validation. Body: `{ reason_code, comment? }`. `reason_code` ∈ `duplicate\|not_reproducible\|out_of_scope\|false_alarm\|other` ; `comment` obligatoire (≥5 char) si `other`, max 500. **409** si statut ≠ `Reported`. Effets : status → `Rejected`, ligne tracée appendée dans `actions` (incident conservé). Audit `reject_issue`. |
 | PATCH   | /api/issues/:id/detach      | Admin/Sup/Tech | Détachement d'un incident pris en charge → retour au pool. Body: `{ reason }` (≥10 char). **409** si statut ≠ `In Progress` ; **403** si technicien non-assigné (admin exempté). Effets : status → `Acknowledged`, `assigned_technician`/`taken_at` → NULL, ligne tracée appendée dans `actions`. Audit `detach_issue`. |
 | PATCH   | /api/issues/:id/link-equipment | Admin/Sup/Tech | **[NOUVEAU]** Liaison tardive d'un incident créé sans équipement (`equipment_id IS NULL`) à un équipement du catalogue. Body: `{ equipment_id }`. **400** si manquant ; **409** si déjà lié ou incident clôturé (`Completed`/`Rejected`) ou équipement `Disposed` ; **403** si technicien non-assigné/incident non `In Progress` (admin/supervisor exemptés) ; **404** si incident ou équipement introuvable. Effets : `equipment_id`/`equipment_name` posés, `equipment_linked_at` (ISO, posé une seule fois), ligne tracée appendée dans `actions`. Audit `link_issue_equipment`. |
+| PATCH   | /api/issues/:id/close-as-disposed | Admin/Sup/Tech | Clôture intervention — équipement irréparable. Body: `{ reason (≥10 char), disposal_method ∈ destroyed\|sold\|donated\|returned\|cannibalized }`. **400** si incident sans `equipment_id` ou body invalide ; **404** si incident/équipement introuvable ; **409** si équipement déjà `Disposed`. Effets : session active fermée silencieusement, issue → `Completed`, equipment → `Disposed` (`decommission_reason = 'irreparable'`, `disposal_method`, `decommission_notes`, `decommissioned_by_*`). Deux logAction : `issue_closed_equipment_disposed` + `decommission_equipment`. |
 | DELETE  | /api/issues/:id             | Admin          | Supprimer                                                |
 | POST    | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Upload multipart (champ `photos`, max 5 fichiers JPEG/PNG, 5 Mo chacun). Vérifie que total ≤ 5. Retourne `{photos: [{id, original_name, file_size_kb}]}` |
 | GET     | /api/issues/:id/photos      | Auth           | **[NOUVEAU]** Liste les photos de l'incident. Retourne `[{id, original_name, mime_type, file_size_kb, uploaded_at}]` |

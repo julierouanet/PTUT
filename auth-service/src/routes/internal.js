@@ -3,7 +3,9 @@
 // Montés sous /internal dans index.js.
 //
 // Types d'événements reconnus :
-//   critical_new_issue    → techniciens : nouvel incident critique dans leur groupe
+//   critical_new_issue    → techniciens : nouvel incident dans leur groupe, désormais déclenché
+//                            dès min_urgency_new_issue, pas seulement Critique
+//                            (nom d'événement conservé par compatibilité)
 //   critical_acknowledged → superviseurs/admins : technicien a pris en charge un critique
 //   critical_diagnosed    → superviseurs/admins : diagnostic posé sur un critique
 //   critical_resolved     → superviseurs/admins : incident critique résolu (avec KPIs)
@@ -16,6 +18,7 @@ const { getDb } = require('../database');
 const { INTERNAL_SECRET } = require('../config');
 const { sendEmail, buildEmailContent } = require('../utils/email_service');
 const { kcAdminFetch } = require('../utils/keycloakAdmin');
+const { urgencyIndex } = require('../utils/urgency');
 
 const router = express.Router();
 
@@ -30,13 +33,22 @@ function requireInternalSecret(req, res, next) {
 // ── Résolution de la colonne préférence selon le type d'événement ─────────────
 function _prefColumnFor(type) {
   switch (type) {
-    case 'critical_new_issue':    return 'notify_critical_new_issue';
+    case 'critical_new_issue':    return 'notify_new_issue';
     case 'critical_acknowledged': return 'notify_critical_acknowledged';
     case 'critical_diagnosed':    return 'notify_critical_diagnosed';
     case 'critical_resolved':     return 'notify_critical_resolved';
     case 'pm_due':                return 'notify_pm_due';
     default:                      return null;
   }
+}
+
+// Seuil d'urgence minimal pour 'critical_new_issue' : la préférence ne s'applique
+// qu'à ce type, les autres types (critical_acknowledged, pm_due, ...) ignorent ce filtre.
+// Retourne true si l'email doit être bloqué car l'urgence du payload est sous le seuil.
+function _belowUrgencyThreshold(prefCol, prefs, payload) {
+  if (prefCol !== 'notify_new_issue') return false;
+  const threshold = prefs?.min_urgency_new_issue ?? 'Critique';
+  return urgencyIndex((payload || {}).urgency || 'Critique') < urgencyIndex(threshold);
 }
 
 // ── POST /internal/notifications/send-email ────────────────────────────────────
@@ -63,6 +75,10 @@ router.post('/notifications/send-email', requireInternalSecret, (req, res) => {
   const shouldSend = prefs ? !!prefs[prefCol] : true;
   if (!shouldSend) {
     return res.json({ sent: false, reason: 'preference_disabled' });
+  }
+
+  if (_belowUrgencyThreshold(prefCol, prefs, payload)) {
+    return res.json({ sent: false, reason: 'below_urgency_threshold' });
   }
 
   const content = buildEmailContent(type, payload || {});
@@ -126,6 +142,7 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
           ).get(kcId);
           const shouldSend = prefs ? !!prefs[prefCol] : true;
           if (!shouldSend) continue;
+          if (_belowUrgencyThreshold(prefCol, prefs, payload)) continue;
 
           const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || email;
           sendEmail({ to: email, toName: name, ...content }).catch(() => {});

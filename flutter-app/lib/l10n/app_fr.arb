@@ -1519,6 +1519,16 @@
   "techEscalateSuccess": "Incident escaladé — statut : {status}",
   "@techEscalateSuccess": { "placeholders": { "status": { "type": "String" } } },
 
+  "techCloseAsDisposedButton": "Équipement irréparable",
+  "techCloseAsDisposedTitle": "Clôturer — Équipement irréparable",
+  "techCloseAsDisposedSubtitle": "L'équipement sera définitivement réformé (Disposed). Cette action est irréversible.",
+  "techCloseAsDisposedReasonLabel": "Raison (obligatoire)",
+  "techCloseAsDisposedReasonHint": "Décrivez pourquoi l'équipement ne peut pas être réparé",
+  "techCloseAsDisposedReasonMin": "La raison doit contenir au moins 10 caractères",
+  "techCloseAsDisposedMethodLabel": "Méthode de mise au rebut",
+  "techCloseAsDisposedMethodRequired": "La méthode de mise au rebut est obligatoire",
+  "techCloseAsDisposedSuccess": "Intervention clôturée — équipement réformé",
+
   "techWorkOrderTitle": "Bon de Travail — Clôture formelle",
   "techWorkOrderSafetyCheck": "J'atteste que toutes les vérifications de sécurité ont été effectuées et que l'équipement est en état de fonctionnement.",
   "techWorkOrderSafetyRequired": "Vous devez valider les vérifications de sécurité avant de clore l'incident.",
@@ -1704,9 +1714,9 @@
 
   "notifPrefsTitle": "Alertes emails — Incidents critiques",
   "@notifPrefsTitle": {},
-  "notifPrefsSubtitle": "Toutes les notifications portent sur les incidents de niveau Critique uniquement.",
+  "notifPrefsSubtitle": "Les seuils d'urgence ci-dessous sont personnalisables par notification.",
   "@notifPrefsSubtitle": {},
-  "notifPrefsScope": "Incidents de niveau Critique seulement",
+  "notifPrefsScope": "Seuils personnalisés par notification",
   "@notifPrefsScope": {},
   "notifPrefsFirstSetupSubtitle": "Bienvenue ! Configurez vos alertes email.",
   "@notifPrefsFirstSetupSubtitle": {},
@@ -1726,10 +1736,12 @@
   "notifPrefsSectionSupervisor": "Alertes superviseur",
   "@notifPrefsSectionSupervisor": {},
 
-  "notifPrefsCriticalNewIssue": "Nouvel incident critique signalé",
+  "notifPrefsCriticalNewIssue": "Nouvel incident signalé",
   "@notifPrefsCriticalNewIssue": {},
-  "notifPrefsCriticalNewIssueDesc": "Email dès qu'un incident CRITIQUE est signalé dans votre groupe technique.",
+  "notifPrefsCriticalNewIssueDesc": "Email dès qu'un incident est signalé dans votre groupe technique, à partir du seuil d'urgence choisi.",
   "@notifPrefsCriticalNewIssueDesc": {},
+  "notifPrefsNewIssueMinUrgencyLabel": "À partir de :",
+  "@notifPrefsNewIssueMinUrgencyLabel": {},
 
   "notifPrefsCriticalAcknowledged": "Incident critique pris en charge",
   "@notifPrefsCriticalAcknowledged": {},
@@ -1916,6 +1928,17 @@
   "@docDownloadError": {},
   "docNoDocuments": "Aucun document dans cette section",
   "@docNoDocuments": {},
+  "docInterventionGroupTitle": "Incident {issueId} ({count})",
+  "@docInterventionGroupTitle": {
+    "placeholders": {
+      "issueId": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "docOtherDocuments": "Autres documents ({count})",
+  "@docOtherDocuments": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "docRestrictedAccess": "Accès réservé aux techniciens et superviseurs",
   "@docRestrictedAccess": {},
   "issuePhotosSection": "Photos de l'incident",

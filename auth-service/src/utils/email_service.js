@@ -50,6 +50,14 @@ const VERT   = '#388E3C';
 const BLEU   = '#1565C0';
 const GRIS   = '#757575';
 
+// Style visuel de l'email "nouvel incident" selon l'urgence réelle de l'incident.
+const URGENCY_STYLE = {
+  Critique: { color: ROUGE,  bg: '#FFEBEE', emoji: '🚨', action: "Votre intervention est requise en priorité." },
+  Urgent:   { color: ORANGE, bg: '#FFF3E0', emoji: '⚠️', action: "Une intervention rapide est attendue." },
+  Moyen:    { color: BLEU,   bg: '#E3F2FD', emoji: 'ℹ️', action: "Un incident a été signalé dans votre groupe technique." },
+  Faible:   { color: GRIS,   bg: '#F5F5F5', emoji: 'ℹ️', action: "Un incident a été signalé dans votre groupe technique." },
+};
+
 /** Formate une durée en millisecondes en texte lisible (ex: "2h 15min"). */
 function _formatDuration(ms) {
   if (!ms || ms <= 0) return '—';
@@ -128,7 +136,7 @@ async function sendEmail({ to, toName, subject, htmlContent, textContent }) {
  * Construit le contenu HTML + texte d'un email selon le type d'événement.
  *
  * Types supportés :
- *   critical_new_issue    → techniciens : nouvel incident critique
+ *   critical_new_issue    → techniciens : nouvel incident (couleur/ton selon urgence réelle)
  *   critical_acknowledged → superviseurs : technicien a pris en charge
  *   critical_diagnosed    → superviseurs : diagnostic posé
  *   critical_resolved     → superviseurs : incident résolu (KPIs)
@@ -160,18 +168,20 @@ function buildEmailContent(type, payload = {}) {
 
   switch (type) {
 
-    // ── Technicien : nouvel incident CRITIQUE signalé ──────────────────────────
+    // ── Technicien : nouvel incident signalé (seuil d'urgence configurable) ────
     case 'critical_new_issue': {
-      const subject = `🚨 [CRITIQUE] Nouvel incident — ${equipLabel} · ${deptLabel}`;
+      const style = URGENCY_STYLE[urgency] || URGENCY_STYLE.Critique;
+
+      const subject = `${style.emoji} [${urgency.toUpperCase()}] Nouvel incident — ${equipLabel} · ${deptLabel}`;
       const htmlContent = `
         <div style="font-family:Arial,sans-serif;max-width:600px;color:#212121">
-          <div style="background:${ROUGE};padding:16px 24px;border-radius:6px 6px 0 0">
-            <h2 style="color:#fff;margin:0;font-size:18px">🚨 Incident CRITIQUE signalé</h2>
+          <div style="background:${style.color};padding:16px 24px;border-radius:6px 6px 0 0">
+            <h2 style="color:#fff;margin:0;font-size:18px">${style.emoji} Incident ${urgency} signalé</h2>
           </div>
           <div style="border:1px solid #e0e0e0;border-top:none;border-radius:0 0 6px 6px;padding:20px 24px">
             <p style="margin:0 0 16px;font-size:14px;color:${GRIS}">
-              Un incident de niveau <strong style="color:${ROUGE}">Critique</strong> vient d'être signalé dans votre groupe technique.
-              Votre intervention est requise en priorité.
+              Un incident de niveau <strong style="color:${style.color}">${urgency}</strong> vient d'être signalé dans votre groupe technique.
+              ${style.action}
             </p>
             <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
               ${_row('Équipement', `<strong>${equipLabel}</strong>`)}
@@ -180,14 +190,14 @@ function buildEmailContent(type, payload = {}) {
               ${_row('Signalé par', reporter_name)}
               ${_row('N° incident', issue_id)}
             </table>
-            <div style="margin-top:20px;padding:12px;background:#FFEBEE;border-radius:4px;border-left:4px solid ${ROUGE}">
-              <p style="margin:0;font-size:13px;color:${ROUGE}"><strong>Action requise :</strong> Prenez en charge cet incident dès que possible via l'application GMAO.</p>
+            <div style="margin-top:20px;padding:12px;background:${style.bg};border-radius:4px;border-left:4px solid ${style.color}">
+              <p style="margin:0;font-size:13px;color:${style.color}"><strong>Action requise :</strong> Prenez en charge cet incident dès que possible via l'application GMAO.</p>
             </div>
           </div>
           ${_footer}
         </div>
       `;
-      const textContent = `INCIDENT CRITIQUE - ${equipLabel} (${deptLabel})\nSignalé par: ${reporter_name || '—'}\nDescription: ${description || '—'}\nN° incident: ${issue_id || '—'}`;
+      const textContent = `INCIDENT ${urgency.toUpperCase()} - ${equipLabel} (${deptLabel})\nSignalé par: ${reporter_name || '—'}\nDescription: ${description || '—'}\nN° incident: ${issue_id || '—'}`;
       return { subject, htmlContent, textContent };
     }
 

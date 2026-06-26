@@ -7568,6 +7568,60 @@ abstract class AppLocalizations {
   /// **'Incident escaladé — statut : {status}'**
   String techEscalateSuccess(String status);
 
+  /// No description provided for @techCloseAsDisposedButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement irréparable'**
+  String get techCloseAsDisposedButton;
+
+  /// No description provided for @techCloseAsDisposedTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clôturer — Équipement irréparable'**
+  String get techCloseAsDisposedTitle;
+
+  /// No description provided for @techCloseAsDisposedSubtitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'L\'équipement sera définitivement réformé (Disposed). Cette action est irréversible.'**
+  String get techCloseAsDisposedSubtitle;
+
+  /// No description provided for @techCloseAsDisposedReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison (obligatoire)'**
+  String get techCloseAsDisposedReasonLabel;
+
+  /// No description provided for @techCloseAsDisposedReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Décrivez pourquoi l\'équipement ne peut pas être réparé'**
+  String get techCloseAsDisposedReasonHint;
+
+  /// No description provided for @techCloseAsDisposedReasonMin.
+  ///
+  /// In fr, this message translates to:
+  /// **'La raison doit contenir au moins 10 caractères'**
+  String get techCloseAsDisposedReasonMin;
+
+  /// No description provided for @techCloseAsDisposedMethodLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Méthode de mise au rebut'**
+  String get techCloseAsDisposedMethodLabel;
+
+  /// No description provided for @techCloseAsDisposedMethodRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'La méthode de mise au rebut est obligatoire'**
+  String get techCloseAsDisposedMethodRequired;
+
+  /// No description provided for @techCloseAsDisposedSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intervention clôturée — équipement réformé'**
+  String get techCloseAsDisposedSuccess;
+
   /// No description provided for @techWorkOrderTitle.
   ///
   /// In fr, this message translates to:
@@ -8285,13 +8339,13 @@ abstract class AppLocalizations {
   /// No description provided for @notifPrefsSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Toutes les notifications portent sur les incidents de niveau Critique uniquement.'**
+  /// **'Les seuils d\'urgence ci-dessous sont personnalisables par notification.'**
   String get notifPrefsSubtitle;
 
   /// No description provided for @notifPrefsScope.
   ///
   /// In fr, this message translates to:
-  /// **'Incidents de niveau Critique seulement'**
+  /// **'Seuils personnalisés par notification'**
   String get notifPrefsScope;
 
   /// No description provided for @notifPrefsFirstSetupSubtitle.
@@ -8345,14 +8399,20 @@ abstract class AppLocalizations {
   /// No description provided for @notifPrefsCriticalNewIssue.
   ///
   /// In fr, this message translates to:
-  /// **'Nouvel incident critique signalé'**
+  /// **'Nouvel incident signalé'**
   String get notifPrefsCriticalNewIssue;
 
   /// No description provided for @notifPrefsCriticalNewIssueDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Email dès qu\'un incident CRITIQUE est signalé dans votre groupe technique.'**
+  /// **'Email dès qu\'un incident est signalé dans votre groupe technique, à partir du seuil d\'urgence choisi.'**
   String get notifPrefsCriticalNewIssueDesc;
+
+  /// No description provided for @notifPrefsNewIssueMinUrgencyLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'À partir de :'**
+  String get notifPrefsNewIssueMinUrgencyLabel;
 
   /// No description provided for @notifPrefsCriticalAcknowledged.
   ///
@@ -8851,6 +8911,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun document dans cette section'**
   String get docNoDocuments;
+
+  /// No description provided for @docInterventionGroupTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incident {issueId} ({count})'**
+  String docInterventionGroupTitle(String issueId, int count);
+
+  /// No description provided for @docOtherDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autres documents ({count})'**
+  String docOtherDocuments(int count);
 
   /// No description provided for @docRestrictedAccess.
   ///
