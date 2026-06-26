@@ -45,7 +45,8 @@ services:
       - ./nginx/conf.d/ip.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/keycloak-loading.html:/usr/share/nginx/html/keycloak-loading.html:ro
     networks:
-      - frontend   # nginx accède à auth-service et db-service uniquement
+      - frontend   # nginx accède à auth-service et db-service
+      - backend    # nginx doit résoudre et proxifier keycloak
     depends_on:
       auth-service:
         condition: service_healthy
@@ -68,7 +69,8 @@ services:
         reservations:
           memory: 64M
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost/auth/health"]
+      # Certificat auto-signé : --no-check-certificate requis ; on cible HTTPS directement
+      test: ["CMD", "wget", "-qO-", "--no-check-certificate", "https://127.0.0.1/auth/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -249,8 +251,9 @@ services:
         condition: service_healthy
     healthcheck:
       # Vérifie la disponibilité HTTP réelle de Keycloak (port management 9000)
+      # L'image Keycloak n'a ni wget ni curl — on utilise /dev/tcp bash built-in
       # start_period élevé : premier démarrage = compilation Quarkus (~2-4 min selon la VM)
-      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q '\"status\":\"UP\"' || exit 1"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /keycloak/health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && grep -q 'UP' <&3 && exec 3>&-"]
       interval: 15s
       timeout: 5s
       retries: 15
