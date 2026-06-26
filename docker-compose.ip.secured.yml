@@ -249,11 +249,12 @@ services:
         condition: service_healthy
     healthcheck:
       # Vérifie la disponibilité HTTP réelle de Keycloak (port management 9000)
+      # start_period élevé : premier démarrage = compilation Quarkus (~2-4 min selon la VM)
       test: ["CMD-SHELL", "wget -qO- http://localhost:9000/health/ready 2>/dev/null | grep -q '\"status\":\"UP\"' || exit 1"]
       interval: 15s
       timeout: 5s
-      retries: 10
-      start_period: 60s
+      retries: 15
+      start_period: 120s
     security_opt:
       - no-new-privileges:true
     cap_drop:

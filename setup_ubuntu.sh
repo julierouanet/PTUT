@@ -9,7 +9,7 @@
 #   - build_and_push.sh exécuté au préalable sur la machine dev
 #     (images poussées sur Docker Hub)
 #   - Seulement ces deux fichiers à copier sur le serveur :
-#       scp setup_ubuntu.sh docker-compose.ip.yml user@IP:~/kabutare/
+#       scp setup_ubuntu.sh docker-compose.ip.secured.yml user@IP:~/kabutare/
 #   - Exécuter depuis le répertoire contenant ces fichiers :
 #       sudo bash setup_ubuntu.sh
 # ============================================================
@@ -30,6 +30,25 @@ echo ""
 echo "========================================================"
 echo " Déploiement Hôpital de Kabutare — serveur IP-only"
 echo "========================================================"
+echo ""
+
+# ── Mode réseau : public ou WiFi local uniquement ─────────────
+echo "  Mode d'accès réseau :"
+echo ""
+echo "  1) Public (internet)     — accessible depuis n'importe où via l'IP publique"
+echo "                             + optionnellement depuis le WiFi interne"
+echo "  2) WiFi local uniquement — accessible seulement depuis le réseau WiFi"
+echo "                             de l'hôpital (adresse IP privée)"
+echo ""
+read -rp "  Votre choix [1/2, défaut=2] : " NETWORK_MODE_INPUT
+NETWORK_MODE="${NETWORK_MODE_INPUT:-2}"
+echo ""
+if [[ "${NETWORK_MODE}" == "1" ]]; then
+  echo "  → Mode PUBLIC : l'application sera accessible depuis internet."
+else
+  NETWORK_MODE="2"
+  echo "  → Mode WiFi LOCAL : l'application sera accessible uniquement sur le réseau interne."
+fi
 echo ""
 
 # ── Étape 1 : Mise à jour système ────────────────────────────
@@ -72,34 +91,50 @@ else
   echo "      Installation Docker ignorée."
 fi
 
-# ── Étape 3 : Détection des IPs (publique + réseau local) ────
+# ── Étape 3 : Détection des IPs ──────────────────────────────
 echo "[3/9] Détection des IPs du serveur..."
-
-# IP publique (internet)
-DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
-  || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
-  || hostname -I | awk '{print $1}')
-
-echo "      IP publique détectée : ${DETECTED_IP}"
-read -rp "      Confirmer ou saisir l'IP publique [${DETECTED_IP}] : " USER_IP
-SERVER_IP="${USER_IP:-${DETECTED_IP}}"
-echo "      ✓ IP publique retenue : ${SERVER_IP}"
 
 # IP locale (WiFi hôpital — plages privées 192.168.x.x / 10.x.x.x / 172.16-31.x.x)
 DETECTED_LOCAL_IP=$(hostname -I | tr ' ' '\n' \
   | grep -E '^(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)' \
-  | grep -v "^${SERVER_IP}$" | head -1 || true)
+  | head -1 || true)
 
-echo ""
-echo "      IP locale réseau interne détectée : ${DETECTED_LOCAL_IP:-aucune}"
-echo "      (utilisée par les appareils connectés au WiFi de l'hôpital)"
-read -rp "      Saisir l'IP locale du serveur sur le WiFi hôpital [${DETECTED_LOCAL_IP}] (Entrée pour ignorer) : " USER_LOCAL_IP
-LOCAL_IP="${USER_LOCAL_IP:-${DETECTED_LOCAL_IP}}"
-if [[ -n "${LOCAL_IP}" ]]; then
-  echo "      ✓ IP locale retenue : ${LOCAL_IP}"
-  echo "      → Les appareils WiFi accéderont via https://${LOCAL_IP}/app_isis/"
+if [[ "${NETWORK_MODE}" == "2" ]]; then
+  # ── Mode WiFi local : on n'utilise que l'IP privée ─────────
+  echo "      IP locale détectée : ${DETECTED_LOCAL_IP:-aucune}"
+  read -rp "      Confirmer ou saisir l'IP WiFi du serveur [${DETECTED_LOCAL_IP}] : " USER_LOCAL_IP
+  LOCAL_IP="${USER_LOCAL_IP:-${DETECTED_LOCAL_IP}}"
+  if [[ -z "${LOCAL_IP}" ]]; then
+    echo "      ✗ Aucune IP locale fournie — impossible de continuer." >&2
+    exit 1
+  fi
+  SERVER_IP="${LOCAL_IP}"
+  echo "      ✓ IP WiFi retenue : ${SERVER_IP}"
+  echo "      → Accès uniquement depuis le réseau interne de l'hôpital."
+
 else
-  echo "      Pas d'IP locale configurée — accès WiFi interne désactivé."
+  # ── Mode public : IP publique + IP locale optionnelle ───────
+  DETECTED_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null \
+    || curl -s --max-time 5 https://ifconfig.me 2>/dev/null \
+    || hostname -I | awk '{print $1}')
+
+  echo "      IP publique détectée : ${DETECTED_IP}"
+  read -rp "      Confirmer ou saisir l'IP publique [${DETECTED_IP}] : " USER_IP
+  SERVER_IP="${USER_IP:-${DETECTED_IP}}"
+  echo "      ✓ IP publique retenue : ${SERVER_IP}"
+
+  echo ""
+  echo "      IP locale réseau interne détectée : ${DETECTED_LOCAL_IP:-aucune}"
+  echo "      (utilisée par les appareils connectés au WiFi de l'hôpital)"
+  read -rp "      Saisir l'IP locale du serveur sur le WiFi hôpital [${DETECTED_LOCAL_IP}] (Entrée pour ignorer) : " USER_LOCAL_IP
+  LOCAL_IP="${USER_LOCAL_IP:-${DETECTED_LOCAL_IP}}"
+  if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+    echo "      ✓ IP locale retenue : ${LOCAL_IP}"
+    echo "      → Les appareils WiFi accéderont via https://${LOCAL_IP}/app_isis/"
+  else
+    LOCAL_IP=""
+    echo "      Pas d'IP locale configurée — accès WiFi interne désactivé."
+  fi
 fi
 
 # ── Étape 4 : Création du fichier .env ───────────────────────
@@ -545,8 +580,21 @@ if command -v ufw &>/dev/null; then
   ufw default allow outgoing &>/dev/null || true
   # SSH avec rate-limiting intégré : max 6 tentatives/30s par IP (anti-brute-force)
   ufw limit 22/tcp    &>/dev/null || true
-  ufw allow "${HTTP_PORT}/tcp"  &>/dev/null || true
-  ufw allow "${HTTPS_PORT}/tcp" &>/dev/null || true
+
+  if [[ "${NETWORK_MODE}" == "2" ]]; then
+    # Mode WiFi local : dériver le sous-réseau depuis LOCAL_IP (ex: 192.168.1.0/24)
+    # et n'autoriser HTTP/HTTPS QUE depuis ce sous-réseau → internet bloqué
+    WIFI_SUBNET=$(echo "${SERVER_IP}" | awk -F. '{print $1"."$2"."$3".0/24"}')
+    ufw allow from "${WIFI_SUBNET}" to any port "${HTTP_PORT}"  proto tcp &>/dev/null || true
+    ufw allow from "${WIFI_SUBNET}" to any port "${HTTPS_PORT}" proto tcp &>/dev/null || true
+    echo "      ✓ Ports HTTP/HTTPS ouverts uniquement pour le sous-réseau WiFi : ${WIFI_SUBNET}"
+  else
+    # Mode public : ports ouverts pour tout le monde
+    ufw allow "${HTTP_PORT}/tcp"  &>/dev/null || true
+    ufw allow "${HTTPS_PORT}/tcp" &>/dev/null || true
+    echo "      ✓ Ports HTTP/HTTPS ouverts publiquement."
+  fi
+
   if ufw status | grep -q "Status: inactive"; then
     ufw --force enable
     echo "      ✓ Pare-feu activé (politique : deny incoming par défaut)."
@@ -565,7 +613,7 @@ echo "[8/9] Pull des images depuis Docker Hub (${DOCKER_USER})..."
 # DOCKER_CONTENT_TRUST=1 : refuse les images non signées (protection supply chain — MAJ-2)
 # Pré-requis : images signées avec `docker trust sign <image>` sur la machine de build.
 # Si la signature n'est pas configurée, retirer la variable et vérifier les digests SHA256 manuellement.
-DOCKER_CONTENT_TRUST=1 docker compose -f docker-compose.ip.yml pull nginx keycloak auth-service db-service
+DOCKER_CONTENT_TRUST=1 docker compose -f docker-compose.ip.secured.yml pull nginx keycloak auth-service db-service
 echo "      ✓ Images téléchargées."
 
 # ── Étape 9 : Démarrage de la stack ──────────────────────────
@@ -573,7 +621,7 @@ echo "[9/9] Démarrage de la stack Docker Compose..."
 # `|| true` : empêche set -euo pipefail de planter le script si Keycloak
 # n'est pas encore healthy au moment où compose up rend la main.
 # La boucle d'attente ci-dessous gère le cas du démarrage lent (premier boot = 2-3 min).
-docker compose -f docker-compose.ip.yml up -d || true
+docker compose -f docker-compose.ip.secured.yml up -d || true
 
 echo ""
 echo "      Attente que Keycloak soit prêt (premier démarrage = compilation + init DB = 2-3 min)..."
@@ -583,7 +631,7 @@ until [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/de
   if [[ $ATTEMPTS -gt 48 ]]; then
     echo ""
     echo "      ⚠ Keycloak n'est pas healthy après 4 minutes."
-    echo "        Logs Keycloak  : docker compose -f docker-compose.ip.yml logs --tail=50 keycloak"
+    echo "        Logs Keycloak  : docker compose -f docker-compose.ip.secured.yml logs --tail=50 keycloak"
     echo "        État conteneur : docker inspect keycloak-ip | grep -A5 Health"
     break
   fi
@@ -606,12 +654,12 @@ if [[ "$(docker inspect --format='{{.State.Health.Status}}' keycloak-ip 2>/dev/n
   # et non en argument CLI — évite l'exposition dans `ps aux` / /proc/<pid>/cmdline
   # Appels kcadm suivants : session stockée dans le conteneur (~/.keycloak/kcadm.config)
   # → plus besoin de repasser le mot de passe après l'auth initiale
-  KCADM="docker compose -f docker-compose.ip.yml exec -T \
+  KCADM="docker compose -f docker-compose.ip.secured.yml exec -T \
     keycloak /opt/keycloak/bin/kcadm.sh"
 
   # Auth initiale : mot de passe passé via -e dans le conteneur (sh -c l'étend côté conteneur)
   # → jamais visible dans `ps aux` sur l'hôte (CRIT-3)
-  if docker compose -f docker-compose.ip.yml exec -T \
+  if docker compose -f docker-compose.ip.secured.yml exec -T \
       -e KCADM_PASS="${KC_ADMIN_PASSWORD}" \
       -e KCADM_USER="${KC_ADMIN_USER}" \
       keycloak sh -c \
@@ -688,7 +736,7 @@ except: pass
         sed -i "s|^KC_CLIENT_SECRET_AUTH=.*|KC_CLIENT_SECRET_AUTH=${KC_SECRET}|" .env
         export KC_CLIENT_SECRET_AUTH="${KC_SECRET}"
         echo "      ✓ KC_CLIENT_SECRET_AUTH mis à jour dans .env"
-        docker compose -f docker-compose.ip.yml up -d --force-recreate auth-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml up -d --force-recreate auth-service 2>/dev/null
         echo "      ✓ auth-service redémarré avec le nouveau secret."
       fi
     fi
@@ -800,7 +848,7 @@ case "${DATA_INIT_CHOICE}" in
 
     # auth-service : permissions applicatives, rôles SQLite
     echo -n "      auth-service  : "
-    if docker compose -f docker-compose.ip.yml exec -T auth-service node seed.js 2>/dev/null; then
+    if docker compose -f docker-compose.ip.secured.yml exec -T auth-service node seed.js 2>/dev/null; then
       echo "✓ Données de démonstration insérées."
     else
       echo "⚠ Ignoré (données déjà présentes ou service non prêt)."
@@ -809,7 +857,7 @@ case "${DATA_INIT_CHOICE}" in
 
     # db-service : équipements, incidents, inventaire
     echo -n "      db-service    : "
-    if docker compose -f docker-compose.ip.yml exec -T db-service node seed.js 2>/dev/null; then
+    if docker compose -f docker-compose.ip.secured.yml exec -T db-service node seed.js 2>/dev/null; then
       echo "✓ Équipements, incidents, inventaire insérés."
     else
       echo "⚠ Ignoré (données déjà présentes ou service non prêt)."
@@ -869,7 +917,7 @@ case "${DATA_INIT_CHOICE}" in
       else
         # db-service dépend d'auth-service → arrêt des deux, redémarrage en ordre
         echo "         Arrêt de db-service et auth-service..."
-        docker compose -f docker-compose.ip.yml stop db-service auth-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml stop db-service auth-service 2>/dev/null
         if docker cp "${AUTH_DB_BACKUP}" auth-service-ip:/data/auth.db 2>/dev/null; then
           echo "      ✓ auth.db copié dans le volume auth_data_ip."
           RESTORE_ANY=true
@@ -877,7 +925,7 @@ case "${DATA_INIT_CHOICE}" in
           echo "      ✗ Échec de la copie — le conteneur auth-service-ip existe-t-il ?"
         fi
         echo "         Redémarrage auth-service..."
-        docker compose -f docker-compose.ip.yml start auth-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml start auth-service 2>/dev/null
         # Attente de la santé d'auth-service avant de remonter db-service
         echo -n "         Attente auth-service healthy"
         _ATT=0
@@ -887,7 +935,7 @@ case "${DATA_INIT_CHOICE}" in
           printf "."; sleep 5; _ATT=$((_ATT+1))
         done
         echo " ok"
-        docker compose -f docker-compose.ip.yml start db-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml start db-service 2>/dev/null
         echo "         db-service redémarré."
       fi
       echo ""
@@ -902,14 +950,14 @@ case "${DATA_INIT_CHOICE}" in
         echo "      ✗ Le fichier ne semble pas être une base SQLite — ignoré."
       else
         echo "         Arrêt de db-service..."
-        docker compose -f docker-compose.ip.yml stop db-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml stop db-service 2>/dev/null
         if docker cp "${HOSPITAL_DB_BACKUP}" db-service-ip:/data/hospital.db 2>/dev/null; then
           echo "      ✓ hospital.db copié dans le volume db_data_ip."
           RESTORE_ANY=true
         else
           echo "      ✗ Échec de la copie — le conteneur db-service-ip existe-t-il ?"
         fi
-        docker compose -f docker-compose.ip.yml start db-service 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml start db-service 2>/dev/null
         echo "         db-service redémarré."
       fi
       echo ""
@@ -922,7 +970,7 @@ case "${DATA_INIT_CHOICE}" in
         echo "      ✗ Fichier introuvable : ${KC_SQL_BACKUP}"
       else
         echo "         Arrêt de Keycloak (évite les conflits d'accès concurrents)..."
-        docker compose -f docker-compose.ip.yml stop keycloak 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml stop keycloak 2>/dev/null
         # Nettoyage complet avant restauration pour éviter les conflits d'objets
         echo "         Recréation de la base keycloak..."
         docker exec postgres-keycloak-ip psql -U keycloak \
@@ -944,7 +992,7 @@ case "${DATA_INIT_CHOICE}" in
         fi
         # Redémarrage et attente de la santé de Keycloak
         echo "         Redémarrage Keycloak..."
-        docker compose -f docker-compose.ip.yml start keycloak 2>/dev/null
+        docker compose -f docker-compose.ip.secured.yml start keycloak 2>/dev/null
         echo -n "         Attente Keycloak healthy"
         _ATT=0
         until [[ "$(docker inspect --format='{{.State.Health.Status}}' \
@@ -975,6 +1023,12 @@ esac
 echo ""
 echo "========================================================"
 echo " ✓ Déploiement terminé !"
+echo ""
+if [[ "${NETWORK_MODE}" == "2" ]]; then
+  echo " Mode réseau           : WiFi local uniquement (internet bloqué)"
+else
+  echo " Mode réseau           : Public (internet + WiFi interne)"
+fi
 echo ""
 echo " Application Flutter  : ${BASE_URL}/app_isis/"
 echo " Admin Keycloak        : ${BASE_URL}/keycloak/admin/"
@@ -1007,7 +1061,7 @@ else
   echo "    Copier le client secret dans .env (KC_CLIENT_SECRET_AUTH)"
   echo " 5. Rôles : admin, supervisor, hospitalStaff,"
   echo "    technician_biomedical, technician_it, technician_infra"
-  echo " 6. Redémarrer : docker compose -f docker-compose.ip.yml restart auth-service"
+  echo " 6. Redémarrer : docker compose -f docker-compose.ip.secured.yml restart auth-service"
 fi
 echo ""
 echo " ── Sauvegardes ─────────────────────────────────────────"
