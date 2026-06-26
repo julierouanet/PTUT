@@ -329,7 +329,7 @@ Réseau LAN hôpital + Internet
 | Variable | Service | Rôle |
 |---|---|---|
 | `INTERNAL_SECRET` | auth + db | Authentification service-à-service |
-| `DEBUG_MODE_PASSWORD` | auth | Mot de passe de déverrouillage de l'item sidebar « Debug & Test » (admin), généré par `setup_ubuntu.sh`, partagé prod/dev, jamais piloté depuis l'UI |
+| `DEBUG_MODE_PASSWORD` | auth | Mot de passe de déverrouillage de l'item sidebar « Debug & Test » (admin), saisi interactivement lors de l'exécution de `setup_ubuntu.sh`, jamais piloté depuis l'UI. **En dev (déploiement Jenkins via `docker-compose.dev.yml`)** : toujours `admin` par défaut (fallback codé en dur `${DEBUG_MODE_PASSWORD_DEV:-admin}`, même pattern que `INTERNAL_SECRET_DEV`), indépendamment de la valeur définie dans `/etc/kabutare/.env` (utilisée en PROD) |
 | `DB_PATH` | auth + db | Chemin SQLite (`/data/auth.db` / `/data/hospital.db`) |
 | `KC_ISSUER` | auth + db | URL realm (IP-only : `https://<IP>/keycloak/realms/kabutare-hospital`) |
 | `KC_ADMIN_URL` | auth | URL Admin API Keycloak |

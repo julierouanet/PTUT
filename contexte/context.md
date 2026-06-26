@@ -180,7 +180,7 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 
 #### POST /api/auth/debug-mode/verify *(admin uniquement, rate-limit 10/15min/IP)*
 - **Body** : `{ "password" }`
-- Compare le mot de passe soumis à la variable d'env `DEBUG_MODE_PASSWORD` (définie au déploiement par `setup_ubuntu.sh`, partagée prod/dev via `/etc/kabutare/.env`).
+- Compare le mot de passe soumis à la variable d'env `DEBUG_MODE_PASSWORD` (saisie interactivement lors de l'exécution de `setup_ubuntu.sh`, partagée prod/dev via `/etc/kabutare/.env`).
 - Déverrouille côté Flutter l'affichage de l'item sidebar « Debug & Test » pour la durée de la session (état en mémoire `AuthService.debugModeEnabled`, reset au logout) — protection contre un clic accidentel sur des actions destructrices (clear issues, reseed DB).
 - **Réponse 200** : `{ "valid": true }` ; **401** : `{ "valid": false, "error": "..." }` (mot de passe incorrect OU `DEBUG_MODE_PASSWORD` non configuré côté serveur — jamais de 500) ; **400** si `password` absent ; **403** si non-admin.
 - Aucune trace du mot de passe dans les logs (`sendLog` avec `details: {}` volontairement vide).
