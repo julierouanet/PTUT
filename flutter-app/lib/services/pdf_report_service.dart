@@ -1,5 +1,5 @@
-import 'dart:typed_data';
-
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
@@ -26,6 +26,14 @@ class PdfReportService {
   /// Utilisé dans toutes les méthodes de génération PDF pour éviter les champs vides.
   static String _s(dynamic v) => (v == null || v.toString().isEmpty) ? '—' : v.toString();
 
+  /// Charge le logo de l'hôpital pour le letterhead (octets bruts, une fois par document).
+  static Future<Uint8List> _loadLogo() async =>
+      (await rootBundle.load('assets/images/logo_hopital.png')).buffer.asUint8List();
+
+  /// Numéro de référence horodaté pour les rapports périodiques (préfixe + yyyyMMdd-HHmmss).
+  static String _timestampedReportNo(String prefix, DateTime now) =>
+      '$prefix-${DateFormat('yyyyMMdd-HHmmss').format(now)}';
+
   // ── API publique ───────────────────────────────────────────────────────────
 
   /// Construit et retourne les octets du PDF.
@@ -46,6 +54,8 @@ class PdfReportService {
   }) async {
     final doc  = pw.Document();
     final now  = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final reportNo = _timestampedReportNo('RPT-MNT', now);
 
     // ── Calculs dérivés ──────────────────────────────────────────────────────
 
@@ -119,31 +129,32 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-        header: (context) => _buildHeader(now, startDate, endDate, generatedByName, generatedByRole),
+        header: (context) => _buildHeader(
+            now, startDate, endDate, generatedByName, generatedByRole, logo, reportNo),
         footer: (context) => _buildFooter(context),
         build: (context) => [
 
           // ── Section 1 : Synthèse générale ──────────────────────────────
-          _sectionTitle('1. SYNTHÈSE GÉNÉRALE'),
+          _sectionTitle('1. GENERAL SUMMARY'),
           pw.Row(
             children: [
-              pw.Expanded(child: _kpiBox('Total Équipements', '$totalEquip', _primary)),
+              pw.Expanded(child: _kpiBox('Total Equipment', '$totalEquip', _primary)),
               pw.SizedBox(width: 8),
-              pw.Expanded(child: _kpiBox('Taux de Disponibilité', '$availRate%', _success)),
+              pw.Expanded(child: _kpiBox('Availability Rate', '$availRate%', _success)),
               pw.SizedBox(width: 8),
-              pw.Expanded(child: _kpiBox('Incidents (période)', '$totalIssues', _warning)),
+              pw.Expanded(child: _kpiBox('Incidents (period)', '$totalIssues', _warning)),
               pw.SizedBox(width: 8),
-              pw.Expanded(child: _kpiBox('Taux de Résolution', '$resolutionRate%',
+              pw.Expanded(child: _kpiBox('Resolution Rate', '$resolutionRate%',
                   resolutionRate >= 70 ? _success : _warning)),
               pw.SizedBox(width: 8),
               pw.Expanded(child: _kpiBox(
-                'MTTR (jours)',
+                'MTTR (days)',
                 mttrDays == null ? 'N/A' : mttrDays.toStringAsFixed(1),
                 mttrDays == null ? _textMuted : (mttrDays > 3 ? _warning : _success),
               )),
               pw.SizedBox(width: 8),
               pw.Expanded(child: _kpiBox(
-                'Conformité PM',
+                'PM Compliance',
                 pmTotal == 0 ? 'N/A' : '${(pmCompliant / pmTotal * 100).round()}%',
                 pmTotal > 0 && pmCompliant / pmTotal >= 0.8 ? _success : _warning,
               )),
@@ -151,7 +162,7 @@ class PdfReportService {
           ),
 
           // ── Section 2 : Équipements ─────────────────────────────────────
-          _sectionTitle('2. ÉQUIPEMENTS — ÉTAT COURANT (${_fmtDate(now)})'),
+          _sectionTitle('2. EQUIPMENT — CURRENT STATUS (${_fmtDate(now)})'),
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
@@ -160,11 +171,11 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Répartition par statut'),
-                    _statLine('Opérationnel',   operational,  totalEquip, _success),
-                    _statLine('En maintenance', maintenance,  totalEquip, _warning),
-                    _statLine('Hors service',   outOfService, totalEquip, _error),
-                    _statLine('À éliminer',     toBeDisposal, totalEquip, _textMuted),
+                    _subTitle('Breakdown by status'),
+                    _statLine('Operational',       operational,  totalEquip, _success),
+                    _statLine('Under Maintenance',  maintenance,  totalEquip, _warning),
+                    _statLine('Out of Service',     outOfService, totalEquip, _error),
+                    _statLine('To Be Disposed',     toBeDisposal, totalEquip, _textMuted),
                   ],
                 ),
               ),
@@ -174,7 +185,7 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Équipements par département (top 10)'),
+                    _subTitle('Equipment by department (top 10)'),
                     _twoColTable(topEquipDepts, unitSuffix: ''),
                   ],
                 ),
@@ -182,12 +193,12 @@ class PdfReportService {
             ],
           ),
           pw.SizedBox(height: 8),
-          _subTitle('Répartition par catégorie (top 8)'),
+          _subTitle('Breakdown by category (top 8)'),
           _twoColTable(topEquipCats, unitSuffix: ''),
 
           // ── Section 3 : Incidents de la période ─────────────────────────
           _sectionTitle(
-            '3. INCIDENTS — PÉRIODE ${_fmtDate(startDate)} → ${_fmtDate(endDate)}',
+            '3. INCIDENTS — PERIOD ${_fmtDate(startDate)} → ${_fmtDate(endDate)}',
           ),
           pw.Row(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -196,16 +207,16 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Par statut'),
-                    _statLine('Ouverts (signalés)', openIssues,     totalIssues, _error),
-                    _statLine('En cours',           inProgress,     totalIssues, _warning),
-                    _statLine('Résolus',            resolvedIssues, totalIssues, _success),
+                    _subTitle('By status'),
+                    _statLine('Open (reported)', openIssues,     totalIssues, _error),
+                    _statLine('In Progress',     inProgress,     totalIssues, _warning),
+                    _statLine('Resolved',        resolvedIssues, totalIssues, _success),
                     pw.SizedBox(height: 8),
-                    _subTitle('Par urgence'),
-                    _statLine('Critique', critiqueCount, totalIssues, _error),
+                    _subTitle('By urgency'),
+                    _statLine('Critical', critiqueCount, totalIssues, _error),
                     _statLine('Urgent',   urgentCount,   totalIssues, PdfColors.deepOrange),
-                    _statLine('Moyen',    moyenCount,    totalIssues, _warning),
-                    _statLine('Faible',   faibleCount,   totalIssues, _success),
+                    _statLine('Medium',   moyenCount,    totalIssues, _warning),
+                    _statLine('Low',      faibleCount,   totalIssues, _success),
                   ],
                 ),
               ),
@@ -214,14 +225,14 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Par catégorie technique'),
-                    _statLine('Biomédical',    bioCount,   totalIssues, PdfColors.blue),
+                    _subTitle('By technical category'),
+                    _statLine('Biomedical',     bioCount,   totalIssues, PdfColors.blue),
                     _statLine('Infrastructure', infraCount, totalIssues, PdfColors.teal),
                     _statLine('IT',             itCount,    totalIssues, PdfColors.purple),
                     pw.SizedBox(height: 8),
-                    _subTitle('Départements les plus impactés'),
+                    _subTitle('Most impacted departments'),
                     if (topDepartments.isEmpty)
-                      pw.Text('Aucun incident sur la période',
+                      pw.Text('No incidents during this period',
                           style: pw.TextStyle(fontSize: 8, color: _textMuted))
                     else
                       _twoColTable(topDepartments, unitSuffix: ' inc.'),
@@ -232,27 +243,27 @@ class PdfReportService {
           ),
 
           // ── Section 4 : Maintenance Préventive ──────────────────────────
-          _sectionTitle('4. MAINTENANCE PRÉVENTIVE (PM)'),
+          _sectionTitle('4. PREVENTIVE MAINTENANCE (PM)'),
           pw.Row(
             children: [
-              pw.Expanded(child: _kpiBox('Équipements avec PM', '$pmTotal', _primary)),
+              pw.Expanded(child: _kpiBox('Equipment with PM', '$pmTotal', _primary)),
               pw.SizedBox(width: 8),
               pw.Expanded(child: _kpiBox(
-                'Conformité PM',
+                'PM Compliance',
                 pmTotal == 0 ? 'N/A' : '${(pmCompliant / pmTotal * 100).round()}%',
                 pmTotal > 0 && pmCompliant / pmTotal >= 0.8 ? _success : _warning,
               )),
               pw.SizedBox(width: 8),
-              pw.Expanded(child: _kpiBox('PM en retard',
+              pw.Expanded(child: _kpiBox('Overdue PM',
                   '$pmOverdue', pmOverdue > 0 ? _error : _success)),
               pw.SizedBox(width: 8),
-              pw.Expanded(child: _kpiBox('PM imminentes (<30j)',
+              pw.Expanded(child: _kpiBox('Upcoming PM (<30d)',
                   '$pmSoonCount', pmSoonCount > 0 ? _warning : _success)),
             ],
           ),
 
           // ── Section 5 : KPI GMAO — MTTR ─────────────────────────────────
-          _sectionTitle('5. KPI GMAO — MTTR (Mean Time To Repair)'),
+          _sectionTitle('5. CMMS KPI — MTTR (Mean Time To Repair)'),
           pw.Container(
             padding: const pw.EdgeInsets.all(10),
             decoration: pw.BoxDecoration(
@@ -265,9 +276,9 @@ class PdfReportService {
               children: [
                 pw.Text(
                   mttrDays == null
-                      ? 'MTTR : Données insuffisantes '
-                        '(aucun incident clôturé avec date de prise en charge sur la période)'
-                      : 'MTTR approximé sur la période : ${mttrDays.toStringAsFixed(1)} jour(s)',
+                      ? 'MTTR: Insufficient data '
+                        '(no incident closed with a take-charge date during this period)'
+                      : 'Approximate MTTR for the period: ${mttrDays.toStringAsFixed(1)} day(s)',
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -278,14 +289,14 @@ class PdfReportService {
                 ),
                 pw.SizedBox(height: 4),
                 pw.Text(
-                  'Priorité à la durée réelle saisie dans les rapports d\'intervention '
-                  'finalisés (duration_hours). À défaut : délai taken_at − created_at '
-                  'sur les incidents clôturés (Completed / Verified / Closed).',
+                  'Priority given to the actual duration entered in finalized intervention '
+                  'reports (duration_hours). Otherwise: delay between taken_at and created_at '
+                  'for closed incidents (Completed / Verified / Closed).',
                   style: const pw.TextStyle(fontSize: 7, color: _textMuted),
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
-                  'Coût de maintenance (période) : ${maintenanceCost.toStringAsFixed(0)} RWF',
+                  'Maintenance cost (period): ${maintenanceCost.toStringAsFixed(0)} RWF',
                   style: pw.TextStyle(
                     fontSize: 10,
                     fontWeight: pw.FontWeight.bold,
@@ -294,16 +305,16 @@ class PdfReportService {
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  'Somme des coûts estimés (estimated_cost) des rapports d\'intervention '
-                  'finalisés sur la période.',
+                  'Sum of estimated costs (estimated_cost) from finalized intervention '
+                  'reports during the period.',
                   style: const pw.TextStyle(fontSize: 7, color: _textMuted),
                 ),
                 pw.SizedBox(height: 8),
                 pw.Text(
                   documentedClosureRatePct == null
-                      ? 'Taux de clôture documentée : Données insuffisantes '
-                        '(aucun incident clôturé sur la période)'
-                      : 'Taux de clôture documentée : '
+                      ? 'Documented closure rate: Insufficient data '
+                        '(no incident closed during this period)'
+                      : 'Documented closure rate: '
                         '${documentedClosureRatePct.toStringAsFixed(0)}%',
                   style: pw.TextStyle(
                     fontSize: 10,
@@ -315,8 +326,8 @@ class PdfReportService {
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  'Part des incidents clôturés (Completed / Verified / Closed) sur la '
-                  'période disposant d\'au moins un document PDF d\'intervention archivé.',
+                  'Share of incidents closed (Completed / Verified / Closed) during the '
+                  'period with at least one archived intervention PDF document.',
                   style: const pw.TextStyle(fontSize: 7, color: _textMuted),
                 ),
               ],
@@ -324,15 +335,15 @@ class PdfReportService {
           ),
 
           // ── Section 6 : Inventaire critique ─────────────────────────────
-          _sectionTitle('6. INVENTAIRE CRITIQUE'),
+          _sectionTitle('6. CRITICAL INVENTORY'),
           if (outOfStockItems.isEmpty && lowStockItems.isEmpty)
-            _greenBanner('Aucun article en rupture ou en alerte de stock.')
+            _greenBanner('No items out of stock or low on stock.')
           else ...[
             if (outOfStockItems.isNotEmpty) ...[
               pw.Padding(
                 padding: const pw.EdgeInsets.only(top: 4, bottom: 4),
                 child: pw.Text(
-                  'Articles en rupture de stock (${outOfStockItems.length})',
+                  'Out of stock items (${outOfStockItems.length})',
                   style: pw.TextStyle(
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
@@ -346,7 +357,7 @@ class PdfReportService {
               pw.Padding(
                 padding: const pw.EdgeInsets.only(bottom: 4),
                 child: pw.Text(
-                  'Articles en stock faible (${lowStockItems.length})',
+                  'Low stock items (${lowStockItems.length})',
                   style: pw.TextStyle(
                       fontSize: 9,
                       fontWeight: pw.FontWeight.bold,
@@ -375,6 +386,8 @@ class PdfReportService {
   }) async {
     final doc = pw.Document();
     final now = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final reportNo = _timestampedReportNo('RPT-RPL', now);
 
     final biomedicalCount = (summary['biomedical_count'] as num?)?.toInt() ?? 0;
     final avgAge          = (summary['avg_age_years'] as num?)?.toDouble() ?? 0;
@@ -390,19 +403,20 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-        header: (context) => _buildReplacementHeader(now, generatedByName, generatedByRole),
+        header: (context) => _buildReplacementHeader(
+            now, generatedByName, generatedByRole, logo, reportNo),
         footer: (context) => _buildFooter(context),
         build: (context) => [
           // ── Section 1 : KPI de flotte ─────────────────────────────────
-          _sectionTitle('1. SYNTHÈSE DE LA FLOTTE BIOMÉDICALE'),
+          _sectionTitle('1. BIOMEDICAL FLEET SUMMARY'),
           pw.Row(children: [
-            pw.Expanded(child: _kpiBox('Équipements biomédicaux', '$biomedicalCount', _primary)),
+            pw.Expanded(child: _kpiBox('Biomedical Equipment', '$biomedicalCount', _primary)),
             pw.SizedBox(width: 8),
-            pw.Expanded(child: _kpiBox('Âge moyen (ans)', avgAge.toStringAsFixed(1), _primary)),
+            pw.Expanded(child: _kpiBox('Average Age (years)', avgAge.toStringAsFixed(1), _primary)),
             pw.SizedBox(width: 8),
-            pw.Expanded(child: _kpiBox('En fin de vie', '$eolCount', eolCount > 0 ? _error : _success)),
+            pw.Expanded(child: _kpiBox('End of Life', '$eolCount', eolCount > 0 ? _error : _success)),
             pw.SizedBox(width: 8),
-            pw.Expanded(child: _kpiBox('% en fin de vie', '${eolPct.toStringAsFixed(1)}%',
+            pw.Expanded(child: _kpiBox('% End of Life', '${eolPct.toStringAsFixed(1)}%',
                 eolPct >= 20 ? _error : _warning)),
           ]),
           pw.SizedBox(height: 10),
@@ -413,11 +427,11 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Par horizon budgétaire'),
-                    _statLine('Cette année',          h('cette_annee'),      biomedicalCount, _error),
-                    _statLine('1–2 ans',              h('1_2_ans'),          biomedicalCount, _warning),
-                    _statLine('Plus tard',            h('plus_tard'),        biomedicalCount, _success),
-                    _statLine('Donnée manquante',     h('donnee_manquante'), biomedicalCount, _textMuted),
+                    _subTitle('By budget horizon'),
+                    _statLine('This year',       h('cette_annee'),      biomedicalCount, _error),
+                    _statLine('1–2 years',       h('1_2_ans'),          biomedicalCount, _warning),
+                    _statLine('Later',           h('plus_tard'),        biomedicalCount, _success),
+                    _statLine('Missing data',    h('donnee_manquante'), biomedicalCount, _textMuted),
                   ],
                 ),
               ),
@@ -426,10 +440,10 @@ class PdfReportService {
                 child: pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    _subTitle('Par criticité (Matrice ABC)'),
-                    _statLine('A — Critique',  c('A'), biomedicalCount, _error),
+                    _subTitle('By criticality (ABC Matrix)'),
+                    _statLine('A — Critical',  c('A'), biomedicalCount, _error),
                     _statLine('B — Important', c('B'), biomedicalCount, _warning),
-                    _statLine('C — Courant',   c('C'), biomedicalCount, _success),
+                    _statLine('C — Standard',  c('C'), biomedicalCount, _success),
                   ],
                 ),
               ),
@@ -437,9 +451,9 @@ class PdfReportService {
           ),
 
           // ── Section 2 : Tableau détaillé ──────────────────────────────
-          _sectionTitle('2. PLAN DE REMPLACEMENT DÉTAILLÉ'),
+          _sectionTitle('2. DETAILED REPLACEMENT PLAN'),
           if (items.isEmpty)
-            _greenBanner('Aucun équipement biomédical à planifier.')
+            _greenBanner('No biomedical equipment to plan for.')
           else
             _replacementTable(items),
         ],
@@ -462,6 +476,8 @@ class PdfReportService {
   }) async {
     final doc = pw.Document();
     final now = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final reportNo = 'INC-$issueId';
 
     double? n(dynamic v) =>
         v == null ? null : (v is num ? v.toDouble() : double.tryParse(v.toString()));
@@ -478,52 +494,53 @@ class PdfReportService {
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
-        header: (context) => _buildInterventionHeader(now, generatedByName, generatedByRole, isFinalized, issueId),
+        header: (context) => _buildInterventionHeader(
+            now, generatedByName, generatedByRole, isFinalized, logo, reportNo),
         footer: (context) => _buildFooter(context),
         build: (context) => [
           // ── Section 1 : Identité incident + équipement ─────────────────
-          _sectionTitle('1. INCIDENT & ÉQUIPEMENT'),
+          _sectionTitle('1. INCIDENT & EQUIPMENT'),
           _twoColTextTable([
-            MapEntry('Référence incident', issueId),
-            MapEntry('Équipement', equipmentName),
-            if (equipmentId != null) MapEntry('Identifiant équipement', equipmentId),
-            MapEntry('Statut incident', issueStatus),
+            MapEntry('Incident Reference', issueId),
+            MapEntry('Equipment', equipmentName),
+            if (equipmentId != null) MapEntry('Equipment ID', equipmentId),
+            MapEntry('Incident Status', issueStatus),
           ]),
 
           // ── Section 2 : Diagnostic & actions (live incident) ────────────
-          _sectionTitle('2. DIAGNOSTIC, ACTIONS & PIÈCES'),
-          _labelledBlock('Diagnostic', _s(report['diagnosis'])),
-          _labelledBlock('Actions réalisées', _s(report['actions'])),
-          _labelledBlock('Pièces remplacées', _s(report['parts_replaced'])),
+          _sectionTitle('2. DIAGNOSIS, ACTIONS & PARTS'),
+          _labelledBlock('Diagnosis', _s(report['diagnosis'])),
+          _labelledBlock('Actions taken', _s(report['actions'])),
+          _labelledBlock('Parts replaced', _s(report['parts_replaced'])),
 
           // ── Section 3 : Rapport structuré ──────────────────────────────
-          _sectionTitle('3. RAPPORT D\'INTERVENTION'),
-          _labelledBlock('Résumé', _s(report['summary'])),
-          _labelledBlock('Cause racine', _s(report['root_cause'])),
-          _labelledBlock('Recommandations', _s(report['recommendations'])),
+          _sectionTitle('3. INTERVENTION REPORT'),
+          _labelledBlock('Summary', _s(report['summary'])),
+          _labelledBlock('Root cause', _s(report['root_cause'])),
+          _labelledBlock('Recommendations', _s(report['recommendations'])),
           pw.SizedBox(height: 6),
           pw.Row(children: [
-            pw.Expanded(child: _kpiBox('Durée (heures)',
+            pw.Expanded(child: _kpiBox('Duration (hours)',
                 durationHours == null ? 'N/A' : durationHours.toStringAsFixed(1), _primary)),
             pw.SizedBox(width: 8),
-            pw.Expanded(child: _kpiBox('Coût estimé (RWF)',
+            pw.Expanded(child: _kpiBox('Estimated cost (RWF)',
                 estimatedCost == null ? 'N/A' : estimatedCost.toStringAsFixed(0), _warning)),
             pw.SizedBox(width: 8),
-            pw.Expanded(child: _kpiBox('État final équipement',
+            pw.Expanded(child: _kpiBox('Final equipment status',
                 _s(report['final_equipment_status']), _success)),
           ]),
           pw.SizedBox(height: 6),
           _twoColTextTable([
-            MapEntry('Remise en service le', _s(report['returned_to_service_at'])),
+            MapEntry('Returned to service on', _s(report['returned_to_service_at'])),
           ]),
 
           // ── Section 4 : Signatures ─────────────────────────────────────
           _sectionTitle('4. VALIDATION'),
           _twoColTextTable([
-            MapEntry('Rédigé par', _s(report['author_name'])),
-            MapEntry('Validé par', _s(report['validated_by_name'])),
-            MapEntry('Date de validation', _s(report['validated_at'])),
-            MapEntry('Statut du rapport', isFinalized ? 'Finalisé' : 'Brouillon'),
+            MapEntry('Drafted by', _s(report['author_name'])),
+            MapEntry('Validated by', _s(report['validated_by_name'])),
+            MapEntry('Validation date', _s(report['validated_at'])),
+            MapEntry('Report status', isFinalized ? 'Finalized' : 'Draft'),
           ]),
         ],
       ),
@@ -543,55 +560,57 @@ class PdfReportService {
   }) async {
     final doc = pw.Document();
     final now = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final reportNo = 'INC-$issueId-L${session.loopNumber}';
 
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
         header: (context) => _buildSessionHeader(
-            now, generatedByName, generatedByRole, issueId, session.loopNumber),
+            now, generatedByName, generatedByRole, issueId, session.loopNumber, logo, reportNo),
         footer: (context) => _buildFooter(context),
         build: (context) => [
           // ── Section 1 : Identité incident / équipement / boucle ───────────
-          _sectionTitle('1. INCIDENT & ÉQUIPEMENT'),
+          _sectionTitle('1. INCIDENT & EQUIPMENT'),
           _twoColTextTable([
-            MapEntry('Référence incident', issueId),
-            MapEntry('Équipement', equipmentName),
-            MapEntry('Boucle n°', session.loopNumber.toString()),
-            MapEntry('Technicien', _s(session.technicianName)),
-            MapEntry('Début', session.startedAt.split('T').first),
+            MapEntry('Incident Reference', issueId),
+            MapEntry('Equipment', equipmentName),
+            MapEntry('Loop No.', session.loopNumber.toString()),
+            MapEntry('Technician', _s(session.technicianName)),
+            MapEntry('Started', session.startedAt.split('T').first),
             if (session.closedAt != null)
-              MapEntry('Fin', session.closedAt!.split('T').first),
+              MapEntry('Closed', session.closedAt!.split('T').first),
             if (session.durationHours != null)
-              MapEntry('Durée (h)', session.durationHours!.toStringAsFixed(1)),
+              MapEntry('Duration (h)', session.durationHours!.toStringAsFixed(1)),
           ]),
 
           // ── Section 2 : Diagnostic ────────────────────────────────────────
-          _sectionTitle('2. DIAGNOSTIC'),
-          _labelledBlock('Diagnostic', _s(session.diagnosis)),
+          _sectionTitle('2. DIAGNOSIS'),
+          _labelledBlock('Diagnosis', _s(session.diagnosis)),
           if (session.diagnosisAddendum?.isNotEmpty == true)
-            _labelledBlock('Complément de diagnostic', _s(session.diagnosisAddendum)),
+            _labelledBlock('Diagnosis addendum', _s(session.diagnosisAddendum)),
 
           // ── Section 3 : Action & Outcome ──────────────────────────────────
-          _sectionTitle('3. ACTION RÉALISÉE & RÉSULTAT'),
-          _labelledBlock('Action réalisée', _s(session.actionTaken)),
-          _labelledBlock('Résultat (outcome)', _s(session.outcome)),
+          _sectionTitle('3. ACTION TAKEN & OUTCOME'),
+          _labelledBlock('Action taken', _s(session.actionTaken)),
+          _labelledBlock('Outcome', _s(session.outcome)),
 
           // ── Section 4 : Statut résolution ─────────────────────────────────
-          _sectionTitle('4. STATUT'),
+          _sectionTitle('4. STATUS'),
           if (session.resolved)
-            _labelledBlock('Résolution', '✔ Incident résolu lors de cette boucle')
+            _labelledBlock('Resolution', '✔ Incident resolved during this loop')
           else ...[
-            _labelledBlock('Résolution', '⚠ Incident non résolu — poursuite requise'),
-            _labelledBlock('Actions à réaliser', _s(session.nextActions)),
+            _labelledBlock('Resolution', '⚠ Incident not resolved — follow-up required'),
+            _labelledBlock('Next actions', _s(session.nextActions)),
           ],
 
           // ── Section 5 : Signature ─────────────────────────────────────────
           _sectionTitle('5. SIGNATURE'),
           _twoColTextTable([
-            MapEntry('Généré par', generatedByName),
-            MapEntry('Rôle', generatedByRole),
-            MapEntry('Date de génération', '${_fmtDate(now)} à ${_fmtTime(now)}'),
+            MapEntry('Generated by', generatedByName),
+            MapEntry('Role', generatedByRole),
+            MapEntry('Generation date', '${_fmtDate(now)} at ${_fmtTime(now)}'),
           ]),
         ],
       ),
@@ -600,9 +619,35 @@ class PdfReportService {
     return doc.save();
   }
 
+  // Letterhead (logo + adresse officielle) répété en haut de chaque page
+  static pw.Widget _buildLetterhead(pw.MemoryImage logo) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.only(bottom: 6),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.center,
+        children: [
+          pw.Image(logo, width: 42, height: 42, fit: pw.BoxFit.contain),
+          pw.SizedBox(width: 10),
+          pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text('Southern Province', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('Huye District', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('Kabutare District Hospital',
+                  style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+              pw.Text('P.O. Box: 621 Butare', style: const pw.TextStyle(fontSize: 8)),
+              pw.Text('Email: kabutarespital@gmail.com', style: const pw.TextStyle(fontSize: 8)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   static pw.Widget _buildSessionHeader(DateTime now, String byName, String byRole,
-      String issueId, int loopNumber) {
+      String issueId, int loopNumber, pw.MemoryImage logo, String reportNo) {
     return pw.Column(children: [
+      _buildLetterhead(logo),
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: const pw.BoxDecoration(
@@ -615,22 +660,24 @@ class PdfReportService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('RAPPORT DE BOUCLE D\'INTERVENTION — N° $loopNumber',
+                pw.Text('INTERVENTION LOOP REPORT — No. $loopNumber',
                     style: pw.TextStyle(
                         color: PdfColors.white, fontSize: 12, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
-                pw.Text('Hôpital de District de Kabutare — Rwanda',
+                pw.Text('Kabutare District Hospital — Rwanda',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
-                pw.Text('Incident N° $issueId',
+                pw.Text('Incident No: $issueId',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
             ),
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                pw.Text('Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
-                pw.Text('Par : $byName  ($byRole)',
+                pw.Text('By: $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Report No: $reportNo',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
               ],
             ),
@@ -642,9 +689,10 @@ class PdfReportService {
   }
 
   // En-tête dédié du rapport d'intervention
-  static pw.Widget _buildInterventionHeader(
-      DateTime now, String byName, String byRole, bool isFinalized, String issueId) {
+  static pw.Widget _buildInterventionHeader(DateTime now, String byName, String byRole,
+      bool isFinalized, pw.MemoryImage logo, String reportNo) {
     return pw.Column(children: [
+      _buildLetterhead(logo),
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: const pw.BoxDecoration(
@@ -657,24 +705,24 @@ class PdfReportService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('RAPPORT D\'INTERVENTION',
+                pw.Text('INTERVENTION REPORT',
                     style: pw.TextStyle(
                         color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
-                pw.Text('Hôpital de District de Kabutare — Rwanda',
-                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
-                pw.Text('District Hospital: Kabutare — Formulaire N° INC-$issueId',
+                pw.Text('Kabutare District Hospital — Rwanda',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
             ),
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                pw.Text('Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
-                pw.Text('Par : $byName  ($byRole)',
+                pw.Text('By: $byName  ($byRole)',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
-                pw.Text(isFinalized ? 'Statut : FINALISÉ' : 'Statut : BROUILLON',
+                pw.Text('Report No: $reportNo',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text(isFinalized ? 'Status: FINALIZED' : 'Status: DRAFT',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
               ],
             ),
@@ -732,8 +780,10 @@ class PdfReportService {
   }
 
   // En-tête dédié du plan de remplacement (sans période)
-  static pw.Widget _buildReplacementHeader(DateTime now, String byName, String byRole) {
+  static pw.Widget _buildReplacementHeader(
+      DateTime now, String byName, String byRole, pw.MemoryImage logo, String reportNo) {
     return pw.Column(children: [
+      _buildLetterhead(logo),
       pw.Container(
         padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: const pw.BoxDecoration(
@@ -746,20 +796,22 @@ class PdfReportService {
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.Text('PLAN DE REMPLACEMENT — ÉQUIPEMENTS BIOMÉDICAUX',
+                pw.Text('REPLACEMENT PLAN — BIOMEDICAL EQUIPMENT',
                     style: pw.TextStyle(
                         color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
                 pw.SizedBox(height: 2),
-                pw.Text('Hôpital de District de Kabutare — Rwanda — Standard RA3 S5',
+                pw.Text('Kabutare District Hospital — Rwanda — RA3 S5 Standard',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
             ),
             pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.end,
               children: [
-                pw.Text('Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                pw.Text('Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
-                pw.Text('Par : $byName  ($byRole)',
+                pw.Text('By: $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Report No: $reportNo',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
               ],
             ),
@@ -770,18 +822,18 @@ class PdfReportService {
     ]);
   }
 
-  // Libellés français des statuts / horizons de remplacement
+  // Libellés des statuts / horizons de remplacement
   static String _replacementStatusLabel(String s) => switch (s) {
-        'a_remplacer'      => 'À remplacer',
-        'bientot'          => 'Bientôt',
-        'donnee_manquante' => 'Donnée manquante',
+        'a_remplacer'      => 'To replace',
+        'bientot'          => 'Soon',
+        'donnee_manquante' => 'Missing data',
         _                  => 'OK',
       };
 
   static String _replacementHorizonLabel(String? hz) => switch (hz) {
-        'cette_annee' => 'Cette année',
-        '1_2_ans'     => '1–2 ans',
-        'plus_tard'   => 'Plus tard',
+        'cette_annee' => 'This year',
+        '1_2_ans'     => '1–2 years',
+        'plus_tard'   => 'Later',
         _             => '—',
       };
 
@@ -803,8 +855,8 @@ class PdfReportService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: _bgLight),
           children: [
-            _th('Équipement'), _th('Sous-catégorie'), _th('Crit.'),
-            _th('Âge'), _th('Réf.'), _th('Dépass.'), _th('Statut'), _th('Horizon'),
+            _th('Equipment'), _th('Subcategory'), _th('Crit.'),
+            _th('Age'), _th('Ref.'), _th('Overshoot'), _th('Status'), _th('Horizon'),
           ],
         ),
         ...items.map((m) {
@@ -842,9 +894,12 @@ class PdfReportService {
     DateTime end,
     String byName,
     String byRole,
+    pw.MemoryImage logo,
+    String reportNo,
   ) {
     return pw.Column(
       children: [
+        _buildLetterhead(logo),
         pw.Container(
           padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: const pw.BoxDecoration(
@@ -858,7 +913,7 @@ class PdfReportService {
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Text(
-                    'RAPPORT DE MAINTENANCE — GMAO',
+                    'MAINTENANCE REPORT — CMMS',
                     style: pw.TextStyle(
                       color: PdfColors.white,
                       fontSize: 13,
@@ -867,7 +922,7 @@ class PdfReportService {
                   ),
                   pw.SizedBox(height: 2),
                   pw.Text(
-                    'Hôpital de District de Kabutare — Rwanda',
+                    'Kabutare District Hospital — Rwanda',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8),
                   ),
                 ],
@@ -876,15 +931,19 @@ class PdfReportService {
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
                 children: [
                   pw.Text(
-                    'Généré le ${_fmtDate(now)} à ${_fmtTime(now)}',
+                    'Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7),
                   ),
                   pw.Text(
-                    'Par : $byName  ($byRole)',
+                    'By: $byName  ($byRole)',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7),
                   ),
                   pw.Text(
-                    'Période : ${_fmtDate(start)} → ${_fmtDate(end)}',
+                    'Period: ${_fmtDate(start)} → ${_fmtDate(end)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7),
+                  ),
+                  pw.Text(
+                    'Report No: $reportNo',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7),
                   ),
                 ],
@@ -908,7 +967,7 @@ class PdfReportService {
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
           pw.Text(
-            'Hôpital de Kabutare — Document confidentiel à usage interne',
+            'Kabutare Hospital — Confidential document, internal use only',
             style: const pw.TextStyle(fontSize: 7, color: _textMuted),
           ),
           pw.Text(
@@ -1008,7 +1067,7 @@ class PdfReportService {
       List<MapEntry<String, int>> entries,
       {required String unitSuffix}) {
     if (entries.isEmpty) {
-      return pw.Text('Aucune donnée',
+      return pw.Text('No data',
           style: const pw.TextStyle(fontSize: 8, color: _textMuted));
     }
     return pw.Table(
@@ -1050,9 +1109,9 @@ class PdfReportService {
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: _bgLight),
           children: [
-            _th('Article'),
-            _th('Stock actuel'),
-            _th('Stock min'),
+            _th('Item'),
+            _th('Current Stock'),
+            _th('Min Stock'),
           ],
         ),
         ...items.map((item) => pw.TableRow(children: [

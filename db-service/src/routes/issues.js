@@ -209,9 +209,14 @@ router.get('/:id', verifyToken, (req, res) => {
     : null;
 
   // Timeline d'audit : tous les logs liés à cet incident, ordre chronologique
-  const auditLog = db.prepare(
-    "SELECT id, timestamp, user_name, user_role, action, details FROM logs WHERE target_type = 'issue' AND target_id = ? ORDER BY timestamp ASC"
-  ).all(req.params.id);
+  // (upload/download de photo exclus : actions techniques sans valeur pour la timeline,
+  // toujours visibles dans l'audit global via logs_screen.dart)
+  const auditLog = db.prepare(`
+    SELECT id, timestamp, user_name, user_role, action, details FROM logs
+    WHERE target_type = 'issue' AND target_id = ?
+    AND action NOT IN ('upload_issue_photos', 'download_issue_photo')
+    ORDER BY timestamp ASC
+  `).all(req.params.id);
 
   // Enregistrements de maintenance liés à l'équipement (10 plus récents)
   const maintenanceRecords = issue.equipment_id
