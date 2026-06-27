@@ -1176,6 +1176,10 @@
   "issueDetailCategory": "Issue category",
   "issueDetailGroup": "Technical group",
   "issueDetailLocation": "Location",
+  "issueDetailLocationTag": "Location Tag",
+  "issueDetailNoPhone": "No phone number",
+  "issueDetailRelatedIssues": "Recent issues on this equipment",
+  "issueDetailViewEquipment": "View equipment details",
   "issueDetailUpdatedAt": "Last updated",
   "issueDetailUpdateButton": "Update issue",
   "issueDetailTypeLabel": "Failure type",
@@ -1655,6 +1659,7 @@
   "hubTechNoAssigned": "No assigned intervention in progress",
   "hubTechNoPendingParts": "No parts pending",
   "hubTechViewAll": "View all",
+  "hubTechGoToTechnicianButton": "My interventions",
   "hubTechPmOverdueLabel": "PM overdue",
   "hubTechPmSoonLabel": "PM soon (< 7 d)",
 

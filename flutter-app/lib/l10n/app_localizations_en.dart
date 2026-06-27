@@ -3172,6 +3172,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueDetailLocation => 'Location';
 
   @override
+  String get issueDetailLocationTag => 'Location Tag';
+
+  @override
+  String get issueDetailNoPhone => 'No phone number';
+
+  @override
+  String get issueDetailRelatedIssues => 'Recent issues on this equipment';
+
+  @override
+  String get issueDetailViewEquipment => 'View equipment details';
+
+  @override
   String get issueDetailUpdatedAt => 'Last updated';
 
   @override
@@ -4358,6 +4370,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get hubTechViewAll => 'View all';
+
+  @override
+  String get hubTechGoToTechnicianButton => 'My interventions';
 
   @override
   String get hubTechPmOverdueLabel => 'PM overdue';

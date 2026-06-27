@@ -1197,6 +1197,10 @@
   "issueDetailCategory": "Catégorie d'incident",
   "issueDetailGroup": "Groupe technique",
   "issueDetailLocation": "Localisation",
+  "issueDetailLocationTag": "Tag / Étiquette",
+  "issueDetailNoPhone": "Pas de numéro renseigné",
+  "issueDetailRelatedIssues": "Incidents récents sur cet équipement",
+  "issueDetailViewEquipment": "Voir la fiche équipement",
   "issueDetailUpdatedAt": "Dernière mise à jour",
   "issueDetailUpdateButton": "Mettre à jour l'incident",
   "issueDetailTypeLabel": "Type de défaillance",
@@ -1676,6 +1680,7 @@
   "hubTechNoAssigned": "Aucune intervention assignée en cours",
   "hubTechNoPendingParts": "Aucune pièce en attente",
   "hubTechViewAll": "Voir tout",
+  "hubTechGoToTechnicianButton": "Mes interventions",
   "hubTechPmOverdueLabel": "PM en retard",
   "hubTechPmSoonLabel": "PM imminente (< 7 j)",
 

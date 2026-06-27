@@ -209,14 +209,23 @@ class _AppRootState extends State<_AppRoot> {
     });
   }
 
+  /// Bascule directement sur TechnicianUpdateScreen depuis le hub mobile.
+  void _goToTechnicianScreen() {
+    setState(() {
+      _activeModule = _HubModule.equipment;
+      _initialScreenType = ScreenType.technician;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_activeModule == null) {
       return HomeHubScreen(
-        onEquipmentModule: () => setState(() => _activeModule = _HubModule.equipment),
-        onSettingsModule:  () => setState(() => _activeModule = _HubModule.settings),
-        onInventoryModule: () => setState(() => _activeModule = _HubModule.inventory),
-        onMyActiveIssues:  () => _goToIssueTracking(),
+        onEquipmentModule:  () => setState(() => _activeModule = _HubModule.equipment),
+        onTechnicianModule: _goToTechnicianScreen,
+        onSettingsModule:   () => setState(() => _activeModule = _HubModule.settings),
+        onInventoryModule:  () => setState(() => _activeModule = _HubModule.inventory),
+        onMyActiveIssues:   () => _goToIssueTracking(),
         onDepartmentIssues: (department) => _goToIssueTracking(departmentFilter: department),
       );
     }

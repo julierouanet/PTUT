@@ -293,6 +293,8 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             ],
             _buildContextCard(l10n, detail),
             const SizedBox(height: 12),
+            _buildRelatedIssuesCard(l10n, detail),
+            const SizedBox(height: 12),
             _buildFailureCard(l10n, detail.issue),
             const SizedBox(height: 12),
             _buildInterventionCard(l10n, detail.issue),
@@ -861,6 +863,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     }
   }
 
+  // ── Helper localisation ────────────────────────────────────────────────────
+
+  bool _hasLocationText(String? v) {
+    if (v == null) return false;
+    final t = v.trim();
+    return t.isNotEmpty && t != '—' && !t.startsWith('— ') && !t.endsWith(' —');
+  }
+
   // ── Carte En-tête ──────────────────────────────────────────────────────────
 
   Widget _buildHeaderCard(AppLocalizations l10n, IssueDetail detail) {
@@ -888,6 +898,50 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             label: l10n.issueDetailUpdatedAt,
             value: _fmtDateTime(detail.updatedAt!),
           ),
+      ]),
+    );
+  }
+
+  // ── Carte Incidents liés ───────────────────────────────────────────────────
+
+  Widget _buildRelatedIssuesCard(AppLocalizations l10n, IssueDetail detail) {
+    final issue = detail.issue;
+    final items = detail.relatedIssues;
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return _SectionCard(
+      title: l10n.issueDetailRelatedIssues,
+      icon: Icons.history,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (issue.equipmentId != null)
+          TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => EquipmentDetailScreen(equipmentId: issue.equipmentId!),
+              ),
+            ),
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: Text(l10n.issueDetailViewEquipment),
+          ),
+        ...items.map((item) => ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: IssueStatusBadge(status: item['status'] as String),
+          title: Text(item['type'] as String,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          subtitle: Text(
+            '${_fmtDateTime(item['created_at'] as String)}  ·  ${item['reporter'] as String}',
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => IssueDetailScreen(issueId: item['id'] as String),
+            ),
+          ),
+        )),
       ]),
     );
   }
@@ -975,6 +1029,11 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           _InfoRow(
               label: l10n.issueDetailLocation,
               value: equipment['location'] as String),
+        if (issue.locationId == null && _hasLocationText(detail.locationText))
+          _InfoRow(label: l10n.issueDetailLocation, value: detail.locationText!),
+        // locationTag est une étiquette physique (ex: TAG-0042), jamais un placeholder '—'
+        if (detail.locationTag != null && detail.locationTag!.trim().isNotEmpty)
+          _InfoRow(label: l10n.issueDetailLocationTag, value: detail.locationTag!),
       ]),
     );
   }
@@ -1323,7 +1382,16 @@ class _ReporterRow extends StatelessWidget {
                 child: Icon(Icons.phone, size: 18, color: AppColors.primary),
               ),
             ),
-          ),
+          )
+        else if (!hasEmail)
+          Row(mainAxisSize: MainAxisSize.min, children: [
+            const Icon(Icons.phone_disabled, size: 15, color: AppColors.textSecondary),
+            const SizedBox(width: 4),
+            Text(
+              AppLocalizations.of(context)!.issueDetailNoPhone,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ]),
         if (hasEmail)
           Tooltip(
             message: email!,

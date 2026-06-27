@@ -228,11 +228,19 @@ router.get('/:id', verifyToken, (req, res) => {
       ).all(issue.equipment_id)
     : [];
 
+  // Incidents récents sur le même équipement (3 max, hors l'incident courant)
+  const relatedIssues = issue.equipment_id
+    ? db.prepare(
+        'SELECT id, type, status, urgency, created_at, reporter FROM issues WHERE equipment_id = ? AND id != ? ORDER BY created_at DESC LIMIT 3'
+      ).all(issue.equipment_id, req.params.id)
+    : [];
+
   res.json({
     ...issue,
     equipment:           equipment   || null,
     audit_log:           auditLog,
     maintenance_records: maintenanceRecords,
+    related_issues:      relatedIssues,
   });
 });
 

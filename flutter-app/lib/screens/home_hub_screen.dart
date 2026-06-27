@@ -23,6 +23,7 @@ import 'account_settings_screen.dart';
 /// • admin          → KPIs + accès aux 3 modules complets
 class HomeHubScreen extends StatelessWidget {
   final VoidCallback onEquipmentModule;
+  final VoidCallback onTechnicianModule;
   final VoidCallback onSettingsModule;
   final VoidCallback onInventoryModule;
   final VoidCallback onMyActiveIssues;
@@ -31,6 +32,7 @@ class HomeHubScreen extends StatelessWidget {
   const HomeHubScreen({
     super.key,
     required this.onEquipmentModule,
+    required this.onTechnicianModule,
     required this.onSettingsModule,
     required this.onInventoryModule,
     required this.onMyActiveIssues,
@@ -387,6 +389,7 @@ class HomeHubScreen extends StatelessWidget {
     final pmDue      = _pmDueOrOverdue(data);
     final assigned   = _myAssignedIssues(data, auth);
     final waitParts  = _pendingParts(data, auth);
+    final totalActive = pmDue.length + assigned.length + waitParts.length;
 
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
@@ -440,6 +443,49 @@ class HomeHubScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          // ── Bouton CTA accès module technicien — toujours visible ───────
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onTechnicianModule,
+              icon: const Icon(Icons.build_rounded),
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(l10n.hubTechGoToTechnicianButton),
+                  if (totalActive > 0) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.25),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$totalActive',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                elevation: 0,
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
           // ── Section PM dues ─────────────────────────────────────────────
           _buildWorkplanSection(
             context: context,
@@ -448,9 +494,9 @@ class HomeHubScreen extends StatelessWidget {
             color: AppColors.warning,
             title: l10n.hubTechPmSection,
             count: pmDue.length,
-            onViewAll: onEquipmentModule,
+            onViewAll: onTechnicianModule,
             emptyLabel: l10n.hubTechNoPm,
-            children: pmDue.take(3).map((eq) => _buildPmTile(l10n, eq)).toList(),
+            children: pmDue.take(3).map((eq) => _buildPmTile(l10n, eq, onTap: onTechnicianModule)).toList(),
           ),
           const SizedBox(height: 16),
 
@@ -462,9 +508,9 @@ class HomeHubScreen extends StatelessWidget {
             color: AppColors.primary,
             title: l10n.hubTechAssignedSection,
             count: assigned.length,
-            onViewAll: onEquipmentModule,
+            onViewAll: onTechnicianModule,
             emptyLabel: l10n.hubTechNoAssigned,
-            children: assigned.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.primary)).toList(),
+            children: assigned.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.primary, onTap: onTechnicianModule)).toList(),
           ),
           const SizedBox(height: 16),
 
@@ -476,9 +522,9 @@ class HomeHubScreen extends StatelessWidget {
             color: AppColors.error,
             title: l10n.hubTechPendingPartsSection,
             count: waitParts.length,
-            onViewAll: onEquipmentModule,
+            onViewAll: onTechnicianModule,
             emptyLabel: l10n.hubTechNoPendingParts,
-            children: waitParts.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.error)).toList(),
+            children: waitParts.take(3).map((issue) => _buildIssueTile(l10n, issue, AppColors.error, onTap: onTechnicianModule)).toList(),
           ),
         ],
       ),
@@ -591,7 +637,7 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPmTile(AppLocalizations l10n, Equipment equipment) {
+  Widget _buildPmTile(AppLocalizations l10n, Equipment equipment, {required VoidCallback onTap}) {
     final iso   = equipment.nextPreventiveMaintenance ?? '';
     final today = DateTime.now();
     DateTime? pmDate;
@@ -604,7 +650,7 @@ class HomeHubScreen extends StatelessWidget {
     final tag       = isOverdue ? l10n.hubTechPmOverdueLabel : l10n.hubTechPmSoonLabel;
 
     return InkWell(
-      onTap: onEquipmentModule,
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
@@ -657,9 +703,9 @@ class HomeHubScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildIssueTile(AppLocalizations l10n, Issue issue, Color color) {
+  Widget _buildIssueTile(AppLocalizations l10n, Issue issue, Color color, {required VoidCallback onTap}) {
     return InkWell(
-      onTap: onEquipmentModule,
+      onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(

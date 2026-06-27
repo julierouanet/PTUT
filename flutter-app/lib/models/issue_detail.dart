@@ -105,6 +105,10 @@ class IssueDetail {
   final String? updatedAt;
   /// Champ `location_text` (localisation libre infrastructure) non présent dans Issue.
   final String? locationText;
+  /// Champ `location_tag` (étiquette physique du lieu) non présent dans Issue.
+  final String? locationTag;
+  /// Incidents récents sur le même équipement (max 3, hors incident courant).
+  final List<Map<String, dynamic>> relatedIssues;
 
   const IssueDetail({
     required this.issue,
@@ -113,6 +117,8 @@ class IssueDetail {
     required this.maintenanceRecords,
     this.updatedAt,
     this.locationText,
+    this.locationTag,
+    this.relatedIssues = const [],
   });
 
   factory IssueDetail.fromApiJson(Map<String, dynamic> json) {
@@ -143,6 +149,9 @@ class IssueDetail {
       maintenanceRecords: maintenanceRecords,
       updatedAt:          json['updated_at']    as String?,
       locationText:       json['location_text'] as String?,
+      locationTag:        json['location_tag']  as String?,
+      relatedIssues:      (json['related_issues'] as List<dynamic>? ?? [])
+                              .cast<Map<String, dynamic>>(),
     );
   }
 }

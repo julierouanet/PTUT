@@ -5990,6 +5990,30 @@ abstract class AppLocalizations {
   /// **'Localisation'**
   String get issueDetailLocation;
 
+  /// No description provided for @issueDetailLocationTag.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tag / Étiquette'**
+  String get issueDetailLocationTag;
+
+  /// No description provided for @issueDetailNoPhone.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas de numéro renseigné'**
+  String get issueDetailNoPhone;
+
+  /// No description provided for @issueDetailRelatedIssues.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents récents sur cet équipement'**
+  String get issueDetailRelatedIssues;
+
+  /// No description provided for @issueDetailViewEquipment.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir la fiche équipement'**
+  String get issueDetailViewEquipment;
+
   /// No description provided for @issueDetailUpdatedAt.
   ///
   /// In fr, this message translates to:
@@ -8143,6 +8167,12 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Voir tout'**
   String get hubTechViewAll;
+
+  /// No description provided for @hubTechGoToTechnicianButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mes interventions'**
+  String get hubTechGoToTechnicianButton;
 
   /// No description provided for @hubTechPmOverdueLabel.
   ///
