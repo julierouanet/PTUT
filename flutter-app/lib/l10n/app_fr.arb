@@ -1985,6 +1985,12 @@
   "@techDocumentsWebOnly": {},
   "techDocumentsRetry": "Réessayer",
   "@techDocumentsRetry": {},
+  "techDocumentsTypeIntervention": "Rapport d'intervention",
+  "@techDocumentsTypeIntervention": {},
+  "techDocumentsTypeCompletion": "Rapport de fin d'intervention",
+  "@techDocumentsTypeCompletion": {},
+  "techDocumentsNoTypeSelected": "Sélectionnez au moins un type de document",
+  "@techDocumentsNoTypeSelected": {},
   "permViewInterventionDocuments": "Consulter les documents d'intervention",
   "@permViewInterventionDocuments": {},
 

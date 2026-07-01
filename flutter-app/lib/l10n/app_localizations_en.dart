@@ -4885,6 +4885,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techDocumentsRetry => 'Retry';
 
   @override
+  String get techDocumentsTypeIntervention => 'Intervention report';
+
+  @override
+  String get techDocumentsTypeCompletion => 'End-of-intervention report';
+
+  @override
+  String get techDocumentsNoTypeSelected => 'Select at least one document type';
+
+  @override
   String get permViewInterventionDocuments => 'View intervention documents';
 
   @override

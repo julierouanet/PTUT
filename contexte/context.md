@@ -754,17 +754,25 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 ### Documents d'intervention cross-équipement (`/api/documents/interventions`) **[NOUVEAU 2026-07-01]**
 
 Onglet « Documents » de la page technicien : liste/filtre/export des documents `equipment_documents`
-avec `document_type='intervention'`, toutes équipements confondus (pas de scope par `equipment_id`).
+avec `document_type IN ('intervention','completion')` (filtrable via `?types=`), toutes équipements
+confondus (pas de scope par `equipment_id`).
 Auth : `verifyToken` + `requireRole('admin','supervisor','technician','technician_biomedical','technician_it','technician_infra')`
 sur les 4 routes (pas de middleware de permission fine côté db-service — la permission applicative
 `viewInterventionDocuments` est vérifiée côté Flutter uniquement, cf. `contexte.md` § IAM & Sécurité).
 
+**[NOUVEAU 2026-07-01]** Paramètre `?types=` (CSV ou tableau `types[]=`) sur les 4 routes, whitelist
+`['intervention','completion']` (comparaison sensible à la casse, `400` si valeur inconnue). Absent →
+défaut `['intervention','completion']` (comportement historique élargi à `completion`). `types=` vide →
+`200`/`items:[]` sur la liste, `[]` sur `/technicians`, `404` sur `/zip` et `/print-pdf` (jamais de
+requête SQL `IN ()`). Correspond aux 2 cases à cocher de `intervention_documents_tab.dart`
+(« Rapport d'intervention » / « Rapport de fin d'intervention »).
+
 | Methode | Route                                  | Auth  | Description |
 |---------|-----------------------------------------|-------|--------------|
-| GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée ou `from > to`. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat |
-| GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document `intervention` non supprimé — alimente le filtre technicien (jamais de résolution par nom) |
-| GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume). `404` si sélection vide. `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, doc_count}`) |
-| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Mêmes filtres, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` |
+| GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?types=` (voir ci-dessus), `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée, `from > to`, ou `types` invalide. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat |
+| GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document parmi `?types=` (défaut `intervention`+`completion`) non supprimé — alimente le filtre technicien (jamais de résolution par nom). Route découplée de `parseFilters` (n'accepte/valide ni `from`, ni `to`, ni `uploaded_by`) |
+| GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `types`/`uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume). `404` si sélection vide. `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, types, doc_count}`) |
+| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Mêmes filtres, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` (`{uploaded_by, from, to, types, doc_count}`) |
 
 > Dépendances ajoutées à `db-service/package.json` : `archiver` (ZIP streaming), `pdf-lib` (fusion PDF).
 > Aucune nouvelle table/colonne — lecture filtrée de `equipment_documents` existante.

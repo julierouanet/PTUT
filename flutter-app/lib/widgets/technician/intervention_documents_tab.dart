@@ -13,11 +13,11 @@ import '../pagination_footer.dart';
 
 enum _PeriodPreset { last7Days, thisMonth, lastMonth, custom }
 
-/// Onglet « Documents » de la page technicien — liste, filtre (technicien +
-/// période) et exporte (ZIP / impression PDF fusionnée) tous les documents
-/// d'intervention (`document_type = 'intervention'`), toutes équipements
-/// confondus. Visible uniquement si `Permission.viewInterventionDocuments`
-/// est accordée (garde appliquée par l'écran appelant).
+/// Onglet « Documents » de la page technicien — liste, filtre (type, technicien,
+/// période) et exporte (ZIP / impression PDF fusionnée) les documents de type
+/// `intervention` et/ou `completion`, toutes équipements confondus. Visible
+/// uniquement si `Permission.viewInterventionDocuments` est accordée (garde
+/// appliquée par l'écran appelant).
 class InterventionDocumentsTab extends StatefulWidget {
   const InterventionDocumentsTab({super.key});
 
@@ -38,6 +38,9 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   String? _selectedTechnicianId;
   _PeriodPreset _preset = _PeriodPreset.last7Days;
   DateTimeRange? _customRange;
+
+  bool _includeIntervention = true;
+  bool _includeCompletion = true;
 
   bool _isExportingZip = false;
   bool _isExportingPdf = false;
@@ -75,13 +78,34 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     return (_apiDateFormat.format(from), _apiDateFormat.format(to));
   }
 
+  // ── Types de documents ───────────────────────────────────────────────────
+
+  List<String> _selectedTypes() => [
+        if (_includeIntervention) 'intervention',
+        if (_includeCompletion) 'completion',
+      ];
+
+  /// Recharge technicien(s) puis liste, dans cet ordre : un changement de types
+  /// peut invalider `_selectedTechnicianId` (garde-fou dans `_loadTechnicians`),
+  /// donc `_load` ne doit partir qu'une fois cette invalidation tranchée —
+  /// sinon un même clic déclencherait un `_load` en trop.
+  Future<void> _onTypesChanged() async {
+    await _loadTechnicians();
+    if (!mounted) return;
+    _load(page: 1);
+  }
+
   // ── Chargement ────────────────────────────────────────────────────────────
 
   Future<void> _loadTechnicians() async {
     try {
-      final techs = await DbApiService.instance.getInterventionTechnicians();
+      final techs = await DbApiService.instance.getInterventionTechnicians(types: _selectedTypes());
       if (!mounted) return;
-      setState(() => _technicians = techs);
+      final stillValid = _selectedTechnicianId == null || techs.any((t) => t.id == _selectedTechnicianId);
+      setState(() {
+        _technicians = techs;
+        if (!stillValid) _selectedTechnicianId = null;
+      });
     } catch (_) {
       // Filtre technicien optionnel : une erreur ici ne bloque pas la liste principale.
     }
@@ -89,6 +113,18 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
 
   Future<void> _load({int page = 1}) async {
     if (!mounted) return;
+    final types = _selectedTypes();
+    if (types.isEmpty) {
+      setState(() {
+        _items = [];
+        _total = 0;
+        _page = 1;
+        _totalPages = 1;
+        _loading = false;
+        _error = null;
+      });
+      return;
+    }
     setState(() { _loading = true; _error = null; });
     try {
       final (from, to) = _currentDateFilters();
@@ -98,6 +134,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
         uploadedBy: _selectedTechnicianId,
         from: from,
         to: to,
+        types: types,
       );
       if (!mounted) return;
       setState(() {
@@ -145,7 +182,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     await _runExport(
       setExporting: (v) => setState(() => _isExportingZip = v),
       fetch: (from, to) => DbApiService.instance.downloadInterventionDocumentsZip(
-        uploadedBy: _selectedTechnicianId, from: from, to: to,
+        uploadedBy: _selectedTechnicianId, from: from, to: to, types: _selectedTypes(),
       ),
       onSuccess: (bytes, from, to) async {
         if (kIsWeb) {
@@ -164,7 +201,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     await _runExport(
       setExporting: (v) => setState(() => _isExportingPdf = v),
       fetch: (from, to) => DbApiService.instance.printInterventionDocumentsPdf(
-        uploadedBy: _selectedTechnicianId, from: from, to: to,
+        uploadedBy: _selectedTechnicianId, from: from, to: to, types: _selectedTypes(),
       ),
       onSuccess: (bytes, from, to) => Printing.layoutPdf(onLayout: (_) async => bytes),
       emptyMessage: l10n.techDocumentsNoPdfToPrint,
@@ -238,9 +275,33 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   }
 
   Widget _buildFilters(AppLocalizations l10n) {
+    final typesSelected = _selectedTypes();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Wrap(
+          spacing: 12,
+          runSpacing: 0,
+          children: [
+            FilterChip(
+              label: Text(l10n.techDocumentsTypeIntervention),
+              selected: _includeIntervention,
+              onSelected: (v) {
+                setState(() => _includeIntervention = v);
+                _onTypesChanged();
+              },
+            ),
+            FilterChip(
+              label: Text(l10n.techDocumentsTypeCompletion),
+              selected: _includeCompletion,
+              onSelected: (v) {
+                setState(() => _includeCompletion = v);
+                _onTypesChanged();
+              },
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 12,
           runSpacing: 8,
@@ -286,14 +347,14 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
               ),
             ),
             OutlinedButton.icon(
-              onPressed: _isExportingZip ? null : _downloadZip,
+              onPressed: (_isExportingZip || typesSelected.isEmpty) ? null : _downloadZip,
               icon: _isExportingZip
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.archive_outlined, size: 18),
               label: Text(l10n.techDocumentsDownloadZip),
             ),
             OutlinedButton.icon(
-              onPressed: _isExportingPdf ? null : _printPdf,
+              onPressed: (_isExportingPdf || typesSelected.isEmpty) ? null : _printPdf,
               icon: _isExportingPdf
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.print_outlined, size: 18),
@@ -333,11 +394,12 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     }
 
     if (_items.isEmpty) {
+      final message = _selectedTypes().isEmpty ? l10n.techDocumentsNoTypeSelected : l10n.techDocumentsEmpty;
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.folder_open, color: AppColors.textMuted, size: 40),
           const SizedBox(height: 12),
-          Text(l10n.techDocumentsEmpty, style: const TextStyle(color: AppColors.textSecondary)),
+          Text(message, style: const TextStyle(color: AppColors.textSecondary)),
         ]),
       );
     }

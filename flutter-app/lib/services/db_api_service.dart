@@ -48,6 +48,15 @@ class DbApiService {
     return parts.join('&');
   }
 
+  /// Ajoute `types` à une query string déjà construite, en distinguant
+  /// "paramètre absent" (`null`, défaut serveur) de "sélection vide explicite"
+  /// (`[]` → `types=`) — contrairement à `_buildQuery` qui omet les chaînes vides.
+  String _appendTypes(String query, List<String>? types) {
+    if (types == null) return query;
+    final part = 'types=${types.isEmpty ? '' : Uri.encodeComponent(types.join(','))}';
+    return query.isEmpty ? part : '$query&$part';
+  }
+
   // ── ÉQUIPEMENTS ────────────────────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getEquipment({
@@ -547,15 +556,16 @@ class DbApiService {
     String? from,
     String? to,
     String? search,
+    List<String>? types,
   }) async {
-    final query = _buildQuery({
+    final query = _appendTypes(_buildQuery({
       'page': page,
       'limit': limit,
       'uploaded_by': uploadedBy,
       'from': from,
       'to': to,
       'search': search,
-    });
+    }), types);
     final url = '${ApiConfig.interventionDocumentsUrl}?$query';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
@@ -574,8 +584,11 @@ class DbApiService {
 
   /// Liste des techniciens ayant déposé au moins un document d'intervention
   /// (alimente le filtre technicien de l'onglet Documents).
-  Future<List<InterventionTechnician>> getInterventionTechnicians() async {
-    final url = '${ApiConfig.interventionDocumentsUrl}/technicians';
+  Future<List<InterventionTechnician>> getInterventionTechnicians({
+    List<String>? types,
+  }) async {
+    final query = _appendTypes('', types);
+    final url = '${ApiConfig.interventionDocumentsUrl}/technicians${query.isEmpty ? '' : '?$query'}';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     final list = jsonDecode(response.body) as List<dynamic>;
@@ -590,8 +603,9 @@ class DbApiService {
     String? uploadedBy,
     String? from,
     String? to,
+    List<String>? types,
   }) async {
-    final query = _buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to});
+    final query = _appendTypes(_buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to}), types);
     final url = '${ApiConfig.interventionDocumentsUrl}/zip?$query';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
@@ -604,8 +618,9 @@ class DbApiService {
     String? uploadedBy,
     String? from,
     String? to,
+    List<String>? types,
   }) async {
-    final query = _buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to});
+    final query = _appendTypes(_buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to}), types);
     final url = '${ApiConfig.interventionDocumentsUrl}/print-pdf?$query';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);

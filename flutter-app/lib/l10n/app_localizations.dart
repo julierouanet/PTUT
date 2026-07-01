@@ -9068,6 +9068,24 @@ abstract class AppLocalizations {
   /// **'Réessayer'**
   String get techDocumentsRetry;
 
+  /// No description provided for @techDocumentsTypeIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport d\'intervention'**
+  String get techDocumentsTypeIntervention;
+
+  /// No description provided for @techDocumentsTypeCompletion.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport de fin d\'intervention'**
+  String get techDocumentsTypeCompletion;
+
+  /// No description provided for @techDocumentsNoTypeSelected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez au moins un type de document'**
+  String get techDocumentsNoTypeSelected;
+
   /// No description provided for @permViewInterventionDocuments.
   ///
   /// In fr, this message translates to:

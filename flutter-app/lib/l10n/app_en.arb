@@ -1964,6 +1964,12 @@
   "@techDocumentsWebOnly": {},
   "techDocumentsRetry": "Retry",
   "@techDocumentsRetry": {},
+  "techDocumentsTypeIntervention": "Intervention report",
+  "@techDocumentsTypeIntervention": {},
+  "techDocumentsTypeCompletion": "End-of-intervention report",
+  "@techDocumentsTypeCompletion": {},
+  "techDocumentsNoTypeSelected": "Select at least one document type",
+  "@techDocumentsNoTypeSelected": {},
   "permViewInterventionDocuments": "View intervention documents",
   "@permViewInterventionDocuments": {},
 

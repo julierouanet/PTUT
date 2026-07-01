@@ -7,15 +7,40 @@ const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { UPLOAD_DIR } = require('../config');
+const { VALID_DOC_TYPES } = require('../utils/document_types');
 
 const router = express.Router();
 
 const ALLOWED_ROLES = ['admin', 'supervisor', 'technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const FILTERABLE_DOC_TYPES = VALID_DOC_TYPES.filter((t) => t === 'intervention' || t === 'completion');
 
-// ── Validation commune des filtres from/to/uploaded_by ────────────────────────
+// Parse le paramètre `types` (CSV "intervention,completion" OU tableau Express
+// si le client envoie ?types=a&types=b). Comparaison EXACTE, sensible à la casse
+// (les valeurs DB sont strictement en minuscules, aucune normalisation).
+function parseTypes(rawTypes) {
+  if (rawTypes === undefined) return { docTypes: FILTERABLE_DOC_TYPES };
+
+  const tokens = Array.isArray(rawTypes) ? rawTypes : String(rawTypes).split(',');
+  const docTypes = tokens.map((t) => String(t).trim()).filter((t) => t.length > 0);
+
+  const unknown = docTypes.find((t) => !FILTERABLE_DOC_TYPES.includes(t));
+  if (unknown) {
+    return { error: `Type de document invalide : "${unknown}". Valeurs acceptées : ${FILTERABLE_DOC_TYPES.join(', ')}` };
+  }
+
+  return { docTypes }; // peut être [] si types= ou types=, — valide, pas une erreur
+}
+
+// Clause IN (?,?,...) + params pour filtrer sur document_type — partagée entre
+// buildWhere (routes /, /zip, /print-pdf) et /technicians.
+function docTypesInClause(docTypes) {
+  return { placeholders: docTypes.map(() => '?').join(','), params: [...docTypes] };
+}
+
+// ── Validation commune des filtres from/to/uploaded_by/types ─────────────────
 function parseFilters(query) {
-  const { uploaded_by, from, to, search } = query;
+  const { uploaded_by, from, to, search, types } = query;
 
   if (from !== undefined && !DATE_RE.test(from)) {
     return { error: 'Format de date invalide (attendu YYYY-MM-DD)' };
@@ -27,13 +52,17 @@ function parseFilters(query) {
     return { error: 'from doit être antérieur ou égal à to' };
   }
 
-  return { uploadedBy: uploaded_by || null, from: from || null, to: to || null, search: search || null };
+  const { docTypes, error: typesError } = parseTypes(types);
+  if (typesError) return { error: typesError };
+
+  return { uploadedBy: uploaded_by || null, from: from || null, to: to || null, search: search || null, docTypes };
 }
 
 // Construit la clause WHERE + params communs à list/zip/print-pdf
-function buildWhere({ uploadedBy, from, to, search }, extraCondition) {
-  let where = "WHERE ed.document_type = 'intervention' AND ed.deleted_at IS NULL";
-  const params = [];
+// N'est appelée que si filters.docTypes.length > 0 (jamais de IN () vide)
+function buildWhere({ uploadedBy, from, to, search, docTypes }, extraCondition) {
+  const { placeholders, params } = docTypesInClause(docTypes);
+  let where = `WHERE ed.document_type IN (${placeholders}) AND ed.deleted_at IS NULL`;
 
   if (extraCondition) where += ` AND ${extraCondition}`;
   if (uploadedBy) {
@@ -62,7 +91,7 @@ function logExport(req, action, filters, docCount) {
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles?.[0] || '',
     action,
     target_type: 'equipment_documents', target_id: null, target_name: null,
-    details: JSON.stringify({ uploaded_by: filters.uploadedBy, from: filters.from, to: filters.to, doc_count: docCount }),
+    details: JSON.stringify({ uploaded_by: filters.uploadedBy, from: filters.from, to: filters.to, types: filters.docTypes, doc_count: docCount }),
     ...extractReqMeta(req),
   });
 }
@@ -80,6 +109,10 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   let limitInt = limit !== undefined ? parseInt(limit, 10) : 20;
   if (!Number.isFinite(limitInt) || limitInt < 1 || limitInt > 100) {
     return res.status(400).json({ error: 'limit invalide' });
+  }
+
+  if (filters.docTypes.length === 0) {
+    return res.json({ items: [], total: 0, page: pageInt, limit: limitInt, total_pages: 1 });
   }
 
   const db = getDb();
@@ -106,13 +139,18 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
 
 // ── GET /api/documents/interventions/technicians ──────────────────────────────
 router.get('/technicians', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
+  const { docTypes, error } = parseTypes(req.query.types);
+  if (error) return res.status(400).json({ error });
+  if (docTypes.length === 0) return res.json([]);
+
   const db = getDb();
+  const { placeholders, params } = docTypesInClause(docTypes);
   const items = db.prepare(`
     SELECT DISTINCT uploaded_by, uploader_name
     FROM equipment_documents
-    WHERE document_type = 'intervention' AND deleted_at IS NULL AND uploaded_by IS NOT NULL
+    WHERE document_type IN (${placeholders}) AND deleted_at IS NULL AND uploaded_by IS NOT NULL
     ORDER BY uploader_name
-  `).all();
+  `).all(...params);
   res.json(items);
 });
 
@@ -120,6 +158,9 @@ router.get('/technicians', verifyToken, requireRole(...ALLOWED_ROLES), (req, res
 router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   const filters = parseFilters(req.query);
   if (filters.error) return res.status(400).json({ error: filters.error });
+  if (filters.docTypes.length === 0) {
+    return res.status(404).json({ error: 'Aucun document pour ces critères' });
+  }
 
   const db = getDb();
   const { where, params } = buildWhere(filters);
@@ -166,6 +207,9 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
 router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req, res) => {
   const filters = parseFilters(req.query);
   if (filters.error) return res.status(400).json({ error: filters.error });
+  if (filters.docTypes.length === 0) {
+    return res.status(404).json({ error: 'Aucun PDF pour ces critères' });
+  }
 
   const db = getDb();
   const { where, params } = buildWhere(filters, "ed.mime_type = 'application/pdf'");

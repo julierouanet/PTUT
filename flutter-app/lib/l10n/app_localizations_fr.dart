@@ -4934,6 +4934,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techDocumentsRetry => 'Réessayer';
 
   @override
+  String get techDocumentsTypeIntervention => 'Rapport d\'intervention';
+
+  @override
+  String get techDocumentsTypeCompletion => 'Rapport de fin d\'intervention';
+
+  @override
+  String get techDocumentsNoTypeSelected =>
+      'Sélectionnez au moins un type de document';
+
+  @override
   String get permViewInterventionDocuments =>
       'Consulter les documents d\'intervention';
 

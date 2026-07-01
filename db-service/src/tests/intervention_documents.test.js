@@ -337,6 +337,111 @@ describe('GET /api/documents/interventions — liste', () => {
   });
 });
 
+describe('GET /api/documents/interventions — filtre types', () => {
+  test('✅ pas de types → retourne intervention ET completion, exclut technical', async () => {
+    const idIntervention = insertInterventionDoc({ storedName: 'types-default-int.pdf', originalName: 'types-default-int.pdf', docType: 'intervention' });
+    const idCompletion = insertInterventionDoc({ storedName: 'types-default-comp.pdf', originalName: 'types-default-comp.pdf', docType: 'completion' });
+    const idTech = insertInterventionDoc({ storedName: 'types-default-tech.pdf', originalName: 'types-default-tech.pdf', docType: 'technical' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idIntervention);
+    expect(ids).toContain(idCompletion);
+    expect(ids).not.toContain(idTech);
+  });
+
+  test('✅ types=intervention → ne retourne que les documents intervention', async () => {
+    const idIntervention = insertInterventionDoc({ storedName: 'types-int-only.pdf', originalName: 'types-int-only.pdf', docType: 'intervention' });
+    const idCompletion = insertInterventionDoc({ storedName: 'types-int-only-comp.pdf', originalName: 'types-int-only-comp.pdf', docType: 'completion' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'intervention' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idIntervention);
+    expect(ids).not.toContain(idCompletion);
+  });
+
+  test('✅ types=completion → ne retourne que les documents completion', async () => {
+    const idIntervention = insertInterventionDoc({ storedName: 'types-comp-only-int.pdf', originalName: 'types-comp-only-int.pdf', docType: 'intervention' });
+    const idCompletion = insertInterventionDoc({ storedName: 'types-comp-only.pdf', originalName: 'types-comp-only.pdf', docType: 'completion' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'completion' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idCompletion);
+    expect(ids).not.toContain(idIntervention);
+  });
+
+  test('✅ types=intervention,completion explicite → identique au cas par défaut', async () => {
+    const idIntervention = insertInterventionDoc({ storedName: 'types-explicit-int.pdf', originalName: 'types-explicit-int.pdf', docType: 'intervention' });
+    const idCompletion = insertInterventionDoc({ storedName: 'types-explicit-comp.pdf', originalName: 'types-explicit-comp.pdf', docType: 'completion' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'intervention,completion' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idIntervention);
+    expect(ids).toContain(idCompletion);
+  });
+
+  test('🚫 types=Intervention (casse différente) → 400', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'Intervention' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 types=bogus → 400', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'bogus' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
+  });
+
+  test('✅ types= (chaîne vide) → 200, items vide, total 0', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: '' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toEqual([]);
+    expect(res.body.total).toBe(0);
+  });
+
+  test('✅ types[]=intervention&types[]=completion (forme tableau) → pas de crash serveur', async () => {
+    const idIntervention = insertInterventionDoc({ storedName: 'types-arr-int.pdf', originalName: 'types-arr-int.pdf', docType: 'intervention' });
+    const idCompletion = insertInterventionDoc({ storedName: 'types-arr-comp.pdf', originalName: 'types-arr-comp.pdf', docType: 'completion' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query('types[]=intervention&types[]=completion')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idIntervention);
+    expect(ids).toContain(idCompletion);
+  });
+});
+
 describe('GET /api/documents/interventions/technicians', () => {
   test('✅ retourne les paires uploaded_by/uploader_name distinctes, hors documents non-intervention', async () => {
     insertInterventionDoc({ storedName: 'tech-list-1.pdf', originalName: 'tech-list-1.pdf', uploadedBy: 'tech-list-x', uploaderName: 'Tech List X' });
@@ -354,6 +459,37 @@ describe('GET /api/documents/interventions/technicians', () => {
     expect(uploadedByList).not.toContain('tech-list-onlytech');
     // DISTINCT : un seul enregistrement malgré 2 documents du même technicien
     expect(uploadedByList.filter((u) => u === 'tech-list-x')).toHaveLength(1);
+  });
+
+  test('✅ types=completion → exclut un technicien qui n\'a que des documents intervention', async () => {
+    insertInterventionDoc({ storedName: 'tech-comp-only.pdf', originalName: 'tech-comp-only.pdf', docType: 'completion', uploadedBy: 'tech-comp-only', uploaderName: 'Tech Comp Only' });
+    insertInterventionDoc({ storedName: 'tech-int-only.pdf', originalName: 'tech-int-only.pdf', docType: 'intervention', uploadedBy: 'tech-int-only', uploaderName: 'Tech Int Only' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/technicians')
+      .query({ types: 'completion' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const uploadedByList = res.body.map((t) => t.uploaded_by);
+    expect(uploadedByList).toContain('tech-comp-only');
+    expect(uploadedByList).not.toContain('tech-int-only');
+  });
+
+  test('🚫 types=bogus → 400', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions/technicians')
+      .query({ types: 'bogus' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
+  });
+
+  test('✅ sans from/to valides → ne plante jamais (route découplée de parseFilters)', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions/technicians')
+      .query({ from: 'pas-une-date' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(200);
   });
 });
 
@@ -378,6 +514,26 @@ describe('GET /api/documents/interventions/zip', () => {
     const res = await request(app)
       .get('/api/documents/interventions/zip')
       .query({ uploaded_by: 'tech-zip-inexistant' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 types=intervention n\'inclut pas les documents completion', async () => {
+    const storedComp = 'zip-comp-excl.pdf';
+    writeRealFile(storedComp);
+    insertInterventionDoc({ storedName: storedComp, originalName: 'zip-comp-excl.pdf', docType: 'completion', uploadedBy: 'tech-zip-comp-excl', uploaderName: 'Tech Zip Comp Excl' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ uploaded_by: 'tech-zip-comp-excl', types: 'intervention' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 types= (chaîne vide) → 404', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ types: '' })
       .set('Authorization', 'Bearer fake-token');
     expect(res.status).toBe(404);
   });
@@ -415,6 +571,26 @@ describe('GET /api/documents/interventions/print-pdf', () => {
       .query({ uploaded_by: 'tech-print-nopdf' })
       .set('Authorization', 'Bearer fake-token');
 
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 types=intervention n\'inclut pas les PDF completion', async () => {
+    const pdfStored = 'print-comp-excl.pdf';
+    await writeRealPdf(pdfStored);
+    insertInterventionDoc({ storedName: pdfStored, originalName: 'print-comp-excl.pdf', mimeType: 'application/pdf', docType: 'completion', uploadedBy: 'tech-print-comp-excl', uploaderName: 'Tech Print Comp Excl' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-comp-excl', types: 'intervention' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+
+  test('🚫 types= (chaîne vide) → 404', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ types: '' })
+      .set('Authorization', 'Bearer fake-token');
     expect(res.status).toBe(404);
   });
 });
