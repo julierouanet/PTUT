@@ -51,9 +51,10 @@ void main() {
   });
 
   group('Permission', () {
-    test('has 16 permissions', () {
+    test('has 17 permissions', () {
       // 14 permissions initiales + manageFeatures (feature flags) + manageBackups (module sauvegardes)
-      expect(Permission.values.length, 16);
+      // + viewInterventionDocuments (onglet Documents d'intervention technicien)
+      expect(Permission.values.length, 17);
     });
 
     test('displayName is not empty for all permissions', () {
@@ -89,10 +90,11 @@ void main() {
     test('technician gets repair-related permissions', () {
       final techPerms = getPermissionsForRole(UserRole.technician);
 
-      expect(techPerms.length, 6);
+      expect(techPerms.length, 7);
       expect(techPerms, contains(Permission.updateRepairs));
       expect(techPerms, contains(Permission.registerParts));
       expect(techPerms, contains(Permission.viewEquipment));
+      expect(techPerms, contains(Permission.viewInterventionDocuments));
     });
 
     test('chaque tech spécialisé partage les permissions de technician', () {
@@ -117,10 +119,11 @@ void main() {
     test('supervisor gets approval-related permissions', () {
       final supPerms = getPermissionsForRole(UserRole.supervisor);
 
-      expect(supPerms.length, 5);
+      expect(supPerms.length, 6);
       expect(supPerms, contains(Permission.approveRequests));
       expect(supPerms, contains(Permission.assignTasks));
       expect(supPerms, contains(Permission.viewEquipment));
+      expect(supPerms, contains(Permission.viewInterventionDocuments));
     });
 
     test('supervisor does NOT get technician/admin permissions', () {
@@ -157,8 +160,8 @@ void main() {
         UserRole.technicianBiomedical,
         UserRole.technicianIt,
       ]);
-      // mêmes 6 permissions, dédupliquées
-      expect(perms.length, 6);
+      // mêmes 7 permissions, dédupliquées
+      expect(perms.length, 7);
       expect(perms, contains(Permission.updateRepairs));
     });
 
