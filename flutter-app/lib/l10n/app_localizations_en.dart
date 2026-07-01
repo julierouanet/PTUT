@@ -5756,14 +5756,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Would you like to view the intervention report?';
 
   @override
-  String get techAttachDocumentsTitle => 'Additional documents';
+  String get techAddDocumentCheckboxLabel =>
+      'Attach a document to this intervention';
 
   @override
-  String get techAttachDocumentsSubtitle =>
-      'Would you like to attach additional documents (photos, certificates...) to this intervention?';
-
-  @override
-  String get techAttachDocumentsSuccess => 'Documents added to the issue';
+  String get techAddDocumentPickButton => 'Select files';
 
   @override
   String get interventionDocumentsSectionTitle => 'Intervention documents';

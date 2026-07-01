@@ -2339,9 +2339,8 @@
 
   "techViewLoopPdfQuestion": "Voulez-vous consulter le rapport de cette boucle ?",
   "techViewReportPdfQuestion": "Voulez-vous consulter le compte-rendu d'intervention ?",
-  "techAttachDocumentsTitle": "Documents complémentaires",
-  "techAttachDocumentsSubtitle": "Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?",
-  "techAttachDocumentsSuccess": "Documents ajoutés à l'incident",
+  "techAddDocumentCheckboxLabel": "Ajouter un document à cette intervention",
+  "techAddDocumentPickButton": "Sélectionner des fichiers",
 
   "interventionDocumentsSectionTitle": "Documents d'intervention",
   "interventionDocumentsEmpty": "Aucun document d'intervention pour cet incident.",

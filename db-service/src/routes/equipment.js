@@ -5,6 +5,7 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 const { TECH_ROLES, rolesCsv } = require('../utils/roles');
 const { generateMaintenanceLabelPdf } = require('../services/pdf_label_service');
 const { buildReplacementPlan } = require('../utils/replacement');
+const { buildEquipmentFinalReport } = require('../utils/final_report');
 
 const router = express.Router();
 
@@ -205,6 +206,37 @@ router.get('/replacement-plan', verifyToken, requireRole('admin', 'supervisor'),
   const plan = buildReplacementPlan(rows, currentYear);
 
   res.json(plan);
+});
+
+// ── GET /api/equipment/:id/final-report ───────────────────────────────────────
+// Rapport final équipement : résumé consolidé (KPI MTTR / taux de réouverture /
+// downtime cumulé) + détail de toutes les interventions résolues. Lecture seule,
+// aucun filtre sur equipment.status (historique valable même si Disposed).
+router.get('/:id/final-report', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+
+  const eq = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(id);
+  if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
+
+  const rows = db.prepare(`
+    SELECT
+      i.id                  AS issue_id,
+      i.resolved_at         AS resolved_at,
+      i.assigned_technician AS technician_name,
+      (julianday(i.resolved_at) - julianday(i.created_at)) * 24 AS hours_open,
+      ir.duration_hours     AS duration_hours,
+      ir.root_cause         AS root_cause,
+      ir.summary            AS summary,
+      ir.report_status      AS report_status,
+      (SELECT MAX(loop_number) FROM issue_intervention_sessions s WHERE s.issue_id = i.id) AS max_loop
+    FROM issues i
+    LEFT JOIN issue_intervention_reports ir ON ir.issue_id = i.id
+    WHERE i.equipment_id = ? AND i.resolved_at IS NOT NULL
+    ORDER BY i.resolved_at DESC
+  `).all(id);
+
+  res.json(buildEquipmentFinalReport(eq, rows));
 });
 
 // ── GET /api/equipment/by-tag/:tagNumber ─────────────────────────────────────

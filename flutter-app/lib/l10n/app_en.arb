@@ -2317,9 +2317,8 @@
 
   "techViewLoopPdfQuestion": "Would you like to view the report for this loop?",
   "techViewReportPdfQuestion": "Would you like to view the intervention report?",
-  "techAttachDocumentsTitle": "Additional documents",
-  "techAttachDocumentsSubtitle": "Would you like to attach additional documents (photos, certificates...) to this intervention?",
-  "techAttachDocumentsSuccess": "Documents added to the issue",
+  "techAddDocumentCheckboxLabel": "Attach a document to this intervention",
+  "techAddDocumentPickButton": "Select files",
 
   "interventionDocumentsSectionTitle": "Intervention documents",
   "interventionDocumentsEmpty": "No intervention documents for this issue.",

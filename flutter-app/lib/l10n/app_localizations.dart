@@ -10626,23 +10626,17 @@ abstract class AppLocalizations {
   /// **'Voulez-vous consulter le compte-rendu d\'intervention ?'**
   String get techViewReportPdfQuestion;
 
-  /// No description provided for @techAttachDocumentsTitle.
+  /// No description provided for @techAddDocumentCheckboxLabel.
   ///
   /// In fr, this message translates to:
-  /// **'Documents complémentaires'**
-  String get techAttachDocumentsTitle;
+  /// **'Ajouter un document à cette intervention'**
+  String get techAddDocumentCheckboxLabel;
 
-  /// No description provided for @techAttachDocumentsSubtitle.
+  /// No description provided for @techAddDocumentPickButton.
   ///
   /// In fr, this message translates to:
-  /// **'Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?'**
-  String get techAttachDocumentsSubtitle;
-
-  /// No description provided for @techAttachDocumentsSuccess.
-  ///
-  /// In fr, this message translates to:
-  /// **'Documents ajoutés à l\'incident'**
-  String get techAttachDocumentsSuccess;
+  /// **'Sélectionner des fichiers'**
+  String get techAddDocumentPickButton;
 
   /// No description provided for @interventionDocumentsSectionTitle.
   ///

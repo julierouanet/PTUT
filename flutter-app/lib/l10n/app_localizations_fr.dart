@@ -5822,14 +5822,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Voulez-vous consulter le compte-rendu d\'intervention ?';
 
   @override
-  String get techAttachDocumentsTitle => 'Documents complémentaires';
+  String get techAddDocumentCheckboxLabel =>
+      'Ajouter un document à cette intervention';
 
   @override
-  String get techAttachDocumentsSubtitle =>
-      'Souhaitez-vous joindre des documents complémentaires (photos, certificats...) à cette intervention ?';
-
-  @override
-  String get techAttachDocumentsSuccess => 'Documents ajoutés à l\'incident';
+  String get techAddDocumentPickButton => 'Sélectionner des fichiers';
 
   @override
   String get interventionDocumentsSectionTitle => 'Documents d\'intervention';

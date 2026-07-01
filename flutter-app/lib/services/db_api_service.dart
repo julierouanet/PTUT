@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
 import '../models/equipment_document.dart';
+import '../models/equipment_final_report.dart';
 import '../models/intervention_technician.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
@@ -506,6 +507,33 @@ class DbApiService {
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return response.bodyBytes;
+  }
+
+  // ── RAPPORT FINAL ÉQUIPEMENT ────────────────────────────────────────────────
+
+  /// Résumé consolidé (KPI MTTR/réouverture/downtime) + historique des
+  /// interventions résolues d'un équipement (GET /api/equipment/:id/final-report).
+  Future<EquipmentFinalReport> getEquipmentFinalReport(String equipmentId) async {
+    final url = '${ApiConfig.equipmentUrl}/$equipmentId/final-report';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return EquipmentFinalReport.fromApiJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  /// Archive le PDF du rapport final équipement (POST /api/equipment/:id/documents,
+  /// type 'final_report'). Field 'file' par défaut de postMultipart.
+  Future<void> archiveEquipmentFinalReportPdf(
+    String equipmentId,
+    Uint8List pdfBytes,
+    String fileName,
+  ) async {
+    await ApiClient.postMultipart(
+      '${ApiConfig.equipmentUrl}/$equipmentId/documents',
+      pdfBytes,
+      fileName,
+      'application/pdf',
+      {'type': 'final_report'},
+    );
   }
 
   // ── DOCUMENTS D'INTERVENTION (cross-équipement, onglet technicien) ─────────

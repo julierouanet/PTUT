@@ -65,6 +65,10 @@ class _TechnicianInterventionUpdateScreenState
   bool _isClosingAsDisposed  = false;
   bool _planNextAction       = false;
 
+  // ── Case "Ajouter un document" inline ────────────────────────────────────────
+  bool _wantsDocumentUpload = false;
+  final List<PlatformFile> _pickedDocuments = [];
+
   /// Vrai si une action API du formulaire d'intervention est en cours
   /// (désactive tous les boutons d'action pour éviter les appels concurrents).
   bool get _isBusy =>
@@ -443,6 +447,10 @@ class _TechnicianInterventionUpdateScreenState
           _buildPartsPicker(l10n),
           const SizedBox(height: 28),
         ],
+
+        // ── Case "Ajouter un document" inline ────────────────────────────────
+        _buildDocumentUploadSection(l10n),
+        const SizedBox(height: 28),
 
         // ── Bouton fusionné Sauvegarder et fermer la session ─────────────────
         SizedBox(
@@ -995,6 +1003,112 @@ class _TechnicianInterventionUpdateScreenState
         ],
       ),
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Case "Ajouter un document" inline (remplace l'ancien dialog post-hoc)
+  // ─────────────────────────────────────────────────────────────────────────────
+
+  Widget _buildDocumentUploadSection(AppLocalizations l10n) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Checkbox(
+              value: _wantsDocumentUpload,
+              onChanged: _isBusy
+                  ? null
+                  : (v) => setState(() {
+                        _wantsDocumentUpload = v ?? false;
+                        if (!_wantsDocumentUpload) _pickedDocuments.clear();
+                      }),
+              activeColor: AppColors.primary,
+            ),
+            Expanded(
+              child: Text(l10n.techAddDocumentCheckboxLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        if (_wantsDocumentUpload) ...[
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _isBusy ? null : _pickDocuments,
+            icon: const Icon(Icons.attach_file, size: 16),
+            label: Text(l10n.techAddDocumentPickButton),
+          ),
+          if (_pickedDocuments.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _pickedDocuments
+                  .map((f) => _buildPickedDocumentChip(f))
+                  .toList(),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Future<void> _pickDocuments() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    if (!mounted) return;
+    setState(() {
+      _pickedDocuments.addAll(result.files.where((f) => f.bytes != null));
+      if (_pickedDocuments.length > 5) {
+        _pickedDocuments.removeRange(5, _pickedDocuments.length);
+      }
+    });
+    _markDirty();
+  }
+
+  Widget _buildPickedDocumentChip(PlatformFile file) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.insert_drive_file_outlined,
+              size: 14, color: AppColors.primary),
+          const SizedBox(width: 6),
+          Text(file.name, style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+          const SizedBox(width: 6),
+          GestureDetector(
+            onTap: () => setState(() => _pickedDocuments.remove(file)),
+            child: const Icon(Icons.close, size: 14, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Upload les documents cochés vers l'incident (type 'completion'). Non
+  /// bloquant : n'échoue jamais la clôture en cours (pattern archiveInterventionPdf).
+  Future<void> _uploadPickedDocumentsIfAny(String issueId) async {
+    if (!_wantsDocumentUpload || _pickedDocuments.isEmpty) return;
+    try {
+      await DbApiService.instance.uploadInterventionDocuments(
+        issueId,
+        _pickedDocuments.map((f) => (
+          bytes: Uint8List.fromList(f.bytes!),
+          name: f.name,
+          mimeType: mimeFromExtension(f.extension ?? ''),
+        )).toList(),
+      );
+    } catch (_) { /* upload non bloquant */ }
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1697,60 +1811,6 @@ class _TechnicianInterventionUpdateScreenState
     }
   }
 
-  /// Propose au technicien de joindre jusqu'à 5 documents complémentaires
-  /// (PDF/JPEG/PNG) à l'incident. Sélection annulée ou vide → aucun appel réseau.
-  Future<void> _promptAttachDocuments(AppLocalizations l10n, String issueId) async {
-    if (!mounted) return;
-    final wantsUpload = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.techAttachDocumentsTitle),
-        content: Text(l10n.techAttachDocumentsSubtitle),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonSkip)),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(l10n.commonYes)),
-        ],
-      ),
-    );
-    if (wantsUpload != true) return;
-
-    final result = await FilePicker.platform.pickFiles(
-      allowMultiple: true,
-      type: FileType.custom,
-      allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png'],
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
-
-    final picked = result.files.take(5).where((f) => f.bytes != null).toList();
-    if (picked.isEmpty) return;
-
-    try {
-      await DbApiService.instance.uploadInterventionDocuments(
-        issueId,
-        picked.map((f) => (
-          bytes: Uint8List.fromList(f.bytes!),
-          name: f.name,
-          mimeType: mimeFromExtension(f.extension ?? ''),
-        )).toList(),
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(l10n.techAttachDocumentsSuccess),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('${l10n.commonApiError}: $e'),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
-    }
-  }
-
   Future<void> _doSaveAndClose(Issue issue, bool inventoryEnabled) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isClosingSession = true);
@@ -1803,6 +1863,8 @@ class _TechnicianInterventionUpdateScreenState
       try {
         await DbApiService.instance.archiveInterventionPdf(issue.id, pdfBytes, loopFileName);
       } catch (_) { /* archivage non bloquant */ }
+
+      await _uploadPickedDocumentsIfAny(issue.id);
 
       await _refreshAfterMutation();
       if (!mounted) return;
@@ -1919,9 +1981,8 @@ class _TechnicianInterventionUpdateScreenState
         if (!mounted) return;
       }
 
-      // Upload optionnel de documents complémentaires, quelle que soit la
-      // réponse au dialogue de visualisation du PDF ci-dessus.
-      await _promptAttachDocuments(l10n, issue.id);
+      // Upload optionnel des documents cochés dans la case inline du formulaire.
+      await _uploadPickedDocumentsIfAny(issue.id);
       if (!mounted) return;
 
       _stopTimer();
@@ -1997,6 +2058,24 @@ class _TechnicianInterventionUpdateScreenState
       await DbApiService.instance.archiveInterventionPdf(
         issue.id, pdfBytes, 'rapport_intervention_${issue.id}.pdf',
       );
+
+      // Génération auto du rapport final équipement (résumé + KPI), non bloquante,
+      // seulement si l'incident est rattaché à un équipement.
+      if (issue.equipmentId != null) {
+        try {
+          final finalReport =
+              await DbApiService.instance.getEquipmentFinalReport(issue.equipmentId!);
+          final finalReportPdf = await PdfReportService.generateEquipmentFinalReport(
+            report: finalReport,
+            generatedByName: user?.name ?? '—',
+            generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
+          );
+          await DbApiService.instance.archiveEquipmentFinalReportPdf(
+            issue.equipmentId!, finalReportPdf, 'rapport_final_${issue.equipmentId}.pdf',
+          );
+        } catch (_) { /* génération non bloquante */ }
+      }
+
       return pdfBytes;
     } catch (_) {
       return null;

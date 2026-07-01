@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/equipment.dart';
+import '../models/equipment_final_report.dart';
 import '../models/inventory_item.dart';
 import '../models/issue.dart';
 import '../models/issue_intervention_session.dart';
@@ -616,6 +617,142 @@ class PdfReportService {
     );
 
     return doc.save();
+  }
+
+  // ── Rapport final équipement (résumé interventions + KPI) ───────────────────
+
+  /// Construit le PDF du rapport final équipement : résumé KPI (MTTR, taux de
+  /// réouverture, downtime cumulé) + tableau de l'historique des interventions
+  /// résolues. Reçoit le modèle déjà parsé par DbApiService.getEquipmentFinalReport —
+  /// aucun appel API ici (génération 100% client, pattern generateInterventionReport).
+  static Future<Uint8List> generateEquipmentFinalReport({
+    required EquipmentFinalReport report,
+    required String generatedByName,
+    required String generatedByRole,
+  }) async {
+    final doc = pw.Document();
+    final now = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final equipmentId = report.equipmentId;
+    final summary      = report.summary;
+    final reportNo = 'EQ-$equipmentId';
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        header: (context) => _buildEquipmentFinalReportHeader(
+            now, generatedByName, generatedByRole, report.equipmentName, logo, reportNo),
+        footer: (context) => _buildFooter(context, reference: 'Equipment $equipmentId'),
+        build: (context) => [
+          // ── Section 1 : KPI ───────────────────────────────────────────
+          _sectionTitle('1. SUMMARY'),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Total interventions',
+                summary.totalInterventions.toString(), _primary)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Average MTTR (hours)',
+                summary.mttrHoursAvg == null ? '—' : summary.mttrHoursAvg!.toStringAsFixed(1), _warning)),
+          ]),
+          pw.SizedBox(height: 8),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Reopened rate',
+                summary.reopenedRatePct == null ? '—' : '${summary.reopenedRatePct!.toStringAsFixed(1)}%', _error)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Total downtime (hours)',
+                summary.downtimeHoursTotal.toStringAsFixed(1), _success)),
+          ]),
+
+          // ── Section 2 : Historique des interventions ─────────────────
+          _sectionTitle('2. INTERVENTION HISTORY'),
+          report.interventions.isEmpty
+              ? pw.Text('No resolved intervention recorded for this equipment.',
+                  style: const pw.TextStyle(fontSize: 8, color: _textMuted))
+              : _interventionHistoryTable(report.interventions),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  // En-tête dédié du rapport final équipement
+  static pw.Widget _buildEquipmentFinalReportHeader(DateTime now, String byName,
+      String byRole, String equipmentName, pw.MemoryImage logo, String reportNo) {
+    return pw.Column(children: [
+      _buildLetterhead(logo),
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const pw.BoxDecoration(
+          color: _primary,
+          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('EQUIPMENT FINAL REPORT',
+                    style: pw.TextStyle(
+                        color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('Kabutare District Hospital — Rwanda',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('Equipment: $equipmentName',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text('Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('By: $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Report No: $reportNo',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      pw.SizedBox(height: 6),
+    ]);
+  }
+
+  // Tableau de l'historique des interventions résolues
+  static pw.Widget _interventionHistoryTable(List<EquipmentFinalReportIntervention> interventions) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: _border),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(2),   // Date résolution
+        1: pw.FlexColumnWidth(2),   // Technicien
+        2: pw.FlexColumnWidth(1),   // Durée (h)
+        3: pw.FlexColumnWidth(2),   // Cause racine
+        4: pw.FlexColumnWidth(3),   // Résumé
+        5: pw.FlexColumnWidth(1),   // Réouverte
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: _bgLight),
+          children: [
+            _th('Resolved'), _th('Technician'), _th('Duration (h)'),
+            _th('Root cause'), _th('Summary'), _th('Reopened'),
+          ],
+        ),
+        ...interventions.map((i) {
+          return pw.TableRow(children: [
+            _td(_s(i.resolvedAt).split(' ').first),
+            _td(_s(i.technicianName)),
+            _td(i.durationHours == null ? '—' : i.durationHours!.toStringAsFixed(1)),
+            _td(_s(i.rootCause)),
+            _td(_s(i.summary)),
+            _td(i.reopened ? 'Yes' : 'No', color: i.reopened ? _warning : null),
+          ]);
+        }),
+      ],
+    );
   }
 
   // Letterhead (logo + adresse officielle) répété en haut de chaque page
