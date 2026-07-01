@@ -131,6 +131,7 @@ class ApiConfig {
   static String get analyticsUrl  => '$dbBaseUrl/api/analytics';
   static String get featuresUrl   => '$authBaseUrl/api/feature-flags';
   static String get backupsUrl    => '$dbBaseUrl/api/admin/backups';
+  static String get interventionDocumentsUrl => '$dbBaseUrl/api/documents/interventions';
 
   // ── Départements (db-service) ─────────────────────────────────────────────────
   static String get departmentsUrl => '$dbBaseUrl/api/departments';

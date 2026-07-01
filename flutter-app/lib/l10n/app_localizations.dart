@@ -8960,6 +8960,120 @@ abstract class AppLocalizations {
   /// **'Accès réservé aux techniciens et superviseurs'**
   String get docRestrictedAccess;
 
+  /// No description provided for @techDocumentsTab.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents'**
+  String get techDocumentsTab;
+
+  /// No description provided for @techDocumentsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents d\'intervention'**
+  String get techDocumentsTitle;
+
+  /// No description provided for @techDocumentsFilterTechnician.
+  ///
+  /// In fr, this message translates to:
+  /// **'Technicien'**
+  String get techDocumentsFilterTechnician;
+
+  /// No description provided for @techDocumentsAllTechnicians.
+  ///
+  /// In fr, this message translates to:
+  /// **'Tous les techniciens'**
+  String get techDocumentsAllTechnicians;
+
+  /// No description provided for @techDocumentsFilterPeriod.
+  ///
+  /// In fr, this message translates to:
+  /// **'Période'**
+  String get techDocumentsFilterPeriod;
+
+  /// No description provided for @techDocumentsPresetLast7Days.
+  ///
+  /// In fr, this message translates to:
+  /// **'7 derniers jours'**
+  String get techDocumentsPresetLast7Days;
+
+  /// No description provided for @techDocumentsPresetThisMonth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ce mois-ci'**
+  String get techDocumentsPresetThisMonth;
+
+  /// No description provided for @techDocumentsPresetLastMonth.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mois dernier'**
+  String get techDocumentsPresetLastMonth;
+
+  /// No description provided for @techDocumentsPresetCustom.
+  ///
+  /// In fr, this message translates to:
+  /// **'Personnalisé'**
+  String get techDocumentsPresetCustom;
+
+  /// No description provided for @techDocumentsDownloadZip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger ZIP'**
+  String get techDocumentsDownloadZip;
+
+  /// No description provided for @techDocumentsPrint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Imprimer'**
+  String get techDocumentsPrint;
+
+  /// No description provided for @techDocumentsCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} documents sur la période sélectionnée'**
+  String techDocumentsCount(int count);
+
+  /// No description provided for @techDocumentsEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun document pour ces critères'**
+  String get techDocumentsEmpty;
+
+  /// No description provided for @techDocumentsNoPdfToPrint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun PDF à imprimer sur cette période'**
+  String get techDocumentsNoPdfToPrint;
+
+  /// No description provided for @techDocumentsZipError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec du téléchargement du ZIP'**
+  String get techDocumentsZipError;
+
+  /// No description provided for @techDocumentsPrintError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de la génération du PDF'**
+  String get techDocumentsPrintError;
+
+  /// No description provided for @techDocumentsWebOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le téléchargement est disponible uniquement depuis un navigateur'**
+  String get techDocumentsWebOnly;
+
+  /// No description provided for @techDocumentsRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get techDocumentsRetry;
+
+  /// No description provided for @permViewInterventionDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Consulter les documents d\'intervention'**
+  String get permViewInterventionDocuments;
+
   /// No description provided for @issuePhotosSection.
   ///
   /// In fr, this message translates to:

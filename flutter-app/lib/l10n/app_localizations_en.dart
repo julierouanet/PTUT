@@ -4828,6 +4828,66 @@ class AppLocalizationsEn extends AppLocalizations {
       'Access restricted to technicians and supervisors';
 
   @override
+  String get techDocumentsTab => 'Documents';
+
+  @override
+  String get techDocumentsTitle => 'Intervention documents';
+
+  @override
+  String get techDocumentsFilterTechnician => 'Technician';
+
+  @override
+  String get techDocumentsAllTechnicians => 'All technicians';
+
+  @override
+  String get techDocumentsFilterPeriod => 'Period';
+
+  @override
+  String get techDocumentsPresetLast7Days => 'Last 7 days';
+
+  @override
+  String get techDocumentsPresetThisMonth => 'This month';
+
+  @override
+  String get techDocumentsPresetLastMonth => 'Last month';
+
+  @override
+  String get techDocumentsPresetCustom => 'Custom';
+
+  @override
+  String get techDocumentsDownloadZip => 'Download ZIP';
+
+  @override
+  String get techDocumentsPrint => 'Print';
+
+  @override
+  String techDocumentsCount(int count) {
+    return '$count documents for the selected period';
+  }
+
+  @override
+  String get techDocumentsEmpty => 'No documents for these criteria';
+
+  @override
+  String get techDocumentsNoPdfToPrint => 'No PDF to print for this period';
+
+  @override
+  String get techDocumentsZipError => 'Failed to download the ZIP';
+
+  @override
+  String get techDocumentsPrintError => 'Failed to generate the PDF';
+
+  @override
+  String get techDocumentsWebOnly =>
+      'Download is only available from a browser';
+
+  @override
+  String get techDocumentsRetry => 'Retry';
+
+  @override
+  String get permViewInterventionDocuments => 'View intervention documents';
+
+  @override
   String get issuePhotosSection => 'Incident photos';
 
   @override

@@ -4876,6 +4876,68 @@ class AppLocalizationsFr extends AppLocalizations {
       'Accès réservé aux techniciens et superviseurs';
 
   @override
+  String get techDocumentsTab => 'Documents';
+
+  @override
+  String get techDocumentsTitle => 'Documents d\'intervention';
+
+  @override
+  String get techDocumentsFilterTechnician => 'Technicien';
+
+  @override
+  String get techDocumentsAllTechnicians => 'Tous les techniciens';
+
+  @override
+  String get techDocumentsFilterPeriod => 'Période';
+
+  @override
+  String get techDocumentsPresetLast7Days => '7 derniers jours';
+
+  @override
+  String get techDocumentsPresetThisMonth => 'Ce mois-ci';
+
+  @override
+  String get techDocumentsPresetLastMonth => 'Mois dernier';
+
+  @override
+  String get techDocumentsPresetCustom => 'Personnalisé';
+
+  @override
+  String get techDocumentsDownloadZip => 'Télécharger ZIP';
+
+  @override
+  String get techDocumentsPrint => 'Imprimer';
+
+  @override
+  String techDocumentsCount(int count) {
+    return '$count documents sur la période sélectionnée';
+  }
+
+  @override
+  String get techDocumentsEmpty => 'Aucun document pour ces critères';
+
+  @override
+  String get techDocumentsNoPdfToPrint =>
+      'Aucun PDF à imprimer sur cette période';
+
+  @override
+  String get techDocumentsZipError => 'Échec du téléchargement du ZIP';
+
+  @override
+  String get techDocumentsPrintError => 'Échec de la génération du PDF';
+
+  @override
+  String get techDocumentsWebOnly =>
+      'Le téléchargement est disponible uniquement depuis un navigateur';
+
+  @override
+  String get techDocumentsRetry => 'Réessayer';
+
+  @override
+  String get permViewInterventionDocuments =>
+      'Consulter les documents d\'intervention';
+
+  @override
   String get issuePhotosSection => 'Photos de l\'incident';
 
   @override

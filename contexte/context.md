@@ -117,18 +117,18 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 | Rôle                  | Permissions applicatives (SQLite role_permissions)                                  |
 |-----------------------|-------------------------------------------------------------------------------------|
 | hospitalStaff         | viewEquipment, reportIssue, trackIssues                                             |
-| supervisor            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks               |
-| technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
-| technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
-| technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
-| technician_infra      | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests |
-| admin                 | TOUTES les permissions (14)                                                         |
+| supervisor            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks, viewInterventionDocuments |
+| technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
+| technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
+| technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
+| technician_infra      | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
+| admin                 | TOUTES les permissions (17)                                                         |
 
 **SYSTEM_ROLES** filtrés des tokens : `offline_access`, `uma_authorization`, `default-roles-kabutare-hospital`
 
 ### Liste des permissions
 
-`viewEquipment`, `reportIssue`, `trackIssues`, `approveRequests`, `assignTasks`, `updateRepairs`, `registerParts`, `manageEquipment`, `manageUsers`, `manageDepartments`, `manageCategories`, `generateReports`, `viewInventory`, `changeDepartment`
+`viewEquipment`, `reportIssue`, `trackIssues`, `approveRequests`, `assignTasks`, `updateRepairs`, `registerParts`, `manageEquipment`, `manageUsers`, `manageDepartments`, `manageCategories`, `generateReports`, `viewInventory`, `changeDepartment`, `manageFeatures`, `manageBackups`, `viewInterventionDocuments`
 
 ## 1.3 Utilisateurs — migration Keycloak
 
@@ -749,6 +749,24 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | GET     | /api/issues/:id/documents   | Auth           | **[NOUVEAU 2026-06-23]** Liste les documents PDF d'intervention de l'incident (`equipment_documents` filtré par `issue_id`). Retourne `[{id, document_type, original_name, mime_type, file_size_kb, uploader_name, uploaded_at}]` |
 | POST    | /api/issues/:id/documents   | Admin/Sup/Tech | **[NOUVEAU 2026-06-23]** Upload multipart multi-fichiers (champ `files`, max 5, PDF/JPEG/PNG 10 Mo chacun). Body `type` (défaut `completion`, whitelist incluant `intervention`). Rattache aussi à `equipment_id` si l'incident en a un. Audit trail `upload_intervention_document` |
 | GET     | /api/issues/:id/documents/:doc_id/download | Auth | **[NOUVEAU 2026-06-23]** Téléchargement inline d'un document d'intervention. `Content-Disposition: inline`. Audit trail `download_intervention_document` |
+
+### Documents d'intervention cross-équipement (`/api/documents/interventions`) **[NOUVEAU 2026-07-01]**
+
+Onglet « Documents » de la page technicien : liste/filtre/export des documents `equipment_documents`
+avec `document_type='intervention'`, toutes équipements confondus (pas de scope par `equipment_id`).
+Auth : `verifyToken` + `requireRole('admin','supervisor','technician','technician_biomedical','technician_it','technician_infra')`
+sur les 4 routes (pas de middleware de permission fine côté db-service — la permission applicative
+`viewInterventionDocuments` est vérifiée côté Flutter uniquement, cf. `contexte.md` § IAM & Sécurité).
+
+| Methode | Route                                  | Auth  | Description |
+|---------|-----------------------------------------|-------|--------------|
+| GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée ou `from > to`. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat |
+| GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document `intervention` non supprimé — alimente le filtre technicien (jamais de résolution par nom) |
+| GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume). `404` si sélection vide. `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, doc_count}`) |
+| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Mêmes filtres, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` |
+
+> Dépendances ajoutées à `db-service/package.json` : `archiver` (ZIP streaming), `pdf-lib` (fusion PDF).
+> Aucune nouvelle table/colonne — lecture filtrée de `equipment_documents` existante.
 
 ### Lieux (`/api/locations`)
 

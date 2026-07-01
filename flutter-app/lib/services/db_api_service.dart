@@ -4,6 +4,7 @@ import 'api_client.dart';
 import 'api_config.dart';
 import '../models/equipment.dart';
 import '../models/equipment_document.dart';
+import '../models/intervention_technician.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
 
@@ -502,6 +503,82 @@ class DbApiService {
   /// Télécharge le contenu binaire d'un document d'intervention pour visualisation.
   Future<Uint8List> downloadInterventionDocument(String issueId, int docId) async {
     final url = '${ApiConfig.issuesUrl}/$issueId/documents/$docId/download';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return response.bodyBytes;
+  }
+
+  // ── DOCUMENTS D'INTERVENTION (cross-équipement, onglet technicien) ─────────
+
+  /// Liste paginée des documents d'intervention toutes équipements confondus,
+  /// filtrable par technicien (uploaded_by exact) et par période.
+  Future<PagedResult<EquipmentDocument>> getInterventionDocumentsPaged({
+    int page = 1,
+    int limit = 20,
+    String? uploadedBy,
+    String? from,
+    String? to,
+    String? search,
+  }) async {
+    final query = _buildQuery({
+      'page': page,
+      'limit': limit,
+      'uploaded_by': uploadedBy,
+      'from': from,
+      'to': to,
+      'search': search,
+    });
+    final url = '${ApiConfig.interventionDocumentsUrl}?$query';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = (data['items'] as List)
+        .map((j) => EquipmentDocument.fromJson(j as Map<String, dynamic>))
+        .toList();
+    return PagedResult<EquipmentDocument>(
+      items: items,
+      total: data['total'] as int,
+      page: data['page'] as int,
+      limit: data['limit'] as int,
+      totalPages: data['total_pages'] as int,
+    );
+  }
+
+  /// Liste des techniciens ayant déposé au moins un document d'intervention
+  /// (alimente le filtre technicien de l'onglet Documents).
+  Future<List<InterventionTechnician>> getInterventionTechnicians() async {
+    final url = '${ApiConfig.interventionDocumentsUrl}/technicians';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((j) => InterventionTechnician.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Télécharge un ZIP de tous les documents d'intervention matchant les filtres.
+  /// Lève une [ApiException] (statusCode 404) si aucun document ne matche.
+  Future<Uint8List> downloadInterventionDocumentsZip({
+    String? uploadedBy,
+    String? from,
+    String? to,
+  }) async {
+    final query = _buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to});
+    final url = '${ApiConfig.interventionDocumentsUrl}/zip?$query';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return response.bodyBytes;
+  }
+
+  /// Fusionne en un seul PDF tous les documents d'intervention PDF matchant les filtres.
+  /// Lève une [ApiException] (statusCode 404) si aucun PDF ne matche.
+  Future<Uint8List> printInterventionDocumentsPdf({
+    String? uploadedBy,
+    String? from,
+    String? to,
+  }) async {
+    final query = _buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to});
+    final url = '${ApiConfig.interventionDocumentsUrl}/print-pdf?$query';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return response.bodyBytes;

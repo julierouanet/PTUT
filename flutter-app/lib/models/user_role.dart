@@ -102,6 +102,7 @@ enum Permission {
   // Technician
   updateRepairs,
   registerParts,
+  viewInterventionDocuments,
 
   // Admin only
   manageEquipment,
@@ -130,6 +131,8 @@ enum Permission {
         return 'Mettre à jour les réparations';
       case Permission.registerParts:
         return 'Enregistrer les pièces';
+      case Permission.viewInterventionDocuments:
+        return 'Consulter les documents d\'intervention';
       case Permission.manageEquipment:
         return 'Gérer les équipements';
       case Permission.manageUsers:
@@ -161,6 +164,7 @@ enum Permission {
       case Permission.assignTasks:       return l10n.permAssignTasks as String;
       case Permission.updateRepairs:     return l10n.permUpdateRepairs as String;
       case Permission.registerParts:     return l10n.permRegisterParts as String;
+      case Permission.viewInterventionDocuments: return l10n.permViewInterventionDocuments as String;
       case Permission.manageEquipment:   return l10n.permManageEquipment as String;
       case Permission.manageUsers:       return l10n.permManageUsers as String;
       case Permission.manageDepartments: return l10n.permManageDepartments as String;
@@ -183,6 +187,7 @@ List<Permission> getPermissionsForRole(UserRole role) {
     Permission.updateRepairs,
     Permission.registerParts,
     Permission.approveRequests,
+    Permission.viewInterventionDocuments,
   ];
   switch (role) {
     case UserRole.hospitalStaff:
@@ -198,6 +203,7 @@ List<Permission> getPermissionsForRole(UserRole role) {
         Permission.trackIssues,
         Permission.approveRequests,
         Permission.assignTasks,
+        Permission.viewInterventionDocuments,
       ];
     case UserRole.technician:
     case UserRole.technicianBiomedical:

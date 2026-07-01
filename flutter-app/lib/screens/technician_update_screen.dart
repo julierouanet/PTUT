@@ -14,6 +14,7 @@ import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
 import '../widgets/issue_validation_sheet.dart';
 import '../widgets/pagination_footer.dart';
+import '../widgets/technician/intervention_documents_tab.dart';
 import 'issue_detail_screen.dart';
 import 'technician_intervention_update_screen.dart';
 import 'technician_schedule_screen.dart';
@@ -40,11 +41,16 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   // Vrai si l'utilisateur peut valider des incidents (admin ou superviseur)
   bool _canValidate = false;
+  // Vrai si l'utilisateur peut consulter l'onglet Documents d'intervention
+  bool _canViewDocuments = false;
 
   // Index de l'onglet "Mes interventions" — dépend de la présence de "À valider"
   int get _myInterventionsIndex => _canValidate ? 2 : 1;
   // Index de l'onglet "Disponibles" — dépend de la présence de "À valider"
   int get _availableTabIndex => _canValidate ? 1 : 0;
+  // Nombre total d'onglets : [À valider?, Disponibles, Mes interventions, Documents?]
+  // L'onglet Documents, quand présent, est toujours en dernière position.
+  int get _tabCount => (_canValidate ? 1 : 0) + 2 + (_canViewDocuments ? 1 : 0);
 
   // ── Pagination serveur : onglets "À valider" et "Mes interventions" ────────
   // L'onglet "Disponibles" reste sur DataService().issues (vue groupée par
@@ -232,8 +238,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     super.initState();
     // Détermine si l'utilisateur a le droit de valider des incidents
     _canValidate = AuthService().canApproveRequests;
-    // Onglets : [À valider?, Disponibles, Mes interventions]
-    final tabCount = _canValidate ? 3 : 2;
+    // Détermine si l'utilisateur a le droit de consulter les documents d'intervention
+    _canViewDocuments = AuthService().hasPermission(Permission.viewInterventionDocuments);
+    // Onglets : [À valider?, Disponibles, Mes interventions, Documents?]
+    final tabCount = _tabCount;
     // Deep-link incident → on atterrit sur "Mes interventions" (dernier onglet)
     final startTab = widget.issueId != null ? _myInterventionsIndex : 0;
     _tabController = TabController(length: tabCount, vsync: this, initialIndex: startTab);
@@ -336,6 +344,16 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                         badgeCount: _pagedMyIssues?.total ?? 0,
                       ),
                     ),
+                    // Onglet Documents — visible uniquement avec la permission dédiée
+                    if (_canViewDocuments)
+                      Tab(
+                        height: 40,
+                        child: TabLabel(
+                          isMobile: isMobileTab,
+                          icon: Icons.folder_copy_outlined,
+                          label: l10n.techDocumentsTab,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -376,6 +394,8 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               isDesktop
                   ? _buildDesktopInterventionsTab(l10n)
                   : _buildMobileInterventionsTab(l10n),
+              if (_canViewDocuments)
+                const InterventionDocumentsTab(),
             ],
           ),
         ),

@@ -9,6 +9,9 @@ class EquipmentDocument {
   final String? issueId;
   final String? issueStatus;
   final String? issueCreatedAt;
+  final String? equipmentId;
+  final String? equipmentName;
+  final String? uploadedBy;
 
   const EquipmentDocument({
     required this.id,
@@ -21,6 +24,9 @@ class EquipmentDocument {
     this.issueId,
     this.issueStatus,
     this.issueCreatedAt,
+    this.equipmentId,
+    this.equipmentName,
+    this.uploadedBy,
   });
 
   factory EquipmentDocument.fromJson(Map<String, dynamic> j) => EquipmentDocument(
@@ -34,6 +40,9 @@ class EquipmentDocument {
     issueId:        j['issue_id'] as String?,
     issueStatus:    j['issue_status'] as String?,
     issueCreatedAt: j['issue_created_at'] as String?,
+    equipmentId:    j['equipment_id'] as String?,
+    equipmentName:  j['equipment_name'] as String?,
+    uploadedBy:     j['uploaded_by'] as String?,
   );
 
   String get displaySize => fileSizeKb < 1024

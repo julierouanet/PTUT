@@ -56,9 +56,13 @@ jest.mock('../routes/backups', () => ({
   initBackupCron: jest.fn(),
 }));
 
+const fs = require('fs');
+const path = require('path');
 const request = require('supertest');
+const { PDFDocument } = require('pdf-lib');
 const { app, server } = require('../index');
 const { getDb, closeDb } = require('../database');
+const { UPLOAD_DIR } = require('../config');
 
 let db;
 
@@ -221,5 +225,217 @@ describe('GET /api/equipment/:id/documents — jointure issues', () => {
     expect(doc.issue_id).toBeNull();
     expect(doc.issue_status).toBeNull();
     expect(doc.issue_created_at).toBeNull();
+  });
+});
+
+// =============================================================================
+// Nouveau routeur cross-équipement : /api/documents/interventions
+// =============================================================================
+function seedEquipmentForDocs(id) {
+  db.prepare(`
+    INSERT OR IGNORE INTO equipment (id, name, department, category, status)
+    VALUES (?, ?, 'OPD', 'Monitoring', 'Operational')
+  `).run(id, `Équipement ${id}`);
+}
+
+function insertInterventionDoc({
+  equipmentId = 'idoc-eq-1', docType = 'intervention', storedName, originalName,
+  mimeType = 'application/pdf', uploadedBy = 'tech-a', uploaderName = 'Tech A',
+  uploadedAt, deletedAt = null,
+}) {
+  seedEquipmentForDocs(equipmentId);
+  const at = uploadedAt || '2026-01-01 08:00:00';
+  const result = db.prepare(`
+    INSERT INTO equipment_documents
+      (equipment_id, document_type, original_name, stored_name, mime_type,
+       file_size_kb, uploaded_by, uploader_name, uploaded_at, deleted_at)
+    VALUES (?, ?, ?, ?, ?, 5, ?, ?, ?, ?)
+  `).run(equipmentId, docType, originalName, storedName, mimeType, uploadedBy, uploaderName, at, deletedAt);
+  return result.lastInsertRowid;
+}
+
+function writeRealFile(storedName, content = 'contenu factice') {
+  fs.writeFileSync(path.join(UPLOAD_DIR, storedName), content);
+}
+
+async function writeRealPdf(storedName) {
+  const pdf = await PDFDocument.create();
+  pdf.addPage([200, 200]);
+  fs.writeFileSync(path.join(UPLOAD_DIR, storedName), await pdf.save());
+}
+
+// Lit un flux de réponse binaire (ZIP/PDF) sans le parser en JSON/texte
+function bufferParser(response, cb) {
+  const chunks = [];
+  response.on('data', (chunk) => chunks.push(chunk));
+  response.on('end', () => cb(null, Buffer.concat(chunks)));
+}
+
+describe('GET /api/documents/interventions — liste', () => {
+  test('✅ ne retourne que les documents intervention non supprimés', async () => {
+    const idOk = insertInterventionDoc({ storedName: 'list-ok.pdf', originalName: 'list-ok.pdf' });
+    const idTech = insertInterventionDoc({ storedName: 'list-tech.pdf', originalName: 'list-tech.pdf', docType: 'technical' });
+    const idDeleted = insertInterventionDoc({ storedName: 'list-del.pdf', originalName: 'list-del.pdf', deletedAt: '2026-01-02 00:00:00' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idOk);
+    expect(ids).not.toContain(idTech);
+    expect(ids).not.toContain(idDeleted);
+  });
+
+  test('✅ filtre uploaded_by isole un seul technicien', async () => {
+    const idA = insertInterventionDoc({ storedName: 'filt-a.pdf', originalName: 'filt-a.pdf', uploadedBy: 'tech-filter-a', uploaderName: 'Tech Filter A' });
+    const idB = insertInterventionDoc({ storedName: 'filt-b.pdf', originalName: 'filt-b.pdf', uploadedBy: 'tech-filter-b', uploaderName: 'Tech Filter B' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ uploaded_by: 'tech-filter-a' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idA);
+    expect(ids).not.toContain(idB);
+  });
+
+  test('✅ filtre from/to exclut les documents hors période', async () => {
+    const idBefore = insertInterventionDoc({ storedName: 'date-before.pdf', originalName: 'date-before.pdf', uploadedAt: '2026-05-01 08:00:00' });
+    const idInRange = insertInterventionDoc({ storedName: 'date-in.pdf', originalName: 'date-in.pdf', uploadedAt: '2026-05-15 08:00:00' });
+    const idAfter = insertInterventionDoc({ storedName: 'date-after.pdf', originalName: 'date-after.pdf', uploadedAt: '2026-06-01 08:00:00' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ from: '2026-05-10', to: '2026-05-20' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idInRange);
+    expect(ids).not.toContain(idBefore);
+    expect(ids).not.toContain(idAfter);
+  });
+
+  test('🚫 400 si from mal formaté', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ from: '01-07-2026' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 400 si from > to', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ from: '2026-06-10', to: '2026-06-01' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /api/documents/interventions/technicians', () => {
+  test('✅ retourne les paires uploaded_by/uploader_name distinctes, hors documents non-intervention', async () => {
+    insertInterventionDoc({ storedName: 'tech-list-1.pdf', originalName: 'tech-list-1.pdf', uploadedBy: 'tech-list-x', uploaderName: 'Tech List X' });
+    insertInterventionDoc({ storedName: 'tech-list-2.pdf', originalName: 'tech-list-2.pdf', uploadedBy: 'tech-list-x', uploaderName: 'Tech List X' });
+    // Technicien qui n'a qu'un document 'technical' (jamais d'intervention) : ne doit pas apparaître
+    insertInterventionDoc({ storedName: 'tech-list-onlytech.pdf', originalName: 'tech-list-onlytech.pdf', docType: 'technical', uploadedBy: 'tech-list-onlytech', uploaderName: 'Tech Only Technical' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/technicians')
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const uploadedByList = res.body.map((t) => t.uploaded_by);
+    expect(uploadedByList).toContain('tech-list-x');
+    expect(uploadedByList).not.toContain('tech-list-onlytech');
+    // DISTINCT : un seul enregistrement malgré 2 documents du même technicien
+    expect(uploadedByList.filter((u) => u === 'tech-list-x')).toHaveLength(1);
+  });
+});
+
+describe('GET /api/documents/interventions/zip', () => {
+  test('✅ retourne un ZIP (Content-Type application/zip)', async () => {
+    const storedName = 'zip-ok.pdf';
+    insertInterventionDoc({ storedName, originalName: 'zip-ok.pdf', uploadedBy: 'tech-zip-ok', uploaderName: 'Tech Zip Ok' });
+    writeRealFile(storedName);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ uploaded_by: 'tech-zip-ok' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/zip');
+  });
+
+  test('🚫 404 si aucun document ne matche', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ uploaded_by: 'tech-zip-inexistant' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/documents/interventions/print-pdf', () => {
+  test('✅ fusionne uniquement les PDF et exclut les images', async () => {
+    const pdfStored = 'print-ok.pdf';
+    const imgStored = 'print-img.jpg';
+    await writeRealPdf(pdfStored);
+    writeRealFile(imgStored);
+
+    insertInterventionDoc({ storedName: pdfStored, originalName: 'print-ok.pdf', mimeType: 'application/pdf', uploadedBy: 'tech-print-ok', uploaderName: 'Tech Print Ok' });
+    insertInterventionDoc({ storedName: imgStored, originalName: 'print-img.jpg', mimeType: 'image/jpeg', uploadedBy: 'tech-print-ok', uploaderName: 'Tech Print Ok' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-ok' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/pdf');
+    expect(res.body.length).toBeGreaterThan(0);
+  });
+
+  test('🚫 404 si aucun PDF ne matche (uniquement des photos)', async () => {
+    const imgStored = 'print-onlyimg.jpg';
+    writeRealFile(imgStored);
+    insertInterventionDoc({ storedName: imgStored, originalName: 'print-onlyimg.jpg', mimeType: 'image/jpeg', uploadedBy: 'tech-print-nopdf', uploaderName: 'Tech Print No Pdf' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-nopdf' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('RBAC — rôle non autorisé sur les 4 endpoints', () => {
+  test('🚫 hospitalStaff → 403 sur liste/technicians/zip/print-pdf', async () => {
+    setTestRole('hospitalStaff');
+    try {
+      const list = await request(app).get('/api/documents/interventions').set('Authorization', 'Bearer fake-token');
+      expect(list.status).toBe(403);
+
+      const techs = await request(app).get('/api/documents/interventions/technicians').set('Authorization', 'Bearer fake-token');
+      expect(techs.status).toBe(403);
+
+      const zip = await request(app).get('/api/documents/interventions/zip').set('Authorization', 'Bearer fake-token');
+      expect(zip.status).toBe(403);
+
+      const pdf = await request(app).get('/api/documents/interventions/print-pdf').set('Authorization', 'Bearer fake-token');
+      expect(pdf.status).toBe(403);
+    } finally {
+      setTestRole('admin');
+    }
   });
 });

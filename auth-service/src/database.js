@@ -175,10 +175,10 @@ function initTables() {
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN min_urgency_new_issue TEXT NOT NULL DEFAULT 'Critique'"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
-  const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts', 'approveRequests'];
+  const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts', 'approveRequests', 'viewInterventionDocuments'];
   const defaultPerms = {
     hospitalStaff:         ['viewEquipment', 'reportIssue', 'trackIssues'],
-    supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks'],
+    supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks', 'viewInterventionDocuments'],
     technician:            techPerms,
     technician_biomedical: techPerms,
     technician_it:         techPerms,
@@ -187,7 +187,7 @@ function initTables() {
       'viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks',
       'updateRepairs', 'registerParts', 'manageEquipment', 'manageUsers',
       'manageDepartments', 'manageCategories', 'generateReports', 'viewInventory',
-      'changeDepartment', 'manageFeatures', 'manageBackups',
+      'changeDepartment', 'manageFeatures', 'manageBackups', 'viewInterventionDocuments',
     ],
   };
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
