@@ -2017,6 +2017,12 @@
   "pushBannerTitle": "Notifications désactivées",
   "pushBannerBody": "Activez les notifications pour recevoir les alertes critiques en temps réel.",
   "pushBannerActivate": "Activer",
+  "pushBannerIosInstallTitle": "Notifications indisponibles dans Safari",
+  "pushBannerIosInstallStep1": "1. Appuie sur le bouton Partager (icône carrée avec flèche)",
+  "pushBannerIosInstallStep2": "2. Sélectionne « Sur l'écran d'accueil »",
+  "pushBannerIosInstallStep3": "3. Ouvre l'application depuis l'icône ajoutée, puis active les notifications",
+  "pushBannerUnsupported": "Les notifications push ne sont pas disponibles sur ce navigateur (nécessite iOS 16.4+ ou un navigateur récent).",
+  "pushBannerPermissionDenied": "Notifications bloquées — réactive-les dans les réglages de ton navigateur/téléphone.",
 
   "debugNotifySection": "Tests de Notifications",
   "debugNotifyWarning": "Scheduling actif ({interval}). Sera réinitialisé au prochain redémarrage du serveur.",

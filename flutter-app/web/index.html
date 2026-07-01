@@ -10,6 +10,7 @@
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Kabutare">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
@@ -244,6 +245,21 @@
         const sub = await reg.pushManager.getSubscription();
         if (sub) await sub.unsubscribe();
       } catch (_) { /* silencieux */ }
+    };
+
+    // ── Détection environnement Push (iOS, mode standalone, support, permission) ──
+    // Sur iOS/Safari, PushManager n'existe que si le site est installé en PWA
+    // (« Ajouter à l'écran d'accueil », mode standalone, iOS >= 16.4).
+    window.getPushEnvironment = function() {
+      const ua = navigator.userAgent;
+      const isIphoneIpod = /iPhone|iPod/.test(ua) && !window.MSStream;
+      const isIpad = /iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isIos = isIphoneIpod || isIpad;
+      const isStandalone = window.navigator.standalone === true
+        || window.matchMedia('(display-mode: standalone)').matches;
+      const pushSupported = ('serviceWorker' in navigator) && ('PushManager' in window);
+      const permissionState = ('Notification' in window) ? window.getPushPermission() : 'unsupported';
+      return JSON.stringify({ isIos, isStandalone, pushSupported, permissionState });
     };
   </script>
 

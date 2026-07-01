@@ -23,6 +23,38 @@ external JSPromise<JSString?> _jsSubscribe(JSString vapidKey);
 @JS('unsubscribeFromPush')
 external JSPromise<JSAny?> _jsUnsubscribe();
 
+@JS('getPushEnvironment')
+external JSString _jsGetPushEnvironment();
+
+// ── Modèles ──────────────────────────────────────────────────────────────────
+
+/// Variante de bannière à afficher selon l'environnement Push détecté.
+enum PushBannerVariant { iosInstallGuide, unsupported, permissionDenied, promptActivate }
+
+/// Environnement Push détecté côté navigateur (iOS, mode standalone, support, permission).
+class PushEnvironment {
+  final bool isIos;
+  final bool isStandalone;
+  final bool pushSupported;
+  final String permissionState; // 'granted' | 'denied' | 'default' | 'unsupported'
+
+  const PushEnvironment({
+    required this.isIos,
+    required this.isStandalone,
+    required this.pushSupported,
+    required this.permissionState,
+  });
+
+  /// Variante de bannière à afficher, par ordre de précédence strict :
+  /// installation iOS requise > push non supporté > permission refusée > normal.
+  PushBannerVariant get variant {
+    if (isIos && !isStandalone) return PushBannerVariant.iosInstallGuide;
+    if (!pushSupported) return PushBannerVariant.unsupported;
+    if (permissionState == 'denied') return PushBannerVariant.permissionDenied;
+    return PushBannerVariant.promptActivate;
+  }
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 class PushNotificationWebService {
@@ -83,6 +115,30 @@ class PushNotificationWebService {
       await ApiClient.post(ApiConfig.pushUnsubscribeUrl, {});
       await _jsUnsubscribe().toDart;
     } catch (_) {}
+  }
+
+  /// Détecte l'environnement Push du navigateur (iOS, standalone, support, permission).
+  /// En cas d'erreur, retourne des valeurs par défaut reproduisant le comportement
+  /// actuel (branche "Activer" classique) — ne bloque jamais le Hub.
+  Future<PushEnvironment> getEnvironment() async {
+    if (!kIsWeb) {
+      return const PushEnvironment(
+        isIos: false, isStandalone: true, pushSupported: true, permissionState: 'default',
+      );
+    }
+    try {
+      final json = jsonDecode(_jsGetPushEnvironment().toDart) as Map<String, dynamic>;
+      return PushEnvironment(
+        isIos: json['isIos'] as bool,
+        isStandalone: json['isStandalone'] as bool,
+        pushSupported: json['pushSupported'] as bool,
+        permissionState: json['permissionState'] as String,
+      );
+    } catch (_) {
+      return const PushEnvironment(
+        isIos: false, isStandalone: true, pushSupported: true, permissionState: 'default',
+      );
+    }
   }
 
   // ── Helpers privés ──────────────────────────────────────────────────────────

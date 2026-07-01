@@ -9206,6 +9206,42 @@ abstract class AppLocalizations {
   /// **'Activer'**
   String get pushBannerActivate;
 
+  /// No description provided for @pushBannerIosInstallTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications indisponibles dans Safari'**
+  String get pushBannerIosInstallTitle;
+
+  /// No description provided for @pushBannerIosInstallStep1.
+  ///
+  /// In fr, this message translates to:
+  /// **'1. Appuie sur le bouton Partager (icône carrée avec flèche)'**
+  String get pushBannerIosInstallStep1;
+
+  /// No description provided for @pushBannerIosInstallStep2.
+  ///
+  /// In fr, this message translates to:
+  /// **'2. Sélectionne « Sur l\'écran d\'accueil »'**
+  String get pushBannerIosInstallStep2;
+
+  /// No description provided for @pushBannerIosInstallStep3.
+  ///
+  /// In fr, this message translates to:
+  /// **'3. Ouvre l\'application depuis l\'icône ajoutée, puis active les notifications'**
+  String get pushBannerIosInstallStep3;
+
+  /// No description provided for @pushBannerUnsupported.
+  ///
+  /// In fr, this message translates to:
+  /// **'Les notifications push ne sont pas disponibles sur ce navigateur (nécessite iOS 16.4+ ou un navigateur récent).'**
+  String get pushBannerUnsupported;
+
+  /// No description provided for @pushBannerPermissionDenied.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications bloquées — réactive-les dans les réglages de ton navigateur/téléphone.'**
+  String get pushBannerPermissionDenied;
+
   /// No description provided for @debugNotifySection.
   ///
   /// In fr, this message translates to:

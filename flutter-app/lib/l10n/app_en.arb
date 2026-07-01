@@ -1996,6 +1996,12 @@
   "pushBannerTitle": "Notifications disabled",
   "pushBannerBody": "Enable notifications to receive critical alerts in real time.",
   "pushBannerActivate": "Enable",
+  "pushBannerIosInstallTitle": "Notifications unavailable in Safari",
+  "pushBannerIosInstallStep1": "1. Tap the Share button (square icon with an arrow)",
+  "pushBannerIosInstallStep2": "2. Select \"Add to Home Screen\"",
+  "pushBannerIosInstallStep3": "3. Open the app from the added icon, then enable notifications",
+  "pushBannerUnsupported": "Push notifications aren't available in this browser (requires iOS 16.4+ or a modern browser).",
+  "pushBannerPermissionDenied": "Notifications blocked — re-enable them in your browser/phone settings.",
 
   "debugNotifySection": "Notification Tests",
   "debugNotifyWarning": "Scheduling active ({interval}). Will reset on next server restart.",

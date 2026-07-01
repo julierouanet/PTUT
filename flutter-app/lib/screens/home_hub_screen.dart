@@ -1700,6 +1700,7 @@ class _PushNotificationBanner extends StatefulWidget {
 class _PushNotificationBannerState extends State<_PushNotificationBanner> {
   bool _visible = false;
   bool _loading = false;
+  PushEnvironment? _env;
 
   @override
   void initState() {
@@ -1707,23 +1708,87 @@ class _PushNotificationBannerState extends State<_PushNotificationBanner> {
     _checkStatus();
   }
 
-  Future<void> _checkStatus() async {
+  static const TextStyle _titleStyle =
+      TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.warning);
+  static const TextStyle _bodyStyle = TextStyle(fontSize: 12, color: AppColors.textSecondary);
+
+  /// Détermine si la bannière doit s'afficher à partir de l'environnement détecté.
+  /// Les branches "installation requise", "non supporté" et "permission refusée"
+  /// s'affichent indépendamment de l'état de la souscription (aucun re-prompt possible).
+  Future<bool> _computeVisible(PushEnvironment env) async {
+    if (env.variant != PushBannerVariant.promptActivate) return true;
     final active = await PushNotificationWebService().isPushActive();
-    if (mounted) setState(() => _visible = !active);
+    return !active;
+  }
+
+  Widget _bannerContent(String title, List<String> lines) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title, style: _titleStyle),
+        for (final line in lines) Text(line, style: _bodyStyle),
+      ],
+    );
+  }
+
+  Future<void> _checkStatus() async {
+    final env = await PushNotificationWebService().getEnvironment();
+    final visible = await _computeVisible(env);
+    if (mounted) setState(() { _env = env; _visible = visible; });
   }
 
   Future<void> _activate() async {
     setState(() => _loading = true);
     await PushNotificationWebService().requestAndSubscribe();
-    final active = await PushNotificationWebService().isPushActive();
-    if (mounted) setState(() { _visible = !active; _loading = false; });
+    final env = await PushNotificationWebService().getEnvironment();
+    final visible = await _computeVisible(env);
+    if (mounted) setState(() { _env = env; _visible = visible; _loading = false; });
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_visible) return const SizedBox.shrink();
+    if (!_visible || _env == null) return const SizedBox.shrink();
 
     final l10n = AppLocalizations.of(context)!;
+    final variant = _env!.variant;
+
+    final icon =
+        variant == PushBannerVariant.iosInstallGuide ? Icons.ios_share : Icons.notifications_off_outlined;
+
+    late final Widget content;
+    Widget? actionButton;
+
+    switch (variant) {
+      case PushBannerVariant.iosInstallGuide:
+        content = _bannerContent(l10n.pushBannerIosInstallTitle, [
+          l10n.pushBannerIosInstallStep1,
+          l10n.pushBannerIosInstallStep2,
+          l10n.pushBannerIosInstallStep3,
+        ]);
+      case PushBannerVariant.unsupported:
+        content = _bannerContent(l10n.pushBannerTitle, [l10n.pushBannerUnsupported]);
+      case PushBannerVariant.permissionDenied:
+        content = _bannerContent(l10n.pushBannerTitle, [l10n.pushBannerPermissionDenied]);
+      case PushBannerVariant.promptActivate:
+        content = _bannerContent(l10n.pushBannerTitle, [l10n.pushBannerBody]);
+        actionButton = _loading
+            ? SizedBox(
+                width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning),
+              )
+            : TextButton(
+                onPressed: _activate,
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.warning,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(l10n.pushBannerActivate,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              );
+    }
 
     return Material(
       color: Colors.transparent,
@@ -1735,46 +1800,13 @@ class _PushNotificationBannerState extends State<_PushNotificationBanner> {
           border: Border(bottom: BorderSide(color: AppColors.warning.withValues(alpha: 0.4))),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.notifications_off_outlined, color: AppColors.warning, size: 20),
+            Icon(icon, color: AppColors.warning, size: 20),
             const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    l10n.pushBannerTitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
-                    ),
-                  ),
-                  Text(
-                    l10n.pushBannerBody,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(child: content),
             const SizedBox(width: 8),
-            _loading
-                ? SizedBox(
-                    width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.warning),
-                  )
-                : TextButton(
-                    onPressed: _activate,
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.warning,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    child: Text(l10n.pushBannerActivate,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                  ),
+            ?actionButton,
             IconButton(
               onPressed: () => setState(() => _visible = false),
               icon: const Icon(Icons.close, size: 16),

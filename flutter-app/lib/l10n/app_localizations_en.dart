@@ -4955,6 +4955,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pushBannerActivate => 'Enable';
 
   @override
+  String get pushBannerIosInstallTitle => 'Notifications unavailable in Safari';
+
+  @override
+  String get pushBannerIosInstallStep1 =>
+      '1. Tap the Share button (square icon with an arrow)';
+
+  @override
+  String get pushBannerIosInstallStep2 => '2. Select \"Add to Home Screen\"';
+
+  @override
+  String get pushBannerIosInstallStep3 =>
+      '3. Open the app from the added icon, then enable notifications';
+
+  @override
+  String get pushBannerUnsupported =>
+      'Push notifications aren\'t available in this browser (requires iOS 16.4+ or a modern browser).';
+
+  @override
+  String get pushBannerPermissionDenied =>
+      'Notifications blocked — re-enable them in your browser/phone settings.';
+
+  @override
   String get debugNotifySection => 'Notification Tests';
 
   @override
