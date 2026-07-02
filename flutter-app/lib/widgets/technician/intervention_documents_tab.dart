@@ -16,9 +16,10 @@ enum _PeriodPreset { last7Days, thisMonth, lastMonth, custom }
 
 /// Onglet « Documents » de la page technicien — liste, filtre (type, technicien,
 /// période) et exporte (ZIP / impression PDF fusionnée) les documents de type
-/// `intervention` et/ou `completion`, toutes équipements confondus. Visible
-/// uniquement si `Permission.viewInterventionDocuments` est accordée (garde
-/// appliquée par l'écran appelant).
+/// `intervention`, `completion` (pièce jointe) et/ou `photo`, toutes équipements
+/// confondus. Le rapport final (`final_report`) est toujours inclus côté serveur,
+/// sans case à cocher. Visible uniquement si `Permission.viewInterventionDocuments`
+/// est accordée (garde appliquée par l'écran appelant).
 class InterventionDocumentsTab extends StatefulWidget {
   const InterventionDocumentsTab({super.key});
 
@@ -39,7 +40,8 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   DateTimeRange? _customRange;
 
   bool _includeIntervention = true;
-  bool _includeCompletion = true;
+  bool _includeAttachment = true; // ex-_includeCompletion, type DB inchangé 'completion'
+  bool _includePhoto = true;
 
   bool _isExportingZip = false;
   bool _isExportingPdf = false;
@@ -80,9 +82,12 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
 
   // ── Types de documents ───────────────────────────────────────────────────
 
+  // Le rapport final n'apparaît jamais ici : il est toujours inclus côté serveur
+  // (voir CLAUDE.md / prompt FEAT — cases à cocher export documents technicien).
   List<String> _selectedTypes() => [
         if (_includeIntervention) 'intervention',
-        if (_includeCompletion) 'completion',
+        if (_includeAttachment) 'completion',
+        if (_includePhoto) 'photo',
       ];
 
   /// Recharge technicien(s) puis liste, dans cet ordre : un changement de types
@@ -266,15 +271,21 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
+    // Scroll unique (filtres + liste) plutôt que Column/Expanded : sur mobile, les
+    // filtres (3 cases + 2 dropdowns + 2 boutons) occupaient une hauteur fixe qui
+    // écrasait la liste dans l'espace restant. Ici tout scrolle ensemble.
     return RefreshIndicator(
       onRefresh: _load,
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: _buildFilters(l10n),
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildFilters(l10n),
+            ),
           ),
-          Expanded(child: _buildBody(l10n)),
+          ..._buildBodySlivers(l10n),
         ],
       ),
     );
@@ -298,14 +309,27 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
               },
             ),
             FilterChip(
-              label: Text(l10n.techDocumentsTypeCompletion),
-              selected: _includeCompletion,
+              label: Text(l10n.techDocumentsTypeAttachment),
+              selected: _includeAttachment,
               onSelected: (v) {
-                setState(() => _includeCompletion = v);
+                setState(() => _includeAttachment = v);
+                _onTypesChanged();
+              },
+            ),
+            FilterChip(
+              label: Text(l10n.techDocumentsTypePhoto),
+              selected: _includePhoto,
+              onSelected: (v) {
+                setState(() => _includePhoto = v);
                 _onTypesChanged();
               },
             ),
           ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.techDocumentsFinalReportAlwaysIncluded,
+          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -357,14 +381,14 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
               icon: _isExportingZip
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.archive_outlined, size: 18),
-              label: Text(l10n.techDocumentsDownloadZip),
+              label: Text(l10n.techDocumentsDownloadZipCount(_items.length)),
             ),
             OutlinedButton.icon(
               onPressed: (_isExportingPdf || typesSelected.isEmpty) ? null : _printPdf,
               icon: _isExportingPdf
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.print_outlined, size: 18),
-              label: Text(l10n.techDocumentsPrint),
+              label: Text(l10n.techDocumentsPrintCount(_items.length)),
             ),
           ],
         ),
@@ -378,49 +402,72 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     );
   }
 
-  Widget _buildBody(AppLocalizations l10n) {
+  /// Slivers du corps de l'onglet (sous les filtres) — un seul `CustomScrollView`
+  /// couvre filtres + corps pour rester scrollable sur mobile. Les états
+  /// loading/error/empty utilisent `SliverFillRemaining` (pas de scroll body propre),
+  /// l'état avec données un `SliverList` classique.
+  List<Widget> _buildBodySlivers(AppLocalizations l10n) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
     }
 
     if (_error != null) {
-      return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.error_outline, color: AppColors.error, size: 40),
-          const SizedBox(height: 12),
-          Text(_error!, style: const TextStyle(color: AppColors.error)),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: _load,
-            icon: const Icon(Icons.refresh),
-            label: Text(l10n.techDocumentsRetry),
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.error)),
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: Text(l10n.techDocumentsRetry),
+              ),
+            ]),
           ),
-        ]),
-      );
+        ),
+      ];
     }
 
     if (_items.isEmpty) {
       final message = _selectedTypes().isEmpty ? l10n.techDocumentsNoTypeSelected : l10n.techDocumentsEmpty;
-      return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.folder_open, color: AppColors.textMuted, size: 40),
-          const SizedBox(height: 12),
-          Text(message, style: const TextStyle(color: AppColors.textSecondary)),
-        ]),
-      );
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              const Icon(Icons.folder_open, color: AppColors.textMuted, size: 40),
+              const SizedBox(height: 12),
+              Text(message, style: const TextStyle(color: AppColors.textSecondary)),
+            ]),
+          ),
+        ),
+      ];
     }
 
     final (:named, :orphans) = groupInterventionDocs(_items);
 
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        for (var i = 0; i < named.length; i++)
-          _buildGroupTile(l10n, issueId: named[i].key!, groupDocs: named[i].value, initiallyExpanded: i == 0),
-        if (orphans != null)
-          _buildGroupTile(l10n, issueId: null, groupDocs: orphans, initiallyExpanded: false),
-      ],
-    );
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        sliver: SliverList(
+          delegate: SliverChildListDelegate([
+            for (var i = 0; i < named.length; i++)
+              _buildGroupTile(l10n, issueId: named[i].key!, groupDocs: named[i].value, initiallyExpanded: i == 0),
+            if (orphans != null)
+              _buildGroupTile(l10n, issueId: null, groupDocs: orphans, initiallyExpanded: false),
+          ]),
+        ),
+      ),
+    ];
   }
 
   Widget _buildGroupTile(

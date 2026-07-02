@@ -1983,6 +1983,14 @@
   "@techDocumentsDownloadZip": {},
   "techDocumentsPrint": "Imprimer",
   "@techDocumentsPrint": {},
+  "techDocumentsDownloadZipCount": "Télécharger ZIP ({count})",
+  "@techDocumentsDownloadZipCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "techDocumentsPrintCount": "Imprimer ({count})",
+  "@techDocumentsPrintCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "techDocumentsCount": "{count} documents sur la période sélectionnée",
   "@techDocumentsCount": {
     "placeholders": { "count": { "type": "int" } }
@@ -2001,8 +2009,12 @@
   "@techDocumentsRetry": {},
   "techDocumentsTypeIntervention": "Rapport d'intervention",
   "@techDocumentsTypeIntervention": {},
-  "techDocumentsTypeCompletion": "Rapport de fin d'intervention",
-  "@techDocumentsTypeCompletion": {},
+  "techDocumentsTypeAttachment": "Pièce jointe",
+  "@techDocumentsTypeAttachment": {},
+  "techDocumentsTypePhoto": "Photo",
+  "@techDocumentsTypePhoto": {},
+  "techDocumentsFinalReportAlwaysIncluded": "Rapport final toujours inclus",
+  "@techDocumentsFinalReportAlwaysIncluded": {},
   "techDocumentsNoTypeSelected": "Sélectionnez au moins un type de document",
   "@techDocumentsNoTypeSelected": {},
   "techDocumentsGroupNoPdf": "Aucun PDF à fusionner pour cet incident",

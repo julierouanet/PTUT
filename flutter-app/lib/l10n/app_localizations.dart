@@ -9098,6 +9098,18 @@ abstract class AppLocalizations {
   /// **'Imprimer'**
   String get techDocumentsPrint;
 
+  /// No description provided for @techDocumentsDownloadZipCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger ZIP ({count})'**
+  String techDocumentsDownloadZipCount(int count);
+
+  /// No description provided for @techDocumentsPrintCount.
+  ///
+  /// In fr, this message translates to:
+  /// **'Imprimer ({count})'**
+  String techDocumentsPrintCount(int count);
+
   /// No description provided for @techDocumentsCount.
   ///
   /// In fr, this message translates to:
@@ -9146,11 +9158,23 @@ abstract class AppLocalizations {
   /// **'Rapport d\'intervention'**
   String get techDocumentsTypeIntervention;
 
-  /// No description provided for @techDocumentsTypeCompletion.
+  /// No description provided for @techDocumentsTypeAttachment.
   ///
   /// In fr, this message translates to:
-  /// **'Rapport de fin d\'intervention'**
-  String get techDocumentsTypeCompletion;
+  /// **'Pièce jointe'**
+  String get techDocumentsTypeAttachment;
+
+  /// No description provided for @techDocumentsTypePhoto.
+  ///
+  /// In fr, this message translates to:
+  /// **'Photo'**
+  String get techDocumentsTypePhoto;
+
+  /// No description provided for @techDocumentsFinalReportAlwaysIncluded.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport final toujours inclus'**
+  String get techDocumentsFinalReportAlwaysIncluded;
 
   /// No description provided for @techDocumentsNoTypeSelected.
   ///

@@ -4908,6 +4908,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techDocumentsPrint => 'Print';
 
   @override
+  String techDocumentsDownloadZipCount(int count) {
+    return 'Download ZIP ($count)';
+  }
+
+  @override
+  String techDocumentsPrintCount(int count) {
+    return 'Print ($count)';
+  }
+
+  @override
   String techDocumentsCount(int count) {
     return '$count documents for the selected period';
   }
@@ -4935,7 +4945,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techDocumentsTypeIntervention => 'Intervention report';
 
   @override
-  String get techDocumentsTypeCompletion => 'End-of-intervention report';
+  String get techDocumentsTypeAttachment => 'Attachment';
+
+  @override
+  String get techDocumentsTypePhoto => 'Photo';
+
+  @override
+  String get techDocumentsFinalReportAlwaysIncluded =>
+      'Final report always included';
 
   @override
   String get techDocumentsNoTypeSelected => 'Select at least one document type';

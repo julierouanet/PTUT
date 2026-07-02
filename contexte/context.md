@@ -772,38 +772,50 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 ### Documents d'intervention cross-équipement (`/api/documents/interventions`) **[NOUVEAU 2026-07-01]**
 
 Onglet « Documents » de la page technicien : liste/filtre/export des documents `equipment_documents`
-avec `document_type IN ('intervention','completion')` (filtrable via `?types=`), toutes équipements
-confondus (pas de scope par `equipment_id`).
+avec `document_type IN ('intervention','completion')` (filtrable via `?types=`) + photos `issue_photos`,
+toutes équipements confondus (pas de scope par `equipment_id`).
 Auth : `verifyToken` + `requireRole('admin','supervisor','technician','technician_biomedical','technician_it','technician_infra')`
 sur les 4 routes (pas de middleware de permission fine côté db-service — la permission applicative
 `viewInterventionDocuments` est vérifiée côté Flutter uniquement, cf. `contexte.md` § IAM & Sécurité).
 
-**[NOUVEAU 2026-07-01]** Paramètre `?types=` (CSV ou tableau `types[]=`) sur les 4 routes, whitelist
-`['intervention','completion']` (comparaison sensible à la casse, `400` si valeur inconnue). Absent →
-défaut `['intervention','completion']` (comportement historique élargi à `completion`). `types=` vide →
-`200`/`items:[]` sur la liste, `[]` sur `/technicians`, `404` sur `/zip` et `/print-pdf` (jamais de
-requête SQL `IN ()`). Correspond aux 2 cases à cocher de `intervention_documents_tab.dart`
-(« Rapport d'intervention » / « Rapport de fin d'intervention »).
+**[MODIFIÉ 2026-07-02]** Paramètre `?types=` (CSV ou tableau `types[]=`) sur les 4 routes, whitelist
+`['intervention','completion','photo']` (comparaison sensible à la casse, `400` si valeur inconnue —
+y compris `final_report`, jamais accepté du client). Absent → défaut `['intervention','completion']`
+(rétrocompatibilité, `photo` doit être demandé explicitement). `types=` vide → `200` sur la liste (ne
+retourne alors que les documents `final_report`, jamais `items:[]`), `[]` sur `/technicians`, `404` sur
+`/zip` et `/print-pdf` sauf s'il existe un rapport final pour les critères donnés. Correspond aux 3 cases
+à cocher de `intervention_documents_tab.dart` (« Rapport d'intervention » / « Pièce jointe » / « Photo »).
+`'photo'` est un pseudo-type : jamais une valeur de `equipment_documents.document_type`, il route vers
+`issue_photos` (pas de colonne `uploaded_by` sur cette table → exclues du ZIP/PDF si `?uploaded_by=` est
+renseigné).
+
+**[NOUVEAU 2026-07-02]** Le **rapport final** (`document_type='final_report'`) est toujours inclus dans
+la liste et les deux exports, quels que soient les `types` demandés (le client ne peut jamais le
+sélectionner explicitement — `400` si tenté) : `buildWhere()` ajoute inconditionnellement
+`OR document_type = 'final_report'`.
 
 | Methode | Route                                  | Auth  | Description |
 |---------|-----------------------------------------|-------|--------------|
-| GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?types=` (voir ci-dessus), `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée, `from > to`, ou `types` invalide. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat. **[MODIFIÉ 2026-07-02]** `UNION ALL` avec `issue_photos` (exposées sous `document_type='completion'` pour passer le filtre `types`, `kind='photo'` vs `'document'` pour les distinguer) ; `annex_number`/`annex_type_index` ajoutés à chaque item. Les photos n'ont pas d'`uploaded_by`/`uploader_name`/`equipment_id` (colonnes `NULL`) — un filtre `?uploaded_by=` les exclut donc systématiquement |
-| GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document parmi `?types=` (défaut `intervention`+`completion`) non supprimé — alimente le filtre technicien (jamais de résolution par nom). Route découplée de `parseFilters` (n'accepte/valide ni `from`, ni `to`, ni `uploaded_by`) |
-| GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `types`/`uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume). `404` si sélection vide. `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, types, doc_count}`) |
-| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Sans `?issue_id=` : mêmes filtres `types`/`uploaded_by`/`from`/`to`, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion), tri `uploaded_at DESC`, pas de sommaire — comportement historique inchangé. `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` (`{uploaded_by, from, to, types, issue_id, doc_count}`) |
+| GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?types=` (voir ci-dessus), `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée, `from > to`, ou `types` invalide. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat. `UNION ALL` avec `issue_photos` (**[MODIFIÉ 2026-07-02]** exposées sous `document_type='photo'`, pseudo-type distinct de `'completion'`, `kind='photo'` vs `'document'` pour les distinguer) ; `annex_number`/`annex_type_index` ajoutés à chaque item. Les photos n'ont pas d'`uploaded_by`/`uploader_name`/`equipment_id` (colonnes `NULL`) — un filtre `?uploaded_by=` les exclut donc systématiquement |
+| GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document parmi `?types=` (défaut `intervention`+`completion`) non supprimé — alimente le filtre technicien (jamais de résolution par nom). Route découplée de `parseFilters` (n'accepte/valide ni `from`, ni `to`, ni `uploaded_by`), et du rapport final toujours inclus (non concernée) |
+| GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `types`/`uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume), + rapport final toujours inclus. `404` si sélection vide (documents ET photos). `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). **[NOUVEAU 2026-07-02]** `types=photo` ajoute les fichiers `issue_photos` correspondants (exclus si `?uploaded_by=` renseigné). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, types, doc_count}`) |
+| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Sans `?issue_id=` : mêmes filtres `types`/`uploaded_by`/`from`/`to`, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion), tri `uploaded_at DESC`, pas de sommaire — comportement historique inchangé + rapport final toujours inclus. **[NOUVEAU 2026-07-02]** `types=photo` ajoute les `issue_photos.annex_pdf_stored_name IS NOT NULL` (photos sans PDF généré exclues, pas de conversion à la volée). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` (`{uploaded_by, from, to, types, issue_id, doc_count}`) |
 
 > Dépendances ajoutées à `db-service/package.json` : `archiver` (ZIP streaming), `pdf-lib` (fusion PDF).
 
-**[MODIFIÉ 2026-07-02]** Avec `?issue_id=` sur `/print-pdf` (`issue_id=''` traité comme absent), les autres
-filtres (`uploaded_by`/`from`/`to`/`types`) sont ignorés et le merge est entièrement reconstruit et
-réordonné par `buildIssuePrintPdf()` : **rapport final** (`document_type='final_report'`, 0 ou 1 page) →
+Avec `?issue_id=` sur `/print-pdf` (`issue_id=''` traité comme absent), les filtres `uploaded_by`/`from`/`to`
+sont ignorés mais **[MODIFIÉ 2026-07-02]** `types` est désormais respecté par `buildIssuePrintPdf(issueId,
+docTypes)` : le merge est entièrement reconstruit et réordonné : **rapport final**
+(`document_type='final_report'`, 0 ou 1 page, toujours chargé sans condition) →
 **sommaire** (généré uniquement si au moins un document d'intervention ou une annexe numérotée existe ;
-`services/annex_summary_service.js`, 25 entrées/page) → **documents d'intervention**
-(`document_type='intervention'`, triés `uploaded_at ASC`) → **annexes** (pièces jointes `completion`
-numérotées `UNION` photos avec `annex_pdf_stored_name`, triées `annex_number ASC`, puis documents
-`completion` hérités — `annex_number IS NULL` — triés `uploaded_at ASC` en fin de section, absents du
-sommaire). `404` si les 4 groupes sont vides. Permet à l'onglet Documents technicien de fusionner le PDF
-d'un seul groupe/incident (bouton par groupe `ExpansionTile`, cf. `intervention_documents_tab.dart`).
+`services/annex_summary_service.js`, 25 entrées/page) → **documents d'intervention** (gatés par
+`docTypes.includes('intervention')`, triés `uploaded_at ASC`) → **annexes** (pièces jointes `completion`
+numérotées gatées par `docTypes.includes('completion')` `UNION` photos avec `annex_pdf_stored_name` gatées
+par `docTypes.includes('photo')`, triées `annex_number ASC`, puis documents `completion` hérités —
+`annex_number IS NULL`, gatés par `completion` — triés `uploaded_at ASC` en fin de section, absents du
+sommaire). `404` uniquement si rapport final ET les 3 groupes gatés sont tous vides. Permet à l'onglet
+Documents technicien de fusionner le PDF d'un seul groupe/incident avec les mêmes cases cochées que la
+liste (bouton par groupe `ExpansionTile`, cf. `intervention_documents_tab.dart`).
 
 ### Lieux (`/api/locations`)
 

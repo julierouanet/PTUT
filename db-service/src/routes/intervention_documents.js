@@ -7,20 +7,26 @@ const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { UPLOAD_DIR } = require('../config');
-const { VALID_DOC_TYPES } = require('../utils/document_types');
 const { buildSummaryPdf, summaryPageCount } = require('../services/annex_summary_service');
 
 const router = express.Router();
 
 const ALLOWED_ROLES = ['admin', 'supervisor', 'technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const FILTERABLE_DOC_TYPES = VALID_DOC_TYPES.filter((t) => t === 'intervention' || t === 'completion');
+// 'photo' est un pseudo-type : jamais une valeur de equipment_documents.document_type,
+// il route vers la table issue_photos (voir buildPhotoWhere).
+const FILTERABLE_DOC_TYPES = ['intervention', 'completion', 'photo'];
+// Comportement par défaut (paramètre `types` absent) inchangé pour la rétrocompatibilité
+// des appelants existants — 'photo' doit être demandé explicitement.
+const DEFAULT_DOC_TYPES = ['intervention', 'completion'];
 
-// Parse le paramètre `types` (CSV "intervention,completion" OU tableau Express
+// Parse le paramètre `types` (CSV "intervention,completion,photo" OU tableau Express
 // si le client envoie ?types=a&types=b). Comparaison EXACTE, sensible à la casse
-// (les valeurs DB sont strictement en minuscules, aucune normalisation).
+// (les valeurs DB sont strictement en minuscules, aucune normalisation). `final_report`
+// n'est jamais une valeur acceptée ici : le rapport final est toujours inclus côté
+// serveur (voir buildWhere), le client ne doit jamais le demander explicitement.
 function parseTypes(rawTypes) {
-  if (rawTypes === undefined) return { docTypes: FILTERABLE_DOC_TYPES };
+  if (rawTypes === undefined) return { docTypes: DEFAULT_DOC_TYPES };
 
   const tokens = Array.isArray(rawTypes) ? rawTypes : String(rawTypes).split(',');
   const docTypes = tokens.map((t) => String(t).trim()).filter((t) => t.length > 0);
@@ -64,10 +70,16 @@ function parseFilters(query) {
 
 // Construit la clause WHERE + params communs à list/zip/print-pdf.
 // `alias` permet de réutiliser cette fonction sur la sous-requête fusionnée
-// documents+photos de la route GET / (alias 'combined').
-// N'est appelée que si filters.docTypes.length > 0 (jamais de IN () vide)
+// documents+photos de la route GET / (alias 'combined'). Le rapport final
+// (document_type = 'final_report') est TOUJOURS inclus, que le client l'ait
+// demandé ou non (il ne peut d'ailleurs jamais le demander, voir parseTypes) —
+// y compris quand docTypes est vide (aucune case cochée côté client).
 function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCondition, alias = 'ed') {
-  const { placeholders, params } = docTypesInClause(docTypes);
+  // 'final_report' n'est jamais dans docTypes (le client ne peut pas le demander,
+  // voir parseTypes) : l'ajouter systématiquement à la clause IN couvre à la fois
+  // le cas "toujours inclus" et le cas docTypes vide, sans branche séparée ni OR
+  // (qui empêcherait SQLite d'exploiter un index simple sur document_type).
+  const { placeholders, params } = docTypesInClause([...docTypes, 'final_report']);
   let where = `WHERE ${alias}.document_type IN (${placeholders}) AND ${alias}.deleted_at IS NULL`;
 
   if (extraCondition) where += ` AND ${extraCondition}`;
@@ -93,6 +105,47 @@ function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCo
   }
 
   return { where, params };
+}
+
+// Clause WHERE pour issue_photos, utilisée par /zip et /print-pdf quand le pseudo-type
+// 'photo' est demandé. issue_photos n'a pas de colonne uploaded_by : les photos ne sont
+// donc jamais filtrables par technicien et sont exclues si `uploadedBy` est renseigné
+// (voir appels sites) plutôt que de planter ou d'ignorer silencieusement ce filtre.
+function buildPhotoWhere({ from, to, search, issueId }) {
+  let where = 'WHERE 1=1';
+  const params = [];
+  if (from) {
+    where += ' AND date(uploaded_at) >= ?';
+    params.push(from);
+  }
+  if (to) {
+    where += ' AND date(uploaded_at) <= ?';
+    params.push(to);
+  }
+  if (search) {
+    where += ' AND original_name LIKE ? COLLATE NOCASE';
+    params.push(`%${search}%`);
+  }
+  if (issueId) {
+    where += ' AND issue_id = ?';
+    params.push(issueId);
+  }
+  return { where, params };
+}
+
+// Charge les photos d'incident matchant les filtres, partagé entre /zip et /print-pdf
+// (seules la colonne de fichier et une condition supplémentaire optionnelle diffèrent).
+// [] si le pseudo-type 'photo' n'est pas demandé ou si uploaded_by est renseigné (voir
+// buildPhotoWhere : issue_photos n'a pas de colonne uploaded_by).
+function fetchFilteredPhotos(filters, { storedNameColumn, extraCondition = '' }) {
+  if (!filters.docTypes.includes('photo') || filters.uploadedBy) return [];
+  const { where, params } = buildPhotoWhere(filters);
+  return getDb().prepare(`
+    SELECT id, original_name, ${storedNameColumn} AS stored_name
+    FROM issue_photos
+    ${where}${extraCondition}
+    ORDER BY uploaded_at DESC
+  `).all(...params);
 }
 
 // Audit trail commun aux deux exports (ZIP/PDF) — même forme, seule l'action diffère
@@ -121,16 +174,12 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
     return res.status(400).json({ error: 'limit invalide' });
   }
 
-  if (filters.docTypes.length === 0) {
-    return res.json({ items: [], total: 0, page: pageInt, limit: limitInt, total_pages: 1 });
-  }
-
   const db = getDb();
   const { where, params } = buildWhere(filters, null, 'combined');
 
   // Fusion documents + photos d'incident : les photos sont sans uploader/équipement
-  // (colonnes NULL) et exposées sous document_type='completion' pour passer le
-  // filtre FILTERABLE_DOC_TYPES existant, avec kind='photo' pour les distinguer.
+  // (colonnes NULL) et exposées sous document_type='photo' (pseudo-type distinct,
+  // filtrable indépendamment de 'completion'), avec kind='photo' pour l'UI.
   const combinedFrom = `
     (
       SELECT ed.id, ed.document_type, ed.original_name, ed.mime_type, ed.file_size_kb,
@@ -138,7 +187,7 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
              ed.deleted_at, ed.annex_number, ed.annex_type_index, 'document' AS kind
       FROM equipment_documents ed
       UNION ALL
-      SELECT p.id, 'completion' AS document_type, p.original_name, p.mime_type, p.file_size_kb,
+      SELECT p.id, 'photo' AS document_type, p.original_name, p.mime_type, p.file_size_kb,
              NULL AS uploader_name, NULL AS uploaded_by, p.uploaded_at, p.issue_id, NULL AS equipment_id,
              NULL AS deleted_at, p.annex_number, p.annex_type_index, 'photo' AS kind
       FROM issue_photos p
@@ -186,9 +235,6 @@ router.get('/technicians', verifyToken, requireRole(...ALLOWED_ROLES), (req, res
 router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   const filters = parseFilters(req.query);
   if (filters.error) return res.status(400).json({ error: filters.error });
-  if (filters.docTypes.length === 0) {
-    return res.status(404).json({ error: 'Aucun document pour ces critères' });
-  }
 
   const db = getDb();
   const { where, params } = buildWhere(filters);
@@ -199,11 +245,13 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
     ORDER BY ed.uploaded_at DESC
   `).all(...params);
 
-  if (docs.length === 0) {
+  const photos = fetchFilteredPhotos(filters, { storedNameColumn: 'stored_name' });
+
+  if (docs.length === 0 && photos.length === 0) {
     return res.status(404).json({ error: 'Aucun document pour ces critères' });
   }
 
-  logExport(req, 'export_intervention_documents_zip', filters, docs.length);
+  logExport(req, 'export_intervention_documents_zip', filters, docs.length + photos.length);
 
   const filename = `interventions_${filters.from || 'debut'}_${filters.to || 'fin'}.zip`;
   res.setHeader('Content-Type', 'application/zip');
@@ -216,17 +264,19 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   archive.pipe(res);
 
   const usedNames = new Map();
-  for (const doc of docs) {
-    let name = doc.original_name;
+  const addToArchive = (item) => {
+    let name = item.original_name;
     const count = usedNames.get(name) || 0;
     if (count > 0) {
       const ext = path.extname(name);
       const base = path.basename(name, ext);
       name = `${base}_${count + 1}${ext}`;
     }
-    usedNames.set(doc.original_name, count + 1);
-    archive.file(path.join(UPLOAD_DIR, doc.stored_name), { name });
-  }
+    usedNames.set(item.original_name, count + 1);
+    archive.file(path.join(UPLOAD_DIR, item.stored_name), { name });
+  };
+  for (const doc of docs) addToArchive(doc);
+  for (const photo of photos) addToArchive(photo);
 
   archive.finalize();
 });
@@ -252,7 +302,10 @@ async function appendPdfGroup(mergedPdf, loadedDocs) {
 // ── Merge PDF par incident : rapport final → sommaire → intervention → annexes ──
 // Remplace le tri unique par date : reconstruction en 4 groupes distincts, avec
 // un sommaire conditionnel (documents d'intervention + annexes numérotées).
-async function buildIssuePrintPdf(issueId) {
+// `docTypes` (sous-ensemble de FILTERABLE_DOC_TYPES) gate chaque groupe sauf le
+// rapport final, toujours chargé sans condition — voir buildWhere pour la même
+// règle appliquée aux autres routes.
+async function buildIssuePrintPdf(issueId, docTypes) {
   const db = getDb();
 
   const finalReportDoc = db.prepare(`
@@ -260,33 +313,33 @@ async function buildIssuePrintPdf(issueId) {
     WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'final_report' AND mime_type = 'application/pdf'
   `).get(issueId);
 
-  const interventionDocs = db.prepare(`
+  const interventionDocs = docTypes.includes('intervention') ? db.prepare(`
     SELECT id, original_name, stored_name FROM equipment_documents
     WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'intervention' AND mime_type = 'application/pdf'
     ORDER BY uploaded_at ASC
-  `).all(issueId);
+  `).all(issueId) : [];
 
-  const numberedDocAnnexes = db.prepare(`
+  const numberedDocAnnexes = docTypes.includes('completion') ? db.prepare(`
     SELECT id, original_name, stored_name, annex_number, annex_type_index
     FROM equipment_documents
     WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'completion' AND annex_number IS NOT NULL
-  `).all(issueId).map((d) => ({ ...d, kind: 'document' }));
+  `).all(issueId).map((d) => ({ ...d, kind: 'document' })) : [];
 
-  const numberedPhotoAnnexes = db.prepare(`
+  const numberedPhotoAnnexes = docTypes.includes('photo') ? db.prepare(`
     SELECT id, original_name, annex_pdf_stored_name AS stored_name, annex_number, annex_type_index
     FROM issue_photos
     WHERE issue_id = ? AND annex_pdf_stored_name IS NOT NULL
-  `).all(issueId).map((p) => ({ ...p, kind: 'photo' }));
+  `).all(issueId).map((p) => ({ ...p, kind: 'photo' })) : [];
 
   const numberedAnnexes = [...numberedDocAnnexes, ...numberedPhotoAnnexes]
     .sort((a, b) => a.annex_number - b.annex_number);
 
-  const legacyAnnexes = db.prepare(`
+  const legacyAnnexes = docTypes.includes('completion') ? db.prepare(`
     SELECT id, original_name, stored_name FROM equipment_documents
     WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'completion'
       AND annex_number IS NULL AND mime_type = 'application/pdf'
     ORDER BY uploaded_at ASC
-  `).all(issueId).map((d) => ({ ...d, kind: 'document' }));
+  `).all(issueId).map((d) => ({ ...d, kind: 'document' })) : [];
 
   const totalDocs = (finalReportDoc ? 1 : 0) + interventionDocs.length + numberedAnnexes.length + legacyAnnexes.length;
   if (totalDocs === 0) return null;
@@ -341,10 +394,11 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
   if (filters.error) return res.status(400).json({ error: filters.error });
 
   // Merge par incident : réordonné (rapport final → sommaire → intervention →
-  // annexes), comportement dédié qui ignore les filtres uploaded_by/from/to/types.
+  // annexes), comportement dédié qui ignore les filtres uploaded_by/from/to mais
+  // respecte docTypes (le rapport final reste, lui, toujours inclus).
   if (filters.issueId) {
     try {
-      const result = await buildIssuePrintPdf(filters.issueId);
+      const result = await buildIssuePrintPdf(filters.issueId, filters.docTypes);
       if (!result) return res.status(404).json({ error: 'Aucun document pour cet incident' });
 
       logExport(req, 'export_intervention_documents_pdf', filters, result.docCount);
@@ -358,11 +412,8 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
     return;
   }
 
-  // Merge multi-incidents (filtré par uploaded_by/from/to/types) — comportement inchangé.
-  if (filters.docTypes.length === 0) {
-    return res.status(404).json({ error: 'Aucun PDF pour ces critères' });
-  }
-
+  // Merge multi-incidents (filtré par uploaded_by/from/to/types, + final_report
+  // toujours inclus) — comportement inchangé pour intervention/completion.
   const db = getDb();
   const { where, params } = buildWhere(filters, "ed.mime_type = 'application/pdf'");
   const docs = db.prepare(`
@@ -372,16 +423,25 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
     ORDER BY ed.uploaded_at DESC
   `).all(...params);
 
-  if (docs.length === 0) {
+  // Les photos n'ont pas toutes de PDF associé (annex_pdf_stored_name NULL tant que
+  // non numérotées en annexe) : seules celles déjà converties sont fusionnables ici,
+  // sans tentative de conversion à la volée.
+  const photoDocs = fetchFilteredPhotos(filters, {
+    storedNameColumn: 'annex_pdf_stored_name',
+    extraCondition: ' AND annex_pdf_stored_name IS NOT NULL',
+  });
+
+  const allDocs = [...docs, ...photoDocs];
+  if (allDocs.length === 0) {
     return res.status(404).json({ error: 'Aucun PDF pour ces critères' });
   }
 
   try {
-    const docsLoaded = await loadPdfGroup(docs);
+    const docsLoaded = await loadPdfGroup(allDocs);
     const mergedPdf = await PDFDocument.create();
     await appendPdfGroup(mergedPdf, docsLoaded);
 
-    logExport(req, 'export_intervention_documents_pdf', filters, docs.length);
+    logExport(req, 'export_intervention_documents_pdf', filters, allDocs.length);
 
     const mergedBytes = await mergedPdf.save();
     res.setHeader('Content-Type', 'application/pdf');

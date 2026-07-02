@@ -1962,6 +1962,14 @@
   "@techDocumentsDownloadZip": {},
   "techDocumentsPrint": "Print",
   "@techDocumentsPrint": {},
+  "techDocumentsDownloadZipCount": "Download ZIP ({count})",
+  "@techDocumentsDownloadZipCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "techDocumentsPrintCount": "Print ({count})",
+  "@techDocumentsPrintCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "techDocumentsCount": "{count} documents for the selected period",
   "@techDocumentsCount": {
     "placeholders": { "count": { "type": "int" } }
@@ -1980,8 +1988,12 @@
   "@techDocumentsRetry": {},
   "techDocumentsTypeIntervention": "Intervention report",
   "@techDocumentsTypeIntervention": {},
-  "techDocumentsTypeCompletion": "End-of-intervention report",
-  "@techDocumentsTypeCompletion": {},
+  "techDocumentsTypeAttachment": "Attachment",
+  "@techDocumentsTypeAttachment": {},
+  "techDocumentsTypePhoto": "Photo",
+  "@techDocumentsTypePhoto": {},
+  "techDocumentsFinalReportAlwaysIncluded": "Final report always included",
+  "@techDocumentsFinalReportAlwaysIncluded": {},
   "techDocumentsNoTypeSelected": "Select at least one document type",
   "@techDocumentsNoTypeSelected": {},
   "techDocumentsGroupNoPdf": "No PDF to merge for this issue",

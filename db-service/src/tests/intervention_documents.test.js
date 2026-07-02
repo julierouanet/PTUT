@@ -583,6 +583,43 @@ describe('GET /api/documents/interventions/zip', () => {
       .set('Authorization', 'Bearer fake-token');
     expect(res.status).toBe(404);
   });
+
+  test('✅ types=photo → le ZIP contient les fichiers de issue_photos', async () => {
+    seedIssue('iss-zip-photo');
+    const photoStored = 'zip-photo.jpg';
+    writeRealFile(photoStored);
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
+      VALUES ('iss-zip-photo', ?, 'zip-photo.jpg', 'image/jpeg', 4, datetime('now','localtime'))
+    `).run(photoStored);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ issue_id: 'iss-zip-photo', types: 'photo' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toBe('application/zip');
+    expect(res.body.length).toBeGreaterThan(0);
+  });
+
+  test('🚫 types=photo + uploaded_by renseigné → exclut les photos (404 si rien d\'autre)', async () => {
+    seedIssue('iss-zip-photo-excl');
+    const photoStored = 'zip-photo-excl.jpg';
+    writeRealFile(photoStored);
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
+      VALUES ('iss-zip-photo-excl', ?, 'zip-photo-excl.jpg', 'image/jpeg', 4, datetime('now','localtime'))
+    `).run(photoStored);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/zip')
+      .query({ issue_id: 'iss-zip-photo-excl', types: 'photo', uploaded_by: 'tech-zip-photo-excl' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
 });
 
 describe('GET /api/documents/interventions/print-pdf', () => {
@@ -722,7 +759,7 @@ describe('GET /api/documents/interventions/print-pdf', () => {
 
     const res = await request(app)
       .get('/api/documents/interventions/print-pdf')
-      .query({ issue_id: issueId })
+      .query({ issue_id: issueId, types: 'intervention,completion,photo' })
       .set('Authorization', 'Bearer fake-token')
       .buffer(true)
       .parse(bufferParser);
@@ -733,6 +770,69 @@ describe('GET /api/documents/interventions/print-pdf', () => {
     const merged = await PDFDocument.load(res.body);
     expect(merged.getPageCount()).toBe(6);
   });
+
+  test('✅ types=intervention (sur le même incident) → uniquement rapport final + intervention, pas d\'annexes', async () => {
+    const issueId = 'iss-print-filtered';
+    const eqId = 'idoc-eq-print-filtered';
+    seedIssue(issueId, { equipmentId: eqId });
+
+    const finalReportStored = 'print-filtered-final.pdf';
+    const intStored = 'print-filtered-int.pdf';
+    const annexDocStored = 'print-filtered-annexdoc.pdf';
+    await writeRealPdf(finalReportStored);
+    await writeRealPdf(intStored);
+    await writeRealPdf(annexDocStored);
+
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: finalReportStored, originalName: 'final.pdf', docType: 'final_report', uploadedBy: 'tech-filtered', uploaderName: 'Tech Filtered' });
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: intStored, originalName: 'int.pdf', docType: 'intervention', uploadedBy: 'tech-filtered', uploaderName: 'Tech Filtered' });
+    const annexDocId = insertInterventionDoc({ equipmentId: eqId, issueId, storedName: annexDocStored, originalName: 'annexdoc.pdf', docType: 'completion', uploadedBy: 'tech-filtered', uploaderName: 'Tech Filtered' });
+    db.prepare('UPDATE equipment_documents SET annex_number = 1, annex_type_index = 1 WHERE id = ?').run(annexDocId);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: 'intervention' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    // 1 rapport final + 1 sommaire (1 entrée : intervention seule) + 1 page intervention = 3.
+    // La pièce jointe (annexe 1) est exclue car 'completion' n'est pas dans types.
+    const merged = await PDFDocument.load(res.body);
+    expect(merged.getPageCount()).toBe(3);
+  });
+
+  test('✅ types= (tout décoché) sur incident n\'ayant qu\'un rapport final → 200, PDF d\'une seule page', async () => {
+    const issueId = 'iss-print-onlyfinal';
+    const eqId = 'idoc-eq-print-onlyfinal';
+    seedIssue(issueId, { equipmentId: eqId });
+    const finalStored = 'print-onlyfinal.pdf';
+    await writeRealPdf(finalStored);
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: finalStored, originalName: 'final.pdf', docType: 'final_report', uploadedBy: 'tech-onlyfinal', uploaderName: 'Tech Onlyfinal' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: '' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    const merged = await PDFDocument.load(res.body);
+    expect(merged.getPageCount()).toBe(1);
+  });
+
+  test('🚫 types= (tout décoché) sur incident sans aucun document → 404', async () => {
+    const issueId = 'iss-print-nodocs';
+    seedIssue(issueId);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: '' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(404);
+  });
 });
 
 // =============================================================================
@@ -742,7 +842,7 @@ describe('GET /api/documents/interventions/print-pdf', () => {
 // des tests de filtre par date exécutés plus haut.
 // =============================================================================
 describe('GET /api/documents/interventions — inclusion des photos', () => {
-  test('✅ inclut les photos d\'incident (kind=photo, document_type=completion)', async () => {
+  test('✅ types=photo → inclut les photos d\'incident (kind=photo, document_type=photo)', async () => {
     seedIssue('iss-list-photo');
     const photoId = db.prepare(`
       INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index)
@@ -751,14 +851,30 @@ describe('GET /api/documents/interventions — inclusion des photos', () => {
 
     const res = await request(app)
       .get('/api/documents/interventions')
-      .query({ issue_id: 'iss-list-photo' })
+      .query({ issue_id: 'iss-list-photo', types: 'photo' })
       .set('Authorization', 'Bearer fake-token');
 
     expect(res.status).toBe(200);
     const item = res.body.items.find((d) => d.id === photoId && d.kind === 'photo');
     expect(item).toBeDefined();
-    expect(item.document_type).toBe('completion');
+    expect(item.document_type).toBe('photo');
     expect(item.annex_number).toBe(1);
+  });
+
+  test('🚫 sans types=photo (défaut intervention+completion) → les photos ne sont pas incluses', async () => {
+    seedIssue('iss-list-photo-default');
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
+      VALUES ('iss-list-photo-default', 'list-photo-default.jpg', 'list-photo-default.jpg', 'image/jpeg', 4, datetime('now','localtime'))
+    `).run();
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ issue_id: 'iss-list-photo-default' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(0);
   });
 
   test('✅ filtre uploaded_by exclut les photos (non attribuées à un uploader)', async () => {
@@ -770,11 +886,39 @@ describe('GET /api/documents/interventions — inclusion des photos', () => {
 
     const res = await request(app)
       .get('/api/documents/interventions')
-      .query({ uploaded_by: 'tech-filter-a', issue_id: 'iss-list-photo-excl' })
+      .query({ uploaded_by: 'tech-filter-a', issue_id: 'iss-list-photo-excl', types: 'photo' })
       .set('Authorization', 'Bearer fake-token');
 
     expect(res.status).toBe(200);
     expect(res.body.items).toHaveLength(0);
+  });
+});
+
+// =============================================================================
+// Rapport final toujours inclus (FEAT — cases à cocher export documents)
+// =============================================================================
+describe('GET /api/documents/interventions — rapport final toujours inclus', () => {
+  test('✅ types= (aucune case cochée) → retourne uniquement les documents final_report', async () => {
+    const idFinal = insertInterventionDoc({ storedName: 'final-always.pdf', originalName: 'final-always.pdf', docType: 'final_report' });
+    const idIntervention = insertInterventionDoc({ storedName: 'final-always-int.pdf', originalName: 'final-always-int.pdf', docType: 'intervention' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: '' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((d) => d.id);
+    expect(ids).toContain(idFinal);
+    expect(ids).not.toContain(idIntervention);
+  });
+
+  test('🚫 types=final_report (envoyé explicitement par le client) → 400', async () => {
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ types: 'final_report' })
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(400);
   });
 });
 
