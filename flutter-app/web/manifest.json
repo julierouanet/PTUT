@@ -1,8 +1,8 @@
 {
     "name": "Kabutare Hospital",
     "short_name": "Kabutare",
-    "start_url": "/",
-    "scope": "/",
+    "start_url": ".",
+    "scope": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",

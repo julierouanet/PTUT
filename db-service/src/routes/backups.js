@@ -46,6 +46,69 @@ function _scheduleCron(cronExpr) {
 }
 
 /**
+ * Extrait la date d'un backup depuis son nom de fichier (jamais depuis mtime,
+ * non fiable après un docker cp ou sur un volume monté).
+ * Retourne null si le nom ne correspond pas au format attendu.
+ */
+function _parseBackupDate(filename) {
+  const m = /^hospital_backup_(\d{4})-(\d{2})-(\d{2})_/.exec(filename);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+}
+
+/**
+ * Politique de rétention : tous les backups des 7 derniers jours glissants
+ * sont conservés, au-delà un seul backup par mois calendaire (le plus ancien
+ * du mois) est gardé — le reste est supprimé (fichier + ligne backup_history).
+ */
+function _rotateBackups() {
+  if (!fs.existsSync(BACKUPS_DIR)) return;
+
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - 7);
+
+  const files = [];
+  for (const filename of fs.readdirSync(BACKUPS_DIR)) {
+    const date = _parseBackupDate(filename);
+    if (!date) {
+      if (filename.startsWith('hospital_backup_')) {
+        console.warn(`[BACKUP] Rotation — nom de fichier non conforme ignoré : ${filename}`);
+      }
+      continue;
+    }
+    files.push({ filename, date });
+  }
+
+  const old = files.filter((f) => f.date < cutoff);
+  const groups = new Map();
+  for (const f of old) {
+    const key = `${f.date.getFullYear()}-${String(f.date.getMonth() + 1).padStart(2, '0')}`;
+    const group = groups.get(key);
+    if (group) group.push(f);
+    else groups.set(key, [f]);
+  }
+
+  const toDelete = [];
+  for (const group of groups.values()) {
+    group.sort((a, b) => a.date - b.date || a.filename.localeCompare(b.filename));
+    toDelete.push(...group.slice(1));
+  }
+
+  const db = getDb();
+  for (const { filename } of toDelete) {
+    const filePath = path.join(BACKUPS_DIR, filename);
+    try {
+      fs.unlinkSync(filePath);
+      db.prepare('DELETE FROM backup_history WHERE filename = ?').run(filename);
+      console.log(`[BACKUP] Rotation — supprimé : ${filename}`);
+    } catch (err) {
+      console.error(`[BACKUP] Rotation — échec suppression ${filename} : ${err.message}`);
+    }
+  }
+}
+
+/**
  * Effectue la sauvegarde physique via db.backup() de better-sqlite3.
  * Enregistre l'opération dans backup_history et génère un audit log.
  *
@@ -99,6 +162,10 @@ async function _performBackup({ automated = false, user = null, req = null } = {
         ...(req ? extractReqMeta(req) : {}),
       });
     } catch (_) {}
+
+    // Rotation de rétention (7 derniers jours + 1 backup/mois) — indépendante
+    // du résultat de la sauvegarde courante, appliquée après chaque tentative.
+    _rotateBackups();
   }
 
   return { filename, fileSize, status };
@@ -220,4 +287,4 @@ router.get('/download/:id', verifyToken, requireRole('admin'), (req, res) => {
   res.download(filePath, record.filename);
 });
 
-module.exports = { router, initBackupCron };
+module.exports = { router, initBackupCron, _rotateBackups, BACKUPS_DIR };

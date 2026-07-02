@@ -8,7 +8,7 @@
 #   sudo bash backup.sh --auth        # auth.db uniquement
 #   sudo bash backup.sh --hospital    # hospital.db uniquement
 #   sudo bash backup.sh --keycloak    # PostgreSQL Keycloak uniquement
-#   sudo bash backup.sh --keep 7      # conserver 7 jours (défaut : 30)
+#   sudo bash backup.sh --keep 7      # fenêtre "derniers jours" (défaut : 7)
 #
 # Les fichiers sont créés dans ./backups/ (ignoré par git).
 # Pour restaurer, utiliser setup_ubuntu.sh (option 2)
@@ -29,7 +29,7 @@ cd "${SCRIPT_DIR}"
 COMPOSE_FILE="docker-compose.ip.yml"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 DATE=$(date +%Y%m%d_%H%M)
-KEEP_DAYS=30
+KEEP_DAYS=7
 
 # ── Analyse des arguments ─────────────────────────────────────
 DO_AUTH=false
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
     --auth)      DO_AUTH=true;     DO_ALL=false ;;
     --hospital)  DO_HOSPITAL=true; DO_ALL=false ;;
     --keycloak)  DO_KEYCLOAK=true; DO_ALL=false ;;
-    --keep)      shift; KEEP_DAYS="${1:-30}"    ;;
+    --keep)      shift; KEEP_DAYS="${1:-7}"     ;;
     *) echo "Option inconnue : $1" >&2; exit 1  ;;
   esac
   shift
@@ -125,21 +125,64 @@ if [[ "${DO_KEYCLOAK}" == "true" ]]; then
   echo ""
 fi
 
-# ── Rotation automatique (suppression des anciens backups) ────
-echo "── Rotation : conservation des ${KEEP_DAYS} derniers jours ──────"
+# ── Rotation automatique (${KEEP_DAYS}j glissants + 1 backup/mois) ────
+# La date de chaque fichier est TOUJOURS extraite de son NOM (jamais de
+# mtime — non fiable après un docker cp ou sur un volume monté).
+echo "── Rotation : ${KEEP_DAYS} derniers jours + 1 backup/mois ────"
 DELETED=0
-for PATTERN in "auth_*.db" "hospital_*.db" "keycloak_*.sql"; do
-  while IFS= read -r OLD_FILE; do
-    [[ -z "${OLD_FILE}" ]] && continue
-    AGE_DAYS=$(( ( $(date +%s) - $(stat -c %Y "${OLD_FILE}") ) / 86400 ))
-    if [[ ${AGE_DAYS} -gt ${KEEP_DAYS} ]]; then
-      rm -f "${OLD_FILE}"
-      echo "   🗑 Supprimé (${AGE_DAYS}j) : $(basename "${OLD_FILE}")"
-      DELETED=$((DELETED + 1))
+
+rotate_pattern() {
+  local pattern="$1"
+  local -a files=()
+  while IFS= read -r f; do
+    [[ -z "${f}" ]] && continue
+    files+=("${f}")
+  done < <(find "${BACKUP_DIR}" -maxdepth 1 -name "${pattern}" 2>/dev/null | sort)
+
+  # 0 ou 1 fichier : rien à faire.
+  [[ ${#files[@]} -le 1 ]] && return
+
+  # Comparaison sur la date seule (chaîne YYYYMMDD), jamais sur l'heure —
+  # un seul appel à `date` au lieu d'un par fichier.
+  local cutoff_ymd
+  cutoff_ymd=$(date -d "-${KEEP_DAYS} days" +%Y%m%d)
+
+  declare -A month_seen
+  local f base datepart key
+
+  # Les fichiers sont triés par ordre alphabétique == ordre chronologique
+  # (format YYYYMMDD_HHMM) : le premier vu dans un mois est le plus ancien.
+  for f in "${files[@]}"; do
+    base="${f##*/}"
+    datepart=$(echo "${base}" | grep -oE '[0-9]{8}_[0-9]{4}' | cut -d'_' -f1) || true
+    if [[ -z "${datepart}" ]]; then
+      echo "   ⚠ Nom de fichier non conforme ignoré : ${base}"
+      continue
     fi
-  done < <(find "${BACKUP_DIR}" -maxdepth 1 -name "${PATTERN}" 2>/dev/null | sort)
+
+    # Fenêtre des ${KEEP_DAYS} derniers jours : conservé inconditionnellement.
+    if (( 10#${datepart} >= 10#${cutoff_ymd} )); then
+      continue
+    fi
+
+    key="${datepart:0:4}-${datepart:4:2}"
+    if [[ -z "${month_seen[${key}]:-}" ]]; then
+      month_seen[${key}]=1   # plus ancien du mois : conservé
+    else
+      if rm -f "${f}"; then
+        echo "   🗑 Supprimé (mensuel, doublon de ${key}) : ${base}"
+        DELETED=$((DELETED + 1))
+      else
+        echo "   ⚠ Échec suppression : ${base}"
+      fi
+    fi
+  done
+}
+
+for PATTERN in "auth_*.db" "hospital_*.db" "keycloak_*.sql"; do
+  rotate_pattern "${PATTERN}"
 done
-[[ ${DELETED} -eq 0 ]] && echo "   Aucun fichier expiré."
+[[ ${DELETED} -eq 0 ]] && echo "   Aucun fichier supprimé."
 echo ""
 
 # ── Résumé ───────────────────────────────────────────────────
