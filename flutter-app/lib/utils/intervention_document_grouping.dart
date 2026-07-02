@@ -36,6 +36,24 @@ typedef DocGroup = MapEntry<String?, List<EquipmentDocument>>;
   );
 }
 
+/// Sépare les documents d'un groupe (incident) en deux sous-sections :
+/// Intervention (document_type == 'intervention') et Annexe (document_type
+/// == 'completion', pièces jointes ET photos). L'Annexe est triée par
+/// annexNumber croissant, les documents hérités (annexNumber null) en fin de
+/// liste, sans badge.
+({List<EquipmentDocument> intervention, List<EquipmentDocument> annexe}) splitInterventionAnnexe(
+    List<EquipmentDocument> groupDocs) {
+  final intervention = groupDocs.where((d) => d.documentType == 'intervention').toList();
+  final annexe = groupDocs.where((d) => d.documentType == 'completion').toList()
+    ..sort((a, b) {
+      if (a.annexNumber == null && b.annexNumber == null) return 0;
+      if (a.annexNumber == null) return 1;
+      if (b.annexNumber == null) return -1;
+      return a.annexNumber!.compareTo(b.annexNumber!);
+    });
+  return (intervention: intervention, annexe: annexe);
+}
+
 String formatDocDate(String raw) {
   if (raw.isEmpty) return '—';
   try {

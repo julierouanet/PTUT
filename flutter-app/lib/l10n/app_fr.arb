@@ -2009,6 +2009,14 @@
   "@techDocumentsGroupNoPdf": {},
   "techDocumentsDownloadIssuePdf": "Télécharger le PDF fusionné",
   "@techDocumentsDownloadIssuePdf": {},
+  "techDocumentsSectionIntervention": "Intervention",
+  "@techDocumentsSectionIntervention": {},
+  "techDocumentsSectionAnnexe": "Annexe",
+  "@techDocumentsSectionAnnexe": {},
+  "docAnnexBadge": "Annexe {number}",
+  "@docAnnexBadge": {
+    "placeholders": { "number": { "type": "int" } }
+  },
   "permViewInterventionDocuments": "Consulter les documents d'intervention",
   "@permViewInterventionDocuments": {},
 

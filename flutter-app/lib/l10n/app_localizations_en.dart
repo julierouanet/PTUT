@@ -4947,6 +4947,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techDocumentsDownloadIssuePdf => 'Download merged PDF';
 
   @override
+  String get techDocumentsSectionIntervention => 'Intervention';
+
+  @override
+  String get techDocumentsSectionAnnexe => 'Attachment';
+
+  @override
+  String docAnnexBadge(int number) {
+    return 'Attachment $number';
+  }
+
+  @override
   String get permViewInterventionDocuments => 'View intervention documents';
 
   @override

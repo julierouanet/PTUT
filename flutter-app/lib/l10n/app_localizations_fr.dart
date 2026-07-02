@@ -4998,6 +4998,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get techDocumentsDownloadIssuePdf => 'Télécharger le PDF fusionné';
 
   @override
+  String get techDocumentsSectionIntervention => 'Intervention';
+
+  @override
+  String get techDocumentsSectionAnnexe => 'Annexe';
+
+  @override
+  String docAnnexBadge(int number) {
+    return 'Annexe $number';
+  }
+
+  @override
   String get permViewInterventionDocuments =>
       'Consulter les documents d\'intervention';
 

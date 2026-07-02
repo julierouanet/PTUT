@@ -58,6 +58,7 @@ jest.mock('../routes/backups', () => ({
 
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 const request = require('supertest');
 const { PDFDocument } = require('pdf-lib');
 const { app, server } = require('../index');
@@ -65,6 +66,35 @@ const { getDb, closeDb } = require('../database');
 const { UPLOAD_DIR } = require('../config');
 
 let db;
+
+// ── Extraction du texte dessiné (Tj) depuis les content streams d'un PDF ──────
+// Les chaînes sont en WinAnsiEncoding (≈ Latin-1, sauf 0x80-0x9F). On ne code
+// en dur que le caractère qui diverge de Latin-1 et qu'on utilise (tiret cadratin).
+function decodeWinAnsiHex(hex) {
+  const bytes = Buffer.from(hex, 'hex');
+  let out = '';
+  for (const b of bytes) out += b === 0x97 ? '—' : String.fromCharCode(b);
+  return out;
+}
+
+function extractDrawnTexts(pdfBytes) {
+  const raw = Buffer.from(pdfBytes).toString('latin1');
+  const streamRe = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  const texts = [];
+  let m;
+  while ((m = streamRe.exec(raw))) {
+    let inflated;
+    try {
+      inflated = zlib.inflateSync(Buffer.from(m[1], 'latin1')).toString('latin1');
+    } catch (_) {
+      continue; // pas un flux FlateDecode (ex. image binaire)
+    }
+    const tjRe = /<([0-9A-Fa-f]+)>\s*Tj/g;
+    let tm;
+    while ((tm = tjRe.exec(inflated))) texts.push(decodeWinAnsiHex(tm[1]));
+  }
+  return texts;
+}
 
 function seedIssue(id, { status = 'In Progress', equipmentId = null } = {}) {
   if (equipmentId) {
@@ -263,6 +293,22 @@ async function writeRealPdf(storedName) {
   pdf.addPage([200, 200]);
   fs.writeFileSync(path.join(UPLOAD_DIR, storedName), await pdf.save());
 }
+
+// PDF avec un flux de contenu réel (nécessaire pour stampPdfAnnex, qui embarque
+// la page via embedPage — une page sans contenu dessiné lève une exception pdf-lib).
+async function makeRealPdfBuffer() {
+  const pdf = await PDFDocument.create();
+  const page = pdf.addPage([200, 200]);
+  page.drawText('contenu réel');
+  return Buffer.from(await pdf.save());
+}
+
+// PNG 1x1 minimal, suffisant pour imageToStampedPdf (embedPng)
+const TINY_PNG = Buffer.from(
+  '89504e470d0a1a0a0000000d4948445200000001000000010802000000907753de0000000c4944415478da6360606060000000050001a5f6454000' +
+  '00000049454e44ae426082',
+  'hex'
+);
 
 // Lit un flux de réponse binaire (ZIP/PDF) sans le parser en JSON/texte
 function bufferParser(response, cb) {
@@ -624,12 +670,12 @@ describe('GET /api/documents/interventions/print-pdf', () => {
 
     expect(resX.status).toBe(200);
     expect(resY.status).toBe(200);
-    // iss-print-x a 2 pages fusionnées, iss-print-y en a 1 seule : les tailles
-    // de buffer résultantes doivent diverger (preuve indirecte que le filtre s'applique).
+    // iss-print-x : 1 sommaire (2 entrées) + 2 pages intervention = 3.
+    // iss-print-y : 1 sommaire (1 entrée) + 1 page intervention = 2.
     const pageCountX = (await PDFDocument.load(resX.body)).getPageCount();
     const pageCountY = (await PDFDocument.load(resY.body)).getPageCount();
-    expect(pageCountX).toBe(2);
-    expect(pageCountY).toBe(1);
+    expect(pageCountX).toBe(3);
+    expect(pageCountY).toBe(2);
   });
 
   test('🚫 404 si l\'issue n\'a aucun PDF (uniquement une image)', async () => {
@@ -644,6 +690,222 @@ describe('GET /api/documents/interventions/print-pdf', () => {
       .set('Authorization', 'Bearer fake-token');
 
     expect(res.status).toBe(404);
+  });
+
+  test('✅ rapport final + intervention + annexes numérotées → réordonné avec sommaire', async () => {
+    const issueId = 'iss-print-full';
+    const eqId = 'idoc-eq-print-full';
+    seedIssue(issueId, { equipmentId: eqId });
+
+    const finalReportStored = 'print-full-final.pdf';
+    const int1Stored = 'print-full-int1.pdf';
+    const int2Stored = 'print-full-int2.pdf';
+    const annexDocStored = 'print-full-annexdoc.pdf';
+    const annexPhotoStored = 'print-full-annexphoto.pdf';
+    await writeRealPdf(finalReportStored);
+    await writeRealPdf(int1Stored);
+    await writeRealPdf(int2Stored);
+    await writeRealPdf(annexDocStored);
+    await writeRealPdf(annexPhotoStored);
+
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: finalReportStored, originalName: 'final.pdf', docType: 'final_report', uploadedBy: 'tech-full', uploaderName: 'Tech Full' });
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: int1Stored, originalName: 'int1.pdf', docType: 'intervention', uploadedBy: 'tech-full', uploaderName: 'Tech Full', uploadedAt: '2026-01-01 08:00:00' });
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: int2Stored, originalName: 'int2.pdf', docType: 'intervention', uploadedBy: 'tech-full', uploaderName: 'Tech Full', uploadedAt: '2026-01-01 09:00:00' });
+
+    const annexDocId = insertInterventionDoc({ equipmentId: eqId, issueId, storedName: annexDocStored, originalName: 'annexdoc.pdf', docType: 'completion', uploadedBy: 'tech-full', uploaderName: 'Tech Full' });
+    db.prepare('UPDATE equipment_documents SET annex_number = 1, annex_type_index = 1 WHERE id = ?').run(annexDocId);
+
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index, annex_pdf_stored_name)
+      VALUES (?, 'orig-photo.jpg', 'photo.jpg', 'image/jpeg', 5, datetime('now','localtime'), 2, 1, ?)
+    `).run(issueId, annexPhotoStored);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    // 1 rapport final + 1 sommaire (4 entrées : 2 intervention + 2 annexes) +
+    // 2 pages intervention + 2 pages d'annexe tamponnée (1 page chacune) = 6 pages.
+    const merged = await PDFDocument.load(res.body);
+    expect(merged.getPageCount()).toBe(6);
+  });
+});
+
+// =============================================================================
+// GET /api/documents/interventions — inclusion des photos (UNION ALL)
+// Placé en fin de fichier : ces tests insèrent avec uploaded_at "maintenant",
+// ce qui fausserait la pagination par défaut (LIMIT 20, tri uploaded_at DESC)
+// des tests de filtre par date exécutés plus haut.
+// =============================================================================
+describe('GET /api/documents/interventions — inclusion des photos', () => {
+  test('✅ inclut les photos d\'incident (kind=photo, document_type=completion)', async () => {
+    seedIssue('iss-list-photo');
+    const photoId = db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index)
+      VALUES ('iss-list-photo', 'list-photo.jpg', 'list-photo.jpg', 'image/jpeg', 4, datetime('now','localtime'), 1, 1)
+    `).run().lastInsertRowid;
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ issue_id: 'iss-list-photo' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    const item = res.body.items.find((d) => d.id === photoId && d.kind === 'photo');
+    expect(item).toBeDefined();
+    expect(item.document_type).toBe('completion');
+    expect(item.annex_number).toBe(1);
+  });
+
+  test('✅ filtre uploaded_by exclut les photos (non attribuées à un uploader)', async () => {
+    seedIssue('iss-list-photo-excl');
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
+      VALUES ('iss-list-photo-excl', 'list-photo-excl.jpg', 'list-photo-excl.jpg', 'image/jpeg', 4, datetime('now','localtime'))
+    `).run();
+
+    const res = await request(app)
+      .get('/api/documents/interventions')
+      .query({ uploaded_by: 'tech-filter-a', issue_id: 'iss-list-photo-excl' })
+      .set('Authorization', 'Bearer fake-token');
+
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(0);
+  });
+});
+
+// =============================================================================
+// Tamponnage + numérotation d'annexe — POST /:id/documents (completion) et /:id/photos
+// Placé en fin de fichier : ces tests insèrent des documents avec uploaded_at
+// "maintenant" (route réelle), ce qui fausserait la pagination par défaut
+// (LIMIT 20, tri uploaded_at DESC) des tests de filtre exécutés plus haut.
+// =============================================================================
+describe('Tamponnage et numérotation d\'annexe', () => {
+  test('✅ pièce jointe PDF "completion" → annex_number=1, annex_type_index=1, fichier tamponné', async () => {
+    seedIssue('iss-annex-doc');
+    const pdfBuffer = await makeRealPdfBuffer();
+
+    const res = await request(app)
+      .post('/api/issues/iss-annex-doc/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'completion')
+      .attach('files', pdfBuffer, { filename: 'piece-jointe.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(201);
+    expect(res.body[0].annex_number).toBe(1);
+    expect(res.body[0].annex_type_index).toBe(1);
+
+    const row = db.prepare('SELECT * FROM equipment_documents WHERE issue_id = ?').get('iss-annex-doc');
+    expect(row.annex_number).toBe(1);
+    expect(row.annex_type_index).toBe(1);
+
+    const stampedBytes = fs.readFileSync(path.join(UPLOAD_DIR, row.stored_name));
+    expect(extractDrawnTexts(stampedBytes)).toContain(
+      'Annexe 1 — Incident n° iss-annex-doc — Pièce jointe 1 — Page 1/1'
+    );
+    const loaded = await PDFDocument.load(stampedBytes);
+    expect(loaded.getPageCount()).toBe(1);
+  });
+
+  test('✅ deux pièces jointes successives sur le même incident → annex_number 1 puis 2', async () => {
+    seedIssue('iss-annex-doc-seq');
+    const pdf1 = await makeRealPdfBuffer();
+    const pdf2 = await makeRealPdfBuffer();
+
+    const res1 = await request(app)
+      .post('/api/issues/iss-annex-doc-seq/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'completion')
+      .attach('files', pdf1, { filename: 'pj1.pdf', contentType: 'application/pdf' });
+    const res2 = await request(app)
+      .post('/api/issues/iss-annex-doc-seq/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'completion')
+      .attach('files', pdf2, { filename: 'pj2.pdf', contentType: 'application/pdf' });
+
+    expect(res1.body[0].annex_number).toBe(1);
+    expect(res2.body[0].annex_number).toBe(2);
+  });
+
+  test('✅ document "intervention" (pas completion) → jamais numéroté', async () => {
+    seedIssue('iss-annex-nonumber');
+    const pdfBuffer = await makeRealPdfBuffer();
+
+    const res = await request(app)
+      .post('/api/issues/iss-annex-nonumber/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'intervention')
+      .attach('files', pdfBuffer, { filename: 'compte-rendu.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(201);
+    expect(res.body[0].annex_number).toBeNull();
+  });
+
+  test('🚫 PDF corrompu → upload conserve le document mais sans annexe (garde-fou non bloquant)', async () => {
+    seedIssue('iss-annex-corrupt');
+    const res = await request(app)
+      .post('/api/issues/iss-annex-corrupt/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'completion')
+      .attach('files', Buffer.from('pas un pdf du tout'), { filename: 'corrompu.pdf', contentType: 'application/pdf' });
+
+    expect(res.status).toBe(201);
+    expect(res.body[0].annex_number).toBeNull();
+
+    const row = db.prepare('SELECT * FROM equipment_documents WHERE issue_id = ?').get('iss-annex-corrupt');
+    expect(row.annex_number).toBeNull();
+    expect(row.document_type).toBe('completion');
+  });
+
+  test('✅ photo → annex_number réservé, copie PDF tamponnée générée sans modifier l\'original', async () => {
+    seedIssue('iss-annex-photo');
+
+    const res = await request(app)
+      .post('/api/issues/iss-annex-photo/photos')
+      .set('Authorization', 'Bearer fake-token')
+      .attach('photos', TINY_PNG, { filename: 'photo1.png', contentType: 'image/png' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.photos[0].annex_number).toBe(1);
+    expect(res.body.photos[0].annex_type_index).toBe(1);
+
+    const row = db.prepare('SELECT * FROM issue_photos WHERE issue_id = ?').get('iss-annex-photo');
+    expect(row.annex_pdf_stored_name).toBeTruthy();
+
+    // L'image originale n'est jamais modifiée
+    const originalBytes = fs.readFileSync(path.join(UPLOAD_DIR, row.stored_name));
+    expect(originalBytes.equals(TINY_PNG)).toBe(true);
+
+    const stampedPdf = fs.readFileSync(path.join(UPLOAD_DIR, row.annex_pdf_stored_name));
+    const loaded = await PDFDocument.load(stampedPdf);
+    expect(loaded.getPageCount()).toBe(1);
+    expect(extractDrawnTexts(stampedPdf)).toContain(
+      'Annexe 1 — Incident n° iss-annex-photo — Photo 1 — Page 1/1'
+    );
+  });
+
+  test('✅ compteur d\'annexe partagé entre pièce jointe et photo sur le même incident', async () => {
+    seedIssue('iss-annex-shared');
+    const pdfBuffer = await makeRealPdfBuffer();
+
+    const docRes = await request(app)
+      .post('/api/issues/iss-annex-shared/documents')
+      .set('Authorization', 'Bearer fake-token')
+      .field('type', 'completion')
+      .attach('files', pdfBuffer, { filename: 'pj.pdf', contentType: 'application/pdf' });
+    expect(docRes.body[0].annex_number).toBe(1);
+    expect(docRes.body[0].annex_type_index).toBe(1);
+
+    const photoRes = await request(app)
+      .post('/api/issues/iss-annex-shared/photos')
+      .set('Authorization', 'Bearer fake-token')
+      .attach('photos', TINY_PNG, { filename: 'photo1.png', contentType: 'image/png' });
+    expect(photoRes.body.photos[0].annex_number).toBe(2);
+    expect(photoRes.body.photos[0].annex_type_index).toBe(1); // 1ère photo — sous-compteur indépendant
   });
 });
 

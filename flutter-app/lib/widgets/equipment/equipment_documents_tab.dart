@@ -527,12 +527,12 @@ class _InterventionDocumentsSection extends StatelessWidget {
       issueId: issueId,
       groupDocs: groupDocs,
       initiallyExpanded: initiallyExpanded,
-      children: groupDocs.map((doc) => _DocumentTile(
+      rowBuilder: (doc) => _DocumentTile(
         doc: doc,
         canManage: canManage,
         onOpen: () => onOpen(doc),
         onDelete: () => onDelete(doc),
-      )).toList(),
+      ),
     );
   }
 }
@@ -598,7 +598,7 @@ class _DocumentTile extends StatelessWidget {
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        '${doc.displaySize} · ${doc.uploaderName} · ${formatDocDate(doc.uploadedAt)}',
+        '${doc.displaySize} · ${doc.uploaderDisplay} · ${formatDocDate(doc.uploadedAt)}',
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       ),
       trailing: Row(

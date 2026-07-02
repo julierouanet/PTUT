@@ -443,7 +443,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
               tooltip: l10n.techDocumentsDownloadIssuePdf,
               onPressed: isExporting ? null : () => _downloadIssuePdf(issueId),
             ),
-      children: groupDocs.map((doc) => _DocumentRow(doc: doc)).toList(),
+      rowBuilder: (doc) => _DocumentRow(doc: doc),
     );
   }
 }
@@ -457,16 +457,19 @@ class _DocumentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = doc.isPdf
-        ? Icons.picture_as_pdf
-        : doc.isImage
-            ? Icons.image_outlined
-            : Icons.insert_drive_file_outlined;
+    final l10n = AppLocalizations.of(context)!;
+    final icon = doc.isPhoto
+        ? Icons.photo_camera_outlined
+        : doc.isPdf
+            ? Icons.picture_as_pdf
+            : doc.isImage
+                ? Icons.image_outlined
+                : Icons.insert_drive_file_outlined;
     final iconColor = doc.isPdf ? AppColors.error : AppColors.primary;
 
     final subtitleParts = <String>[
       doc.displaySize,
-      doc.uploaderName,
+      doc.uploaderDisplay,
       formatDocDate(doc.uploadedAt),
       if (doc.equipmentName != null) doc.equipmentName!,
     ];
@@ -482,17 +485,50 @@ class _DocumentRow extends StatelessWidget {
         ),
         child: Icon(icon, color: iconColor, size: 22),
       ),
-      title: Text(
-        doc.originalName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              doc.originalName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
+          if (doc.annexNumber != null) ...[
+            const SizedBox(width: 6),
+            _AnnexBadge(label: l10n.docAnnexBadge(doc.annexNumber!)),
+          ],
+        ],
       ),
       subtitle: Text(
         subtitleParts.join(' · '),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+// ── Badge « Annexe {n} » ──────────────────────────────────────────────────────
+
+class _AnnexBadge extends StatelessWidget {
+  final String label;
+
+  const _AnnexBadge({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary),
       ),
     );
   }

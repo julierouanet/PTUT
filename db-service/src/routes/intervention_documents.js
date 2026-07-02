@@ -8,6 +8,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { UPLOAD_DIR } = require('../config');
 const { VALID_DOC_TYPES } = require('../utils/document_types');
+const { buildSummaryPdf, summaryPageCount } = require('../services/annex_summary_service');
 
 const router = express.Router();
 
@@ -61,31 +62,33 @@ function parseFilters(query) {
   };
 }
 
-// Construit la clause WHERE + params communs à list/zip/print-pdf
+// Construit la clause WHERE + params communs à list/zip/print-pdf.
+// `alias` permet de réutiliser cette fonction sur la sous-requête fusionnée
+// documents+photos de la route GET / (alias 'combined').
 // N'est appelée que si filters.docTypes.length > 0 (jamais de IN () vide)
-function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCondition) {
+function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCondition, alias = 'ed') {
   const { placeholders, params } = docTypesInClause(docTypes);
-  let where = `WHERE ed.document_type IN (${placeholders}) AND ed.deleted_at IS NULL`;
+  let where = `WHERE ${alias}.document_type IN (${placeholders}) AND ${alias}.deleted_at IS NULL`;
 
   if (extraCondition) where += ` AND ${extraCondition}`;
   if (uploadedBy) {
-    where += ' AND ed.uploaded_by = ?';
+    where += ` AND ${alias}.uploaded_by = ?`;
     params.push(uploadedBy);
   }
   if (from) {
-    where += ' AND date(ed.uploaded_at) >= ?';
+    where += ` AND date(${alias}.uploaded_at) >= ?`;
     params.push(from);
   }
   if (to) {
-    where += ' AND date(ed.uploaded_at) <= ?';
+    where += ` AND date(${alias}.uploaded_at) <= ?`;
     params.push(to);
   }
   if (search) {
-    where += ' AND ed.original_name LIKE ? COLLATE NOCASE';
+    where += ` AND ${alias}.original_name LIKE ? COLLATE NOCASE`;
     params.push(`%${search}%`);
   }
   if (issueId) {
-    where += ' AND ed.issue_id = ?';
+    where += ` AND ${alias}.issue_id = ?`;
     params.push(issueId);
   }
 
@@ -123,21 +126,39 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   }
 
   const db = getDb();
-  const { where, params } = buildWhere(filters);
+  const { where, params } = buildWhere(filters, null, 'combined');
 
-  const total = db.prepare(`SELECT COUNT(*) AS total FROM equipment_documents ed ${where}`).get(...params).total;
+  // Fusion documents + photos d'incident : les photos sont sans uploader/équipement
+  // (colonnes NULL) et exposées sous document_type='completion' pour passer le
+  // filtre FILTERABLE_DOC_TYPES existant, avec kind='photo' pour les distinguer.
+  const combinedFrom = `
+    (
+      SELECT ed.id, ed.document_type, ed.original_name, ed.mime_type, ed.file_size_kb,
+             ed.uploader_name, ed.uploaded_by, ed.uploaded_at, ed.issue_id, ed.equipment_id,
+             ed.deleted_at, ed.annex_number, ed.annex_type_index, 'document' AS kind
+      FROM equipment_documents ed
+      UNION ALL
+      SELECT p.id, 'completion' AS document_type, p.original_name, p.mime_type, p.file_size_kb,
+             NULL AS uploader_name, NULL AS uploaded_by, p.uploaded_at, p.issue_id, NULL AS equipment_id,
+             NULL AS deleted_at, p.annex_number, p.annex_type_index, 'photo' AS kind
+      FROM issue_photos p
+    ) combined
+  `;
+
+  const total = db.prepare(`SELECT COUNT(*) AS total FROM ${combinedFrom} ${where}`).get(...params).total;
   const totalPages = Math.max(1, Math.ceil(total / limitInt));
   const offset = (pageInt - 1) * limitInt;
 
   const items = db.prepare(`
-    SELECT ed.id, ed.document_type, ed.original_name, ed.mime_type, ed.file_size_kb,
-           ed.uploader_name, ed.uploaded_by, ed.uploaded_at, ed.issue_id, ed.equipment_id,
+    SELECT combined.id, combined.document_type, combined.original_name, combined.mime_type, combined.file_size_kb,
+           combined.uploader_name, combined.uploaded_by, combined.uploaded_at, combined.issue_id, combined.equipment_id,
+           combined.annex_number, combined.annex_type_index, combined.kind,
            e.name AS equipment_name, i.status AS issue_status, i.created_at AS issue_created_at
-    FROM equipment_documents ed
-    LEFT JOIN equipment e ON e.id = ed.equipment_id
-    LEFT JOIN issues i ON i.id = ed.issue_id
+    FROM ${combinedFrom}
+    LEFT JOIN equipment e ON e.id = combined.equipment_id
+    LEFT JOIN issues i ON i.id = combined.issue_id
     ${where}
-    ORDER BY ed.uploaded_at DESC
+    ORDER BY combined.uploaded_at DESC
     LIMIT ? OFFSET ?
   `).all(...params, limitInt, offset);
 
@@ -210,10 +231,134 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   archive.finalize();
 });
 
+// Charge en mémoire chaque document d'une liste (bytes + PDFDocument + pageCount),
+// nécessaire pour calculer les pages de départ du sommaire AVANT tout assemblage.
+async function loadPdfGroup(list) {
+  return Promise.all(list.map(async (d) => {
+    const bytes = fs.readFileSync(path.join(UPLOAD_DIR, d.stored_name));
+    const srcPdf = await PDFDocument.load(bytes);
+    return { ...d, srcPdf, pageCount: srcPdf.getPageCount() };
+  }));
+}
+
+// Copie les pages de chaque document chargé (loadPdfGroup) dans mergedPdf, dans l'ordre.
+async function appendPdfGroup(mergedPdf, loadedDocs) {
+  for (const doc of loadedDocs) {
+    const pages = await mergedPdf.copyPages(doc.srcPdf, doc.srcPdf.getPageIndices());
+    pages.forEach((page) => mergedPdf.addPage(page));
+  }
+}
+
+// ── Merge PDF par incident : rapport final → sommaire → intervention → annexes ──
+// Remplace le tri unique par date : reconstruction en 4 groupes distincts, avec
+// un sommaire conditionnel (documents d'intervention + annexes numérotées).
+async function buildIssuePrintPdf(issueId) {
+  const db = getDb();
+
+  const finalReportDoc = db.prepare(`
+    SELECT id, original_name, stored_name FROM equipment_documents
+    WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'final_report' AND mime_type = 'application/pdf'
+  `).get(issueId);
+
+  const interventionDocs = db.prepare(`
+    SELECT id, original_name, stored_name FROM equipment_documents
+    WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'intervention' AND mime_type = 'application/pdf'
+    ORDER BY uploaded_at ASC
+  `).all(issueId);
+
+  const numberedDocAnnexes = db.prepare(`
+    SELECT id, original_name, stored_name, annex_number, annex_type_index
+    FROM equipment_documents
+    WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'completion' AND annex_number IS NOT NULL
+  `).all(issueId).map((d) => ({ ...d, kind: 'document' }));
+
+  const numberedPhotoAnnexes = db.prepare(`
+    SELECT id, original_name, annex_pdf_stored_name AS stored_name, annex_number, annex_type_index
+    FROM issue_photos
+    WHERE issue_id = ? AND annex_pdf_stored_name IS NOT NULL
+  `).all(issueId).map((p) => ({ ...p, kind: 'photo' }));
+
+  const numberedAnnexes = [...numberedDocAnnexes, ...numberedPhotoAnnexes]
+    .sort((a, b) => a.annex_number - b.annex_number);
+
+  const legacyAnnexes = db.prepare(`
+    SELECT id, original_name, stored_name FROM equipment_documents
+    WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'completion'
+      AND annex_number IS NULL AND mime_type = 'application/pdf'
+    ORDER BY uploaded_at ASC
+  `).all(issueId).map((d) => ({ ...d, kind: 'document' }));
+
+  const totalDocs = (finalReportDoc ? 1 : 0) + interventionDocs.length + numberedAnnexes.length + legacyAnnexes.length;
+  if (totalDocs === 0) return null;
+
+  // Les 4 groupes sont indépendants (lignes DB et fichiers disque distincts) : chargés
+  // en parallèle plutôt qu'en 4 batches séquentiels.
+  const [finalReportLoaded, interventionLoaded, numberedLoaded, legacyLoaded] = await Promise.all([
+    finalReportDoc ? loadPdfGroup([finalReportDoc]).then((g) => g[0]) : Promise.resolve(null),
+    loadPdfGroup(interventionDocs),
+    loadPdfGroup(numberedAnnexes),
+    loadPdfGroup(legacyAnnexes),
+  ]);
+
+  // ── Sommaire : documents d'intervention + annexes numérotées, jamais les hérités ──
+  const entries = [];
+  let cursor = finalReportLoaded ? finalReportLoaded.pageCount : 0;
+
+  const entryCount = interventionLoaded.length + numberedLoaded.length;
+  cursor += summaryPageCount(entryCount);
+
+  for (const doc of interventionLoaded) {
+    entries.push({ label: `Intervention — ${doc.original_name}`, startPage: cursor + 1 });
+    cursor += doc.pageCount;
+  }
+  for (const annex of numberedLoaded) {
+    const typeLabel = annex.kind === 'photo' ? 'Photo' : 'Pièce jointe';
+    entries.push({
+      label: `Annexe ${annex.annex_number} — ${typeLabel} ${annex.annex_type_index} — ${annex.original_name}`,
+      startPage: cursor + 1,
+    });
+    cursor += annex.pageCount;
+  }
+
+  const summaryBuffer = await buildSummaryPdf(entries);
+
+  const mergedPdf = await PDFDocument.create();
+  if (finalReportLoaded) await appendPdfGroup(mergedPdf, [finalReportLoaded]);
+  if (summaryBuffer) {
+    const summaryPdf = await PDFDocument.load(summaryBuffer);
+    await appendPdfGroup(mergedPdf, [{ srcPdf: summaryPdf }]);
+  }
+  await appendPdfGroup(mergedPdf, interventionLoaded);
+  await appendPdfGroup(mergedPdf, numberedLoaded);
+  await appendPdfGroup(mergedPdf, legacyLoaded);
+
+  return { mergedPdf, docCount: totalDocs };
+}
+
 // ── GET /api/documents/interventions/print-pdf ────────────────────────────────
 router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req, res) => {
   const filters = parseFilters(req.query);
   if (filters.error) return res.status(400).json({ error: filters.error });
+
+  // Merge par incident : réordonné (rapport final → sommaire → intervention →
+  // annexes), comportement dédié qui ignore les filtres uploaded_by/from/to/types.
+  if (filters.issueId) {
+    try {
+      const result = await buildIssuePrintPdf(filters.issueId);
+      if (!result) return res.status(404).json({ error: 'Aucun document pour cet incident' });
+
+      logExport(req, 'export_intervention_documents_pdf', filters, result.docCount);
+
+      const mergedBytes = await result.mergedPdf.save();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.send(Buffer.from(mergedBytes));
+    } catch (err) {
+      res.status(500).json({ error: 'Erreur lors de la fusion des PDF' });
+    }
+    return;
+  }
+
+  // Merge multi-incidents (filtré par uploaded_by/from/to/types) — comportement inchangé.
   if (filters.docTypes.length === 0) {
     return res.status(404).json({ error: 'Aucun PDF pour ces critères' });
   }
@@ -232,14 +377,9 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
   }
 
   try {
+    const docsLoaded = await loadPdfGroup(docs);
     const mergedPdf = await PDFDocument.create();
-    for (const doc of docs) {
-      const filePath = path.join(UPLOAD_DIR, doc.stored_name);
-      const bytes = fs.readFileSync(filePath);
-      const srcPdf = await PDFDocument.load(bytes);
-      const pages = await mergedPdf.copyPages(srcPdf, srcPdf.getPageIndices());
-      pages.forEach((page) => mergedPdf.addPage(page));
-    }
+    await appendPdfGroup(mergedPdf, docsLoaded);
 
     logExport(req, 'export_intervention_documents_pdf', filters, docs.length);
 

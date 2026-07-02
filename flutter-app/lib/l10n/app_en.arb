@@ -1988,6 +1988,14 @@
   "@techDocumentsGroupNoPdf": {},
   "techDocumentsDownloadIssuePdf": "Download merged PDF",
   "@techDocumentsDownloadIssuePdf": {},
+  "techDocumentsSectionIntervention": "Intervention",
+  "@techDocumentsSectionIntervention": {},
+  "techDocumentsSectionAnnexe": "Attachment",
+  "@techDocumentsSectionAnnexe": {},
+  "docAnnexBadge": "Attachment {number}",
+  "@docAnnexBadge": {
+    "placeholders": { "number": { "type": "int" } }
+  },
   "permViewInterventionDocuments": "View intervention documents",
   "@permViewInterventionDocuments": {},
 

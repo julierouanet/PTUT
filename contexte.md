@@ -196,8 +196,8 @@ PTUT/
 | `inventory` | TEXT | Pièces détachées et consommables médicaux |
 | `logs` | AUTOINCREMENT | Audit trail de toutes les mutations |
 | `sidebar_config` | `(role, screen_type)` | Ordre et visibilité de la sidebar par rôle |
-| `equipment_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents liés aux équipements (manuels, rapports, certificats) — 3 types : `technical`, `intervention`, `certification` — soft delete via `deleted_at` |
-| `issue_photos` | AUTOINCREMENT | **[NOUVEAU]** Photos liées aux incidents — max 5 par incident — stockées sur le filesystem (`/data/uploads/documents`) |
+| `equipment_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents liés aux équipements (manuels, rapports, certificats) — 3 types : `technical`, `intervention`, `certification` — soft delete via `deleted_at`. **[MODIFIÉ 2026-07-02]** colonnes `annex_number`/`annex_type_index` (nullable) — numérotation d'annexe des pièces jointes `completion`, tamponnées en PDF à l'upload |
+| `issue_photos` | AUTOINCREMENT | **[NOUVEAU]** Photos liées aux incidents — max 5 par incident — stockées sur le filesystem (`/data/uploads/documents`). **[MODIFIÉ 2026-07-02]** colonnes `annex_number`/`annex_type_index`/`annex_pdf_stored_name` (nullable) — copie PDF tamponnée générée à l'upload, image originale inchangée |
 | `equipment_brands` | AUTOINCREMENT | **[NOUVEAU]** Fabricants (marques) — `name` UNIQUE COLLATE NOCASE. Auto-seedé depuis `equipment.manufacturer` |
 | `equipment_models` | AUTOINCREMENT | **[NOUVEAU]** Modèles = couple (fabricant + sous-catégorie + nom). `UNIQUE(brand_id, subcategory_id, name)`. Auto-seedé depuis `equipment.manufacturer`/`model` ; `equipment.model_id` backfillé |
 | `model_documents` | AUTOINCREMENT | **[NOUVEAU]** Documents de fiche technique d'un modèle — mêmes 3 types que `equipment_documents` — soft delete via `deleted_at` |

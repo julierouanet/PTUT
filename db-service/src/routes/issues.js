@@ -1,6 +1,7 @@
 const express = require('express');
 const path    = require('path');
 const fs      = require('fs');
+const crypto  = require('crypto');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
@@ -9,8 +10,14 @@ const { AUTH_SERVICE_URL, INTERNAL_SECRET, UPLOAD_DIR } = require('../config');
 const { sendPushToRoles } = require('../utils/push_sender');
 const { photoUpload, documentUpload } = require('../middleware/upload');
 const { VALID_DOC_TYPES } = require('../utils/document_types');
-const { insertEquipmentDocument, sendStoredDocument } = require('../utils/documents_repo');
+const {
+  insertEquipmentDocument, sendStoredDocument,
+  nextAnnexNumber, nextDocumentAnnexTypeIndex, nextPhotoAnnexTypeIndex,
+  writeFileAtomic, finalizeDocumentAnnexStamp, revertDocumentAnnexStamp,
+  finalizePhotoAnnexStamp, revertPhotoAnnexStamp,
+} = require('../utils/documents_repo');
 const { generateRejectionDocumentPdf } = require('../services/rejection_document_service');
+const { stampPdfAnnex, imageToStampedPdf } = require('../services/annex_stamp_service');
 
 // ── Helpers d'envoi d'email vers auth-service (fire-and-forget) ───────────────
 
@@ -909,7 +916,7 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'superviso
 });
 
 // ── POST /api/issues/:id/photos ──────────────────────────────────────────────
-router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), (req, res) => {
+router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), async (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: 'Aucun fichier reçu (champ "photos")' });
   }
@@ -926,17 +933,54 @@ router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), (req, re
     });
   }
 
+  // 1+2. Réservation atomique du numéro d'annexe (compteur partagé) + insertion.
+  // Les bases sont lues une seule fois avant la boucle (transaction synchrone :
+  // aucun autre writer ne peut s'intercaler) puis incrémentées en mémoire.
   const insertPhoto = db.prepare(`
-    INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at)
-    VALUES (?, ?, ?, ?, ?, datetime('now','localtime'))
+    INSERT INTO issue_photos
+      (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index)
+    VALUES (?, ?, ?, ?, ?, datetime('now','localtime'), ?, ?)
   `);
+  const insertAll = db.transaction((files) => {
+    let annexNumber = nextAnnexNumber(db, req.params.id);
+    let annexTypeIndex = nextPhotoAnnexTypeIndex(db, req.params.id);
+    return files.map((file) => {
+      const fileSizeKb = Math.ceil(file.size / 1024);
+      const result = insertPhoto.run(req.params.id, file.filename, file.originalname, file.mimetype, fileSizeKb, annexNumber, annexTypeIndex);
+      const photo = {
+        id: result.lastInsertRowid, original_name: file.originalname, file_size_kb: fileSizeKb,
+        stored_name: file.filename, mime_type: file.mimetype,
+        annex_number: annexNumber, annex_type_index: annexTypeIndex,
+      };
+      annexNumber += 1;
+      annexTypeIndex += 1;
+      return photo;
+    });
+  });
+  const inserted = insertAll(req.files);
 
-  const inserted = [];
-  for (const file of req.files) {
-    const fileSizeKb = Math.ceil(file.size / 1024);
-    const result = insertPhoto.run(req.params.id, file.filename, file.originalname, file.mimetype, fileSizeKb);
-    inserted.push({ id: result.lastInsertRowid, original_name: file.originalname, file_size_kb: fileSizeKb });
-  }
+  // 3-4. Tamponnage asynchrone (copie PDF séparée, hors transaction, en parallèle
+  // entre photos indépendantes) — jamais bloquant pour l'upload : un échec laisse
+  // la photo visible mais traitée comme héritée.
+  await Promise.all(inserted.map(async (photo) => {
+    try {
+      const filePath = path.join(UPLOAD_DIR, photo.stored_name);
+      const buffer = fs.readFileSync(filePath);
+      const stamped = await imageToStampedPdf(buffer, photo.mime_type, {
+        annexNumber: photo.annex_number, issueId: req.params.id,
+        typeLabel: 'Photo', typeIndex: photo.annex_type_index,
+      });
+      const pdfStoredName = `annex_${crypto.randomUUID()}.pdf`;
+      writeFileAtomic(path.join(UPLOAD_DIR, pdfStoredName), stamped);
+      finalizePhotoAnnexStamp(db, photo.id, pdfStoredName);
+      photo.annex_pdf_stored_name = pdfStoredName;
+    } catch (err) {
+      console.error('[DB] Échec tamponnage annexe:', err);
+      revertPhotoAnnexStamp(db, photo.id);
+      photo.annex_number = null;
+      photo.annex_type_index = null;
+    }
+  }));
 
   logAction({
     user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
@@ -1014,7 +1058,7 @@ router.get('/:id/documents', verifyToken, (req, res) => {
 // ── POST /api/issues/:id/documents (multi-fichiers, max 5) ───────────────────
 router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
   documentUpload.array('files', 5),
-  (req, res) => {
+  async (req, res) => {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'Aucun fichier reçu (champ "files")' });
     }
@@ -1030,14 +1074,67 @@ router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ..
       });
     }
 
-    const inserted = req.files.map((file) => insertEquipmentDocument(db, {
-      equipmentId: issue.equipment_id,
-      issueId: req.params.id,
-      docType,
-      file,
-      userId: req.user.id,
-      userName: req.user.name,
-    }));
+    // 1+2. Réservation atomique du numéro d'annexe (uniquement pour 'completion') +
+    // insertion. Les bases sont lues une seule fois avant la boucle (transaction
+    // synchrone : aucun autre writer ne peut s'intercaler) puis incrémentées en mémoire.
+    const insertAll = db.transaction((files) => {
+      let annexNumber = docType === 'completion' ? nextAnnexNumber(db, req.params.id) : null;
+      let annexTypeIndex = docType === 'completion' ? nextDocumentAnnexTypeIndex(db, req.params.id) : null;
+      return files.map((file) => {
+        const doc = insertEquipmentDocument(db, {
+          equipmentId: issue.equipment_id,
+          issueId: req.params.id,
+          docType,
+          file,
+          userId: req.user.id,
+          userName: req.user.name,
+          annexNumber,
+          annexTypeIndex,
+        });
+        if (docType === 'completion') {
+          annexNumber += 1;
+          annexTypeIndex += 1;
+        }
+        return doc;
+      });
+    });
+    const inserted = insertAll(req.files);
+
+    // 3-5. Tamponnage asynchrone (hors transaction, en parallèle entre documents
+    // indépendants) — jamais bloquant pour l'upload : un échec laisse le document
+    // tel quel, traité comme une annexe héritée.
+    if (docType === 'completion') {
+      await Promise.all(inserted.map(async (doc) => {
+        try {
+          const filePath = path.join(UPLOAD_DIR, doc.stored_name);
+          const buffer = fs.readFileSync(filePath);
+          const stampArgs = {
+            annexNumber: doc.annex_number, issueId: req.params.id,
+            typeLabel: 'Pièce jointe', typeIndex: doc.annex_type_index,
+          };
+
+          if (doc.mime_type === 'application/pdf') {
+            const stamped = await stampPdfAnnex(buffer, stampArgs);
+            writeFileAtomic(filePath, stamped);
+          } else {
+            const stamped = await imageToStampedPdf(buffer, doc.mime_type, stampArgs);
+            const ext = path.extname(doc.stored_name);
+            const base = ext ? doc.stored_name.slice(0, -ext.length) : doc.stored_name;
+            const pdfStoredName = `${base}.pdf`;
+            writeFileAtomic(path.join(UPLOAD_DIR, pdfStoredName), stamped);
+            fs.unlinkSync(filePath);
+            finalizeDocumentAnnexStamp(db, doc.id, { storedName: pdfStoredName, mimeType: 'application/pdf' });
+            doc.stored_name = pdfStoredName;
+            doc.mime_type = 'application/pdf';
+          }
+        } catch (err) {
+          console.error('[DB] Échec tamponnage annexe:', err);
+          revertDocumentAnnexStamp(db, doc.id);
+          doc.annex_number = null;
+          doc.annex_type_index = null;
+        }
+      }));
+    }
 
     logAction({
       user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),

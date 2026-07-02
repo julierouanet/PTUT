@@ -200,7 +200,7 @@ class _DocumentTile extends StatelessWidget {
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        '${doc.displaySize} · ${doc.uploaderName} · $dateLabel',
+        '${doc.displaySize} · ${doc.uploaderDisplay} · $dateLabel',
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       ),
       trailing: IconButton(

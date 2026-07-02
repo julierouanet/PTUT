@@ -1028,6 +1028,16 @@ function initTables() {
       ON issue_photos(issue_id);
   `);
 
+  // ── Migration : sous-groupes Intervention/Annexe + tampon PDF permanent ────
+  // annex_number est un compteur PARTAGÉ entre equipment_documents (pièces
+  // jointes 'completion') et issue_photos, incrémenté par incident. NULL =
+  // document hérité (uploadé avant cette feature), jamais tamponné/numéroté.
+  try { db.exec('ALTER TABLE equipment_documents ADD COLUMN annex_number INTEGER'); } catch (_) {}
+  try { db.exec('ALTER TABLE equipment_documents ADD COLUMN annex_type_index INTEGER'); } catch (_) {}
+  try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_number INTEGER'); } catch (_) {}
+  try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_type_index INTEGER'); } catch (_) {}
+  try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_pdf_stored_name TEXT'); } catch (_) {}
+
   // Créer le dossier d'upload au démarrage
   const fs = require('fs');
   const uploadDir = process.env.UPLOAD_DIR || '/data/uploads/documents';

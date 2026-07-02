@@ -9170,6 +9170,24 @@ abstract class AppLocalizations {
   /// **'Télécharger le PDF fusionné'**
   String get techDocumentsDownloadIssuePdf;
 
+  /// No description provided for @techDocumentsSectionIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intervention'**
+  String get techDocumentsSectionIntervention;
+
+  /// No description provided for @techDocumentsSectionAnnexe.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annexe'**
+  String get techDocumentsSectionAnnexe;
+
+  /// No description provided for @docAnnexBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'Annexe {number}'**
+  String docAnnexBadge(int number);
+
   /// No description provided for @permViewInterventionDocuments.
   ///
   /// In fr, this message translates to:
