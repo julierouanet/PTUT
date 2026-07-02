@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../models/notification.dart';
 import '../models/nav_item.dart';
 import '../services/notification_service.dart';
+import 'count_badge.dart';
 
 /// Cloche de notifications avec badge et panneau déroulant
 class NotificationBell extends StatefulWidget {
@@ -81,24 +82,7 @@ class _NotificationBellState extends State<NotificationBell> {
                   right: 6,
                   top: 6,
                   child: IgnorePointer(
-                    child: Container(
-                      constraints: const BoxConstraints(minWidth: 17, minHeight: 17),
-                      padding: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        count > 9 ? '9+' : '$count',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1.7,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+                    child: CountBadge(count: count, maxDisplay: 9),
                   ),
                 ),
             ],

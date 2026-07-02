@@ -12,7 +12,6 @@ import '../widgets/urgency_badge.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/equipment_detail_dialog.dart';
 import '../widgets/tab_label.dart';
-import '../widgets/issue_validation_sheet.dart';
 import '../widgets/pagination_footer.dart';
 import '../widgets/technician/intervention_documents_tab.dart';
 import 'issue_detail_screen.dart';
@@ -60,6 +59,12 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   PagedResult<Issue>? _pagedValidation, _pagedMyIssues;
   bool _loadingValidation = false, _loadingMyIssues = false;
 
+  // Onglet "À valider" — section "Autres techniciens" (lecture seule),
+  // visible uniquement pour les techniciens avec groupe(s) assignable(s).
+  int _pageValidationOthers = 1;
+  PagedResult<Issue>? _pagedValidationOthers;
+  bool _loadingValidationOthers = false;
+
   bool get _isLoadingActiveTab {
     final idx = _tabController.index;
     if (_canValidate && idx == 0) return _loadingValidation;
@@ -78,6 +83,15 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     if (roles.contains(UserRole.technicianIt))         groups.add('IT');
     if (roles.contains(UserRole.technicianInfra))      groups.add('Infrastructure');
     return groups;
+  }
+
+  // Vrai si le user est un technicien avec groupe(s) assignable(s) (ni admin,
+  // ni superviseur) — condition de visibilité de la section "Autres techniciens".
+  bool get _isGroupTech {
+    final roles = AuthService().currentRoles;
+    final isAdmin = roles.contains(UserRole.admin);
+    final isSupervisor = !isAdmin && roles.contains(UserRole.supervisor);
+    return !isAdmin && !isSupervisor && _myAssignableGroups.isNotEmpty;
   }
 
   List<Issue> get _availableIssues {
@@ -216,13 +230,55 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     _fetchValidationPage();
   }
 
+  // ── Pagination serveur — onglet "À valider", section "Autres techniciens" ──
+  // Uniquement pour les techniciens avec groupe(s) assignable(s) — admin et
+  // superviseur voient la liste unique legacy, sans scission.
+
+  Future<void> _fetchValidationOthersPage({bool resetPage = false}) async {
+    if (!_isGroupTech) return;
+    final myGroups = _myAssignableGroups;
+
+    if (resetPage) _pageValidationOthers = 1;
+    setState(() => _loadingValidationOthers = true);
+    try {
+      final result = await DbApiService.instance.getIssuesPaged(
+        page: _pageValidationOthers,
+        limit: _pageSize,
+        status: 'Reported',
+      );
+      if (!mounted) return;
+      // Exclut mon groupe et les incidents sans groupe (déjà dans "Mon groupe")
+      final othersOnly = result.items
+          .where((i) => i.assignedGroup != null && !myGroups.contains(i.assignedGroup))
+          .toList();
+      setState(() {
+        _pagedValidationOthers = PagedResult<Issue>(
+          items: othersOnly,
+          total: othersOnly.length,
+          page: result.page,
+          limit: result.limit,
+          totalPages: result.totalPages,
+        );
+        _loadingValidationOthers = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingValidationOthers = false);
+    }
+  }
+
+  void _goToValidationOthersPage(int page) {
+    _pageValidationOthers = page;
+    _fetchValidationOthersPage();
+  }
+
   /// Recharge l'onglet actuellement sélectionné — "Disponibles" garde le
   /// comportement legacy (DataService().reloadIssues()), "À valider" et
   /// "Mes interventions" relancent leur requête paginée à la page courante.
   Future<void> _refreshActiveTab() async {
     final idx = _tabController.index;
     if (_canValidate && idx == 0) {
-      await _fetchValidationPage();
+      await Future.wait([_fetchValidationPage(), _fetchValidationOthersPage()]);
     } else if (idx == _availableTabIndex) {
       await DataService().reloadIssues();
       if (mounted) setState(() {});
@@ -256,7 +312,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     }
     // Chargement initial des onglets paginés (Disponibles reste sur DataService).
     _fetchMyIssuesPage();
-    if (_canValidate) _fetchValidationPage();
+    if (_canValidate) {
+      _fetchValidationPage();
+      _fetchValidationOthersPage();
+    }
   }
 
   @override
@@ -897,6 +956,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
     final total   = _pagedValidation?.total ?? 0;
     final totalPages = _pagedValidation?.totalPages ?? 1;
     final isAdmin = AuthService().currentRoles.contains(UserRole.admin);
+    final isGroupTech = _isGroupTech;
     final dept    = AuthService().currentUser?.department ?? '';
 
     return Align(
@@ -944,6 +1004,11 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               ),
             ]),
             const SizedBox(height: 16),
+            if (isGroupTech) ...[
+              Text(l10n.issueValidationMyGroupSection,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               child: Card(
@@ -981,15 +1046,75 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 isLoading: _loadingValidation,
                 onPageChange: _goToValidationPage,
               ),
+            if (isGroupTech) ...[
+              const SizedBox(height: 24),
+              Text(l10n.issueValidationOtherGroupsSection,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: Card(
+                  child: _loadingValidationOthers &&
+                          (_pagedValidationOthers?.items.isEmpty ?? true)
+                      ? const Padding(
+                          padding: EdgeInsets.all(32),
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      : (_pagedValidationOthers?.items.isEmpty ?? true)
+                          ? Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.check_circle_outline,
+                                      color: AppColors.success, size: 24),
+                                  const SizedBox(width: 12),
+                                  Text(l10n.issueValidationNone,
+                                      style: const TextStyle(
+                                          color: AppColors.textSecondary)),
+                                ],
+                              ),
+                            )
+                          : Column(
+                              children: (_pagedValidationOthers?.items ?? const <Issue>[])
+                                  .map((issue) => _buildValidationIssueItem(issue, isMobile, readOnly: true))
+                                  .toList(),
+                            ),
+                ),
+              ),
+              if ((_pagedValidationOthers?.total ?? 0) > 0)
+                PaginationFooter(
+                  currentPage: _pageValidationOthers,
+                  totalPages: _pagedValidationOthers?.totalPages ?? 1,
+                  isLoading: _loadingValidationOthers,
+                  onPageChange: _goToValidationOthersPage,
+                ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildValidationIssueItem(Issue issue, bool isMobile) {
+  Widget _buildValidationIssueItem(Issue issue, bool isMobile, {bool readOnly = false}) {
     final l10n = AppLocalizations.of(context)!;
-    return Container(
+    final reviewButtonCore = ElevatedButton.icon(
+      onPressed: () => _navigateToIssueDetail(issue),
+      icon: const Icon(Icons.visibility_outlined, size: 16),
+      label: Text(l10n.issueValidationReview),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white),
+    );
+    final reviewButton = readOnly
+        ? Tooltip(
+            message: l10n.issueValidationReadOnlyTooltip(issue.assignedGroup ?? ''),
+            child: reviewButtonCore,
+          )
+        : reviewButtonCore;
+    return InkWell(
+      onTap: () => _navigateToIssueDetail(issue),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
           border: Border(bottom: BorderSide(color: AppColors.border))),
@@ -1037,14 +1162,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showValidationIssueDetail(issue),
-                  icon: const Icon(Icons.visibility_outlined, size: 16),
-                  label: Text(l10n.issueValidationReview),
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white),
-                ),
+                child: reviewButton,
               ),
             ])
           : Row(children: [
@@ -1101,27 +1219,24 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                 _buildValidationGroupChip(issue.assignedGroup!),
               ],
               const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: () => _showValidationIssueDetail(issue),
-                icon: const Icon(Icons.visibility_outlined, size: 16),
-                label: Text(l10n.issueValidationReview),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white),
-              ),
+              reviewButton,
             ]),
+      ),
     );
   }
 
-  // Ouvre le sheet de validation rapide depuis l'onglet "À valider".
-  // Valider / rejeter / réassigner se font dans le sheet (sans page de détail) :
-  // on attend la fermeture puis on rafraîchit la liste.
-  Future<void> _showValidationIssueDetail(Issue issue) async {
-    await showIssueValidationSheet(context, issue);
+  // Navigue vers la fiche détail complète depuis l'onglet "À valider".
+  // Reste accessible en lecture seule pour les incidents d'un autre groupe :
+  // les actions Valider/Rejeter s'y masquent naturellement via _canValidateIssue.
+  Future<void> _navigateToIssueDetail(Issue issue) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => IssueDetailScreen(issueId: issue.id)),
+    );
     await DataService().reloadIssues();
     if (!mounted) return;
     setState(() {});
-    await _fetchValidationPage();
+    await Future.wait([_fetchValidationPage(), _fetchValidationOthersPage()]);
   }
 
   ({Color color, IconData icon, String label}) _validationGroupMeta(

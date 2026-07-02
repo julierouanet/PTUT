@@ -1,5 +1,6 @@
 const express = require('express');
 const path    = require('path');
+const fs      = require('fs');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
@@ -9,6 +10,7 @@ const { sendPushToRoles } = require('../utils/push_sender');
 const { photoUpload, documentUpload } = require('../middleware/upload');
 const { VALID_DOC_TYPES } = require('../utils/document_types');
 const { insertEquipmentDocument, sendStoredDocument } = require('../utils/documents_repo');
+const { generateRejectionDocumentPdf } = require('../services/rejection_document_service');
 
 // ── Helpers d'envoi d'email vers auth-service (fire-and-forget) ───────────────
 
@@ -699,7 +701,7 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ..
 // Rejet rapide d'un incident encore en file de validation (statut 'Reported').
 // Le valideur (admin/superviseur) tranche la recevabilité avec un motif catégorisé.
 // L'incident n'est PAS supprimé : il est conservé pour la traçabilité.
-router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
+router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), async (req, res) => {
   const db = getDb();
   const { reason_code, comment } = req.body;
 
@@ -718,7 +720,7 @@ router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor'), (re
 
   // 2. Vérifier existence
   const existing = db.prepare(
-    'SELECT id, status, equipment_name, location_id, department, actions FROM issues WHERE id = ?'
+    'SELECT id, status, equipment_id, equipment_name, location_id, department, description, actions FROM issues WHERE id = ?'
   ).get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
@@ -739,6 +741,38 @@ router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor'), (re
         updated_at = datetime('now','localtime')
     WHERE id = ?
   `).run(appendedActions, req.params.id);
+
+  // Génération non bloquante du document de rejet — un échec ici ne doit jamais
+  // remettre en cause le rejet déjà enregistré en base.
+  try {
+    const pdfBuffer = await generateRejectionDocumentPdf({
+      equipmentName: existing.equipment_name,
+      locationId: existing.location_id,
+      department: existing.department,
+      description: existing.description,
+      reasonCode: reason_code,
+      comment: trimmedComment,
+      rejectedBy: req.user.name,
+      rejectedAt: ts,
+    });
+    const storedName = `rejection_${req.params.id}_${Date.now()}.pdf`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, storedName), pdfBuffer);
+    insertEquipmentDocument(db, {
+      equipmentId: existing.equipment_id,
+      issueId: req.params.id,
+      docType: 'intervention',
+      file: {
+        originalname: `Rejet_${req.params.id}.pdf`,
+        filename: storedName,
+        mimetype: 'application/pdf',
+        size: pdfBuffer.length,
+      },
+      userId: req.user.id,
+      userName: req.user.name,
+    });
+  } catch (err) {
+    console.error('[DB] Échec génération document de rejet:', err);
+  }
 
   // TODO: notifier le signaleur du rejet (hors scope — à brancher ultérieurement).
 

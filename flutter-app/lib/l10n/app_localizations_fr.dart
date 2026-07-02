@@ -1251,6 +1251,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueValidationRedirectLabel => 'Rediriger vers une autre equipe';
 
   @override
+  String get issueValidationMyGroupSection => 'Mon groupe';
+
+  @override
+  String get issueValidationOtherGroupsSection => 'Autres techniciens';
+
+  @override
+  String issueValidationReadOnlyTooltip(String group) {
+    return 'Reserve a l\'equipe $group';
+  }
+
+  @override
   String get backToModules => '← Modules';
 
   @override
@@ -2560,6 +2571,42 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get equipDetailLoadingError => 'Erreur lors du chargement des détails';
+
+  @override
+  String get equipIncidentDiagnosisLabel => 'Diagnostic';
+
+  @override
+  String get equipIncidentActionsLabel => 'Actions menées';
+
+  @override
+  String get equipIncidentPartsLabel => 'Pièces remplacées';
+
+  @override
+  String get equipIncidentDurationLabel => 'Durée de résolution';
+
+  @override
+  String get equipIncidentCostLabel => 'Coût estimé';
+
+  @override
+  String get equipIncidentResolvedAtLabel => 'Résolu le';
+
+  @override
+  String equipIncidentDocumentsBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count documents',
+      one: '1 document',
+      zero: 'Aucun document',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get equipIncidentShowDetails => 'Voir détails';
+
+  @override
+  String get equipIncidentHideDetails => 'Masquer détails';
 
   @override
   String get issueCategorySelectorTitle =>

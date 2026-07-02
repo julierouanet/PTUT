@@ -21,6 +21,7 @@ import 'services/os_notification_service.dart';
 import 'services/api_client.dart';
 import 'models/user_role.dart';
 import 'models/nav_item.dart';
+import 'models/issue.dart';
 import 'providers/locale_provider.dart';
 import 'widgets/issue_category_selector.dart';
 import 'widgets/notification_preferences_dialog.dart';
@@ -285,13 +286,31 @@ class _MainScaffoldState extends State<MainScaffold> {
     });
   }
 
+  /// Compteur d'incidents "Reported" validables par le technicien connecté,
+  /// pour le badge sidebar de l'item "Technicien". Calcul dérivé de
+  /// DataService().issues (déjà en mémoire) — aucun appel réseau.
+  /// null pour admin/superviseur/technicien générique (pas de badge).
+  int? _technicianValidationBadgeCount() {
+    final roles = AuthService().currentRoles;
+    final groups = <String>{};
+    if (roles.contains(UserRole.technicianBiomedical)) groups.add('Biomédical');
+    if (roles.contains(UserRole.technicianIt)) groups.add('IT');
+    if (roles.contains(UserRole.technicianInfra)) groups.add('Infrastructure');
+    if (groups.isEmpty) return null;
+    final count = DataService().issues.where((i) =>
+      i.status == IssueStatus.reported &&
+      (i.assignedGroup == null || groups.contains(i.assignedGroup))
+    ).length;
+    return count > 0 ? count : null;
+  }
+
   /// Liste complète des items de navigation, sans filtre de permission.
   List<NavItem> _allNavItems(AppLocalizations l10n) => [
     NavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard, label: l10n.navDashboard, shortLabel: l10n.navDashboardShort, screenType: ScreenType.dashboard, requiredPermission: null),
     NavItem(icon: Icons.inventory_2_outlined, activeIcon: Icons.inventory_2, label: l10n.navEquipment, shortLabel: l10n.navEquipmentShort, screenType: ScreenType.equipment, requiredPermission: Permission.viewEquipment),
     NavItem(icon: Icons.troubleshoot_outlined, activeIcon: Icons.troubleshoot, label: l10n.navIssueTracking, shortLabel: l10n.navIssueTrackingShort, screenType: ScreenType.issueTracking, requiredPermission: Permission.trackIssues),
     NavItem(icon: Icons.report_problem_outlined, activeIcon: Icons.report_problem, label: l10n.navReportIssue, shortLabel: l10n.navReportIssueShort, screenType: ScreenType.issueForm, requiredPermission: Permission.reportIssue),
-    NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs, alternativePermission: Permission.approveRequests),
+    NavItem(icon: Icons.build_outlined, activeIcon: Icons.build, label: l10n.navTechnician, shortLabel: l10n.navTechnicianShort, screenType: ScreenType.technician, requiredPermission: Permission.updateRepairs, alternativePermission: Permission.approveRequests, badgeCount: _technicianValidationBadgeCount()),
     NavItem(icon: Icons.archive_outlined, activeIcon: Icons.archive, label: l10n.navInventory, shortLabel: l10n.navInventoryShort, screenType: ScreenType.inventory, requiredPermission: Permission.viewInventory),
     NavItem(icon: Icons.analytics_outlined, activeIcon: Icons.analytics, label: l10n.navReports, shortLabel: l10n.navReportsShort, screenType: ScreenType.reports, requiredPermission: Permission.generateReports),
     NavItem(icon: Icons.people_outlined, activeIcon: Icons.people, label: l10n.navUsers, shortLabel: l10n.navUsersShort, screenType: ScreenType.users, requiredPermission: Permission.manageUsers),

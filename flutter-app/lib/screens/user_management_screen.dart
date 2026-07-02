@@ -45,6 +45,7 @@ class _DeptRequest {
 /// Modèle léger pour une demande de rôle.
 class _RoleRequest {
   final String id;
+  final String userId;
   final String userName;
   final List<String> currentRoles;
   final String requestedRole;
@@ -53,6 +54,7 @@ class _RoleRequest {
 
   const _RoleRequest({
     required this.id,
+    required this.userId,
     required this.userName,
     required this.currentRoles,
     required this.requestedRole,
@@ -73,6 +75,7 @@ class _RoleRequest {
     }
     return _RoleRequest(
       id:            j['id']             as String,
+      userId:        j['user_id']        as String,
       userName:      j['user_name']      as String,
       currentRoles:  roles,
       requestedRole: j['requested_role'] as String,
@@ -461,6 +464,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ? AppColors.error
                   : AppColors.textMuted;
               return ListTile(
+                onTap: () => _openUserDetailFromRoleRequest(req),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 leading: CircleAvatar(
                   radius: 18,
@@ -1096,11 +1100,28 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       context,
       MaterialPageRoute(builder: (_) => UserDetailScreen(user: user)),
     );
-    // Rafraîchit la liste au retour en cas de modification ou suppression.
+    // Rafraîchit la liste au retour en cas de modification, suppression ou résolution de demande.
+    // Les deux rechargements sont indépendants (endpoints distincts) : lancés en parallèle.
     if (mounted) {
-      await DataService().reloadUsers();
+      await Future.wait([DataService().reloadUsers(), _loadRoleRequests()]);
       setState(() {});
     }
+  }
+
+  /// Ouvre le détail de l'utilisateur ciblé par une demande de rôle en attente.
+  Future<void> _openUserDetailFromRoleRequest(_RoleRequest req) async {
+    final user = DataService().users.where((u) => u.id == req.userId).firstOrNull;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Utilisateur introuvable (peut-être supprimé)'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+      return;
+    }
+    await _navigateToUserDetail(user);
   }
 
   // ══════════════════════════════════════════════════════════════════════════

@@ -28,6 +28,8 @@ class NavItem {
   final Permission? requiredPermission;
   // Permission alternative : l'item est visible si l'utilisateur a l'une OU l'autre
   final Permission? alternativePermission;
+  // Compteur affiché en badge rouge sur l'item (null = pas de badge)
+  final int? badgeCount;
 
   const NavItem({
     required this.icon,
@@ -37,5 +39,6 @@ class NavItem {
     required this.screenType,
     this.requiredPermission,
     this.alternativePermission,
+    this.badgeCount,
   });
 }

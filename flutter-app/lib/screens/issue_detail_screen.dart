@@ -21,6 +21,31 @@ import '../widgets/issue/intervention_documents_section.dart';
 import '../widgets/issue/intervention_sessions_timeline.dart';
 import 'equipment_detail_screen.dart';
 
+/// Motifs de rejet catégorisés — alignés sur REJECT_REASONS côté db-service.
+const List<String> kRejectReasons = [
+  'duplicate',
+  'not_reproducible',
+  'out_of_scope',
+  'false_alarm',
+  'other',
+];
+
+/// Libellé localisé d'un motif de rejet.
+String _rejectReasonLabel(AppLocalizations l10n, String code) {
+  switch (code) {
+    case 'duplicate':
+      return l10n.rejectReasonDuplicate;
+    case 'not_reproducible':
+      return l10n.rejectReasonNotReproducible;
+    case 'out_of_scope':
+      return l10n.rejectReasonOutOfScope;
+    case 'false_alarm':
+      return l10n.rejectReasonFalseAlarm;
+    default:
+      return l10n.rejectReasonOther;
+  }
+}
+
 /// Page complète de détail d'un incident — standard GMAO.
 ///
 /// [issueId]       : identifiant de l'incident à charger.
@@ -65,6 +90,30 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
 
   bool get _isHospitalStaff =>
       _authService.currentRoles.contains(UserRole.hospitalStaff);
+
+  /// Groupes techniques assignables à l'utilisateur connecté (réplique exacte de
+  /// _myAssignableGroups dans technician_update_screen.dart — mêmes littéraux
+  /// français, à garder synchronisés si les rôles évoluent).
+  Set<String> get _myAssignableGroups {
+    final roles = _authService.currentRoles;
+    final groups = <String>{};
+    if (roles.contains(UserRole.technicianBiomedical)) groups.add('Biomédical');
+    if (roles.contains(UserRole.technicianIt)) groups.add('IT');
+    if (roles.contains(UserRole.technicianInfra)) groups.add('Infrastructure');
+    return groups;
+  }
+
+  /// Vrai si l'utilisateur peut Valider/Rejeter CET incident précis : admin/
+  /// supervisor toujours ; technicien avec permission approveRequests si son
+  /// groupe correspond à issue.assignedGroup, ou s'il n'a aucun groupe
+  /// assignable spécifique (technicien généraliste, voit tous les groupes).
+  bool _canValidateIssue(Issue issue) {
+    if (_isPrivileged) return true;
+    if (!_authService.canApproveRequests) return false;
+    final myGroups = _myAssignableGroups;
+    if (myGroups.isEmpty) return true;
+    return issue.assignedGroup == null || myGroups.contains(issue.assignedGroup);
+  }
 
   /// Le rapport est éditable si l'incident est pris en charge ET que
   /// l'utilisateur est privilégié OU le technicien assigné.
@@ -287,7 +336,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             const SizedBox(height: 12),
             _buildHeaderCard(l10n, detail),
             const SizedBox(height: 12),
-            if (_isPrivileged) ...[
+            if (_isPrivileged || _canValidateIssue(detail.issue)) ...[
               _buildSupervisorActions(l10n, detail),
               const SizedBox(height: 12),
             ],
@@ -361,6 +410,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       text = l10n.issueDetailHandledBy(techName, assignDate);
     }
 
+    final showActions = !isHandled &&
+        issue.status == IssueStatus.reported &&
+        _canValidateIssue(issue);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
@@ -371,21 +424,59 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           width: _isHospitalStaff && isHandled ? 1.5 : 1,
         ),
       ),
-      child: Row(children: [
-        Icon(icon, size: 18, color: iconColor),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: iconColor,
-              fontWeight: _isHospitalStaff ? FontWeight.w600 : FontWeight.w500,
-              fontSize: _isHospitalStaff ? 14 : 13,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, size: 18, color: iconColor),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                color: iconColor,
+                fontWeight: _isHospitalStaff ? FontWeight.w600 : FontWeight.w500,
+                fontSize: _isHospitalStaff ? 14 : 13,
+              ),
             ),
           ),
-        ),
+        ]),
+        if (showActions) ...[
+          const SizedBox(height: 10),
+          Row(children: _buildValidateRejectButtons(l10n, detail,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              spacing: 10)),
+        ],
       ]),
     );
+  }
+
+  // ── Boutons Valider / Rejeter (bandeau + actions superviseur) ──────────────
+
+  List<Widget> _buildValidateRejectButtons(
+      AppLocalizations l10n, IssueDetail detail,
+      {required EdgeInsets padding, required double spacing}) {
+    return [
+      ElevatedButton.icon(
+        onPressed: _submitting ? null : () => _showValidateDialog(l10n, detail),
+        icon: const Icon(Icons.check_circle_outline, size: 16),
+        label: Text(l10n.issueValidationValidate),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.success,
+          foregroundColor: Colors.white,
+          padding: padding,
+        ),
+      ),
+      SizedBox(width: spacing),
+      OutlinedButton.icon(
+        onPressed: _submitting ? null : () => _showRejectDialog(l10n, detail),
+        icon: const Icon(Icons.cancel_outlined, size: 16, color: AppColors.error),
+        label: Text(l10n.rejectConfirmButton,
+            style: const TextStyle(color: AppColors.error)),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: AppColors.error),
+          padding: padding,
+        ),
+      ),
+    ];
   }
 
   // ── Actions rapides superviseur / admin ───────────────────────────────────
@@ -395,18 +486,11 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       spacing: 10,
       runSpacing: 6,
       children: [
-        // Validation — uniquement pour un incident encore au statut "signalé"
+        // Validation / Rejet — uniquement pour un incident encore au statut "signalé"
         if (detail.issue.status == IssueStatus.reported)
-          ElevatedButton.icon(
-            onPressed: _submitting ? null : () => _showValidateDialog(l10n, detail),
-            icon: const Icon(Icons.check_circle_outline, size: 16),
-            label: Text(l10n.issueValidationValidate),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              foregroundColor: Colors.white,
+          ..._buildValidateRejectButtons(l10n, detail,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            ),
-          ),
+              spacing: 0),
         OutlinedButton.icon(
           onPressed: _submitting ? null : () => _showReassignDialog(l10n, detail),
           icon: const Icon(Icons.swap_horiz, size: 16),
@@ -728,6 +812,111 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l10n.issueValidationError(e.toString())),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  // ── Dialogue rejet (incident non recevable, motif catégorisé) ──────────────
+
+  void _showRejectDialog(AppLocalizations l10n, IssueDetail detail) {
+    final issue = detail.issue;
+    final formKey = GlobalKey<FormState>();
+    String? selectedReason;
+    final commentController = TextEditingController();
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final isOther = selectedReason == 'other';
+          return AlertDialog(
+            title: Text(l10n.rejectConfirmTitle),
+            content: Form(
+              key: formKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedReason,
+                      isExpanded: true,
+                      hint: Text(l10n.rejectReasonLabel),
+                      decoration: InputDecoration(labelText: l10n.rejectReasonLabel),
+                      items: kRejectReasons
+                          .map((r) => DropdownMenuItem(
+                              value: r, child: Text(_rejectReasonLabel(l10n, r))))
+                          .toList(),
+                      onChanged: (v) => setDialogState(() => selectedReason = v),
+                      validator: (v) => v == null ? l10n.rejectReasonLabel : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: commentController,
+                      maxLines: 3,
+                      maxLength: 500,
+                      decoration: InputDecoration(labelText: l10n.rejectCommentLabel),
+                      validator: (v) {
+                        if (isOther && (v == null || v.trim().length < 5)) {
+                          return l10n.rejectCommentRequired;
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text(l10n.commonCancel),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  if (!formKey.currentState!.validate()) return;
+                  final reason = selectedReason!;
+                  final comment = commentController.text.trim();
+                  Navigator.pop(ctx);
+                  _doReject(l10n, issue, reason, comment);
+                },
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: Text(l10n.rejectConfirmButton),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.error, foregroundColor: Colors.white),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _doReject(
+      AppLocalizations l10n, Issue issue, String reasonCode, String comment) async {
+    setState(() => _submitting = true);
+    try {
+      await DbApiService.instance
+          .rejectIssue(issue.id, reasonCode, comment.isEmpty ? null : comment);
+      setState(() { _loading = true; _error = null; });
+      await _load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.rejectSuccess),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        final msg = e is ApiException ? e.message : e.toString();
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(msg),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));

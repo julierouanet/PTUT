@@ -6,6 +6,7 @@ import '../../models/user_role.dart';
 import '../../screens/account_settings_screen.dart';
 import '../../services/auth_service.dart';
 import '../issue_category_selector.dart';
+import '../count_badge.dart';
 
 /// Sidebar desktop animée (expandable/collapsible).
 /// Gère son propre état collapsed/expanded pour ne pas polluer _MainScaffoldState.
@@ -146,7 +147,7 @@ class _AppSidebarState extends State<AppSidebar> {
           padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 4 : 12, vertical: 2),
           child: _isCollapsed
               ? Tooltip(
-                  message: item.label,
+                  message: item.badgeCount != null ? '${item.label} (${item.badgeCount})' : item.label,
                   child: Material(
                     color: isSelected ? AppColors.primaryLight : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
@@ -161,8 +162,13 @@ class _AppSidebarState extends State<AppSidebar> {
                       borderRadius: BorderRadius.circular(8),
                       child: SizedBox(
                         height: 48,
-                        child: Center(
-                          child: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
+                            if (item.badgeCount != null)
+                              Positioned(top: 4, right: 14, child: CountBadge(count: item.badgeCount!)),
+                          ],
                         ),
                       ),
                     ),
@@ -171,6 +177,7 @@ class _AppSidebarState extends State<AppSidebar> {
               : ListTile(
                   leading: Icon(isSelected ? item.activeIcon : item.icon, color: isSelected ? AppColors.primary : AppColors.textSecondary),
                   title: Text(item.label, style: TextStyle(color: isSelected ? AppColors.primary : AppColors.textPrimary, fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal)),
+                  trailing: item.badgeCount != null ? CountBadge(count: item.badgeCount!) : null,
                   selected: isSelected,
                   selectedTileColor: AppColors.primaryLight,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

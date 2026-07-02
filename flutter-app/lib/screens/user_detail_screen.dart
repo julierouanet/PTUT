@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
@@ -30,6 +32,34 @@ class _DeptRequest {
   );
 }
 
+/// Demande de changement de rôle en attente pour un utilisateur.
+class _RoleRequest {
+  final String id;
+  final String userId;
+  final String requestedRole;
+  final List<String> currentRoles;
+
+  const _RoleRequest({
+    required this.id,
+    required this.userId,
+    required this.requestedRole,
+    required this.currentRoles,
+  });
+
+  factory _RoleRequest.fromJson(Map<String, dynamic> j) {
+    List<String> roles = [];
+    try {
+      roles = (jsonDecode(j['current_roles'] as String? ?? '[]') as List).cast<String>();
+    } catch (_) {}
+    return _RoleRequest(
+      id: j['id'] as String,
+      userId: j['user_id'] as String,
+      requestedRole: j['requested_role'] as String,
+      currentRoles: roles,
+    );
+  }
+}
+
 /// Page de détail administratif d'un utilisateur.
 ///
 /// Affiche le profil complet, les alertes (téléphone manquant, demande de
@@ -54,6 +84,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   _DeptRequest? _pendingDeptRequest;
   bool _loadingDeptRequest = true;
 
+  List<_RoleRequest> _pendingRoleRequests = [];
+  bool _loadingRoleRequests = true;
+  bool _resolvingRoleRequest = false;
+
   // ── Cycle de vie ──────────────────────────────────────────────────────────
 
   @override
@@ -61,6 +95,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     super.initState();
     _user = widget.user;
     _loadPendingDeptRequest();
+    _loadPendingRoleRequests();
   }
 
   // ── Chargement ────────────────────────────────────────────────────────────
@@ -76,6 +111,20 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       if (mounted) setState(() { _pendingDeptRequest = match; _loadingDeptRequest = false; });
     } catch (_) {
       if (mounted) setState(() => _loadingDeptRequest = false);
+    }
+  }
+
+  Future<void> _loadPendingRoleRequests() async {
+    setState(() => _loadingRoleRequests = true);
+    try {
+      await DataService().reloadRoleRequests();
+      final matches = DataService().roleRequests
+          .map(_RoleRequest.fromJson)
+          .where((r) => r.userId == _user.id)
+          .toList();
+      if (mounted) setState(() { _pendingRoleRequests = matches; _loadingRoleRequests = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingRoleRequests = false);
     }
   }
 
@@ -127,6 +176,31 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       }
     } catch (_) {
       if (mounted) { setState(() => _resolvingRequest = false); _showErrorSnackBar(); }
+    }
+  }
+
+  Future<void> _resolveRoleRequest(_RoleRequest req, String status) async {
+    setState(() => _resolvingRoleRequest = true);
+    try {
+      await AuthApiService.instance.resolveRoleRequest(req.id, status: status);
+      await DataService().reloadUsers();
+      final updated = DataService().users.where((u) => u.id == _user.id).firstOrNull;
+      if (mounted) {
+        setState(() {
+          _resolvingRoleRequest = false;
+          if (updated != null) _user = updated;
+        });
+      }
+      await _loadPendingRoleRequests();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(status == 'approved' ? 'Demande approuvée — rôle assigné' : 'Demande rejetée'),
+          backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    } catch (_) {
+      if (mounted) { setState(() => _resolvingRoleRequest = false); _showErrorSnackBar(); }
     }
   }
 
@@ -694,65 +768,35 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
     // Carte demande de changement de département en attente
     if (_loadingDeptRequest) {
-      alerts.add(const Padding(
-        padding: EdgeInsets.symmetric(vertical: 8),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ));
+      alerts.add(_buildAlertLoadingPlaceholder());
     } else if (_pendingDeptRequest != null) {
       final req = _pendingDeptRequest!;
-      alerts.add(Card(
-        color: AppColors.warningLight,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(children: [
-                Icon(Icons.swap_horiz, color: AppColors.warning, size: 18),
-                SizedBox(width: 8),
-                Text('Demande de changement de département', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.warning)),
-              ]),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: _buildDeptChip(req.currentDepartment, label: 'Actuel')),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8),
-                  child: Icon(Icons.arrow_forward, size: 16, color: AppColors.textMuted),
-                ),
-                Expanded(child: _buildDeptChip(req.requestedDepartment, label: 'Demandé', isTarget: true)),
-              ]),
-              const SizedBox(height: 12),
-              _resolvingRequest
-                  ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-                  : Row(children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => _resolveDeptRequest('rejected'),
-                          icon: const Icon(Icons.cancel_outlined, size: 16),
-                          label: const Text('Rejeter'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _resolveDeptRequest('approved'),
-                          icon: const Icon(Icons.check_circle_outline, size: 16),
-                          label: const Text('Approuver'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.success,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ]),
-            ],
-          ),
-        ),
+      alerts.add(_buildRequestAlertCard(
+        icon: Icons.swap_horiz,
+        title: 'Demande de changement de département',
+        currentValue: req.currentDepartment,
+        requestedValue: req.requestedDepartment,
+        resolving: _resolvingRequest,
+        onReject: () => _resolveDeptRequest('rejected'),
+        onApprove: () => _resolveDeptRequest('approved'),
       ));
+    }
+
+    // Cartes demande(s) de changement de rôle en attente
+    if (_loadingRoleRequests) {
+      alerts.add(_buildAlertLoadingPlaceholder());
+    } else {
+      for (final req in _pendingRoleRequests) {
+        alerts.add(_buildRequestAlertCard(
+          icon: Icons.badge_outlined,
+          title: 'Demande de changement de rôle',
+          currentValue: req.currentRoles.join(', '),
+          requestedValue: req.requestedRole,
+          resolving: _resolvingRoleRequest,
+          onReject: () => _resolveRoleRequest(req, 'rejected'),
+          onApprove: () => _resolveRoleRequest(req, 'approved'),
+        ));
+      }
     }
 
     if (alerts.isEmpty) return const SizedBox.shrink();
@@ -767,7 +811,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     );
   }
 
-  Widget _buildDeptChip(String dept, {required String label, bool isTarget = false}) {
+  Widget _buildRequestChip(String value, {required String label, bool isTarget = false}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -779,8 +823,81 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: TextStyle(fontSize: 10, color: isTarget ? AppColors.primary : AppColors.textMuted, fontWeight: FontWeight.w500)),
-          Text(dept, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isTarget ? AppColors.primary : AppColors.textPrimary)),
+          Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isTarget ? AppColors.primary : AppColors.textPrimary)),
         ],
+      ),
+    );
+  }
+
+  /// Indicateur de chargement générique utilisé par les cartes d'alerte (département, rôle).
+  Widget _buildAlertLoadingPlaceholder() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    );
+  }
+
+  /// Carte générique "demande en attente" (département ou rôle) — valeur actuelle → valeur demandée + boutons Rejeter/Approuver.
+  Widget _buildRequestAlertCard({
+    required IconData icon,
+    required String title,
+    required String currentValue,
+    required String requestedValue,
+    required bool resolving,
+    required VoidCallback onReject,
+    required VoidCallback onApprove,
+  }) {
+    return Card(
+      color: AppColors.warningLight,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(icon, color: AppColors.warning, size: 18),
+              const SizedBox(width: 8),
+              Text(title, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.warning)),
+            ]),
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: _buildRequestChip(currentValue, label: 'Actuel')),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(Icons.arrow_forward, size: 16, color: AppColors.textMuted),
+              ),
+              Expanded(child: _buildRequestChip(requestedValue, label: 'Demandé', isTarget: true)),
+            ]),
+            const SizedBox(height: 12),
+            resolving
+                ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                : Row(children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onReject,
+                        icon: const Icon(Icons.cancel_outlined, size: 16),
+                        label: const Text('Rejeter'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: onApprove,
+                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        label: const Text('Approuver'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ]),
+          ],
+        ),
       ),
     );
   }

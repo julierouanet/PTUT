@@ -765,7 +765,7 @@ describe('PATCH /api/issues/:id/reject', () => {
     expect(res.status).toBe(409);
   });
 
-  test('🚫 technicien ne peut PAS rejeter → 403', async () => {
+  test('✅ technicien peut rejeter → 200', async () => {
     setTestRole('technician_biomedical');
     const id = newReportedIssue();
 
@@ -774,7 +774,38 @@ describe('PATCH /api/issues/:id/reject', () => {
       .set('Authorization', 'Bearer fake-token')
       .send({ reason_code: 'duplicate' });
 
+    expect(res.status).toBe(200);
+    const iss = db.prepare('SELECT status FROM issues WHERE id = ?').get(id);
+    expect(iss.status).toBe('Rejected');
+  });
+
+  test('🚫 hospitalStaff ne peut PAS rejeter → 403', async () => {
+    setTestRole('hospitalStaff');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'duplicate' });
+
     expect(res.status).toBe(403);
+  });
+
+  test('✅ rejet réussi — un document intervention est archivé sur l\'équipement', async () => {
+    setTestRole('admin');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'duplicate', comment: 'Doublon' });
+
+    expect(res.status).toBe(200);
+    const doc = db.prepare(
+      "SELECT * FROM equipment_documents WHERE issue_id = ? AND document_type = 'intervention'"
+    ).get(id);
+    expect(doc).toBeDefined();
+    expect(doc.equipment_id).toBe('eq-rbac-test');
   });
 });
 

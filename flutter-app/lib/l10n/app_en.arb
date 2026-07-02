@@ -416,6 +416,10 @@
   "issueValidationGroupInfrastructure": "Infrastructure",
   "issueValidationGroupNoChange": "Keep current team",
   "issueValidationRedirectLabel": "Redirect to another team",
+  "issueValidationMyGroupSection": "My team",
+  "issueValidationOtherGroupsSection": "Other technicians",
+  "issueValidationReadOnlyTooltip": "Restricted to the {group} team",
+  "@issueValidationReadOnlyTooltip": { "placeholders": { "group": { "type": "String" } } },
 
 
   "backToModules": "← Modules",
@@ -895,6 +899,16 @@
   "equipDetailNoPastIssues": "No resolved issues for this equipment",
   "equipDetailIssuesSection": "Issues",
   "equipDetailLoadingError": "Error loading equipment details",
+  "equipIncidentDiagnosisLabel": "Diagnosis",
+  "equipIncidentActionsLabel": "Actions taken",
+  "equipIncidentPartsLabel": "Parts replaced",
+  "equipIncidentDurationLabel": "Resolution duration",
+  "equipIncidentCostLabel": "Estimated cost",
+  "equipIncidentResolvedAtLabel": "Resolved on",
+  "equipIncidentDocumentsBadge": "{count,plural,=0{No documents}=1{1 document}other{{count} documents}}",
+  "@equipIncidentDocumentsBadge": { "placeholders": { "count": { "type": "int" } } },
+  "equipIncidentShowDetails": "Show details",
+  "equipIncidentHideDetails": "Hide details",
 
   "issueCategorySelectorTitle": "What type of problem are you experiencing?",
   "issueCategoryBiomedical": "Biomedical Equipment",

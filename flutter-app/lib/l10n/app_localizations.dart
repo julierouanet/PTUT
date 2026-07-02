@@ -2372,6 +2372,24 @@ abstract class AppLocalizations {
   /// **'Rediriger vers une autre equipe'**
   String get issueValidationRedirectLabel;
 
+  /// No description provided for @issueValidationMyGroupSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon groupe'**
+  String get issueValidationMyGroupSection;
+
+  /// No description provided for @issueValidationOtherGroupsSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Autres techniciens'**
+  String get issueValidationOtherGroupsSection;
+
+  /// No description provided for @issueValidationReadOnlyTooltip.
+  ///
+  /// In fr, this message translates to:
+  /// **'Reserve a l\'equipe {group}'**
+  String issueValidationReadOnlyTooltip(String group);
+
   /// No description provided for @backToModules.
   ///
   /// In fr, this message translates to:
@@ -4831,6 +4849,60 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Erreur lors du chargement des détails'**
   String get equipDetailLoadingError;
+
+  /// No description provided for @equipIncidentDiagnosisLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diagnostic'**
+  String get equipIncidentDiagnosisLabel;
+
+  /// No description provided for @equipIncidentActionsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actions menées'**
+  String get equipIncidentActionsLabel;
+
+  /// No description provided for @equipIncidentPartsLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pièces remplacées'**
+  String get equipIncidentPartsLabel;
+
+  /// No description provided for @equipIncidentDurationLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée de résolution'**
+  String get equipIncidentDurationLabel;
+
+  /// No description provided for @equipIncidentCostLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Coût estimé'**
+  String get equipIncidentCostLabel;
+
+  /// No description provided for @equipIncidentResolvedAtLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu le'**
+  String get equipIncidentResolvedAtLabel;
+
+  /// No description provided for @equipIncidentDocumentsBadge.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count,plural,=0{Aucun document}=1{1 document}other{{count} documents}}'**
+  String equipIncidentDocumentsBadge(int count);
+
+  /// No description provided for @equipIncidentShowDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir détails'**
+  String get equipIncidentShowDetails;
+
+  /// No description provided for @equipIncidentHideDetails.
+  ///
+  /// In fr, this message translates to:
+  /// **'Masquer détails'**
+  String get equipIncidentHideDetails;
 
   /// No description provided for @issueCategorySelectorTitle.
   ///
