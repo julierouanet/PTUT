@@ -231,11 +231,20 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
     if (r == null) return;
     try {
       final user = AuthService().currentUser;
+      final byName = user?.name ?? '—';
+      final byRole = user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—';
+
+      // Annexes à jour : documents 'completion' + photos de l'incident —
+      // jamais les archives de rapports déjà générées.
+      final attachments = await DbApiService.instance.getIssueAttachments(widget.issueId);
+
       final pdfBytes = await PdfReportService.generateInterventionReport(
         report: r.toReportPdfJson(),
         issueId: widget.issueId,
-        generatedByName: user?.name ?? '—',
-        generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
+        generatedByName: byName,
+        generatedByRole: byRole,
+        attachmentDocs: attachments.docs,
+        attachmentPhotos: attachments.photos,
       );
 
       final fileName = 'rapport_intervention_${widget.issueId}.pdf';
@@ -525,6 +534,13 @@ class _InterventionReportSectionState extends State<InterventionReportSection> {
         onPressed: _busy ? null : () => _exportPdf(l10n),
         icon: const Icon(Icons.picture_as_pdf_outlined, size: 16),
         label: Text(l10n.interventionReportExportButton),
+      ));
+    }
+    if (_isFinalized && !widget.readOnly && (widget.canEdit || widget.isAdmin)) {
+      buttons.add(OutlinedButton.icon(
+        onPressed: _busy ? null : () => _exportPdf(l10n, archive: true),
+        icon: const Icon(Icons.refresh, size: 16),
+        label: Text(l10n.interventionReportRegenerateButton),
       ));
     }
 

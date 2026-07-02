@@ -5498,6 +5498,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get interventionReportExportButton => 'Export PDF';
 
   @override
+  String get interventionReportRegenerateButton => 'Regenerate report';
+
+  @override
   String get interventionReportExportError => 'Failed to generate the PDF';
 
   @override

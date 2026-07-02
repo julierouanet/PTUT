@@ -5558,6 +5558,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get interventionReportExportButton => 'Exporter PDF';
 
   @override
+  String get interventionReportRegenerateButton => 'Régénérer le rapport';
+
+  @override
   String get interventionReportExportError =>
       'Erreur lors de la génération du PDF';
 

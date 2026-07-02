@@ -751,6 +751,24 @@ Fiche technique partagée au niveau du couple (fabricant + modèle). Lecture `ve
 | POST    | /api/issues/:id/documents   | Admin/Sup/Tech | **[NOUVEAU 2026-06-23]** Upload multipart multi-fichiers (champ `files`, max 5, PDF/JPEG/PNG 10 Mo chacun). Body `type` (défaut `completion`, whitelist incluant `intervention`). Rattache aussi à `equipment_id` si l'incident en a un. Audit trail `upload_intervention_document` |
 | GET     | /api/issues/:id/documents/:doc_id/download | Auth | **[NOUVEAU 2026-06-23]** Téléchargement inline d'un document d'intervention. `Content-Disposition: inline`. Audit trail `download_intervention_document` |
 
+**[NOUVEAU 2026-07-02]** Génération PDF client (`PdfReportService`, aucun endpoint serveur ajouté —
+`VALID_DOC_TYPES` incluait déjà `final_report`) :
+- `generateInterventionReport` accepte désormais `attachmentDocs`/`attachmentPhotos` (optionnels) et
+  ajoute une section « 5. ATTACHMENTS » listant les documents `completion` + les photos de l'incident
+  (jamais les archives `intervention`/`final_report` déjà générées — filtre anti-bruit). Rechargée à
+  chaque génération (Mark Resolved, export manuel, ou bouton « Régénérer le rapport » visible une fois
+  le rapport finalisé dans `intervention_report_section.dart`).
+- `generateIssueFinalReport` (nouveau) : rapport final **par incident** (KPI boucles/durée/coût/statut
+  final + résumé problème/résolution), `reportNo = FIN-<issueId>`, archivé via
+  `POST /api/issues/:id/documents` avec `type=final_report`. Généré systématiquement au clic « Mark
+  Resolved » (`technician_intervention_update_screen.dart` → `_generateAndFinalizeReport`), y compris
+  pour les incidents sans équipement lié — distinct du rapport final équipement agrégé
+  (`generateEquipmentFinalReport`, `reportNo = EQ-<equipmentId>`) qui reste conditionné à
+  `equipment_id != null`.
+- `DbApiService.archiveInterventionPdf` a désormais un paramètre nommé optionnel `docType`
+  (défaut `'intervention'`) ; `getIssuePhotos`/`downloadIssuePhoto` ajoutées (remplacent les appels
+  `ApiClient` directs legacy de `issue_detail_screen.dart`).
+
 ### Documents d'intervention cross-équipement (`/api/documents/interventions`) **[NOUVEAU 2026-07-01]**
 
 Onglet « Documents » de la page technicien : liste/filtre/export des documents `equipment_documents`

@@ -2022,9 +2022,10 @@ class _TechnicianInterventionUpdateScreenState
 
       // Construit un résumé compilé depuis toutes les boucles
       String? compiledSummary = finalActions;
+      List<IssueInterventionSession> sessions = [];
       try {
         final rawSessions = await DbApiService.instance.getInterventionSessions(issue.id);
-        final sessions = rawSessions
+        sessions = rawSessions
             .map((e) => IssueInterventionSession.fromApiJson(e as Map<String, dynamic>))
             .toList();
         if (sessions.isNotEmpty) {
@@ -2034,6 +2035,10 @@ class _TechnicianInterventionUpdateScreenState
           }).join('\n');
         }
       } catch (_) { /* fallback sur finalActions si l'appel échoue */ }
+
+      // Annexes du rapport d'intervention : documents 'completion' + photos —
+      // jamais les archives de rapports déjà générées (intervention/final_report).
+      final attachments = await DbApiService.instance.getIssueAttachments(issue.id);
 
       await DbApiService.instance.saveInterventionReport(issue.id, {
         'summary': compiledSummary,
@@ -2048,11 +2053,15 @@ class _TechnicianInterventionUpdateScreenState
       final report = IssueInterventionReport.fromApiJson(raw);
 
       final user = AuthService().currentUser;
+      final byName = user?.name ?? '—';
+      final byRole = user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—';
       final pdfBytes = await PdfReportService.generateInterventionReport(
         report: report.toReportPdfJson(),
         issueId: issue.id,
-        generatedByName: user?.name ?? '—',
-        generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
+        generatedByName: byName,
+        generatedByRole: byRole,
+        attachmentDocs: attachments.docs,
+        attachmentPhotos: attachments.photos,
       );
 
       await DbApiService.instance.archiveInterventionPdf(
@@ -2061,20 +2070,46 @@ class _TechnicianInterventionUpdateScreenState
 
       // Génération auto du rapport final équipement (résumé + KPI), non bloquante,
       // seulement si l'incident est rattaché à un équipement.
-      if (issue.equipmentId != null) {
+      Future<void> generateEquipmentReport() async {
+        if (issue.equipmentId == null) return;
         try {
           final finalReport =
               await DbApiService.instance.getEquipmentFinalReport(issue.equipmentId!);
           final finalReportPdf = await PdfReportService.generateEquipmentFinalReport(
             report: finalReport,
-            generatedByName: user?.name ?? '—',
-            generatedByRole: user?.roles.isNotEmpty == true ? user!.roles.first.displayName : '—',
+            generatedByName: byName,
+            generatedByRole: byRole,
           );
           await DbApiService.instance.archiveEquipmentFinalReportPdf(
             issue.equipmentId!, finalReportPdf, 'rapport_final_${issue.equipmentId}.pdf',
           );
         } catch (_) { /* génération non bloquante */ }
       }
+
+      // Génération et archivage systématiques du rapport final par incident,
+      // y compris pour les incidents sans équipement lié (contrairement au
+      // rapport équipement agrégé ci-dessus qui reste conditionnel).
+      Future<void> generateIssueFinalReport() async {
+        try {
+          final finalReportPdf = await PdfReportService.generateIssueFinalReport(
+            report: report,
+            issueId: issue.id,
+            equipmentOrLocationName: issue.displayName,
+            urgency: issue.urgency.displayName,
+            sessionsCount: sessions.length,
+            generatedByName: byName,
+            generatedByRole: byRole,
+          );
+          await DbApiService.instance.archiveInterventionPdf(
+            issue.id, finalReportPdf, 'rapport_final_intervention_${issue.id}.pdf',
+            docType: 'final_report',
+          );
+        } catch (_) { /* génération non bloquante */ }
+      }
+
+      // Les deux rapports finaux sont indépendants — génération en parallèle
+      // pour ne pas doubler la latence perçue au clic "Mark Resolved".
+      await Future.wait([generateEquipmentReport(), generateIssueFinalReport()]);
 
       return pdfBytes;
     } catch (_) {

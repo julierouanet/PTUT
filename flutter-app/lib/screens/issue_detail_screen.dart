@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -9,8 +8,6 @@ import '../models/issue.dart';
 import '../models/issue_detail.dart';
 import '../models/issue_photo.dart';
 import '../models/user_role.dart';
-import '../services/api_client.dart';
-import '../services/api_config.dart';
 import '../services/auth_service.dart';
 import '../services/db_api_service.dart';
 import '../theme/app_theme.dart';
@@ -150,13 +147,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       // Chargement des photos en parallèle (non bloquant — erreur ignorée)
       List<IssuePhoto> photos = [];
       try {
-        final photosUrl =
-            '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(widget.issueId)}/photos';
-        final photosResp = await ApiClient.get(photosUrl);
-        if (photosResp.statusCode == 200) {
-          final raw = jsonDecode(photosResp.body) as List;
-          photos = raw.map((j) => IssuePhoto.fromJson(j as Map<String, dynamic>)).toList();
-        }
+        photos = await DbApiService.instance.getIssuePhotos(widget.issueId);
       } catch (_) {}
 
       if (mounted) setState(() { _detail = detail; _photos = photos; _loading = false; });
@@ -1804,17 +1795,9 @@ class _PhotoThumbnailState extends State<_PhotoThumbnail> {
   }
 
   Future<void> _fetchPhoto() async {
-    final url =
-        '${ApiConfig.dbBaseUrl}/api/issues/${Uri.encodeComponent(widget.issueId)}'
-        '/photos/${widget.photo.id}/download';
     try {
-      final resp = await ApiClient.get(url);
-      if (!mounted) return;
-      if (resp.statusCode == 200) {
-        setState(() { _bytes = resp.bodyBytes; _loading = false; });
-      } else {
-        setState(() { _error = true; _loading = false; });
-      }
+      final bytes = await DbApiService.instance.downloadIssuePhoto(widget.issueId, widget.photo.id);
+      if (mounted) setState(() { _bytes = bytes; _loading = false; });
     } catch (_) {
       if (mounted) setState(() { _error = true; _loading = false; });
     }

@@ -2187,6 +2187,7 @@
   "interventionReportReopened": "Report reopened",
   "interventionReportReopenError": "Cannot reopen",
   "interventionReportExportButton": "Export PDF",
+  "interventionReportRegenerateButton": "Regenerate report",
   "interventionReportExportError": "Failed to generate the PDF",
   "interventionReportArchived": "PDF archived in the equipment record",
   "interventionReportLockedHint": "Finalized report: editing restricted to administrators",

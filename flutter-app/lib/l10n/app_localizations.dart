@@ -10158,6 +10158,12 @@ abstract class AppLocalizations {
   /// **'Exporter PDF'**
   String get interventionReportExportButton;
 
+  /// No description provided for @interventionReportRegenerateButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Régénérer le rapport'**
+  String get interventionReportRegenerateButton;
+
   /// No description provided for @interventionReportExportError.
   ///
   /// In fr, this message translates to:

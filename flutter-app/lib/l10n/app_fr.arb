@@ -2209,6 +2209,7 @@
   "interventionReportReopened": "Rapport rouvert",
   "interventionReportReopenError": "Réouverture impossible",
   "interventionReportExportButton": "Exporter PDF",
+  "interventionReportRegenerateButton": "Régénérer le rapport",
   "interventionReportExportError": "Erreur lors de la génération du PDF",
   "interventionReportArchived": "PDF archivé dans la fiche équipement",
   "interventionReportLockedHint": "Rapport finalisé : modification réservée aux administrateurs",

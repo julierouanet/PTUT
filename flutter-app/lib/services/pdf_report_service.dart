@@ -4,10 +4,13 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/equipment.dart';
+import '../models/equipment_document.dart';
 import '../models/equipment_final_report.dart';
 import '../models/inventory_item.dart';
 import '../models/issue.dart';
+import '../models/issue_intervention_report.dart';
 import '../models/issue_intervention_session.dart';
+import '../models/issue_photo.dart';
 
 /// Génère un rapport PDF GMAO pour l'Hôpital de District de Kabutare.
 ///
@@ -474,6 +477,8 @@ class PdfReportService {
     required String issueId,
     required String generatedByName,
     required String generatedByRole,
+    List<EquipmentDocument> attachmentDocs = const [],
+    List<IssuePhoto> attachmentPhotos = const [],
   }) async {
     final doc = pw.Document();
     final now = DateTime.now();
@@ -542,11 +547,55 @@ class PdfReportService {
             MapEntry('Validation date', _s(report['validated_at'])),
             MapEntry('Report status', isFinalized ? 'Finalized' : 'Draft'),
           ]),
+
+          // ── Section 5 : Annexes (documents + photos) ────────────────────
+          _sectionTitle('5. ATTACHMENTS'),
+          attachmentDocs.isEmpty && attachmentPhotos.isEmpty
+              ? pw.Text('No attachment recorded for this incident.',
+                  style: const pw.TextStyle(fontSize: 8, color: _textMuted))
+              : _attachmentsTable(attachmentDocs, attachmentPhotos),
         ],
       ),
     );
 
     return doc.save();
+  }
+
+  // Tableau des annexes (documents complémentaires + photos) d'un incident
+  static pw.Widget _attachmentsTable(
+      List<EquipmentDocument> docs, List<IssuePhoto> photos) {
+    return pw.Table(
+      border: pw.TableBorder.all(color: _border),
+      columnWidths: const {
+        0: pw.FlexColumnWidth(3),   // Nom
+        1: pw.FlexColumnWidth(1),   // Type
+        2: pw.FlexColumnWidth(2),   // Date
+        3: pw.FlexColumnWidth(2),   // Uploadeur
+        4: pw.FlexColumnWidth(1),   // Taille
+      },
+      children: [
+        pw.TableRow(
+          decoration: const pw.BoxDecoration(color: _bgLight),
+          children: [
+            _th('Name'), _th('Type'), _th('Uploaded on'), _th('Uploaded by'), _th('Size (KB)'),
+          ],
+        ),
+        ...docs.map((d) => pw.TableRow(children: [
+              _td(d.originalName),
+              _td('Document'),
+              _td(_s(d.uploadedAt).split(' ').first),
+              _td(_s(d.uploaderName)),
+              _td(d.fileSizeKb.toString()),
+            ])),
+        ...photos.map((p) => pw.TableRow(children: [
+              _td(p.originalName),
+              _td('Photo'),
+              _td(_s(p.uploadedAt).split(' ').first),
+              _td('—'),
+              _td(p.fileSizeKb.toString()),
+            ])),
+      ],
+    );
   }
 
   // ── PDF par boucle d'intervention ───────────────────────────────────────────
@@ -674,6 +723,110 @@ class PdfReportService {
     );
 
     return doc.save();
+  }
+
+  // ── Rapport final par incident (KPI + résumé problème/résolution) ───────────
+
+  /// Construit le PDF du rapport final d'un incident : résumé KPI (boucles,
+  /// durée, coût, statut final équipement) + résumé problème/résolution.
+  /// Distinct du rapport final équipement agrégé — généré systématiquement au
+  /// Mark Resolved, y compris pour les incidents sans équipement lié.
+  static Future<Uint8List> generateIssueFinalReport({
+    required IssueInterventionReport report,
+    required String issueId,
+    required String equipmentOrLocationName,
+    required String urgency,
+    required int sessionsCount,
+    required String generatedByName,
+    required String generatedByRole,
+  }) async {
+    final doc = pw.Document();
+    final now = DateTime.now();
+    final logo = pw.MemoryImage(await _loadLogo());
+    final reportNo = 'FIN-$issueId';
+
+    doc.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+        header: (context) => _buildIssueFinalReportHeader(
+            now, generatedByName, generatedByRole, equipmentOrLocationName, urgency, logo, reportNo),
+        footer: (context) => _buildFooter(context, reference: 'Incident $issueId'),
+        build: (context) => [
+          // ── Section 1 : KPI ───────────────────────────────────────────
+          _sectionTitle('1. SUMMARY'),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Total intervention loops', '$sessionsCount', _primary)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Resolution duration (hours)',
+                report.durationHours == null ? 'N/A' : report.durationHours!.toStringAsFixed(1), _warning)),
+          ]),
+          pw.SizedBox(height: 8),
+          pw.Row(children: [
+            pw.Expanded(child: _kpiBox('Estimated cost (RWF)',
+                report.estimatedCost == null ? 'N/A' : report.estimatedCost!.toStringAsFixed(0), _error)),
+            pw.SizedBox(width: 8),
+            pw.Expanded(child: _kpiBox('Final equipment status',
+                _s(report.finalEquipmentStatus), _success)),
+          ]),
+
+          // ── Section 2 : Résumé problème/résolution ─────────────────────
+          _sectionTitle('2. PROBLEM & RESOLUTION SUMMARY'),
+          _labelledBlock('Summary', _s(report.summary)),
+          _labelledBlock('Root cause', _s(report.rootCause)),
+          _labelledBlock('Recommendations', _s(report.recommendations)),
+        ],
+      ),
+    );
+
+    return doc.save();
+  }
+
+  // En-tête dédié du rapport final par incident
+  static pw.Widget _buildIssueFinalReportHeader(DateTime now, String byName, String byRole,
+      String equipmentOrLocationName, String urgency, pw.MemoryImage logo, String reportNo) {
+    return pw.Column(children: [
+      _buildLetterhead(logo),
+      pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const pw.BoxDecoration(
+          color: _primary,
+          borderRadius: pw.BorderRadius.all(pw.Radius.circular(6)),
+        ),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          children: [
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text('FINAL INTERVENTION REPORT',
+                    style: pw.TextStyle(
+                        color: PdfColors.white, fontSize: 13, fontWeight: pw.FontWeight.bold)),
+                pw.SizedBox(height: 2),
+                pw.Text('Kabutare District Hospital — Rwanda',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('Equipment/Location: $equipmentOrLocationName',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('Urgency: $urgency',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+              ],
+            ),
+            pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.end,
+              children: [
+                pw.Text('Generated on ${_fmtDate(now)} at ${_fmtTime(now)}',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('By: $byName  ($byRole)',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+                pw.Text('Report No: $reportNo',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 7)),
+              ],
+            ),
+          ],
+        ),
+      ),
+      pw.SizedBox(height: 6),
+    ]);
   }
 
   // En-tête dédié du rapport final équipement

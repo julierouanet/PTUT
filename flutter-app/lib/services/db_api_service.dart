@@ -8,6 +8,7 @@ import '../models/equipment_final_report.dart';
 import '../models/intervention_technician.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
+import '../models/issue_photo.dart';
 
 /// Résultat paginé générique pour les listes en pagination serveur
 /// (GET /api/equipment et GET /api/issues avec ?page=).
@@ -468,20 +469,23 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  /// Archive le PDF du rapport sur l'incident (POST /api/issues/:id/documents,
-  /// type 'intervention'). Le serveur rattache aussi le document à l'équipement
-  /// si l'incident en a un — sinon il reste consultable via l'incident seul.
+  /// Archive le PDF du rapport sur l'incident (POST /api/issues/:id/documents).
+  /// Le serveur rattache aussi le document à l'équipement si l'incident en a
+  /// un — sinon il reste consultable via l'incident seul. [docType] : voir
+  /// VALID_DOC_TYPES côté serveur ('intervention' par défaut, 'final_report'
+  /// pour le rapport final par incident).
   Future<void> archiveInterventionPdf(
     String issueId,
     Uint8List pdfBytes,
-    String fileName,
-  ) async {
+    String fileName, {
+    String docType = 'intervention',
+  }) async {
     await ApiClient.postMultipart(
       '${ApiConfig.issuesUrl}/$issueId/documents',
       pdfBytes,
       fileName,
       'application/pdf',
-      {'type': 'intervention'},
+      {'type': docType},
       fileField: 'files',
     );
   }
@@ -516,6 +520,37 @@ class DbApiService {
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return response.bodyBytes;
+  }
+
+  /// Liste les photos jointes à un incident.
+  Future<List<IssuePhoto>> getIssuePhotos(String issueId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/photos';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((j) => IssuePhoto.fromJson(j as Map<String, dynamic>)).toList();
+  }
+
+  /// Télécharge le contenu binaire d'une photo d'incident pour visualisation.
+  Future<Uint8List> downloadIssuePhoto(String issueId, int photoId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/photos/$photoId/download';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return response.bodyBytes;
+  }
+
+  /// Annexes utilisateur d'un incident pour la section « Attachments » du
+  /// rapport d'intervention PDF : documents ajoutés manuellement (type
+  /// 'completion') + photos — jamais les archives de rapports déjà générées
+  /// (intervention/final_report). Les deux sources sont chargées en parallèle
+  /// et échouent indépendamment (liste vide) sans se bloquer l'une l'autre.
+  Future<({List<EquipmentDocument> docs, List<IssuePhoto> photos})> getIssueAttachments(
+      String issueId) async {
+    final docsFuture = getInterventionDocuments(issueId)
+        .then((list) => list.where((d) => d.documentType == 'completion').toList())
+        .catchError((_) => <EquipmentDocument>[]);
+    final photosFuture = getIssuePhotos(issueId).catchError((_) => <IssuePhoto>[]);
+    return (docs: await docsFuture, photos: await photosFuture);
   }
 
   // ── RAPPORT FINAL ÉQUIPEMENT ────────────────────────────────────────────────
