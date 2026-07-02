@@ -790,14 +790,13 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         if (newGroup != null && newGroup != issue.assignedGroup)
           'assigned_group': newGroup,
       });
-      setState(() { _loading = true; _error = null; });
-      await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l10n.issueValidationSuccess(issue.displayName)),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ));
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -894,14 +893,13 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     try {
       await DbApiService.instance
           .rejectIssue(issue.id, reasonCode, comment.isEmpty ? null : comment);
-      setState(() { _loading = true; _error = null; });
-      await _load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(l10n.rejectSuccess),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {

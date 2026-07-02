@@ -9158,6 +9158,18 @@ abstract class AppLocalizations {
   /// **'Sélectionnez au moins un type de document'**
   String get techDocumentsNoTypeSelected;
 
+  /// No description provided for @techDocumentsGroupNoPdf.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun PDF à fusionner pour cet incident'**
+  String get techDocumentsGroupNoPdf;
+
+  /// No description provided for @techDocumentsDownloadIssuePdf.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger le PDF fusionné'**
+  String get techDocumentsDownloadIssuePdf;
+
   /// No description provided for @permViewInterventionDocuments.
   ///
   /// In fr, this message translates to:

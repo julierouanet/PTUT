@@ -2005,6 +2005,10 @@
   "@techDocumentsTypeCompletion": {},
   "techDocumentsNoTypeSelected": "Sélectionnez au moins un type de document",
   "@techDocumentsNoTypeSelected": {},
+  "techDocumentsGroupNoPdf": "Aucun PDF à fusionner pour cet incident",
+  "@techDocumentsGroupNoPdf": {},
+  "techDocumentsDownloadIssuePdf": "Télécharger le PDF fusionné",
+  "@techDocumentsDownloadIssuePdf": {},
   "permViewInterventionDocuments": "Consulter les documents d'intervention",
   "@permViewInterventionDocuments": {},
 

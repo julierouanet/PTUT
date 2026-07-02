@@ -1984,6 +1984,10 @@
   "@techDocumentsTypeCompletion": {},
   "techDocumentsNoTypeSelected": "Select at least one document type",
   "@techDocumentsNoTypeSelected": {},
+  "techDocumentsGroupNoPdf": "No PDF to merge for this issue",
+  "@techDocumentsGroupNoPdf": {},
+  "techDocumentsDownloadIssuePdf": "Download merged PDF",
+  "@techDocumentsDownloadIssuePdf": {},
   "permViewInterventionDocuments": "View intervention documents",
   "@permViewInterventionDocuments": {},
 

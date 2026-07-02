@@ -649,17 +649,50 @@ class DbApiService {
 
   /// Fusionne en un seul PDF tous les documents d'intervention PDF matchant les filtres.
   /// Lève une [ApiException] (statusCode 404) si aucun PDF ne matche.
+  /// [issueId] restreint la fusion aux documents d'un seul incident.
   Future<Uint8List> printInterventionDocumentsPdf({
     String? uploadedBy,
     String? from,
     String? to,
     List<String>? types,
+    String? issueId,
   }) async {
-    final query = _appendTypes(_buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to}), types);
+    final query = _appendTypes(
+      _buildQuery({'uploaded_by': uploadedBy, 'from': from, 'to': to, 'issue_id': issueId}),
+      types,
+    );
     final url = '${ApiConfig.interventionDocumentsUrl}/print-pdf?$query';
     final response = await ApiClient.get(url);
     _checkStatus(response, url);
     return response.bodyBytes;
+  }
+
+  /// Récupère tous les documents d'intervention matchant les filtres, en bouclant
+  /// sur l'endpoint paginé existant. Plafonné à 50 pages (1000 documents avec
+  /// limit: 20) par sécurité — volume réaliste de l'hôpital très inférieur à ce seuil.
+  Future<List<EquipmentDocument>> getAllInterventionDocuments({
+    String? uploadedBy,
+    String? from,
+    String? to,
+    List<String>? types,
+  }) async {
+    const maxPages = 50;
+    final items = <EquipmentDocument>[];
+    var page = 1;
+    while (page <= maxPages) {
+      final result = await getInterventionDocumentsPaged(
+        page: page,
+        limit: 20,
+        uploadedBy: uploadedBy,
+        from: from,
+        to: to,
+        types: types,
+      );
+      items.addAll(result.items);
+      if (page >= result.totalPages) break;
+      page++;
+    }
+    return items;
   }
 
   // ── BOUCLES D'INTERVENTION (1:N par incident) ──────────────────────────────

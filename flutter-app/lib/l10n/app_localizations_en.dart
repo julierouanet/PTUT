@@ -4941,6 +4941,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techDocumentsNoTypeSelected => 'Select at least one document type';
 
   @override
+  String get techDocumentsGroupNoPdf => 'No PDF to merge for this issue';
+
+  @override
+  String get techDocumentsDownloadIssuePdf => 'Download merged PDF';
+
+  @override
   String get permViewInterventionDocuments => 'View intervention documents';
 
   @override

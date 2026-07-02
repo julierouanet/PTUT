@@ -790,10 +790,15 @@ requête SQL `IN ()`). Correspond aux 2 cases à cocher de `intervention_documen
 | GET     | /api/documents/interventions            | Rôles ci-dessus | Liste paginée (`?page=&limit=`, défaut 20, max 100). Filtres : `?types=` (voir ci-dessus), `?uploaded_by=` (égalité stricte UUID, jamais LIKE sur le nom), `?from=&to=` (`YYYY-MM-DD`, filtre sur `date(uploaded_at)`), `?search=` (LIKE sur `original_name` uniquement). `400` si date mal formatée, `from > to`, ou `types` invalide. Enveloppe `{items, total, page, limit, total_pages}`, `items` vide (pas d'erreur) si aucun résultat |
 | GET     | /api/documents/interventions/technicians | Rôles ci-dessus | Paires `{uploaded_by, uploader_name}` distinctes ayant au moins un document parmi `?types=` (défaut `intervention`+`completion`) non supprimé — alimente le filtre technicien (jamais de résolution par nom). Route découplée de `parseFilters` (n'accepte/valide ni `from`, ni `to`, ni `uploaded_by`) |
 | GET     | /api/documents/interventions/zip        | Rôles ci-dessus | Mêmes filtres `types`/`uploaded_by`/`from`/`to` (pas de pagination, pas de plafond de volume). `404` si sélection vide. `archiver('zip')` en streaming direct sur la réponse (`Content-Type: application/zip`), noms de fichiers dédupliqués (`_2`, `_3`…). Audit `export_intervention_documents_zip` (`{uploaded_by, from, to, types, doc_count}`) |
-| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Mêmes filtres, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` (`{uploaded_by, from, to, types, doc_count}`) |
+| GET     | /api/documents/interventions/print-pdf  | Rôles ci-dessus | Mêmes filtres, ne garde que `mime_type='application/pdf'` (images exclues du merge, pas de conversion). `404` si aucun PDF ne matche. Fusion via `pdf-lib` (`PDFDocument.copyPages`), `Content-Type: application/pdf`. Audit `export_intervention_documents_pdf` (`{uploaded_by, from, to, types, issue_id, doc_count}`) |
 
 > Dépendances ajoutées à `db-service/package.json` : `archiver` (ZIP streaming), `pdf-lib` (fusion PDF).
 > Aucune nouvelle table/colonne — lecture filtrée de `equipment_documents` existante.
+
+**[NOUVEAU 2026-07-02]** Paramètre optionnel `?issue_id=` sur `/print-pdf` (`ed.issue_id = ?`, `issue_id=''`
+traité comme absent). Permet à l'onglet Documents technicien de fusionner le PDF d'un seul groupe/incident
+(bouton par groupe `ExpansionTile`, cf. `intervention_documents_tab.dart`) sans exposer ce filtre sur
+`/` ni `/zip` (non utilisé côté Flutter sur ces deux routes, non testé).
 
 ### Lieux (`/api/locations`)
 

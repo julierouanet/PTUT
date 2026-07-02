@@ -4,7 +4,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../../utils/open_blob_url.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/equipment.dart';
 import '../../models/equipment_document.dart';
@@ -12,7 +11,9 @@ import '../../services/api_client.dart';
 import '../../services/api_config.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/intervention_document_grouping.dart';
 import '../../utils/mime_from_extension.dart';
+import '../doc_group_tile.dart';
 
 /// Onglet Documents d'un équipement.
 ///
@@ -354,17 +355,6 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
 
 }
 
-// ── Helpers partagés ─────────────────────────────────────────────────────────
-
-String _formatDocDate(String raw) {
-  if (raw.isEmpty) return '—';
-  try {
-    return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
-  } catch (_) {
-    return raw;
-  }
-}
-
 // ── En-tête de section mutualisé ─────────────────────────────────────────────
 
 class _DocumentSectionHeader extends StatelessWidget {
@@ -466,42 +456,6 @@ class _DocumentSection extends StatelessWidget {
   }
 }
 
-// ── Regroupement et tri des documents d'intervention ─────────────────────────
-
-/// Groupe [docs] par issueId et trie les groupes nommés par issueCreatedAt desc.
-/// Le groupe null (documents orphelins, sans incident) est toujours le dernier.
-typedef _DocGroup = MapEntry<String?, List<EquipmentDocument>>;
-
-({List<_DocGroup> named, List<EquipmentDocument>? orphans}) _groupInterventionDocs(
-    List<EquipmentDocument> docs) {
-  final Map<String?, List<EquipmentDocument>> grouped = {};
-  for (final d in docs) {
-    grouped.putIfAbsent(d.issueId, () => []).add(d);
-  }
-
-  // Pré-calcul du max uploadedAt par groupe (évite un reduce dans le comparateur)
-  String _maxUpload(List<EquipmentDocument> g) =>
-      g.map((d) => d.uploadedAt).reduce((a, b) => a.compareTo(b) >= 0 ? a : b);
-
-  final named = grouped.entries.where((e) => e.key != null).toList();
-  // Associer la date de tri en avance pour ne pas recalculer dans le comparateur
-  final withSortKey = named.map((e) {
-    final dateIssue = e.value.first.issueCreatedAt ?? ''; // liste tjrs non vide (putIfAbsent+add)
-    final sortKey = dateIssue.isNotEmpty ? dateIssue : _maxUpload(e.value);
-    return (entry: e, sortKey: sortKey, hasIssueDate: dateIssue.isNotEmpty);
-  }).toList()
-    ..sort((a, b) {
-      // Groupes avec date d'incident connue avant ceux en repli uploadedAt
-      if (a.hasIssueDate != b.hasIssueDate) return a.hasIssueDate ? -1 : 1;
-      return b.sortKey.compareTo(a.sortKey);
-    });
-
-  return (
-    named: withSortKey.map((x) => x.entry).toList(),
-    orphans: grouped[null],
-  );
-}
-
 // ── Section documents d'intervention (regroupée par incident) ────────────────
 
 class _InterventionDocumentsSection extends StatelessWidget {
@@ -524,7 +478,7 @@ class _InterventionDocumentsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final (:named, :orphans) = _groupInterventionDocs(docs);
+    final (:named, :orphans) = groupInterventionDocs(docs);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -547,14 +501,12 @@ class _InterventionDocumentsSection extends StatelessWidget {
             else ...[
               for (var i = 0; i < named.length; i++)
                 _groupTile(
-                  context: context,
                   issueId: named[i].key!,
                   groupDocs: named[i].value,
                   initiallyExpanded: i == 0,
                 ),
               if (orphans != null)
                 _groupTile(
-                  context: context,
                   issueId: null,
                   groupDocs: orphans,
                   initiallyExpanded: false,
@@ -567,28 +519,14 @@ class _InterventionDocumentsSection extends StatelessWidget {
   }
 
   Widget _groupTile({
-    required BuildContext context,
     required String? issueId,
     required List<EquipmentDocument> groupDocs,
     required bool initiallyExpanded,
   }) {
-    final l10n = AppLocalizations.of(context)!;
-    final title = issueId != null
-        ? l10n.docInterventionGroupTitle(issueId, groupDocs.length)
-        : l10n.docOtherDocuments(groupDocs.length);
-    final subtitle = issueId != null
-        ? '${groupDocs.first.issueStatus ?? "—"} · ${_formatDocDate(groupDocs.first.issueCreatedAt ?? "")}'
-        : null;
-
-    return ExpansionTile(
-      key: ValueKey(issueId ?? '__orphans__'),
+    return DocGroupTile(
+      issueId: issueId,
+      groupDocs: groupDocs,
       initiallyExpanded: initiallyExpanded,
-      tilePadding: EdgeInsets.zero,
-      childrenPadding: EdgeInsets.zero,
-      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-      subtitle: subtitle != null
-          ? Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))
-          : null,
       children: groupDocs.map((doc) => _DocumentTile(
         doc: doc,
         canManage: canManage,
@@ -660,7 +598,7 @@ class _DocumentTile extends StatelessWidget {
         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
       ),
       subtitle: Text(
-        '${doc.displaySize} · ${doc.uploaderName} · ${_formatDocDate(doc.uploadedAt)}',
+        '${doc.displaySize} · ${doc.uploaderName} · ${formatDocDate(doc.uploadedAt)}',
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       ),
       trailing: Row(

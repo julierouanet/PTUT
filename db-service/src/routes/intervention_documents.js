@@ -40,7 +40,7 @@ function docTypesInClause(docTypes) {
 
 // ── Validation commune des filtres from/to/uploaded_by/types ─────────────────
 function parseFilters(query) {
-  const { uploaded_by, from, to, search, types } = query;
+  const { uploaded_by, from, to, search, types, issue_id } = query;
 
   if (from !== undefined && !DATE_RE.test(from)) {
     return { error: 'Format de date invalide (attendu YYYY-MM-DD)' };
@@ -55,12 +55,15 @@ function parseFilters(query) {
   const { docTypes, error: typesError } = parseTypes(types);
   if (typesError) return { error: typesError };
 
-  return { uploadedBy: uploaded_by || null, from: from || null, to: to || null, search: search || null, docTypes };
+  return {
+    uploadedBy: uploaded_by || null, from: from || null, to: to || null,
+    search: search || null, issueId: issue_id || null, docTypes,
+  };
 }
 
 // Construit la clause WHERE + params communs à list/zip/print-pdf
 // N'est appelée que si filters.docTypes.length > 0 (jamais de IN () vide)
-function buildWhere({ uploadedBy, from, to, search, docTypes }, extraCondition) {
+function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCondition) {
   const { placeholders, params } = docTypesInClause(docTypes);
   let where = `WHERE ed.document_type IN (${placeholders}) AND ed.deleted_at IS NULL`;
 
@@ -81,6 +84,10 @@ function buildWhere({ uploadedBy, from, to, search, docTypes }, extraCondition) 
     where += ' AND ed.original_name LIKE ? COLLATE NOCASE';
     params.push(`%${search}%`);
   }
+  if (issueId) {
+    where += ' AND ed.issue_id = ?';
+    params.push(issueId);
+  }
 
   return { where, params };
 }
@@ -91,7 +98,7 @@ function logExport(req, action, filters, docCount) {
     user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles?.[0] || '',
     action,
     target_type: 'equipment_documents', target_id: null, target_name: null,
-    details: JSON.stringify({ uploaded_by: filters.uploadedBy, from: filters.from, to: filters.to, types: filters.docTypes, doc_count: docCount }),
+    details: JSON.stringify({ uploaded_by: filters.uploadedBy, from: filters.from, to: filters.to, types: filters.docTypes, issue_id: filters.issueId, doc_count: docCount }),
     ...extractReqMeta(req),
   });
 }

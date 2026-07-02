@@ -4991,6 +4991,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Sélectionnez au moins un type de document';
 
   @override
+  String get techDocumentsGroupNoPdf =>
+      'Aucun PDF à fusionner pour cet incident';
+
+  @override
+  String get techDocumentsDownloadIssuePdf => 'Télécharger le PDF fusionné';
+
+  @override
   String get permViewInterventionDocuments =>
       'Consulter les documents d\'intervention';
 

@@ -241,16 +241,16 @@ function seedEquipmentForDocs(id) {
 function insertInterventionDoc({
   equipmentId = 'idoc-eq-1', docType = 'intervention', storedName, originalName,
   mimeType = 'application/pdf', uploadedBy = 'tech-a', uploaderName = 'Tech A',
-  uploadedAt, deletedAt = null,
+  uploadedAt, deletedAt = null, issueId = null,
 }) {
   seedEquipmentForDocs(equipmentId);
   const at = uploadedAt || '2026-01-01 08:00:00';
   const result = db.prepare(`
     INSERT INTO equipment_documents
-      (equipment_id, document_type, original_name, stored_name, mime_type,
+      (equipment_id, issue_id, document_type, original_name, stored_name, mime_type,
        file_size_kb, uploaded_by, uploader_name, uploaded_at, deleted_at)
-    VALUES (?, ?, ?, ?, ?, 5, ?, ?, ?, ?)
-  `).run(equipmentId, docType, originalName, storedName, mimeType, uploadedBy, uploaderName, at, deletedAt);
+    VALUES (?, ?, ?, ?, ?, ?, 5, ?, ?, ?, ?)
+  `).run(equipmentId, issueId, docType, originalName, storedName, mimeType, uploadedBy, uploaderName, at, deletedAt);
   return result.lastInsertRowid;
 }
 
@@ -591,6 +591,58 @@ describe('GET /api/documents/interventions/print-pdf', () => {
       .get('/api/documents/interventions/print-pdf')
       .query({ types: '' })
       .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+
+  test('✅ filtre par issue_id : ne fusionne que les PDF de l\'incident ciblé', async () => {
+    seedIssue('iss-print-x', { equipmentId: 'idoc-eq-print-x' });
+    seedIssue('iss-print-y', { equipmentId: 'idoc-eq-print-y' });
+
+    const storedX1 = 'print-issue-x1.pdf';
+    const storedX2 = 'print-issue-x2.pdf';
+    const storedY = 'print-issue-y.pdf';
+    await writeRealPdf(storedX1);
+    await writeRealPdf(storedX2);
+    await writeRealPdf(storedY);
+
+    insertInterventionDoc({ equipmentId: 'idoc-eq-print-x', issueId: 'iss-print-x', storedName: storedX1, originalName: storedX1, uploadedBy: 'tech-print-issue', uploaderName: 'Tech Print Issue' });
+    insertInterventionDoc({ equipmentId: 'idoc-eq-print-x', issueId: 'iss-print-x', storedName: storedX2, originalName: storedX2, uploadedBy: 'tech-print-issue', uploaderName: 'Tech Print Issue' });
+    insertInterventionDoc({ equipmentId: 'idoc-eq-print-y', issueId: 'iss-print-y', storedName: storedY, originalName: storedY, uploadedBy: 'tech-print-issue', uploaderName: 'Tech Print Issue' });
+
+    const resX = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-issue', issue_id: 'iss-print-x' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+    const resY = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-issue', issue_id: 'iss-print-y' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(resX.status).toBe(200);
+    expect(resY.status).toBe(200);
+    // iss-print-x a 2 pages fusionnées, iss-print-y en a 1 seule : les tailles
+    // de buffer résultantes doivent diverger (preuve indirecte que le filtre s'applique).
+    const pageCountX = (await PDFDocument.load(resX.body)).getPageCount();
+    const pageCountY = (await PDFDocument.load(resY.body)).getPageCount();
+    expect(pageCountX).toBe(2);
+    expect(pageCountY).toBe(1);
+  });
+
+  test('🚫 404 si l\'issue n\'a aucun PDF (uniquement une image)', async () => {
+    seedIssue('iss-print-noimg', { equipmentId: 'idoc-eq-print-noimg' });
+    const imgStored = 'print-issue-noimg.jpg';
+    writeRealFile(imgStored);
+    insertInterventionDoc({ equipmentId: 'idoc-eq-print-noimg', issueId: 'iss-print-noimg', storedName: imgStored, originalName: imgStored, mimeType: 'image/jpeg', uploadedBy: 'tech-print-noimg', uploaderName: 'Tech Print Noimg' });
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ uploaded_by: 'tech-print-noimg', issue_id: 'iss-print-noimg' })
+      .set('Authorization', 'Bearer fake-token');
+
     expect(res.status).toBe(404);
   });
 });

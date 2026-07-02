@@ -8,8 +8,9 @@ import '../../models/equipment_document.dart';
 import '../../models/intervention_technician.dart';
 import '../../services/db_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/intervention_document_grouping.dart';
 import '../../utils/open_blob_url.dart';
-import '../pagination_footer.dart';
+import '../doc_group_tile.dart';
 
 enum _PeriodPreset { last7Days, thisMonth, lastMonth, custom }
 
@@ -26,11 +27,9 @@ class InterventionDocumentsTab extends StatefulWidget {
 }
 
 class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
-  static const int _pageSize = 20;
   static final DateFormat _apiDateFormat = DateFormat('yyyy-MM-dd');
 
   List<EquipmentDocument> _items = [];
-  int _total = 0, _page = 1, _totalPages = 1;
   bool _loading = true;
   String? _error;
 
@@ -44,6 +43,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
 
   bool _isExportingZip = false;
   bool _isExportingPdf = false;
+  final Set<String> _exportingIssueIds = {};
 
   @override
   void initState() {
@@ -92,7 +92,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   Future<void> _onTypesChanged() async {
     await _loadTechnicians();
     if (!mounted) return;
-    _load(page: 1);
+    _load();
   }
 
   // ── Chargement ────────────────────────────────────────────────────────────
@@ -111,15 +111,12 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     }
   }
 
-  Future<void> _load({int page = 1}) async {
+  Future<void> _load() async {
     if (!mounted) return;
     final types = _selectedTypes();
     if (types.isEmpty) {
       setState(() {
         _items = [];
-        _total = 0;
-        _page = 1;
-        _totalPages = 1;
         _loading = false;
         _error = null;
       });
@@ -128,9 +125,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     setState(() { _loading = true; _error = null; });
     try {
       final (from, to) = _currentDateFilters();
-      final result = await DbApiService.instance.getInterventionDocumentsPaged(
-        page: page,
-        limit: _pageSize,
+      final items = await DbApiService.instance.getAllInterventionDocuments(
         uploadedBy: _selectedTechnicianId,
         from: from,
         to: to,
@@ -138,10 +133,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
       );
       if (!mounted) return;
       setState(() {
-        _items = result.items;
-        _total = result.total;
-        _page = result.page;
-        _totalPages = result.totalPages;
+        _items = items;
         _loading = false;
       });
     } catch (e) {
@@ -154,7 +146,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
 
   void _onTechnicianChanged(String? technicianId) {
     setState(() => _selectedTechnicianId = technicianId);
-    _load(page: 1);
+    _load();
   }
 
   Future<void> _onPresetChanged(_PeriodPreset? preset) async {
@@ -172,7 +164,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     } else {
       setState(() => _preset = preset);
     }
-    _load(page: 1);
+    _load();
   }
 
   // ── Exports ───────────────────────────────────────────────────────────────
@@ -184,13 +176,8 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
       fetch: (from, to) => DbApiService.instance.downloadInterventionDocumentsZip(
         uploadedBy: _selectedTechnicianId, from: from, to: to, types: _selectedTypes(),
       ),
-      onSuccess: (bytes, from, to) async {
-        if (kIsWeb) {
-          openBytesInBrowser(bytes, 'application/zip', 'interventions_${from}_$to.zip');
-        } else {
-          _showSnack(l10n.techDocumentsWebOnly, isError: false);
-        }
-      },
+      onSuccess: (bytes, from, to) =>
+          _downloadOrNotifyWebOnly(bytes, 'application/zip', 'interventions_${from}_$to.zip'),
       emptyMessage: l10n.techDocumentsEmpty,
       errorMessage: l10n.techDocumentsZipError,
     );
@@ -207,6 +194,35 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
       emptyMessage: l10n.techDocumentsNoPdfToPrint,
       errorMessage: l10n.techDocumentsPrintError,
     );
+  }
+
+  /// Fusionne les PDF d'un seul groupe (incident) et déclenche le téléchargement.
+  /// Utilise les mêmes filtres actifs (période, technicien, types) que la liste
+  /// affichée : le PDF correspond à ce qui est visible à l'écran pour ce groupe,
+  /// pas à l'intégralité des documents de l'incident en base.
+  Future<void> _downloadIssuePdf(String issueId) async {
+    final l10n = AppLocalizations.of(context)!;
+    await _runExport(
+      setExporting: (v) => setState(
+          () => v ? _exportingIssueIds.add(issueId) : _exportingIssueIds.remove(issueId)),
+      fetch: (from, to) => DbApiService.instance.printInterventionDocumentsPdf(
+        issueId: issueId, uploadedBy: _selectedTechnicianId, from: from, to: to, types: _selectedTypes(),
+      ),
+      onSuccess: (bytes, from, to) =>
+          _downloadOrNotifyWebOnly(bytes, 'application/pdf', 'intervention_${issueId}_${from}_$to.pdf'),
+      emptyMessage: l10n.techDocumentsGroupNoPdf,
+      errorMessage: l10n.techDocumentsPrintError,
+    );
+  }
+
+  /// Sur web : déclenche le téléchargement du fichier via blob URL. Sur natif
+  /// (pas de FS accessible depuis le navigateur) : informe l'utilisateur.
+  Future<void> _downloadOrNotifyWebOnly(Uint8List bytes, String mimeType, String filename) async {
+    if (kIsWeb) {
+      openBytesInBrowser(bytes, mimeType, filename);
+    } else {
+      _showSnack(AppLocalizations.of(context)!.techDocumentsWebOnly, isError: false);
+    }
   }
 
   /// Squelette commun aux deux exports (ZIP/PDF) : bascule le spinner,
@@ -251,7 +267,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     final l10n = AppLocalizations.of(context)!;
 
     return RefreshIndicator(
-      onRefresh: () => _load(page: _page),
+      onRefresh: _load,
       child: Column(
         children: [
           Padding(
@@ -259,16 +275,6 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
             child: _buildFilters(l10n),
           ),
           Expanded(child: _buildBody(l10n)),
-          if (!_loading && _error == null && _totalPages > 1)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: PaginationFooter(
-                currentPage: _page,
-                totalPages: _totalPages,
-                isLoading: _loading,
-                onPageChange: (p) => _load(page: p),
-              ),
-            ),
         ],
       ),
     );
@@ -365,7 +371,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
         const SizedBox(height: 8),
         if (!_loading && _error == null)
           Text(
-            l10n.techDocumentsCount(_total),
+            l10n.techDocumentsCount(_items.length),
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
           ),
       ],
@@ -385,7 +391,7 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
           Text(_error!, style: const TextStyle(color: AppColors.error)),
           const SizedBox(height: 8),
           TextButton.icon(
-            onPressed: () => _load(page: _page),
+            onPressed: _load,
             icon: const Icon(Icons.refresh),
             label: Text(l10n.techDocumentsRetry),
           ),
@@ -404,11 +410,40 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
       );
     }
 
-    return ListView.separated(
+    final (:named, :orphans) = groupInterventionDocs(_items);
+
+    return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: _items.length,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, i) => _DocumentRow(doc: _items[i]),
+      children: [
+        for (var i = 0; i < named.length; i++)
+          _buildGroupTile(l10n, issueId: named[i].key!, groupDocs: named[i].value, initiallyExpanded: i == 0),
+        if (orphans != null)
+          _buildGroupTile(l10n, issueId: null, groupDocs: orphans, initiallyExpanded: false),
+      ],
+    );
+  }
+
+  Widget _buildGroupTile(
+    AppLocalizations l10n, {
+    required String? issueId,
+    required List<EquipmentDocument> groupDocs,
+    required bool initiallyExpanded,
+  }) {
+    final isExporting = issueId != null && _exportingIssueIds.contains(issueId);
+    return DocGroupTile(
+      issueId: issueId,
+      groupDocs: groupDocs,
+      initiallyExpanded: initiallyExpanded,
+      trailing: issueId == null
+          ? null
+          : IconButton(
+              icon: isExporting
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+              tooltip: l10n.techDocumentsDownloadIssuePdf,
+              onPressed: isExporting ? null : () => _downloadIssuePdf(issueId),
+            ),
+      children: groupDocs.map((doc) => _DocumentRow(doc: doc)).toList(),
     );
   }
 }
@@ -432,7 +467,7 @@ class _DocumentRow extends StatelessWidget {
     final subtitleParts = <String>[
       doc.displaySize,
       doc.uploaderName,
-      _formatDate(doc.uploadedAt),
+      formatDocDate(doc.uploadedAt),
       if (doc.equipmentName != null) doc.equipmentName!,
     ];
 
@@ -460,14 +495,5 @@ class _DocumentRow extends StatelessWidget {
         style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
       ),
     );
-  }
-
-  String _formatDate(String raw) {
-    if (raw.isEmpty) return '—';
-    try {
-      return DateFormat('dd/MM/yyyy').format(DateTime.parse(raw).toLocal());
-    } catch (_) {
-      return raw;
-    }
   }
 }
