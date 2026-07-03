@@ -1140,8 +1140,11 @@ class _TechnicianInterventionUpdateScreenState
 
   /// Upload les documents cochés vers l'incident (type 'completion'). Non
   /// bloquant : n'échoue jamais la clôture en cours (pattern archiveInterventionPdf).
-  Future<void> _uploadPickedDocumentsIfAny(String issueId) async {
-    if (!_wantsDocumentUpload || _pickedDocuments.isEmpty) return;
+  /// Retourne `false` en cas d'échec réel de l'upload pour que l'appelant
+  /// puisse avertir le technicien — l'absence de document à uploader n'est
+  /// jamais un échec.
+  Future<bool> _uploadPickedDocumentsIfAny(String issueId) async {
+    if (!_wantsDocumentUpload || _pickedDocuments.isEmpty) return true;
     try {
       await DbApiService.instance.uploadInterventionDocuments(
         issueId,
@@ -1151,7 +1154,22 @@ class _TechnicianInterventionUpdateScreenState
           mimeType: mimeFromExtension(f.extension ?? ''),
         )).toList(),
       );
-    } catch (_) { /* upload non bloquant */ }
+      return true;
+    } catch (e) {
+      debugPrint('[DB] Échec upload pièce jointe intervention: $e');
+      return false;
+    }
+  }
+
+  /// Avertit le technicien que la clôture a réussi mais que la pièce jointe
+  /// n'a pas pu être téléversée — partagé entre `_doSaveAndClose` et
+  /// `_doWorkOrderClose`.
+  void _showAttachmentUploadFailedWarning(AppLocalizations l10n) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.techAttachmentUploadFailed),
+      backgroundColor: AppColors.warning,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -1869,7 +1887,7 @@ class _TechnicianInterventionUpdateScreenState
     );
     try {
       await DbApiService.instance.archiveInterventionPdf(
-        issue.id, pdfBytes, 'rapport_boucle_${issue.id}_${session.loopNumber}.pdf',
+        issue.id, pdfBytes, 'loop_report_${issue.id}_${session.loopNumber}.pdf',
       );
     } catch (_) { /* archivage non bloquant */ }
     return pdfBytes;
@@ -1915,9 +1933,9 @@ class _TechnicianInterventionUpdateScreenState
       // 4-5. Génère le PDF de boucle et l'archive
       final session = IssueInterventionSession.fromApiJson(sessionRaw);
       final pdfBytes = await _generateAndArchiveLoopPdf(issue, session);
-      final loopFileName = 'rapport_boucle_${issue.id}_${session.loopNumber}.pdf';
+      final loopFileName = 'loop_report_${issue.id}_${session.loopNumber}.pdf';
 
-      await _uploadPickedDocumentsIfAny(issue.id);
+      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
 
       await _refreshAfterMutation();
       if (!mounted) return;
@@ -1931,6 +1949,7 @@ class _TechnicianInterventionUpdateScreenState
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
+      if (!uploadOk) _showAttachmentUploadFailedWarning(l10n);
 
       // Propose la consultation immédiate du PDF de boucle avant de quitter.
       await _promptViewPdf(
@@ -2036,14 +2055,15 @@ class _TechnicianInterventionUpdateScreenState
           l10n,
           title: l10n.techViewReportPdfQuestion,
           pdfBytes: reportPdfBytes,
-          fileName: 'rapport_intervention_${issue.id}.pdf',
+          fileName: 'intervention_report_${issue.id}.pdf',
         );
         if (!mounted) return;
       }
 
       // Upload optionnel des documents cochés dans la case inline du formulaire.
-      await _uploadPickedDocumentsIfAny(issue.id);
+      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
       if (!mounted) return;
+      if (!uploadOk) _showAttachmentUploadFailedWarning(l10n);
 
       _stopTimer();
       setState(() => _isDirty = false);
@@ -2125,7 +2145,7 @@ class _TechnicianInterventionUpdateScreenState
       );
 
       await DbApiService.instance.archiveInterventionPdf(
-        issue.id, pdfBytes, 'rapport_intervention_${issue.id}.pdf',
+        issue.id, pdfBytes, 'intervention_report_${issue.id}.pdf',
       );
 
       // Génération auto du rapport final équipement (résumé + KPI), non bloquante,
@@ -2141,7 +2161,7 @@ class _TechnicianInterventionUpdateScreenState
             generatedByRole: byRole,
           );
           await DbApiService.instance.archiveEquipmentFinalReportPdf(
-            issue.equipmentId!, finalReportPdf, 'rapport_final_${issue.equipmentId}.pdf',
+            issue.equipmentId!, finalReportPdf, 'equipment_final_report_${issue.equipmentId}.pdf',
           );
         } catch (_) { /* génération non bloquante */ }
       }
@@ -2161,7 +2181,7 @@ class _TechnicianInterventionUpdateScreenState
             generatedByRole: byRole,
           );
           await DbApiService.instance.archiveInterventionPdf(
-            issue.id, finalReportPdf, 'rapport_final_intervention_${issue.id}.pdf',
+            issue.id, finalReportPdf, 'final_intervention_report_${issue.id}.pdf',
             docType: 'final_report',
           );
         } catch (_) { /* génération non bloquante */ }

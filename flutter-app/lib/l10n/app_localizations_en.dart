@@ -5573,6 +5573,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Issue closed, but the intervention report could not be generated automatically. You can create it manually from the issue detail screen.';
 
   @override
+  String get techAttachmentUploadFailed =>
+      'Issue closed, but the attachment could not be uploaded. You can add it again from the issue detail screen.';
+
+  @override
   String get reportsMaintenanceCost => 'Maintenance cost';
 
   @override

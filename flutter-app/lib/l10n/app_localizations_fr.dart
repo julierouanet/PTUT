@@ -5635,6 +5635,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Incident clôturé, mais le rapport d\'intervention n\'a pas pu être généré automatiquement. Vous pouvez le créer manuellement depuis la fiche incident.';
 
   @override
+  String get techAttachmentUploadFailed =>
+      'Incident clôturé, mais la pièce jointe n\'a pas pu être téléversée. Vous pouvez la rajouter depuis la fiche incident.';
+
+  @override
   String get reportsMaintenanceCost => 'Coût de maintenance';
 
   @override

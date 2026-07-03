@@ -59,9 +59,20 @@ async function imageToStampedPdf(imageBuffer, mimeType, { annexNumber, issueId, 
   const outDoc = await PDFDocument.create();
   const font = await outDoc.embedFont(StandardFonts.Helvetica);
 
-  const image = mimeType === 'image/png'
-    ? await outDoc.embedPng(imageBuffer)
-    : await outDoc.embedJpg(imageBuffer);
+  let image;
+  if (mimeType === 'image/png') {
+    image = await outDoc.embedPng(imageBuffer);
+  } else {
+    // Recopie dans un buffer non poolé : le JpegEmbedder de pdf-lib (contrairement
+    // au PngEmbedder) lit `imageData.buffer` sans tenir compte de byteOffset/
+    // byteLength, ce qui le fait échouer ("SOI not found in JPEG") sur tout
+    // buffer issu du pool interne de Node (fs.readFileSync sur un fichier < 4 Ko,
+    // ex. petite photo compressée) alors que l'image source est parfaitement valide.
+    const normalizedBuffer = Buffer.from(
+      imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength)
+    );
+    image = await outDoc.embedJpg(normalizedBuffer);
+  }
 
   const [pageWidth, pageHeight] = PageSizes.A4;
   const page = outDoc.addPage([pageWidth, pageHeight]);

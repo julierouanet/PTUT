@@ -28,7 +28,7 @@ class PdfReportService {
 
   /// Retourne une chaîne affichable pour une valeur potentiellement nulle/vide.
   /// Utilisé dans toutes les méthodes de génération PDF pour éviter les champs vides.
-  static String _s(dynamic v) => (v == null || v.toString().isEmpty) ? '—' : v.toString();
+  static String _s(dynamic v) => (v == null || v.toString().isEmpty) ? '-' : v.toString();
 
   /// Charge le logo de l'hôpital pour le letterhead (octets bruts, une fois par document).
   static Future<Uint8List> _loadLogo() async =>
@@ -591,7 +591,7 @@ class PdfReportService {
               _td(p.originalName),
               _td('Photo'),
               _td(_s(p.uploadedAt).split(' ').first),
-              _td('—'),
+              _td('-'),
               _td(p.fileSizeKb.toString()),
             ])),
       ],
@@ -701,12 +701,12 @@ class PdfReportService {
                 summary.totalInterventions.toString(), _primary)),
             pw.SizedBox(width: 8),
             pw.Expanded(child: _kpiBox('Average MTTR (hours)',
-                summary.mttrHoursAvg == null ? '—' : summary.mttrHoursAvg!.toStringAsFixed(1), _warning)),
+                summary.mttrHoursAvg == null ? '-' : summary.mttrHoursAvg!.toStringAsFixed(1), _warning)),
           ]),
           pw.SizedBox(height: 8),
           pw.Row(children: [
             pw.Expanded(child: _kpiBox('Reopened rate',
-                summary.reopenedRatePct == null ? '—' : '${summary.reopenedRatePct!.toStringAsFixed(1)}%', _error)),
+                summary.reopenedRatePct == null ? '-' : '${summary.reopenedRatePct!.toStringAsFixed(1)}%', _error)),
             pw.SizedBox(width: 8),
             pw.Expanded(child: _kpiBox('Total downtime (hours)',
                 summary.downtimeHoursTotal.toStringAsFixed(1), _success)),
@@ -898,7 +898,7 @@ class PdfReportService {
           return pw.TableRow(children: [
             _td(_s(i.resolvedAt).split(' ').first),
             _td(_s(i.technicianName)),
-            _td(i.durationHours == null ? '—' : i.durationHours!.toStringAsFixed(1)),
+            _td(i.durationHours == null ? '-' : i.durationHours!.toStringAsFixed(1)),
             _td(_s(i.rootCause)),
             _td(_s(i.summary)),
             _td(i.reopened ? 'Yes' : 'No', color: i.reopened ? _warning : null),
@@ -1123,7 +1123,7 @@ class PdfReportService {
         'cette_annee' => 'This year',
         '1_2_ans'     => '1–2 years',
         'plus_tard'   => 'Later',
-        _             => '—',
+        _             => '-',
       };
 
   // Tableau détaillé du plan de remplacement
@@ -1161,12 +1161,12 @@ class PdfReportService {
                       ? _textMuted
                       : _success;
           return pw.TableRow(children: [
-            _td(m['name'] as String? ?? '—'),
-            _td(m['subcategory'] as String? ?? '—'),
-            _td(m['criticality'] as String? ?? '—'),
-            _td(age?.toString() ?? '—'),
-            _td(lifespan?.toString() ?? '—'),
-            _td(over == null ? '—' : (over > 0 ? '+$over' : '$over')),
+            _td(m['name'] as String? ?? '-'),
+            _td(m['subcategory'] as String? ?? '-'),
+            _td(m['criticality'] as String? ?? '-'),
+            _td(age?.toString() ?? '-'),
+            _td(lifespan?.toString() ?? '-'),
+            _td(over == null ? '-' : (over > 0 ? '+$over' : '$over')),
             _td(_replacementStatusLabel(status), bold: true, color: color),
             _td(_replacementHorizonLabel(m['horizon'] as String?)),
           ]);

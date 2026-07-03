@@ -1139,6 +1139,13 @@ router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ..
           revertDocumentAnnexStamp(db, doc.id);
           doc.annex_number = null;
           doc.annex_type_index = null;
+          logAction({
+            user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+            action: 'annex_stamp_failed',
+            target_type: 'issue', target_id: req.params.id, target_name: doc.original_name,
+            details: JSON.stringify({ doc_id: doc.id, mime_type: doc.mime_type, error: err.message }),
+            ...extractReqMeta(req),
+          });
         }
       }));
     }
