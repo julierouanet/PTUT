@@ -168,7 +168,7 @@
 
   "issueFormTitle": "Signaler un probleme",
   "issueFormSubtitle": "Remplissez le formulaire pour signaler un probleme d'equipement",
-  "issueFormEquipment": "Equipement concerne *",
+  "issueFormRelatedEquipment": "Équipement concerné *",
   "issueFormSelectEquipment": "Selectionnez un equipement",
   "issueFormProblemType": "Type de probleme *",
   "issueFormBreakdown": "Panne",
@@ -942,7 +942,6 @@
   "issueCategoryOtherDesc": "Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.",
   "issueFormNoEquipmentInCategory": "Aucun équipement de ce type trouvé dans votre département.",
 
-  "issueFormTagNumber": "Numéro de Tag IT",
   "issueFormTagNumberHint": "Ex: TG-0042",
   "issueFormTagSearching": "Recherche en cours...",
   "issueFormTagNotFound": "Aucun équipement trouvé pour ce tag",
@@ -960,8 +959,6 @@
   "issueFormDepartmentRequired": "Veuillez sélectionner un département",
   "issueFormBuildingHint": "Ex: Bloc A, Bâtiment Principal...",
   "issueFormLocationHint": "Ex: Salle 12, Couloir Nord...",
-  "issueFormInfraTagNumber": "Numéro de tag (optionnel)",
-  "issueFormInfraTagHint": "Ex: TG-0042",
   "issueFormBuildingRequired": "Veuillez saisir le nom du bâtiment",
   "issueFormLocationRequired2": "Veuillez saisir la localisation",
   "issueFormCategoryRequired": "Veuillez sélectionner une catégorie",

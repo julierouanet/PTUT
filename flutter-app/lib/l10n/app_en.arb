@@ -163,7 +163,7 @@
 
   "issueFormTitle": "Report a problem",
   "issueFormSubtitle": "Fill out the form to report an equipment problem",
-  "issueFormEquipment": "Related equipment *",
+  "issueFormRelatedEquipment": "Related equipment *",
   "issueFormSelectEquipment": "Select equipment",
   "issueFormProblemType": "Problem type *",
   "issueFormBreakdown": "Breakdown",
@@ -921,7 +921,6 @@
   "issueCategoryOtherDesc": "Unclassified issue or unknown category — all equipment remains available.",
   "issueFormNoEquipmentInCategory": "No equipment of this type found in your department.",
 
-  "issueFormTagNumber": "IT Tag Number",
   "issueFormTagNumberHint": "E.g.: TG-0042",
   "issueFormTagSearching": "Searching...",
   "issueFormTagNotFound": "No equipment found for this tag",
@@ -949,8 +948,6 @@
   "issueFormIssueRequired": "Please select the specific issue",
   "issueFormBuildingHint": "E.g.: Block A, Main Building...",
   "issueFormLocationHint": "E.g.: Room 12, North Corridor...",
-  "issueFormInfraTagNumber": "Tag number (optional)",
-  "issueFormInfraTagHint": "E.g.: TG-0042",
 
   "registerTitle": "Sign Up",
   "@registerTitle": {},

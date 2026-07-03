@@ -992,11 +992,11 @@ abstract class AppLocalizations {
   /// **'Remplissez le formulaire pour signaler un probleme d\'equipement'**
   String get issueFormSubtitle;
 
-  /// No description provided for @issueFormEquipment.
+  /// No description provided for @issueFormRelatedEquipment.
   ///
   /// In fr, this message translates to:
-  /// **'Equipement concerne *'**
-  String get issueFormEquipment;
+  /// **'Équipement concerné *'**
+  String get issueFormRelatedEquipment;
 
   /// No description provided for @issueFormSelectEquipment.
   ///
@@ -4964,12 +4964,6 @@ abstract class AppLocalizations {
   /// **'Aucun équipement de ce type trouvé dans votre département.'**
   String get issueFormNoEquipmentInCategory;
 
-  /// No description provided for @issueFormTagNumber.
-  ///
-  /// In fr, this message translates to:
-  /// **'Numéro de Tag IT'**
-  String get issueFormTagNumber;
-
   /// No description provided for @issueFormTagNumberHint.
   ///
   /// In fr, this message translates to:
@@ -5071,18 +5065,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Ex: Salle 12, Couloir Nord...'**
   String get issueFormLocationHint;
-
-  /// No description provided for @issueFormInfraTagNumber.
-  ///
-  /// In fr, this message translates to:
-  /// **'Numéro de tag (optionnel)'**
-  String get issueFormInfraTagNumber;
-
-  /// No description provided for @issueFormInfraTagHint.
-  ///
-  /// In fr, this message translates to:
-  /// **'Ex: TG-0042'**
-  String get issueFormInfraTagHint;
 
   /// No description provided for @issueFormBuildingRequired.
   ///

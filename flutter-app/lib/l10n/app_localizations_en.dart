@@ -476,7 +476,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Fill out the form to report an equipment problem';
 
   @override
-  String get issueFormEquipment => 'Related equipment *';
+  String get issueFormRelatedEquipment => 'Related equipment *';
 
   @override
   String get issueFormSelectEquipment => 'Select equipment';
@@ -2631,9 +2631,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No equipment of this type found in your department.';
 
   @override
-  String get issueFormTagNumber => 'IT Tag Number';
-
-  @override
   String get issueFormTagNumberHint => 'E.g.: TG-0042';
 
   @override
@@ -2683,12 +2680,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormLocationHint => 'E.g.: Room 12, North Corridor...';
-
-  @override
-  String get issueFormInfraTagNumber => 'Tag number (optional)';
-
-  @override
-  String get issueFormInfraTagHint => 'E.g.: TG-0042';
 
   @override
   String get issueFormBuildingRequired => 'Please select a building';
