@@ -1009,17 +1009,24 @@ except: pass
       fi
     fi
 
-    # ── Permissions Admin API : manage-users pour auth-service ────────────
+    # ── Permissions Admin API : rôles realm-management pour auth-service ──
     # Le service account du client auth-service doit pouvoir créer/modifier
-    # des utilisateurs via l'Admin API Keycloak (inscription, gestion comptes).
-    # Sans ce rôle → HTTP 403 sur POST /api/auth/register et les routes users.
-    $KCADM add-roles \
-      -r kabutare-hospital \
-      --uusername service-account-auth-service \
-      --cclientid realm-management \
-      --rolename manage-users 2>/dev/null \
-      && echo "      ✓ manage-users assigné au service account auth-service." \
-      || echo "      ⚠ manage-users déjà assigné ou client non trouvé."
+    # des utilisateurs (manage-users) ET lire/lister rôles et users
+    # (manage-realm, query-realms, view-users, query-users) via l'Admin API.
+    # Sans manage-users → 403 sur POST /api/auth/register et les routes users.
+    # Sans les 4 autres → GET /roles/{roleName} renvoie 403, interprété à tort
+    # par assignRolesToUser() comme "rôle introuvable" : les comptes créés via
+    # /api/auth/access-request se retrouvent sans aucun rôle assigné (bug
+    # constaté sur déploiement VM 2026-07-03). Même liste que keycloak-init.js.
+    for KC_SVC_ROLE in manage-users manage-realm query-realms view-users query-users; do
+      $KCADM add-roles \
+        -r kabutare-hospital \
+        --uusername service-account-auth-service \
+        --cclientid realm-management \
+        --rolename "${KC_SVC_ROLE}" 2>/dev/null \
+        && echo "      ✓ ${KC_SVC_ROLE} assigné au service account auth-service." \
+        || echo "      ⚠ ${KC_SVC_ROLE} déjà assigné ou client non trouvé."
+    done
 
     # ── Redirect URIs multi-IP (local + publique) ─────────────────────────
     # Construction de la liste des URIs valides pour les deux IPs
