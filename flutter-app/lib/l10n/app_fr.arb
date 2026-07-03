@@ -1216,7 +1216,6 @@
   "issueDetailRelatedIssues": "Incidents récents sur cet équipement",
   "issueDetailViewEquipment": "Voir la fiche équipement",
   "issueDetailUpdatedAt": "Dernière mise à jour",
-  "issueDetailUpdateButton": "Mettre à jour l'incident",
   "issueDetailTypeLabel": "Type de défaillance",
   "issueDetailReporter": "Signalé par",
   "issueDetailReportDate": "Date de signalement",

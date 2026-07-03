@@ -1195,7 +1195,6 @@
   "issueDetailRelatedIssues": "Recent issues on this equipment",
   "issueDetailViewEquipment": "View equipment details",
   "issueDetailUpdatedAt": "Last updated",
-  "issueDetailUpdateButton": "Update issue",
   "issueDetailTypeLabel": "Failure type",
   "issueDetailReporter": "Reported by",
   "issueDetailReportDate": "Report date",

@@ -3234,9 +3234,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueDetailUpdatedAt => 'Last updated';
 
   @override
-  String get issueDetailUpdateButton => 'Update issue';
-
-  @override
   String get issueDetailTypeLabel => 'Failure type';
 
   @override

@@ -6092,12 +6092,6 @@ abstract class AppLocalizations {
   /// **'Dernière mise à jour'**
   String get issueDetailUpdatedAt;
 
-  /// No description provided for @issueDetailUpdateButton.
-  ///
-  /// In fr, this message translates to:
-  /// **'Mettre à jour l\'incident'**
-  String get issueDetailUpdateButton;
-
   /// No description provided for @issueDetailTypeLabel.
   ///
   /// In fr, this message translates to:

@@ -46,19 +46,16 @@ String _rejectReasonLabel(AppLocalizations l10n, String code) {
 /// Page complète de détail d'un incident — standard GMAO.
 ///
 /// [issueId]       : identifiant de l'incident à charger.
-/// [onNavigate]    : callback navigation vers l'écran technicien (index 4).
 /// [isPanel]       : si true, pas de Scaffold — utilisé en mode Split View desktop.
 /// [onClosePanel]  : callback pour fermer le panneau (mode panel uniquement).
 class IssueDetailScreen extends StatefulWidget {
   final String issueId;
-  final Function(int, {String? issueId})? onNavigate;
   final bool isPanel;
   final VoidCallback? onClosePanel;
 
   const IssueDetailScreen({
     super.key,
     required this.issueId,
-    this.onNavigate,
     this.isPanel = false,
     this.onClosePanel,
   });
@@ -249,7 +246,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           ),
         ),
         body: _buildTabbedBody(l10n, detail),
-        bottomNavigationBar: _buildBottomBar(l10n),
       ),
     );
   }
@@ -309,7 +305,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           header,
           _styledTabBar(l10n),
           Expanded(child: _buildTabbedBody(l10n, detail)),
-          _buildBottomBar(l10n),
         ],
       ),
     );
@@ -1541,39 +1536,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
   }
 
-  // ── Barre de bas de page ───────────────────────────────────────────────────
-
-  Widget _buildBottomBar(AppLocalizations l10n) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () {
-              if (widget.isPanel) {
-                widget.onNavigate?.call(4, issueId: widget.issueId);
-              } else {
-                if (widget.onNavigate != null) {
-                  Navigator.pop(context);
-                  widget.onNavigate!(4, issueId: widget.issueId);
-                } else {
-                  Navigator.pop(context);
-                }
-              }
-            },
-            icon: const Icon(Icons.build, size: 18),
-            label: Text(l10n.issueDetailUpdateButton),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ── Widgets internes réutilisables ─────────────────────────────────────────────

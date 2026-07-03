@@ -810,10 +810,7 @@ class _IssueTrackingScreenState extends State<IssueTrackingScreen>
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => IssueDetailScreen(
-            issueId:    issue.id,
-            onNavigate: widget.onNavigate,
-          ),
+          builder: (_) => IssueDetailScreen(issueId: issue.id),
         ),
       );
     }
