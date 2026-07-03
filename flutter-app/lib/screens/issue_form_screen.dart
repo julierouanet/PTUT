@@ -1564,6 +1564,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
             if (query.isEmpty) return const Iterable<Equipment>.empty();
             return DataService().equipment.where((eq) =>
                 eq.name.toLowerCase().contains(query) ||
+                eq.id.toLowerCase().contains(query) ||
+                eq.serialNumber.toLowerCase().contains(query) ||
                 eq.tags.any((t) => t.toLowerCase().contains(query))).toList();
           },
           onSelected: onEquipmentSelected,
