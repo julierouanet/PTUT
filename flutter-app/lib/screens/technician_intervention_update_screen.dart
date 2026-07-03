@@ -28,6 +28,7 @@ class _PendingUpload {
   bool uploading;
   bool failed;
   bool removed;
+  String? errorMessage;
   Future<void>? uploadFuture;
 
   _PendingUpload(this.file)
@@ -1159,7 +1160,7 @@ class _TechnicianInterventionUpdateScreenState
       final docs = await DbApiService.instance.uploadInterventionDocuments(
         issueId,
         [(
-          bytes: Uint8List.fromList(upload.file.bytes!),
+          bytes: upload.file.bytes!,
           name: upload.file.name,
           mimeType: mimeFromExtension(upload.file.extension ?? ''),
         )],
@@ -1186,6 +1187,7 @@ class _TechnicianInterventionUpdateScreenState
       setState(() {
         upload.uploading = false;
         upload.failed = true;
+        upload.errorMessage = e.toString().replaceFirst('Exception: ', '');
       });
     }
   }
@@ -1217,10 +1219,14 @@ class _TechnicianInterventionUpdateScreenState
           setState(() {
             upload.uploading = true;
             upload.failed = false;
+            upload.errorMessage = null;
           });
           upload.uploadFuture = _uploadOneFile(upload);
         },
-        child: const Icon(Icons.refresh, size: 14, color: AppColors.warning),
+        child: Tooltip(
+          message: upload.errorMessage ?? '',
+          child: const Icon(Icons.refresh, size: 14, color: AppColors.warning),
+        ),
       );
     } else {
       statusIcon = const Icon(Icons.check_circle_outline, size: 14, color: AppColors.success);
@@ -1239,10 +1245,13 @@ class _TechnicianInterventionUpdateScreenState
         children: [
           statusIcon,
           const SizedBox(width: 6),
-          Text(upload.file.name,
-              style: TextStyle(
-                  fontSize: 12,
-                  color: upload.failed ? AppColors.warning : AppColors.primary)),
+          Tooltip(
+            message: upload.failed ? (upload.errorMessage ?? '') : '',
+            child: Text(upload.file.name,
+                style: TextStyle(
+                    fontSize: 12,
+                    color: upload.failed ? AppColors.warning : AppColors.primary)),
+          ),
           const SizedBox(width: 6),
           GestureDetector(
             onTap: upload.uploading
@@ -1278,7 +1287,9 @@ class _TechnicianInterventionUpdateScreenState
     if (futures.isNotEmpty) await Future.wait(futures, eagerError: false);
     return _pendingUploads
         .where((p) => !p.removed && p.failed)
-        .map((p) => p.file.name)
+        .map((p) => p.errorMessage == null
+            ? p.file.name
+            : '${p.file.name} (${p.errorMessage})')
         .toList();
   }
 
@@ -1286,13 +1297,11 @@ class _TechnicianInterventionUpdateScreenState
   /// n'ont pas pu être téléversés — liste les noms pour qu'il sache lesquels.
   void _showAttachmentUploadFailedWarning(
       AppLocalizations l10n, List<String> failedNames) {
-    final message = failedNames.isEmpty
-        ? l10n.techAttachmentUploadFailed
-        : l10n.techAttachmentUploadFailedFiles(failedNames.join(', '));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
+      content: Text(l10n.techAttachmentUploadFailedFiles(failedNames.join(', '))),
       backgroundColor: AppColors.warning,
       behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 8),
     ));
   }
 

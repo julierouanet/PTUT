@@ -180,9 +180,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Tab 0 : Biomédical ────────────────────────────────────────────────────
   final _bioTagController = TextEditingController();
+  final _bioTagFocusNode = FocusNode();
   Equipment? _bioEquipment;
-  bool _bioSearching = false;
-  String? _bioTagError;
   String _bioProblemType = '';
   bool _bioUnlisted = false;
   final _bioUnlistedNameController = TextEditingController();
@@ -194,9 +193,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   final _infraBuildingController   = TextEditingController();
   final _infraLocationController   = TextEditingController();
   final _infraTagController        = TextEditingController();
+  final _infraTagFocusNode = FocusNode();
   Equipment? _infraEquipment;
-  bool _infraSearching = false;
-  String? _infraTagError;
   bool _infraUnlisted = false;
   final _infraUnlistedNameController = TextEditingController();
   String? _infraCategory;
@@ -207,9 +205,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Tab 2 : IT ────────────────────────────────────────────────────────────
   final _tagController = TextEditingController();
+  final _itTagFocusNode = FocusNode();
   Equipment? _itEquipment;
-  bool _itSearching = false;
-  String? _itTagError;
   String _itProblemType = '';
   bool _itUnlisted = false;
   final _itUnlistedNameController = TextEditingController();
@@ -222,9 +219,8 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   final _autreBuildingController = TextEditingController();
   final _autreLocationController = TextEditingController();
   final _autreTagController = TextEditingController();
+  final _autreTagFocusNode = FocusNode();
   Equipment? _autreEquipment;
-  bool _autreSearching = false;
-  String? _autreTagError;
   bool _autreUnlisted = false;
   final _autreUnlistedNameController = TextEditingController();
 
@@ -292,16 +288,24 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     // Garde-fou : si le texte du tag change après un match, l'équipement
     // affiché ne correspond plus forcément — on l'invalide.
     _bioTagController.addListener(() {
-      if (_bioEquipment != null) setState(() { _bioEquipment = null; _bioTagError = null; });
+      if (_bioEquipment != null && _bioTagController.text != _bioEquipment!.name) {
+        setState(() => _bioEquipment = null);
+      }
     });
     _infraTagController.addListener(() {
-      if (_infraEquipment != null) setState(() { _infraEquipment = null; _infraTagError = null; });
+      if (_infraEquipment != null && _infraTagController.text != _infraEquipment!.name) {
+        setState(() => _infraEquipment = null);
+      }
     });
     _tagController.addListener(() {
-      if (_itEquipment != null) setState(() { _itEquipment = null; _itTagError = null; });
+      if (_itEquipment != null && _tagController.text != _itEquipment!.name) {
+        setState(() => _itEquipment = null);
+      }
     });
     _autreTagController.addListener(() {
-      if (_autreEquipment != null) setState(() { _autreEquipment = null; _autreTagError = null; });
+      if (_autreEquipment != null && _autreTagController.text != _autreEquipment!.name) {
+        setState(() => _autreEquipment = null);
+      }
     });
   }
 
@@ -318,10 +322,13 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   void dispose() {
     _descriptionController.dispose();
     _tagController.dispose();
+    _itTagFocusNode.dispose();
     _bioTagController.dispose();
+    _bioTagFocusNode.dispose();
     _infraBuildingController.dispose();
     _infraLocationController.dispose();
     _infraTagController.dispose();
+    _infraTagFocusNode.dispose();
     _infraUnlistedNameController.dispose();
     _bioUnlistedNameController.dispose();
     _itUnlistedNameController.dispose();
@@ -332,6 +339,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     _autreBuildingController.dispose();
     _autreLocationController.dispose();
     _autreTagController.dispose();
+    _autreTagFocusNode.dispose();
     _autreUnlistedNameController.dispose();
     super.dispose();
   }
@@ -406,26 +414,22 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _bioBuildingController.clear();
       _bioLocationController.clear();
       _bioEquipment      = null;
-      _bioTagError       = null;
       _bioTagController.clear();
       _infraUnlisted     = false;
       _infraUnlistedNameController.clear();
       _infraEquipment    = null;
-      _infraTagError     = null;
       _infraTagController.clear();
       _itUnlisted        = false;
       _itUnlistedNameController.clear();
       _itBuildingController.clear();
       _itLocationController.clear();
       _itEquipment       = null;
-      _itTagError        = null;
       _tagController.clear();
       _autreUnlisted     = false;
       _autreUnlistedNameController.clear();
       _autreBuildingController.clear();
       _autreLocationController.clear();
       _autreEquipment    = null;
-      _autreTagError     = null;
       _autreTagController.clear();
       _scanBlockMode     = false;
       _currentStep       = 0;
@@ -558,10 +562,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       return;
     }
     _bioTagController.text = eq.tags.isNotEmpty ? eq.tags.first : eq.id;
-    setState(() {
-      _bioEquipment = eq;
-      _bioTagError  = null;
-    });
+    setState(() => _bioEquipment = eq);
   }
 
   // ── Scanner QR mode Scan & Block ──────────────────────────────────────────
@@ -676,7 +677,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       } else {
         _selectedTab  = 0;
         _bioEquipment = eq;
-        _bioTagError  = null;
         _bioUnlisted  = false;
       }
       _urgency       = IssueUrgency.critique;
@@ -690,76 +690,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       duration: const Duration(seconds: 3),
     ));
   }
-
-  // ── Recherche d'équipement par numéro de tag (unifiée sur les 4 onglets) ──
-
-  /// Recherche un équipement par tag et applique le résultat via [apply].
-  /// Utilisée par les 4 onglets — chacun fournit son propre `setState`.
-  Future<void> _searchEquipmentByTag({
-    required TextEditingController controller,
-    required void Function({
-      required Equipment? equipment,
-      required bool searching,
-      required String? error,
-    }) apply,
-  }) async {
-    final tag = controller.text.trim();
-    if (tag.isEmpty) return;
-    final l10n = AppLocalizations.of(context)!;
-    apply(equipment: null, searching: true, error: null);
-    try {
-      final found = await DbApiService.instance.getEquipmentByTagNumber(tag);
-      if (!mounted) return;
-      apply(
-        equipment: found,
-        searching: false,
-        error: found == null ? l10n.issueFormTagNotFound : null,
-      );
-    } catch (e) {
-      if (!mounted) return;
-      apply(equipment: null, searching: false, error: e.toString());
-    }
-  }
-
-  Future<void> _searchByTagNumber() => _searchEquipmentByTag(
-        controller: _tagController,
-        apply: ({required equipment, required searching, required error}) =>
-            setState(() {
-              _itEquipment = equipment;
-              _itSearching = searching;
-              _itTagError  = error;
-            }),
-      );
-
-  Future<void> _searchBioByTag() => _searchEquipmentByTag(
-        controller: _bioTagController,
-        apply: ({required equipment, required searching, required error}) =>
-            setState(() {
-              _bioEquipment = equipment;
-              _bioSearching = searching;
-              _bioTagError  = error;
-            }),
-      );
-
-  Future<void> _searchInfraByTag() => _searchEquipmentByTag(
-        controller: _infraTagController,
-        apply: ({required equipment, required searching, required error}) =>
-            setState(() {
-              _infraEquipment = equipment;
-              _infraSearching = searching;
-              _infraTagError  = error;
-            }),
-      );
-
-  Future<void> _searchAutreByTag() => _searchEquipmentByTag(
-        controller: _autreTagController,
-        apply: ({required equipment, required searching, required error}) =>
-            setState(() {
-              _autreEquipment = equipment;
-              _autreSearching = searching;
-              _autreTagError  = error;
-            }),
-      );
 
   // ── Gestion photos ────────────────────────────────────────────────────────
 
@@ -1607,17 +1537,15 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   // SOUS-FORMULAIRES
   // ══════════════════════════════════════════════════════════════════════════
 
-  /// Bloc "Équipement concerné" unifié — recherche par tag (match exact,
-  /// cross-catégorie) OU nom libre en mode non répertorié. Identique sur les
-  /// 4 onglets Bio/Infra/IT/Autre.
+  /// Bloc "Équipement concerné" unifié — autocomplétion locale sur nom/tags OU
+  /// nom libre en mode non répertorié. Identique sur les 4 onglets Bio/Infra/IT/Autre.
   List<Widget> _buildRelatedEquipmentBlock({
     required TextEditingController tagController,
+    required FocusNode tagFocusNode,
     required Equipment? equipment,
-    required bool searching,
-    required String? tagError,
     required bool unlisted,
     required TextEditingController unlistedNameController,
-    required VoidCallback onSearch,
+    required ValueChanged<Equipment> onEquipmentSelected,
     required VoidCallback onToggleUnlisted,
     required AppLocalizations l10n,
     Widget? trailingButton,
@@ -1627,70 +1555,75 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         Text(l10n.issueFormRelatedEquipment,
             style: const TextStyle(fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Expanded(
-            child: TextFormField(
-              controller: tagController,
-              decoration: InputDecoration(
-                hintText: l10n.issueFormTagNumberHint,
-                prefixIcon:
-                    const Icon(Icons.tag, color: AppColors.textSecondary),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search),
-                  tooltip: l10n.issueFormSearchEquipmentByTag,
-                  onPressed: searching ? null : onSearch,
+        RawAutocomplete<Equipment>(
+          textEditingController: tagController,
+          focusNode: tagFocusNode,
+          displayStringForOption: (eq) => eq.name,
+          optionsBuilder: (TextEditingValue value) {
+            final query = value.text.toLowerCase().trim();
+            if (query.isEmpty) return const Iterable<Equipment>.empty();
+            return DataService().equipment.where((eq) =>
+                eq.name.toLowerCase().contains(query) ||
+                eq.tags.any((t) => t.toLowerCase().contains(query))).toList();
+          },
+          onSelected: onEquipmentSelected,
+          fieldViewBuilder: (context, controller, focusNode, onSubmitted) =>
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    onFieldSubmitted: (_) => onSubmitted(),
+                    decoration: InputDecoration(
+                      hintText: l10n.issueFormTagNumberHint,
+                      prefixIcon: const Icon(Icons.tag, color: AppColors.textSecondary),
+                      suffixIcon: equipment != null
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () => controller.clear(),
+                            )
+                          : null,
+                    ),
+                    validator: (_) =>
+                        equipment == null ? l10n.issueFormTagRequired : null,
+                  ),
+                ),
+                if (trailingButton != null) ...[
+                  const SizedBox(width: 8),
+                  trailingButton,
+                ],
+              ]),
+          optionsViewBuilder: (context, onSelected, options) => Align(
+            alignment: Alignment.topLeft,
+            child: Material(
+              elevation: 4,
+              borderRadius: BorderRadius.circular(8),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 250),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final eq = options.elementAt(index);
+                    return ListTile(
+                      dense: true,
+                      leading: const Icon(Icons.medical_services_outlined, size: 20),
+                      title: Text(eq.name,
+                          style: const TextStyle(fontSize: 14)),
+                      subtitle: Text(
+                        eq.tags.isNotEmpty ? eq.tags.join(' · ') : eq.department,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                      ),
+                      onTap: () => onSelected(eq),
+                    );
+                  },
                 ),
               ),
-              onFieldSubmitted: (_) => onSearch(),
-              validator: (_) {
-                if (equipment == null && !searching) {
-                  return l10n.issueFormTagRequired;
-                }
-                return null;
-              },
             ),
           ),
-          if (trailingButton != null) ...[
-            const SizedBox(width: 8),
-            trailingButton,
-          ],
-        ]),
-        if (searching) ...[
-          const SizedBox(height: 8),
-          Row(children: [
-            const SizedBox(width: 4),
-            const SizedBox(
-              width: 16, height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-            const SizedBox(width: 12),
-            Text(l10n.issueFormTagSearching,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 13)),
-          ]),
-        ],
-        if (tagError != null) ...[
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: AppColors.errorLight,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                  color: AppColors.error.withValues(alpha: 0.3)),
-            ),
-            child: Row(children: [
-              const Icon(Icons.error_outline,
-                  color: AppColors.error, size: 18),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(tagError,
-                    style: const TextStyle(
-                        color: AppColors.error, fontSize: 13)),
-              ),
-            ]),
-          ),
-        ],
+        ),
         if (equipment != null) ...[
           const SizedBox(height: 12),
           _buildEquipmentAutoFill(equipment, l10n),
@@ -1730,18 +1663,16 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return [
       ..._buildRelatedEquipmentBlock(
         tagController: _bioTagController,
+        tagFocusNode: _bioTagFocusNode,
         equipment: _bioEquipment,
-        searching: _bioSearching,
-        tagError: _bioTagError,
         unlisted: _bioUnlisted,
         unlistedNameController: _bioUnlistedNameController,
-        onSearch: _searchBioByTag,
+        onEquipmentSelected: (eq) => setState(() => _bioEquipment = eq),
         trailingButton: _buildQrScanButton(l10n),
         onToggleUnlisted: () => setState(() {
           _bioUnlisted = !_bioUnlisted;
           if (_bioUnlisted) {
             _bioEquipment = null;
-            _bioTagError  = null;
             _bioTagController.clear();
           } else {
             _bioUnlistedNameController.clear();
@@ -1775,17 +1706,15 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return [
       ..._buildRelatedEquipmentBlock(
         tagController: _infraTagController,
+        tagFocusNode: _infraTagFocusNode,
         equipment: _infraEquipment,
-        searching: _infraSearching,
-        tagError: _infraTagError,
         unlisted: _infraUnlisted,
         unlistedNameController: _infraUnlistedNameController,
-        onSearch: _searchInfraByTag,
+        onEquipmentSelected: (eq) => setState(() => _infraEquipment = eq),
         onToggleUnlisted: () => setState(() {
           _infraUnlisted = !_infraUnlisted;
           if (_infraUnlisted) {
             _infraEquipment = null;
-            _infraTagError  = null;
             _infraTagController.clear();
           } else {
             _infraUnlistedNameController.clear();
@@ -1977,17 +1906,15 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return [
       ..._buildRelatedEquipmentBlock(
         tagController: _tagController,
+        tagFocusNode: _itTagFocusNode,
         equipment: _itEquipment,
-        searching: _itSearching,
-        tagError: _itTagError,
         unlisted: _itUnlisted,
         unlistedNameController: _itUnlistedNameController,
-        onSearch: _searchByTagNumber,
+        onEquipmentSelected: (eq) => setState(() => _itEquipment = eq),
         onToggleUnlisted: () => setState(() {
           _itUnlisted = !_itUnlisted;
           if (_itUnlisted) {
             _itEquipment = null;
-            _itTagError  = null;
             _tagController.clear();
           } else {
             _itUnlistedNameController.clear();
@@ -2022,17 +1949,15 @@ class IssueFormScreenState extends State<IssueFormScreen> {
     return [
       ..._buildRelatedEquipmentBlock(
         tagController: _autreTagController,
+        tagFocusNode: _autreTagFocusNode,
         equipment: _autreEquipment,
-        searching: _autreSearching,
-        tagError: _autreTagError,
         unlisted: _autreUnlisted,
         unlistedNameController: _autreUnlistedNameController,
-        onSearch: _searchAutreByTag,
+        onEquipmentSelected: (eq) => setState(() => _autreEquipment = eq),
         onToggleUnlisted: () => setState(() {
           _autreUnlisted = !_autreUnlisted;
           if (_autreUnlisted) {
             _autreEquipment = null;
-            _autreTagError  = null;
             _autreTagController.clear();
           } else {
             _autreUnlistedNameController.clear();

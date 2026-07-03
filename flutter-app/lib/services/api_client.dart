@@ -245,15 +245,12 @@ class ApiClient {
     required String fileField,
     Map<String, String> fields = const {},
   }) async {
-    final result = await _sendMultipartFiles(url, files, fileField, fields);
-    if (result.statusCode == 401) {
+    var toProcess = await _sendMultipartFiles(url, files, fileField, fields);
+    if (toProcess.statusCode == 401) {
       final refreshed = await _tryRefresh();
-      if (refreshed) {
-        final retried = await _sendMultipartFiles(url, files, fileField, fields);
-        return (await _parseMultipartResponse(retried)) as List<dynamic>;
-      }
+      if (refreshed) toProcess = await _sendMultipartFiles(url, files, fileField, fields);
     }
-    return (await _parseMultipartResponse(result)) as List<dynamic>;
+    return (await _parseMultipartResponse(toProcess)) as List<dynamic>;
   }
 
   static Future<http.StreamedResponse> _sendMultipart(

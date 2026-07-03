@@ -1175,8 +1175,7 @@ router.delete('/:id/documents/:doc_id', verifyToken, requireRole('admin', 'super
 
     if (!doc) return res.status(404).json({ error: 'Document introuvable' });
 
-    const isPrivileged = req.user.roles.includes('admin') || req.user.roles.includes('supervisor');
-    if (!isPrivileged && doc.uploaded_by !== req.user.id) {
+    if (!hasRole(req, 'admin', 'supervisor') && doc.uploaded_by !== req.user.id) {
       return res.status(403).json({ error: 'Seul l\'auteur de la pièce jointe peut la supprimer' });
     }
 
