@@ -2371,5 +2371,12 @@
 
   "reportsDocumentedClosureRate": "Documented closure rate",
   "reportsDocumentedClosureRateNoData": "Insufficient data",
-  "reportsDocumentedClosureRateHint": "Share of closed issues with at least one archived PDF document"
+  "reportsDocumentedClosureRateHint": "Share of closed issues with at least one archived PDF document",
+
+  "issueDetailTabIdentification": "Identification",
+  "issueDetailTabIntervention": "Intervention",
+  "issueDetailTabDocuments": "Documents",
+  "issueDetailTabHistory": "History",
+
+  "installAppLink": "Install this app on your phone"
 }

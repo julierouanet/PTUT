@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/auth_service.dart';
@@ -737,6 +738,9 @@ class _LoginScreenState extends State<LoginScreen> {
           // Contact urgence — aide le personnel de nuit en cas de compte bloqué
           _buildEmergencyContact(l10n),
 
+          // Lien vers le guide d'installation PWA (/setup/) — web hors localhost
+          if (_showInstallLink) _buildInstallAppLink(l10n),
+
           _buildErrorBox(),
           const SizedBox(height: 8),
 
@@ -837,6 +841,35 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Le lien d'installation n'a de sens qu'en déploiement web réel :
+  /// la page /setup/ est générée par setup_ubuntu.sh et n'existe pas en dev
+  /// localhost (même logique de détection d'hôte que ApiConfig).
+  bool get _showInstallLink {
+    if (!kIsWeb) return false;
+    final host = Uri.base.host;
+    return host != 'localhost' && host != '127.0.0.1';
+  }
+
+  /// Lien discret vers le guide d'installation PWA (CA + écran d'accueil).
+  Widget _buildInstallAppLink(AppLocalizations l10n) {
+    return TextButton.icon(
+      onPressed: () {
+        // Ouvre /setup/ sur l'hôte courant dans un nouvel onglet
+        final base = Uri.base;
+        launchUrl(
+          Uri(scheme: base.scheme, host: base.host, port: base.port, path: '/setup/'),
+          webOnlyWindowName: '_blank',
+        );
+      },
+      icon: const Icon(Icons.install_mobile, size: 15),
+      label: Text(
+        l10n.installAppLink,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      ),
+      style: TextButton.styleFrom(foregroundColor: AppColors.primary),
     );
   }
 

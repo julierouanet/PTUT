@@ -1360,38 +1360,45 @@ class IssueFormScreenState extends State<IssueFormScreen> {
               const SizedBox(height: 32),
 
               // Boutons Retour / Annuler / Soumettre
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => setState(() => _currentStep = 0),
-                    icon: const Icon(Icons.arrow_back),
-                    label: Text(l10n.commonBack),
-                    style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
-                  ),
-                ),
-                if (widget.onCancel != null) ...[
-                  const SizedBox(width: 10),
+              Column(children: [
+                Row(children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: widget.onCancel,
-                      icon: const Icon(Icons.close, color: AppColors.error),
-                      label: Text(l10n.commonCancel,
-                          style: const TextStyle(color: AppColors.error)),
+                      onPressed: () => setState(() => _currentStep = 0),
+                      icon: const Icon(Icons.arrow_back),
+                      label: Text(l10n.commonBack),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.error),
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        minimumSize: const Size(0, 48),
                       ),
                     ),
                   ),
-                ],
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
+                  if (widget.onCancel != null) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onCancel,
+                        icon: const Icon(Icons.close, color: AppColors.error),
+                        label: Text(l10n.commonCancel,
+                            style: const TextStyle(color: AppColors.error)),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: AppColors.error),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          minimumSize: const Size(0, 48),
+                        ),
+                      ),
+                    ),
+                  ],
+                ]),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : _submitForm,
                     style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      minimumSize: const Size(0, 48),
+                    ),
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 20, height: 20,

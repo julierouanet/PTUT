@@ -10823,6 +10823,36 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Part des incidents clôturés avec au moins un document PDF archivé'**
   String get reportsDocumentedClosureRateHint;
+
+  /// No description provided for @issueDetailTabIdentification.
+  ///
+  /// In fr, this message translates to:
+  /// **'Identification'**
+  String get issueDetailTabIdentification;
+
+  /// No description provided for @issueDetailTabIntervention.
+  ///
+  /// In fr, this message translates to:
+  /// **'Intervention'**
+  String get issueDetailTabIntervention;
+
+  /// No description provided for @issueDetailTabDocuments.
+  ///
+  /// In fr, this message translates to:
+  /// **'Documents'**
+  String get issueDetailTabDocuments;
+
+  /// No description provided for @issueDetailTabHistory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique'**
+  String get issueDetailTabHistory;
+
+  /// No description provided for @installAppLink.
+  ///
+  /// In fr, this message translates to:
+  /// **'Installer cette application sur votre téléphone'**
+  String get installAppLink;
 }
 
 class _AppLocalizationsDelegate

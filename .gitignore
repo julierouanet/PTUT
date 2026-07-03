@@ -7,6 +7,9 @@
 # ── Certificats SSL (générés par setup_ubuntu.sh) ─────────────
 ssl/
 
+# ── Page d'installation PWA (générée par setup_ubuntu.sh) ─────
+/setup/
+
 # ── SQLite databases ──────────────────────────────────────────
 *.db
 *.db-shm

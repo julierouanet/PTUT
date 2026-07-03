@@ -5943,4 +5943,20 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get reportsDocumentedClosureRateHint =>
       'Part des incidents clôturés avec au moins un document PDF archivé';
+
+  @override
+  String get issueDetailTabIdentification => 'Identification';
+
+  @override
+  String get issueDetailTabIntervention => 'Intervention';
+
+  @override
+  String get issueDetailTabDocuments => 'Documents';
+
+  @override
+  String get issueDetailTabHistory => 'Historique';
+
+  @override
+  String get installAppLink =>
+      'Installer cette application sur votre téléphone';
 }

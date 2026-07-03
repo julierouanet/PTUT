@@ -5874,4 +5874,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get reportsDocumentedClosureRateHint =>
       'Share of closed issues with at least one archived PDF document';
+
+  @override
+  String get issueDetailTabIdentification => 'Identification';
+
+  @override
+  String get issueDetailTabIntervention => 'Intervention';
+
+  @override
+  String get issueDetailTabDocuments => 'Documents';
+
+  @override
+  String get issueDetailTabHistory => 'History';
+
+  @override
+  String get installAppLink => 'Install this app on your phone';
 }

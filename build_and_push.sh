@@ -71,6 +71,17 @@ docker run --rm \
 
 echo "      ✓ Flutter buildé dans flutter-app/build/web/"
 
+# ── Fusion des handlers Push + Offline dans le SW Flutter ────────────────────
+# Même étape que le Jenkinsfile (famille domaine). Le SW Flutter récent
+# s'auto-désenregistre (await self.registration.unregister()) : sans ce patch,
+# ni les notifications push ni la page hors-ligne ne fonctionnent.
+# NB : `sed -i` sans suffixe = GNU sed (le script annonce Linux/Mac/WSL en
+# en-tête ; sur macOS/BSD, installer gnu-sed ou exécuter sous WSL).
+sed -i 's/await self\.registration\.unregister();//g' flutter-app/build/web/flutter_service_worker.js
+printf '\n/* === Web Push + Offline Handlers (injecté par build) === */\n' >> flutter-app/build/web/flutter_service_worker.js
+cat flutter-app/web/push_sw.js >> flutter-app/build/web/flutter_service_worker.js
+echo "      ✓ Handlers Push + Offline fusionnés dans flutter_service_worker.js"
+
 # ── Étape 2 : Build auth-service ─────────────────────────────
 echo "[2/6] Build auth-service..."
 docker build \

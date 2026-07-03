@@ -353,9 +353,28 @@ server {
         add_header Cache-Control "no-store";
         internal;
     }
+
+    # ── Certificat CA téléchargeable — MIME dédié pour Android/iOS ──
+    # location exacte (priorité sur les regex et les prefixes) ; surtout PAS de
+    # bloc `types {}` dans /setup/ : il écraserait la table MIME héritée et
+    # servirait index.html en octet-stream.
+    location = /setup/kabutare-ca.crt {
+        root         /usr/share/nginx/html;
+        default_type application/x-x509-ca-cert;
+    }
+
+    # ── Page d'installation PWA (publique, statique) ──
+    location /setup/ {
+        root  /usr/share/nginx/html;
+        index index.html;
+    }
+
     location = / { return 301 /app_isis/; }
     location = /app_isis { return 301 /app_isis/; }
-    location ~* ^/app_isis/(flutter_service_worker\.js|flutter_bootstrap\.js)$ {
+    # (?:app_isis/)? : le service worker est aussi enregistré à la RACINE
+    # (/flutter_service_worker.js, cf. index.html) — même règle no-cache,
+    # sinon la mise à jour silencieuse n'est pas garantie sur ce chemin.
+    location ~* ^/(?:app_isis/)?(flutter_service_worker\.js|flutter_bootstrap\.js)$ {
         root       /usr/share/nginx/html;
         try_files  /$1 =404;
         expires    0;
@@ -481,29 +500,278 @@ cat > nginx/keycloak-loading.html << 'KCLOADEOF'
 KCLOADEOF
 echo "      ✓ Page de chargement Keycloak générée."
 
-if [[ -f "ssl/cert.pem" && -f "ssl/key.pem" ]]; then
-  echo "      Certificat existant conservé."
-else
-  # SAN inclut l'IP publique + l'IP locale si définie
-  # → le même certificat est valide sur le WiFi hôpital ET depuis internet
-  SSL_SAN="IP:${SERVER_IP}"
-  if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
-    SSL_SAN="${SSL_SAN},IP:${LOCAL_IP}"
-    echo "      Certificat couvrant : ${SERVER_IP} (internet) + ${LOCAL_IP} (WiFi hôpital)"
-  fi
+# ── PKI interne à deux étages : CA racine + certificat serveur ─
+# La CA « Kabutare Hospital Root CA » est installée UNE SEULE FOIS sur chaque
+# appareil (guide sur https://IP/setup/) : plus d'avertissement navigateur et
+# contexte sécurisé complet (indispensable au service worker / PWA).
+# ca-key.pem ne quitte JAMAIS le serveur et n'est jamais servi par Nginx.
 
-  # ECDSA P-384 : plus rapide que RSA-2048, aussi sûr que RSA-3072 (MAJ-1)
-  # 825 jours : durée max acceptée par Chrome/Firefox/Safari depuis 2020
-  openssl req -x509 -nodes -days 825 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
-    -keyout ssl/key.pem \
-    -out ssl/cert.pem \
-    -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=${SERVER_IP}" \
-    -addext "subjectAltName=${SSL_SAN}" \
-    2>/dev/null
-  chmod 600 ssl/key.pem    # Clé privée : root uniquement
-  chmod 644 ssl/cert.pem   # Certificat public : lisible par nginx
-  echo "      ✓ Certificat ECDSA P-384 généré (valide 825 jours) : ssl/cert.pem"
+# SAN inclut l'IP publique + l'IP locale si définie
+# → le même certificat est valide sur le WiFi hôpital ET depuis internet
+SSL_SAN="IP:${SERVER_IP}"
+if [[ -n "${LOCAL_IP}" && "${LOCAL_IP}" != "${SERVER_IP}" ]]; then
+  SSL_SAN="${SSL_SAN},IP:${LOCAL_IP}"
+  echo "      Certificat couvrant : ${SERVER_IP} (internet) + ${LOCAL_IP} (WiFi hôpital)"
 fi
+
+# Génère le certificat serveur signé par la CA existante (ssl/ca.pem).
+# ECDSA P-384 : plus rapide que RSA-2048, aussi sûr que RSA-3072 (MAJ-1)
+# 825 jours : durée max acceptée par Chrome/Firefox/Safari depuis 2020
+generate_server_cert() {
+  openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
+    -keyout ssl/key.pem -out ssl/server.csr \
+    -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=${SERVER_IP}" \
+    2>/dev/null
+  # Fichier d'extensions temporaire (plus portable qu'une substitution de processus)
+  printf "subjectAltName=%s\nextendedKeyUsage=serverAuth\n" "${SSL_SAN}" > ssl/server.ext
+  openssl x509 -req -in ssl/server.csr -CA ssl/ca.pem -CAkey ssl/ca-key.pem \
+    -CAcreateserial -days 825 -out ssl/cert.pem \
+    -extfile ssl/server.ext \
+    2>/dev/null
+  rm -f ssl/server.csr ssl/server.ext
+  chmod 600 ssl/key.pem    # Clé privée serveur : root uniquement
+  chmod 644 ssl/cert.pem   # Certificat public : lisible par nginx
+}
+
+if [[ -f "ssl/ca.pem" && -f "ssl/ca-key.pem" && -f "ssl/cert.pem" && -f "ssl/key.pem" ]] \
+   && openssl x509 -in ssl/cert.pem -checkend 2592000 &>/dev/null; then
+  # CA présente + cert serveur encore valide > 30 jours → ne rien régénérer
+  echo "      Certificat existant conservé (CA + cert serveur valides > 30 jours)."
+
+elif [[ -f "ssl/ca.pem" && -f "ssl/ca-key.pem" ]]; then
+  # Cert serveur expiré ou expirant sous 30 jours, mais CA intacte →
+  # re-signer UNIQUEMENT le cert serveur : les appareils qui ont déjà
+  # installé la CA n'ont RIEN à refaire.
+  echo "      Renouvellement du certificat serveur (CA conservée)..."
+  generate_server_cert
+  # Recharger le certificat si le conteneur nginx tourne déjà (re-provisionnement)
+  docker restart nginx-ip &>/dev/null || true
+  echo "      ✓ Certificat serveur re-signé (825 jours) — aucune action requise sur les appareils."
+
+else
+  # Première exécution — ou migration depuis l'ancien cert auto-signé sans CA :
+  # on régénère tout en mode CA (les appareils installeront la CA via /setup/).
+  echo "      Génération de la PKI interne (CA racine + certificat serveur)..."
+  # CA racine ECDSA P-384, 10 ans — générée une seule fois
+  openssl req -x509 -nodes -days 3650 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
+    -keyout ssl/ca-key.pem -out ssl/ca.pem \
+    -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=Kabutare Hospital Root CA" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign" \
+    2>/dev/null
+  chmod 600 ssl/ca-key.pem   # Clé CA : root uniquement — ne quitte jamais le serveur
+  chmod 644 ssl/ca.pem       # CA publique : distribuée aux appareils via /setup/
+  generate_server_cert
+  echo "      ✓ CA « Kabutare Hospital Root CA » (10 ans) + cert serveur (825 jours) générés."
+fi
+
+# ── Page d'installation PWA /setup/ (toujours régénérée) ──────
+echo "      Génération de la page d'installation /setup/..."
+
+# Garde-fou : la CA publique doit exister (générée par le bloc PKI ci-dessus)
+if [[ ! -f "ssl/ca.pem" ]]; then
+  echo "      ✗ ssl/ca.pem introuvable — impossible de générer la page /setup/." >&2
+  echo "        La PKI doit être générée avant la page d'installation. Relancer le script." >&2
+  exit 1
+fi
+
+# Répertoire créé par le SCRIPT avant `docker compose up` — jamais par Docker
+# (sinon Docker créerait un répertoire vide et Nginx servirait un 403).
+mkdir -p setup
+chmod 755 setup
+
+# CA publique téléchargeable (extension .crt reconnue par Android/iOS/Windows).
+# Seule la partie PUBLIQUE est copiée — ca-key.pem ne quitte jamais ssl/.
+cp ssl/ca.pem setup/kabutare-ca.crt
+chmod 644 setup/kabutare-ca.crt
+
+# QR code généré LOCALEMENT au provisionnement — jamais de lib JS depuis un
+# CDN : le LAN de l'hôpital n'a pas forcément accès à internet.
+if ! command -v qrencode &>/dev/null; then
+  apt-get install -y -qq qrencode 2>/dev/null || true
+fi
+QR_OK=false
+if command -v qrencode &>/dev/null; then
+  if qrencode -t SVG -o setup/qr.svg "https://${SERVER_IP}/setup/" 2>/dev/null; then
+    QR_OK=true
+  fi
+fi
+
+# Guide d'installation (anglais — audience : personnel hospitalier non technique).
+# Page autonome : CSS inline, aucun JS, aucune ressource externe.
+cat > setup/index.html << 'SETUPEOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Install the Kabutare Hospital app</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F9FAFB;color:#111827;font-family:system-ui,-apple-system,Arial,sans-serif;line-height:1.55}
+  .wrap{max-width:640px;margin:0 auto;padding:32px 20px 48px}
+  header{text-align:center;margin-bottom:28px}
+  header img{width:72px;height:72px;object-fit:contain;margin-bottom:12px}
+  h1{font-size:1.35rem;font-weight:700;margin-bottom:6px}
+  .sub{font-size:.85rem;color:#6B7280}
+  .card{background:#fff;border:1px solid #E5E7EB;border-radius:12px;padding:20px;margin-bottom:16px}
+  .step{display:inline-block;background:#2563EB;color:#fff;font-size:.75rem;font-weight:700;
+        border-radius:99px;padding:2px 10px;margin-bottom:10px;letter-spacing:.03em}
+  h2{font-size:1.02rem;font-weight:600;margin-bottom:8px}
+  p{font-size:.88rem;color:#374151;margin-bottom:8px}
+  .btn{display:inline-block;background:#2563EB;color:#fff;text-decoration:none;font-size:.9rem;
+       font-weight:600;border-radius:8px;padding:10px 18px;margin-top:4px}
+  details{border:1px solid #E5E7EB;border-radius:8px;margin-bottom:8px;background:#F9FAFB}
+  summary{cursor:pointer;padding:10px 12px;font-size:.9rem;font-weight:600;color:#111827}
+  details ol{padding:2px 16px 12px 32px;font-size:.85rem;color:#374151}
+  details li{margin-bottom:4px}
+  .note{font-size:.78rem;color:#6B7280;margin-top:8px}
+  footer{text-align:center;margin-top:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <img src="/app_isis/icons/Icon-192.png" alt="Kabutare Hospital logo">
+    <h1>Install the Kabutare Hospital app</h1>
+    <div class="sub">Medical equipment management &mdash; one-time setup, about 2 minutes</div>
+  </header>
+
+  <div class="card">
+    <span class="step">STEP 1</span>
+    <h2>Download the security certificate</h2>
+    <p>This certificate tells your device that the hospital server can be trusted.
+       You only need to install it once per device.</p>
+    <a class="btn" href="/setup/kabutare-ca.crt" download>Download security certificate</a>
+  </div>
+
+  <div class="card">
+    <span class="step">STEP 2</span>
+    <h2>Install the certificate on your device</h2>
+    <details>
+      <summary>Android phone or tablet</summary>
+      <ol>
+        <li>Open <strong>Settings</strong> &rarr; <strong>Security</strong> &rarr; <strong>More security settings</strong></li>
+        <li>Tap <strong>Install from device storage</strong> (or &ldquo;Install certificates&rdquo;)</li>
+        <li>Choose <strong>CA certificate</strong>, then tap <strong>Install anyway</strong></li>
+        <li>Select the downloaded file <strong>kabutare-ca.crt</strong></li>
+      </ol>
+    </details>
+    <details>
+      <summary>iPhone or iPad</summary>
+      <ol>
+        <li>Download the certificate with <strong>Safari</strong> (Step 1), then tap <strong>Allow</strong></li>
+        <li>Open <strong>Settings</strong> &rarr; <strong>Profile Downloaded</strong> &rarr; <strong>Install</strong></li>
+        <li>Then go to <strong>Settings</strong> &rarr; <strong>General</strong> &rarr; <strong>About</strong> &rarr; <strong>Certificate Trust Settings</strong></li>
+        <li>Turn on <strong>Full Trust</strong> for &ldquo;Kabutare Hospital Root CA&rdquo;</li>
+      </ol>
+    </details>
+    <details>
+      <summary>Windows PC &mdash; Chrome or Edge</summary>
+      <ol>
+        <li>Open the downloaded <strong>kabutare-ca.crt</strong> file</li>
+        <li>Click <strong>Install Certificate&hellip;</strong></li>
+        <li>Choose <strong>Local Machine</strong>, then <strong>Next</strong></li>
+        <li>Select <strong>Place all certificates in the following store</strong> &rarr; <strong>Trusted Root Certification Authorities</strong></li>
+        <li>Click <strong>Finish</strong> and restart the browser</li>
+      </ol>
+    </details>
+    <details>
+      <summary>Firefox (any computer)</summary>
+      <ol>
+        <li>Open <strong>Settings</strong> &rarr; <strong>Privacy &amp; Security</strong> &rarr; <strong>Certificates</strong></li>
+        <li>Click <strong>View Certificates&hellip;</strong> &rarr; <strong>Authorities</strong> &rarr; <strong>Import&hellip;</strong></li>
+        <li>Select <strong>kabutare-ca.crt</strong></li>
+        <li>Check <strong>Trust this CA to identify websites</strong>, then click <strong>OK</strong></li>
+      </ol>
+    </details>
+  </div>
+
+  <div class="card">
+    <span class="step">STEP 3</span>
+    <h2>Add the app to your home screen</h2>
+    <details>
+      <summary>Android &mdash; Chrome</summary>
+      <ol>
+        <li>Open the app (button below)</li>
+        <li>Tap the <strong>&#8942;</strong> menu (top right)</li>
+        <li>Tap <strong>Install app</strong> (or &ldquo;Add to Home screen&rdquo;)</li>
+      </ol>
+    </details>
+    <details>
+      <summary>iPhone &mdash; Safari</summary>
+      <ol>
+        <li>Open the app (button below) in Safari</li>
+        <li>Tap the <strong>Share</strong> button (square with an arrow)</li>
+        <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong></li>
+      </ol>
+    </details>
+    <details>
+      <summary>Computer &mdash; Chrome or Edge</summary>
+      <ol>
+        <li>Open the app (button below)</li>
+        <li>Click the <strong>install icon</strong> in the address bar (screen with a down arrow)</li>
+        <li>Click <strong>Install</strong></li>
+      </ol>
+    </details>
+    <p class="note">Afterwards, the app opens full screen from its own icon, like a normal app.</p>
+  </div>
+
+  <footer>
+    <a class="btn" href="/app_isis/">Open the app</a>
+  </footer>
+</div>
+</body>
+</html>
+SETUPEOF
+
+# Affiche A4 imprimable (QR + 3 étapes) — placeholder __SETUP_URL__ remplacé
+# ci-dessous par sed (heredoc quoté → pas d'expansion shell directe).
+cat > setup/poster.html << 'POSTEREOF'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kabutare Hospital app &mdash; installation poster</title>
+<style>
+  @page{size:A4;margin:0}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#fff;color:#111827;font-family:system-ui,-apple-system,Arial,sans-serif;
+       width:210mm;min-height:297mm;margin:0 auto;padding:22mm 18mm;text-align:center}
+  h1{font-size:26pt;font-weight:700;margin-bottom:4mm}
+  .sub{font-size:13pt;color:#6B7280;margin-bottom:10mm}
+  #qr{width:90mm;height:90mm;margin-bottom:6mm}
+  .url{font-size:20pt;font-weight:700;color:#2563EB;margin-bottom:12mm;word-break:break-all}
+  .steps{text-align:left;display:inline-block;font-size:13pt;line-height:1.7}
+  .steps b{color:#2563EB}
+  .foot{margin-top:14mm;font-size:10pt;color:#6B7280}
+</style>
+</head>
+<body>
+  <h1>Scan to install the hospital equipment app</h1>
+  <div class="sub">Kabutare Hospital &mdash; medical equipment management</div>
+  <img id="qr" src="qr.svg" alt="QR code &mdash; scan it with your phone camera">
+  <div class="url">__SETUP_URL__</div>
+  <div class="steps">
+    <div><b>1.</b> Connect to the hospital WiFi, then scan the QR code (or type the address)</div>
+    <div><b>2.</b> Follow the guide: install the security certificate (one time only)</div>
+    <div><b>3.</b> Add the app to your home screen</div>
+  </div>
+  <div class="foot">Need help? Contact the IT department.</div>
+</body>
+</html>
+POSTEREOF
+sed -i "s|__SETUP_URL__|https://${SERVER_IP}/setup/|g" setup/poster.html
+
+if [[ "${QR_OK}" != "true" ]]; then
+  # Dégradation gracieuse : pas de qrencode → affiche sans QR, URL en gros caractères
+  sed -i '/id="qr"/d' setup/poster.html
+  echo "      ⚠ qrencode indisponible — affiche générée sans QR code (URL seule)."
+fi
+chmod 644 setup/index.html setup/poster.html
+# `|| true` : sous set -e, un test faux en fin de liste && tuerait le script
+[[ ! -f setup/qr.svg ]] || chmod 644 setup/qr.svg
+echo "      ✓ Page /setup/ générée (guide d'installation + affiche A4 imprimable)."
 
 # ── Étape 6 : Vérification et assignation des ports ──────────
 echo "[6/9] Vérification de la disponibilité des ports..."

@@ -170,8 +170,40 @@
         });
       };
 
+      // ── Détection hors-ligne au chargement ────────────────────────────
+      // Cas du shell déjà en cache : le SW sert index.html sans réseau et
+      // l'app se chargerait avec des erreurs. On détecte l'absence de réseau
+      // AVANT flutter-first-frame et on remplace l'écran de chargement par
+      // un message clair (anglais — cohérent avec offline.html).
+      var flutterStarted = false;
+
+      function showOffline() {
+        if (flutterStarted) return;
+        cancelAnimationFrame(raf);
+        scr.innerHTML =
+          '<div class="k-icon"><img src="icons/Icon-192.png" alt="Logo"></div>' +
+          '<div class="k-title">No connection to the hospital server.</div>' +
+          '<div class="k-sub" style="max-width:340px;text-align:center;line-height:1.6">' +
+          'This app must be used on the hospital WiFi network. ' +
+          'Please connect to the hospital WiFi, then try again.</div>' +
+          '<button onclick="location.reload()" style="font-size:.9rem;font-weight:600;' +
+          'color:#fff;background:#2563EB;border:none;border-radius:8px;' +
+          'padding:10px 24px;cursor:pointer;font-family:system-ui,-apple-system,Arial,sans-serif">' +
+          'Retry</button>';
+      }
+
+      if (navigator.onLine === false) {
+        showOffline();
+      } else {
+        // Probe réseau : query unique + no-store pour garantir un aller-retour
+        // réseau réel (jamais servi par un cache HTTP ou service worker).
+        fetch('version.json?probe=' + Date.now(), { cache: 'no-store' })
+          .catch(function () { showOffline(); });
+      }
+
       // ── Fin du chargement : Flutter a rendu son 1er frame ────────────
       window.addEventListener('flutter-first-frame', function () {
+        flutterStarted = true;
         cancelAnimationFrame(raf);
         setProgress(100);
         bar.style.transition = 'width .15s ease';

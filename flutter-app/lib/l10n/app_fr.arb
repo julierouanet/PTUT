@@ -2393,5 +2393,12 @@
 
   "reportsDocumentedClosureRate": "Taux de clôture documentée",
   "reportsDocumentedClosureRateNoData": "Données insuffisantes",
-  "reportsDocumentedClosureRateHint": "Part des incidents clôturés avec au moins un document PDF archivé"
+  "reportsDocumentedClosureRateHint": "Part des incidents clôturés avec au moins un document PDF archivé",
+
+  "issueDetailTabIdentification": "Identification",
+  "issueDetailTabIntervention": "Intervention",
+  "issueDetailTabDocuments": "Documents",
+  "issueDetailTabHistory": "Historique",
+
+  "installAppLink": "Installer cette application sur votre téléphone"
 }

@@ -1,11 +1,12 @@
 {
     "name": "Kabutare Hospital",
     "short_name": "Kabutare",
+    "id": "/app_isis/",
     "start_url": ".",
     "scope": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
+    "background_color": "#F9FAFB",
+    "theme_color": "#2563EB",
     "description": "Système de gestion des équipements médicaux — Hôpital de Kabutare",
     "prefer_related_applications": false,
     "icons": [

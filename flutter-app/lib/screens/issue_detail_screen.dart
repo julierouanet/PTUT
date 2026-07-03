@@ -88,6 +88,10 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   bool get _isHospitalStaff =>
       _authService.currentRoles.contains(UserRole.hospitalStaff);
 
+  /// Nombre d'onglets de la page détail : 3 pour le personnel hospitalier
+  /// (onglet Documents masqué), 4 pour technicien/superviseur/admin.
+  int get _tabCount => _isHospitalStaff ? 3 : 4;
+
   /// Groupes techniques assignables à l'utilisateur connecté (réplique exacte de
   /// _myAssignableGroups dans technician_update_screen.dart — mêmes littéraux
   /// français, à garder synchronisés si les rôles évoluent).
@@ -201,84 +205,234 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   // ── Mode Scaffold (navigation standard) ───────────────────────────────────
 
   Widget _buildScaffold(AppLocalizations l10n) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: Text(
-          _detail != null
-              ? l10n.issuesIncidentId(_detail!.issue.id)
-              : l10n.issueDetailTitle,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+    final detail = _detail;
+
+    if (detail == null) {
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: Text(l10n.issueDetailTitle,
+              style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 1,
         ),
-        backgroundColor: AppColors.surface,
-        foregroundColor: AppColors.textPrimary,
-        elevation: 1,
-        actions: [
-          if (_detail != null)
+        body: _buildLoadingOrError(l10n),
+      );
+    }
+
+    return DefaultTabController(
+      length: _tabCount,
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: Text(
+            l10n.issuesIncidentId(detail.issue.id),
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          backgroundColor: AppColors.surface,
+          foregroundColor: AppColors.textPrimary,
+          elevation: 1,
+          actions: [
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                IssueStatusBadge(status: _detail!.issue.status.displayName),
+                IssueStatusBadge(status: detail.issue.status.displayName),
                 const SizedBox(width: 8),
-                UrgencyBadge(urgency: _detail!.issue.urgency),
+                UrgencyBadge(urgency: detail.issue.urgency),
               ]),
             ),
-        ],
+          ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(40),
+            child: _styledTabBar(l10n),
+          ),
+        ),
+        body: _buildTabbedBody(l10n, detail),
+        bottomNavigationBar: _buildBottomBar(l10n),
       ),
-      body: _buildBody(l10n),
-      bottomNavigationBar: _detail != null ? _buildBottomBar(l10n) : null,
     );
   }
 
   // ── Mode Panel (split view desktop) ───────────────────────────────────────
 
   Widget _buildPanelContent(BuildContext context, AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // En-tête du panneau
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
+    final detail = _detail;
+
+    final header = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.border)),
+      ),
+      child: Row(children: [
+        if (detail != null) ...[
+          Expanded(
+            child: Text(
+              l10n.issuesIncidentId(detail.issue.id),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          child: Row(children: [
-            if (_detail != null) ...[
-              Expanded(
-                child: Text(
-                  l10n.issuesIncidentId(_detail!.issue.id),
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              IssueStatusBadge(status: _detail!.issue.status.displayName),
-              const SizedBox(width: 8),
-              UrgencyBadge(urgency: _detail!.issue.urgency),
-            ] else
-              const Expanded(child: SizedBox()),
-            const SizedBox(width: 8),
-            if (widget.onClosePanel != null)
-              IconButton(
-                icon: const Icon(Icons.close, size: 18),
-                tooltip: l10n.issueDetailClosePanel,
-                onPressed: widget.onClosePanel,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-              ),
-          ]),
-        ),
-        // Corps
-        Expanded(child: _buildBody(l10n)),
-        // Barre d'action basse
-        if (_detail != null) _buildBottomBar(l10n),
+          IssueStatusBadge(status: detail.issue.status.displayName),
+          const SizedBox(width: 8),
+          UrgencyBadge(urgency: detail.issue.urgency),
+        ] else
+          const Expanded(child: SizedBox()),
+        const SizedBox(width: 8),
+        if (widget.onClosePanel != null)
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            tooltip: l10n.issueDetailClosePanel,
+            onPressed: widget.onClosePanel,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+      ]),
+    );
+
+    if (detail == null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          Expanded(child: _buildLoadingOrError(l10n)),
+        ],
+      );
+    }
+
+    return DefaultTabController(
+      length: _tabCount,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          header,
+          _styledTabBar(l10n),
+          Expanded(child: _buildTabbedBody(l10n, detail)),
+          _buildBottomBar(l10n),
+        ],
+      ),
+    );
+  }
+
+  // ── Onglets (TabBar / TabBarView) ─────────────────────────────────────────
+
+  List<Tab> _tabs(AppLocalizations l10n) => [
+        Tab(height: 40, text: l10n.issueDetailTabIdentification),
+        Tab(height: 40, text: l10n.issueDetailTabIntervention),
+        if (!_isHospitalStaff) Tab(height: 40, text: l10n.issueDetailTabDocuments),
+        Tab(height: 40, text: l10n.issueDetailTabHistory),
+      ];
+
+  TabBar _styledTabBar(AppLocalizations l10n) {
+    return TabBar(
+      isScrollable: false,
+      labelColor: AppColors.primary,
+      unselectedLabelColor: AppColors.textSecondary,
+      indicatorColor: AppColors.primary,
+      indicatorWeight: 2,
+      padding: EdgeInsets.zero,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      unselectedLabelStyle: const TextStyle(fontSize: 12),
+      tabs: _tabs(l10n),
+    );
+  }
+
+  Widget _buildTabbedBody(AppLocalizations l10n, IssueDetail detail) {
+    return TabBarView(
+      children: [
+        _buildIdentificationTab(l10n, detail),
+        _buildInterventionTab(l10n, detail),
+        if (!_isHospitalStaff) _buildDocumentsTab(l10n, detail),
+        _buildHistoryTab(l10n, detail),
       ],
     );
   }
 
-  // ── Corps commun ──────────────────────────────────────────────────────────
+  /// Enveloppe commune : pull-to-refresh + scroll + padding standard.
+  Widget _tabScrollView(Widget child) {
+    final isMobile = MediaQuery.sizeOf(context).width < AppBreakpoints.tablet;
+    return RefreshIndicator(
+      onRefresh: _refreshDetail,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.all(isMobile ? 12 : 20),
+        child: child,
+      ),
+    );
+  }
 
-  Widget _buildBody(AppLocalizations l10n) {
+  Widget _buildIdentificationTab(AppLocalizations l10n, IssueDetail detail) {
+    return _tabScrollView(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildHandledByBanner(l10n, detail),
+        const SizedBox(height: 12),
+        if (_isPrivileged || _canValidateIssue(detail.issue)) ...[
+          _buildSupervisorActions(l10n, detail),
+          const SizedBox(height: 12),
+        ],
+        _buildHeaderCard(l10n, detail),
+        const SizedBox(height: 12),
+        _buildContextCard(l10n, detail),
+        const SizedBox(height: 12),
+        _buildFailureCard(l10n, detail.issue),
+        const SizedBox(height: 12),
+        _buildDocumentsCard(l10n),
+        if (detail.relatedIssues.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildRelatedIssuesCard(l10n, detail),
+        ],
+        const SizedBox(height: 80),
+      ],
+    ));
+  }
+
+  Widget _buildInterventionTab(AppLocalizations l10n, IssueDetail detail) {
+    return _tabScrollView(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildInterventionCard(l10n, detail.issue),
+        const SizedBox(height: 80),
+      ],
+    ));
+  }
+
+  Widget _buildDocumentsTab(AppLocalizations l10n, IssueDetail detail) {
+    return _tabScrollView(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InterventionDocumentsSection(
+          key: ValueKey('docs-${detail.issue.id}'),
+          issueId: detail.issue.id,
+        ),
+        const SizedBox(height: 80),
+      ],
+    ));
+  }
+
+  Widget _buildHistoryTab(AppLocalizations l10n, IssueDetail detail) {
+    return _tabScrollView(Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (detail.maintenanceRecords.isNotEmpty) ...[
+          _buildMaintenanceCard(l10n, detail.maintenanceRecords),
+          const SizedBox(height: 12),
+        ],
+        _buildTimelineCard(l10n, detail.auditLog),
+        if (!_isHospitalStaff) ...[
+          const SizedBox(height: 12),
+          _buildSessionsTimelineCard(l10n, detail.issue),
+        ],
+        const SizedBox(height: 80),
+      ],
+    ));
+  }
+
+  // ── Chargement / erreur (premier chargement uniquement) ────────────────────
+
+  Widget _buildLoadingOrError(AppLocalizations l10n) {
     if (_loading) {
       return Center(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -289,77 +443,37 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         ]),
       );
     }
-    if (_error != null) {
-      return Center(
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          const Icon(Icons.error_outline, color: AppColors.error, size: 48),
-          const SizedBox(height: 16),
-          Text(l10n.issueDetailLoadError,
-              style: const TextStyle(color: AppColors.error)),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: () {
-              setState(() { _loading = true; _error = null; });
-              _load();
-            },
-            icon: const Icon(Icons.refresh),
-            label: const Text('Réessayer'),
-          ),
-        ]),
-      );
-    }
-
-    final detail  = _detail!;
-    final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
-
-    return RefreshIndicator(
-      onRefresh: () async {
-        setState(() { _loading = true; _error = null; });
-        await _load();
-      },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: EdgeInsets.all(isMobile ? 12 : 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildHandledByBanner(l10n, detail),
-            const SizedBox(height: 12),
-            _buildHeaderCard(l10n, detail),
-            const SizedBox(height: 12),
-            if (_isPrivileged || _canValidateIssue(detail.issue)) ...[
-              _buildSupervisorActions(l10n, detail),
-              const SizedBox(height: 12),
-            ],
-            _buildContextCard(l10n, detail),
-            const SizedBox(height: 12),
-            _buildRelatedIssuesCard(l10n, detail),
-            const SizedBox(height: 12),
-            _buildFailureCard(l10n, detail.issue),
-            const SizedBox(height: 12),
-            _buildInterventionCard(l10n, detail.issue),
-            if (!_isHospitalStaff) ...[
-              const SizedBox(height: 12),
-              _buildSessionsTimelineCard(l10n, detail.issue),
-              const SizedBox(height: 12),
-              InterventionDocumentsSection(
-                key: ValueKey('docs-${detail.issue.id}'),
-                issueId: detail.issue.id,
-              ),
-            ],
-            if (detail.maintenanceRecords.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildMaintenanceCard(l10n, detail.maintenanceRecords),
-            ],
-            const SizedBox(height: 12),
-            _buildTimelineCard(l10n, detail.auditLog),
-            const SizedBox(height: 12),
-            _buildDocumentsCard(l10n),
-            const SizedBox(height: 80),
-          ],
+    return Center(
+      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+        const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+        const SizedBox(height: 16),
+        Text(l10n.issueDetailLoadError,
+            style: const TextStyle(color: AppColors.error)),
+        const SizedBox(height: 8),
+        TextButton.icon(
+          onPressed: () {
+            setState(() { _loading = true; _error = null; });
+            _load();
+          },
+          icon: const Icon(Icons.refresh),
+          label: const Text('Réessayer'),
         ),
-      ),
+      ]),
     );
+  }
+
+  /// Pull-to-refresh : ne démonte jamais les onglets déjà chargés. En cas
+  /// d'erreur, affiche un SnackBar et conserve les données précédentes.
+  Future<void> _refreshDetail() async {
+    await _load();
+    if (!mounted || _error == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(l10n.issueDetailLoadError),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
+    setState(() => _error = null);
   }
 
   // ── Bannière "Pris en charge" ──────────────────────────────────────────────

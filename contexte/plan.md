@@ -14,7 +14,7 @@ Décisions / contraintes :
 - **Nginx mono-port** : un seul vhost HTTPS (`server_name _`) qui sert le front Flutter Web (`/app_isis/`), les deux APIs (`/auth/`, `/db/`) et Keycloak (`/keycloak/`).
 - **Aucune URL codée en dur côté Flutter** : `lib/services/api_config.dart` résout les URLs au runtime via `Uri.base` (l'hôte du navigateur). Aucun `--dart-define` n'est nécessaire pour l'IP-only.
 
-> ⚠️ **Conséquence — avertissement navigateur** : un certificat auto-signé n'est pas reconnu par les autorités de certification. Au premier accès, le navigateur affiche un avertissement de sécurité que l'utilisateur doit accepter manuellement. C'est attendu et sans danger sur un réseau maîtrisé.
+> ✅ **CA interne — fin des avertissements navigateur** : le certificat serveur est signé par une **CA racine interne « Kabutare Hospital Root CA »** (générée par `setup_ubuntu.sh`). Chaque appareil installe cette CA **une seule fois** en suivant la page guidée `https://<IP>/setup/` (tutoriels Android / iPhone / Windows / Firefox + affiche A4 avec QR code à imprimer). Après installation : cadenas valide, aucun avertissement, et l'application est installable en PWA (« Install app » / « Add to Home Screen »). Sans la CA installée, le navigateur affiche l'avertissement classique — l'accès reste possible en l'acceptant manuellement.
 
 > ⚠️ **Limitation connue — emails** : sans nom de domaine, il est **impossible de publier des enregistrements SPF/DKIM**. Les emails transactionnels (vérification de compte, reset mot de passe, notifications Brevo) risquent fort d'être **rejetés ou classés en spam**. Acceptable pour une mise en service interne ; pour un envoi fiable, basculer sur la famille « domaine » (voir [Annexe](#annexe--déploiement-avec-un-vrai-nom-de-domaine-optionnel)).
 
@@ -84,7 +84,7 @@ Le script enchaîne 9 étapes interactives :
 | 2 | Installation de Docker + Compose v2 |
 | 3 | Détection de l'**IP publique** (`api.ipify.org`) et de l'**IP locale** (plages privées) |
 | 4 | Génération du fichier `.env` (IP, `CORS_ORIGIN`, `KC_PUBLIC_URL`, secrets) |
-| 5 | **Génération du certificat auto-signé** ECDSA P-384 (825 j, SAN = IP publique + IP locale) + config Nginx `ip.conf` |
+| 5 | **Génération de la PKI interne** : CA racine ECDSA P-384 (10 ans) + cert serveur signé (825 j, SAN = IP publique + IP locale), config Nginx `ip.conf`, page d'installation `/setup/` (guide + affiche QR + CA téléchargeable) |
 | 6 | Vérification / réattribution automatique des ports (80, 443, 8080) |
 | 7 | Pare-feu `ufw` (deny incoming, SSH rate-limité, ouverture 80/443) |
 | 8 | `docker compose pull` des images depuis Docker Hub |
@@ -110,17 +110,32 @@ cp .env.ip.example .env
 chmod 600 .env
 ```
 
-### 2.2 Certificat auto-signé
+### 2.2 PKI interne (CA racine + certificat serveur)
 
 ```bash
 mkdir -p ssl && chmod 700 ssl
-# SAN avec IP publique (+ IP locale si différente)
-openssl req -x509 -nodes -days 825 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
-  -keyout ssl/key.pem -out ssl/cert.pem \
-  -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=<IP_PUBLIQUE>" \
-  -addext "subjectAltName=IP:<IP_PUBLIQUE>,IP:<IP_LOCALE>"
+
+# 1. CA racine ECDSA P-384, 10 ans — générée UNE SEULE FOIS
+openssl req -x509 -nodes -days 3650 -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
+  -keyout ssl/ca-key.pem -out ssl/ca.pem \
+  -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=Kabutare Hospital Root CA" \
+  -addext "basicConstraints=critical,CA:TRUE" \
+  -addext "keyUsage=critical,keyCertSign,cRLSign"
+chmod 600 ssl/ca-key.pem && chmod 644 ssl/ca.pem
+
+# 2. Certificat serveur signé par la CA — 825 jours (max Chrome/Safari)
+#    SAN avec IP publique (+ IP locale si différente)
+openssl req -new -nodes -newkey ec -pkeyopt ec_paramgen_curve:P-384 \
+  -keyout ssl/key.pem -out ssl/server.csr \
+  -subj "/C=RW/ST=Southern/L=Huye/O=HopitalKabutare/CN=<IP_PUBLIQUE>"
+printf "subjectAltName=IP:<IP_PUBLIQUE>,IP:<IP_LOCALE>\nextendedKeyUsage=serverAuth\n" > ssl/server.ext
+openssl x509 -req -in ssl/server.csr -CA ssl/ca.pem -CAkey ssl/ca-key.pem \
+  -CAcreateserial -days 825 -out ssl/cert.pem -extfile ssl/server.ext
+rm -f ssl/server.csr ssl/server.ext
 chmod 600 ssl/key.pem && chmod 644 ssl/cert.pem
 ```
+
+> ⚠️ `ca-key.pem` ne quitte **jamais** le serveur et n'est jamais servi par Nginx. Seule la CA **publique** (`ca.pem`, copiée en `setup/kabutare-ca.crt`) est distribuée aux appareils via `/setup/`.
 
 ### 2.3 Nginx
 
@@ -210,7 +225,13 @@ curl -k https://<IP>/db/api/equipment -H "Authorization: Bearer $TOKEN"
 curl -k -I https://<IP>/keycloak/admin/    # 200 / 302
 ```
 
-Depuis un navigateur : ouvrir `https://<IP>/app_isis/`, accepter l'avertissement de certificat, se connecter.
+```bash
+# 5. Page d'installation + CA téléchargeable
+curl -k -I https://<IP>/setup/                   # 200, HTML
+curl -k -I https://<IP>/setup/kabutare-ca.crt    # 200, Content-Type: application/x-x509-ca-cert
+```
+
+Depuis un navigateur : ouvrir `https://<IP>/setup/`, suivre le guide (installer la CA « Kabutare Hospital Root CA » — une seule fois par appareil), puis ouvrir `https://<IP>/app_isis/` : cadenas valide, connexion, et installation PWA possible (« Install app » / « Add to Home Screen »). L'affiche imprimable avec QR code est sur `https://<IP>/setup/poster.html`.
 
 ---
 
@@ -237,9 +258,14 @@ docker compose -f docker-compose.ip.secured.yml pull
 docker compose -f docker-compose.ip.secured.yml up -d
 ```
 
-### Renouvellement du certificat
+### Renouvellement du certificat serveur
 
-Le certificat auto-signé est valide **825 jours**. Pour le régénérer : supprimer `ssl/cert.pem` et `ssl/key.pem`, relancer `setup_ubuntu.sh` (étape 5) ou la commande `openssl` de la Phase 2.2, puis `docker compose -f docker-compose.ip.secured.yml restart nginx`.
+Le certificat serveur est valide **825 jours** ; la CA racine, **10 ans**. Le renouvellement re-signe **uniquement** le cert serveur avec la CA existante : **aucune action sur les téléphones** (la CA installée reste valide).
+
+- **Voie automatique (recommandée)** : relancer `sudo bash setup_ubuntu.sh` — si le cert expire sous 30 jours (contrôle `openssl x509 -checkend`), il est re-signé avec la CA existante et Nginx est redémarré ; sinon tout est conservé (idempotent).
+- **Voie manuelle (2 commandes)** : rejouer le bloc « 2. Certificat serveur » de la Phase 2.2 (la CA existante signe le nouveau cert), puis `docker restart nginx-ip`.
+
+> Ne supprimer `ssl/ca.pem` / `ssl/ca-key.pem` **que** si l'on veut volontairement changer de CA — cela obligerait à réinstaller la CA sur **tous** les appareils.
 
 ### Logs
 

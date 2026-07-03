@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>No connection — Kabutare Hospital</title>
+<!--
+  Page hors-ligne servie par le service worker (fallback des navigations).
+  Placée dans web/ → embarquée dans build/web, précachée par les handlers de
+  push_sw.js (le SW Flutter récent ne cache plus rien lui-même).
+  Entièrement autonome : CSS inline + icône SVG inline, aucune autre requête.
+-->
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:#F9FAFB;color:#111827;font-family:system-ui,-apple-system,Arial,sans-serif}
+  .wrap{position:fixed;inset:0;display:flex;flex-direction:column;
+        align-items:center;justify-content:center;padding:24px;text-align:center}
+  .icon{width:64px;height:64px;background:#2563EB;border-radius:16px;
+        display:flex;align-items:center;justify-content:center;
+        margin-bottom:20px;box-shadow:0 4px 14px rgba(37,99,235,.25)}
+  .icon svg{width:36px;height:36px;fill:#fff}
+  .title{font-size:1.05rem;font-weight:600;color:#111827;margin-bottom:8px}
+  .sub{font-size:.85rem;color:#6B7280;line-height:1.6;max-width:340px;margin-bottom:28px}
+  .btn{font-size:.9rem;font-weight:600;color:#fff;background:#2563EB;border:none;
+       border-radius:8px;padding:10px 24px;cursor:pointer}
+  .btn:hover{background:#1D4ED8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="icon">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 8h-4V4a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v4H5a1 1 0 0 0-1 1v4a1
+               1 0 0 0 1 1h4v4a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-4h4a1 1 0 0 0 1-1V9a1
+               1 0 0 0-1-1z"/>
+    </svg>
+  </div>
+  <div class="title">No connection to the hospital server.</div>
+  <div class="sub">This app must be used on the hospital WiFi network.
+    Please connect to the hospital WiFi, then try again.</div>
+  <button class="btn" onclick="location.reload()">Retry</button>
+</div>
+</body>
+</html>
