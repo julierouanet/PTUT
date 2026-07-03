@@ -1038,6 +1038,13 @@ function initTables() {
   try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_type_index INTEGER'); } catch (_) {}
   try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_pdf_stored_name TEXT'); } catch (_) {}
 
+  // ── Migration : traçabilité de l'uploadeur sur les photos d'incident ──────
+  // Absente à la création de la table (photos historiquement anonymes côté DB,
+  // seul le log d'audit portait l'identité) — alignée sur equipment_documents
+  // (uploaded_by/uploader_name) pour permettre l'affichage dans les rapports.
+  try { db.exec('ALTER TABLE issue_photos ADD COLUMN uploaded_by TEXT'); } catch (_) {}
+  try { db.exec('ALTER TABLE issue_photos ADD COLUMN uploader_name TEXT'); } catch (_) {}
+
   // ── Migration : échéance de la prochaine action planifiée sur une boucle ───
   try { db.exec('ALTER TABLE issue_intervention_sessions ADD COLUMN next_action_due_at TEXT'); } catch (_) {}
 

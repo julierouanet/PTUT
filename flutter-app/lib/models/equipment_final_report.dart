@@ -62,12 +62,14 @@ class EquipmentFinalReportIntervention {
 class EquipmentFinalReport {
   final String equipmentId;
   final String equipmentName;
+  final String? equipmentTag;
   final EquipmentFinalReportSummary summary;
   final List<EquipmentFinalReportIntervention> interventions;
 
   const EquipmentFinalReport({
     required this.equipmentId,
     required this.equipmentName,
+    this.equipmentTag,
     required this.summary,
     required this.interventions,
   });
@@ -76,6 +78,7 @@ class EquipmentFinalReport {
       EquipmentFinalReport(
         equipmentId:   json['equipment_id'] as String? ?? '',
         equipmentName: json['equipment_name'] as String? ?? '',
+        equipmentTag:  json['equipment_tag'] as String?,
         summary: EquipmentFinalReportSummary.fromApiJson(
             json['summary'] as Map<String, dynamic>? ?? const {}),
         interventions: (json['interventions'] as List<dynamic>? ?? const [])

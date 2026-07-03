@@ -9,6 +9,7 @@ const { logAction, extractReqMeta } = require('../utils/logger');
 const { UPLOAD_DIR } = require('../config');
 const { buildSummaryPdf, summaryPageCount } = require('../services/annex_summary_service');
 const { buildPhotoGridPdf } = require('../services/annex_photo_grid_service');
+const { buildFriendlyDownloadName } = require('../utils/documents_repo');
 
 const router = express.Router();
 
@@ -109,9 +110,9 @@ function buildWhere({ uploadedBy, from, to, search, issueId, docTypes }, extraCo
 }
 
 // Clause WHERE pour issue_photos, utilisée par /zip et /print-pdf quand le pseudo-type
-// 'photo' est demandé. issue_photos n'a pas de colonne uploaded_by : les photos ne sont
-// donc jamais filtrables par technicien et sont exclues si `uploadedBy` est renseigné
-// (voir appels sites) plutôt que de planter ou d'ignorer silencieusement ce filtre.
+// 'photo' est demandé. Cette fonction ne filtre volontairement pas sur uploaded_by
+// (contrairement à buildWhere) : les photos restent exclues si `uploadedBy` est
+// renseigné (voir appels sites) plutôt que d'étendre silencieusement ce filtre ici.
 function buildPhotoWhere({ from, to, search, issueId }) {
   let where = 'WHERE 1=1';
   const params = [];
@@ -142,7 +143,11 @@ function fetchFilteredPhotos(filters, { storedNameColumn, extraCondition = '' })
   if (!filters.docTypes.includes('photo') || filters.uploadedBy) return [];
   const { where, params } = buildPhotoWhere(filters);
   return getDb().prepare(`
-    SELECT id, original_name, ${storedNameColumn} AS stored_name
+    SELECT id, original_name, ${storedNameColumn} AS stored_name, issue_id, annex_number,
+           (SELECT equipment_name FROM issues WHERE id = issue_photos.issue_id) AS equipment_name,
+           (SELECT tag_number FROM equipment_tags
+              WHERE equipment_id = (SELECT equipment_id FROM issues WHERE id = issue_photos.issue_id)
+              ORDER BY tag_number ASC LIMIT 1) AS tag_number
     FROM issue_photos
     ${where}${extraCondition}
     ORDER BY uploaded_at DESC
@@ -184,9 +189,11 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   const db = getDb();
   const { where, params } = buildWhere(filters, null, 'combined');
 
-  // Fusion documents + photos d'incident : les photos sont sans uploader/équipement
-  // (colonnes NULL) et exposées sous document_type='photo' (pseudo-type distinct,
-  // filtrable indépendamment de 'completion'), avec kind='photo' pour l'UI.
+  // Fusion documents + photos d'incident : les photos n'ont pas d'equipment_id
+  // propre (colonne NULL, rattachées à un incident seulement) mais portent
+  // désormais leur propre uploader_name/uploaded_by, exposées sous
+  // document_type='photo' (pseudo-type distinct, filtrable indépendamment de
+  // 'completion'), avec kind='photo' pour l'UI.
   const combinedFrom = `
     (
       SELECT ed.id, ed.document_type, ed.original_name, ed.mime_type, ed.file_size_kb,
@@ -195,7 +202,7 @@ router.get('/', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
       FROM equipment_documents ed
       UNION ALL
       SELECT p.id, 'photo' AS document_type, p.original_name, p.mime_type, p.file_size_kb,
-             NULL AS uploader_name, NULL AS uploaded_by, p.uploaded_at, p.issue_id, NULL AS equipment_id,
+             p.uploader_name, p.uploaded_by, p.uploaded_at, p.issue_id, NULL AS equipment_id,
              NULL AS deleted_at, p.annex_number, p.annex_type_index, 'photo' AS kind
       FROM issue_photos p
     ) combined
@@ -246,8 +253,12 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   const db = getDb();
   const { where, params } = buildWhere(filters);
   const docs = db.prepare(`
-    SELECT ed.id, ed.original_name, ed.stored_name
+    SELECT ed.id, ed.original_name, ed.stored_name, ed.issue_id, ed.annex_number,
+           e.name AS equipment_name,
+           (SELECT tag_number FROM equipment_tags
+              WHERE equipment_id = ed.equipment_id ORDER BY tag_number ASC LIMIT 1) AS tag_number
     FROM equipment_documents ed
+    LEFT JOIN equipment e ON e.id = ed.equipment_id
     ${where}
     ORDER BY ed.uploaded_at DESC
   `).all(...params);
@@ -270,16 +281,27 @@ router.get('/zip', verifyToken, requireRole(...ALLOWED_ROLES), (req, res) => {
   });
   archive.pipe(res);
 
+  // Nom convivial par entrée (équipement - tag - issue - annexe) ; en cas de
+  // collision (ex. deux documents hérités sans annex_number sur le même
+  // incident), un suffixe numérique est ajouté plutôt que d'écraser l'entrée
+  // précédente dans l'archive.
   const usedNames = new Map();
   const addToArchive = (item) => {
-    let name = item.original_name;
-    const count = usedNames.get(name) || 0;
+    const friendly = buildFriendlyDownloadName({
+      equipmentName: item.equipment_name || null,
+      tagNumber: item.tag_number || null,
+      issueId: item.issue_id || null,
+      annexNumber: item.annex_number,
+      originalName: item.original_name,
+    });
+    let name = friendly;
+    const count = usedNames.get(friendly) || 0;
     if (count > 0) {
-      const ext = path.extname(name);
-      const base = path.basename(name, ext);
+      const ext = path.extname(friendly);
+      const base = path.basename(friendly, ext);
       name = `${base}_${count + 1}${ext}`;
     }
-    usedNames.set(item.original_name, count + 1);
+    usedNames.set(friendly, count + 1);
     archive.file(path.join(UPLOAD_DIR, item.stored_name), { name });
   };
   for (const doc of docs) addToArchive(doc);

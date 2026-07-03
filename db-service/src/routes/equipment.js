@@ -219,6 +219,10 @@ router.get('/:id/final-report', verifyToken, requireRole('admin', 'supervisor', 
   const eq = db.prepare('SELECT id, name FROM equipment WHERE id = ?').get(id);
   if (!eq) return res.status(404).json({ error: 'Équipement introuvable' });
 
+  eq.tag_number = db.prepare(
+    'SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC LIMIT 1'
+  ).get(id)?.tag_number || null;
+
   const rows = db.prepare(`
     SELECT
       i.id                  AS issue_id,

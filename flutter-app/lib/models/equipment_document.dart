@@ -58,8 +58,8 @@ class EquipmentDocument {
       ? '$fileSizeKb Ko'
       : '${(fileSizeKb / 1024).toStringAsFixed(1)} Mo';
 
-  /// Nom du technicien pour affichage — les photos d'incident n'ont pas
-  /// d'uploader attribué (`uploaderName` null), d'où ce repli centralisé.
+  /// Nom du technicien pour affichage — repli pour les documents hérités
+  /// uploadés avant le suivi de l'uploadeur (`uploaderName` null).
   String get uploaderDisplay => uploaderName ?? '—';
 
   bool get isPdf   => mimeType == 'application/pdf';

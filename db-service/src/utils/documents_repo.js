@@ -115,10 +115,33 @@ function revertPhotoAnnexStamp(db, id) {
   db.prepare('UPDATE issue_photos SET annex_number = NULL, annex_type_index = NULL, annex_pdf_stored_name = NULL WHERE id = ?').run(id);
 }
 
+// ── Nom de téléchargement convivial (Content-Disposition uniquement) ─────────
+// Format : "<Équipement> - <Tag> - Issue <IssueID> - Annexe <N><ext>". Le
+// fichier PHYSIQUE (stored_name, UUID) n'est jamais renommé — seul le nom
+// présenté à l'utilisateur au téléchargement change. Chaque segment
+// indisponible (équipement non lié, tag absent, annexe non numérotée — ex.
+// document hérité) est omis proprement plutôt que d'insérer une valeur
+// vide/"null"/"undefined".
+function buildFriendlyDownloadName({ equipmentName, tagNumber, issueId, annexNumber, originalName }) {
+  const ext = path.extname(originalName);
+  const parts = [];
+  if (equipmentName) parts.push(equipmentName);
+  if (tagNumber) parts.push(tagNumber);
+  if (issueId) parts.push(`Issue ${issueId}`);
+  if (annexNumber != null) parts.push(`Annexe ${annexNumber}`);
+  if (parts.length === 0) return originalName;
+  // Caractères interdits dans un nom de fichier Windows/Unix
+  const safe = parts.join(' - ').replace(/[\\/:*?"<>|]/g, '_');
+  return `${safe}${ext}`;
+}
+
 // ── Téléchargement d'un document stocké (headers + sendFile) ──────────────────
-function sendStoredDocument(res, doc) {
+// `friendlyName` (optionnel) : nom convivial calculé via buildFriendlyDownloadName,
+// utilisé à la place de doc.original_name quand fourni par l'appelant.
+function sendStoredDocument(res, doc, friendlyName) {
   const filePath = path.join(UPLOAD_DIR, doc.stored_name);
-  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.original_name)}"`);
+  const downloadName = friendlyName || doc.original_name;
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(downloadName)}"`);
   res.setHeader('Content-Type', doc.mime_type);
   res.sendFile(filePath, { root: '/' }, (err) => {
     if (err && !res.headersSent) {
@@ -130,6 +153,7 @@ function sendStoredDocument(res, doc) {
 module.exports = {
   insertEquipmentDocument,
   sendStoredDocument,
+  buildFriendlyDownloadName,
   nextAnnexNumber,
   nextDocumentAnnexTypeIndex,
   nextPhotoAnnexTypeIndex,

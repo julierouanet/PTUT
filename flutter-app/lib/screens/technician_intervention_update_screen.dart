@@ -2018,6 +2018,7 @@ class _TechnicianInterventionUpdateScreenState
       session: session,
       issueId: issue.id,
       equipmentName: issue.equipmentName ?? issue.id,
+      equipmentTag: issue.equipmentTag,
       generatedByName: user?.name ?? '—',
       generatedByRole: user?.roles.firstOrNull?.displayName ?? '—',
     );
@@ -2316,6 +2317,7 @@ class _TechnicianInterventionUpdateScreenState
             report: report,
             issueId: issue.id,
             equipmentOrLocationName: issue.displayName,
+            equipmentTag: issue.equipmentTag,
             urgency: issue.urgency.displayName,
             sessionsCount: sessions.length,
             generatedByName: byName,

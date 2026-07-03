@@ -15,11 +15,13 @@ import '../../theme/app_theme.dart';
 class InterventionSessionsTimeline extends StatefulWidget {
   final String issueId;
   final String equipmentName;
+  final String? equipmentTag;
 
   const InterventionSessionsTimeline({
     super.key,
     required this.issueId,
     required this.equipmentName,
+    this.equipmentTag,
   });
 
   @override
@@ -160,6 +162,7 @@ class _InterventionSessionsTimelineState
         session: s,
         issueId: widget.issueId,
         equipmentName: widget.equipmentName,
+        equipmentTag: widget.equipmentTag,
         generatedByName: user?.name ?? '—',
         generatedByRole: user?.roles.isNotEmpty == true
             ? user!.roles.first.displayName

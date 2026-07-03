@@ -11,7 +11,7 @@ const { sendPushToRoles } = require('../utils/push_sender');
 const { photoUpload, documentUpload } = require('../middleware/upload');
 const { VALID_DOC_TYPES } = require('../utils/document_types');
 const {
-  insertEquipmentDocument, sendStoredDocument,
+  insertEquipmentDocument, sendStoredDocument, buildFriendlyDownloadName,
   nextAnnexNumber, nextDocumentAnnexTypeIndex, nextPhotoAnnexTypeIndex,
   writeFileAtomic, finalizeDocumentAnnexStamp, revertDocumentAnnexStamp,
   finalizePhotoAnnexStamp, revertPhotoAnnexStamp,
@@ -172,7 +172,9 @@ router.get('/', verifyToken, (req, res) => {
            r.duration_hours AS report_duration_hours,
            r.estimated_cost AS report_estimated_cost,
            (SELECT COUNT(*) FROM equipment_documents
-              WHERE issue_id = i.id AND deleted_at IS NULL) AS documents_count
+              WHERE issue_id = i.id AND deleted_at IS NULL) AS documents_count,
+           (SELECT tag_number FROM equipment_tags
+              WHERE equipment_id = i.equipment_id ORDER BY tag_number ASC LIMIT 1) AS equipment_tag
     FROM issues i
     LEFT JOIN issue_intervention_reports r
       ON r.issue_id = i.id AND r.report_status = 'finalized'
@@ -218,6 +220,13 @@ router.get('/:id', verifyToken, (req, res) => {
   // Données d'équipement lié (si applicable)
   const equipment = issue.equipment_id
     ? db.prepare('SELECT * FROM equipment WHERE id = ?').get(issue.equipment_id)
+    : null;
+
+  // Tag number de l'équipement (table séparée equipment_tags) — exposé à plat sur
+  // l'incident, même convention que GET /api/issues (liste), pour la génération
+  // des rapports d'intervention côté Flutter.
+  issue.equipment_tag = issue.equipment_id
+    ? (db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC LIMIT 1').get(issue.equipment_id)?.tag_number || null)
     : null;
 
   // Timeline d'audit : tous les logs liés à cet incident, ordre chronologique
@@ -938,19 +947,20 @@ router.post('/:id/photos', verifyToken, photoUpload.array('photos', 5), async (r
   // aucun autre writer ne peut s'intercaler) puis incrémentées en mémoire.
   const insertPhoto = db.prepare(`
     INSERT INTO issue_photos
-      (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index)
-    VALUES (?, ?, ?, ?, ?, datetime('now','localtime'), ?, ?)
+      (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index, uploaded_by, uploader_name)
+    VALUES (?, ?, ?, ?, ?, datetime('now','localtime'), ?, ?, ?, ?)
   `);
   const insertAll = db.transaction((files) => {
     let annexNumber = nextAnnexNumber(db, req.params.id);
     let annexTypeIndex = nextPhotoAnnexTypeIndex(db, req.params.id);
     return files.map((file) => {
       const fileSizeKb = Math.ceil(file.size / 1024);
-      const result = insertPhoto.run(req.params.id, file.filename, file.originalname, file.mimetype, fileSizeKb, annexNumber, annexTypeIndex);
+      const result = insertPhoto.run(req.params.id, file.filename, file.originalname, file.mimetype, fileSizeKb, annexNumber, annexTypeIndex, req.user.id, req.user.name);
       const photo = {
         id: result.lastInsertRowid, original_name: file.originalname, file_size_kb: fileSizeKb,
         stored_name: file.filename, mime_type: file.mimetype,
         annex_number: annexNumber, annex_type_index: annexTypeIndex,
+        uploaded_by: req.user.id, uploader_name: req.user.name,
       };
       annexNumber += 1;
       annexTypeIndex += 1;
@@ -1000,7 +1010,7 @@ router.get('/:id/photos', verifyToken, (req, res) => {
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
 
   const photos = db.prepare(`
-    SELECT id, original_name, mime_type, file_size_kb, uploaded_at
+    SELECT id, original_name, mime_type, file_size_kb, uploaded_at, uploaded_by, uploader_name
     FROM issue_photos
     WHERE issue_id = ?
     ORDER BY uploaded_at ASC
@@ -1026,8 +1036,20 @@ router.get('/:id/photos/:photo_id/download', verifyToken, (req, res) => {
     ...extractReqMeta(req),
   });
 
+  const issueForName = db.prepare('SELECT equipment_id, equipment_name FROM issues WHERE id = ?').get(req.params.id);
+  const tagRow = issueForName?.equipment_id
+    ? db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC LIMIT 1').get(issueForName.equipment_id)
+    : null;
+  const friendlyName = buildFriendlyDownloadName({
+    equipmentName: issueForName?.equipment_name || null,
+    tagNumber: tagRow?.tag_number || null,
+    issueId: req.params.id,
+    annexNumber: photo.annex_number,
+    originalName: photo.original_name,
+  });
+
   const filePath = path.join(UPLOAD_DIR, photo.stored_name);
-  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(photo.original_name)}"`);
+  res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(friendlyName)}"`);
   res.setHeader('Content-Type', photo.mime_type);
   res.sendFile(filePath, { root: '/' }, (err) => {
     if (err && !res.headersSent) {
@@ -1053,7 +1075,7 @@ router.get('/:id/documents', verifyToken, (req, res) => {
     WHERE issue_id = ? AND deleted_at IS NULL
     UNION ALL
     SELECT id, 'photo' AS document_type, original_name, mime_type, file_size_kb,
-           NULL AS uploader_name, uploaded_at, annex_number, annex_type_index, 'photo' AS kind
+           uploader_name, uploaded_at, annex_number, annex_type_index, 'photo' AS kind
     FROM issue_photos
     WHERE issue_id = ? AND annex_pdf_stored_name IS NOT NULL
     ORDER BY uploaded_at DESC
@@ -1213,7 +1235,19 @@ router.get('/:id/documents/:doc_id/download', verifyToken, (req, res) => {
     ...extractReqMeta(req),
   });
 
-  sendStoredDocument(res, doc);
+  const issueForName = db.prepare('SELECT equipment_id, equipment_name FROM issues WHERE id = ?').get(req.params.id);
+  const tagRow = issueForName?.equipment_id
+    ? db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC LIMIT 1').get(issueForName.equipment_id)
+    : null;
+  const friendlyName = buildFriendlyDownloadName({
+    equipmentName: issueForName?.equipment_name || null,
+    tagNumber: tagRow?.tag_number || null,
+    issueId: req.params.id,
+    annexNumber: doc.annex_number,
+    originalName: doc.original_name,
+  });
+
+  sendStoredDocument(res, doc, friendlyName);
 });
 
 // DELETE /api/issues/:id (admin seulement)

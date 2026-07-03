@@ -4,7 +4,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { documentUpload } = require('../middleware/upload');
 const { VALID_DOC_TYPES } = require('../utils/document_types');
-const { insertEquipmentDocument, sendStoredDocument } = require('../utils/documents_repo');
+const { insertEquipmentDocument, sendStoredDocument, buildFriendlyDownloadName } = require('../utils/documents_repo');
 
 const router = express.Router();
 
@@ -112,7 +112,17 @@ router.get('/:id/documents/:doc_id/download', verifyToken,
       ...extractReqMeta(req),
     });
 
-    sendStoredDocument(res, doc);
+    const equipment = db.prepare('SELECT name FROM equipment WHERE id = ?').get(req.params.id);
+    const tagRow = db.prepare('SELECT tag_number FROM equipment_tags WHERE equipment_id = ? ORDER BY tag_number ASC LIMIT 1').get(req.params.id);
+    const friendlyName = buildFriendlyDownloadName({
+      equipmentName: equipment?.name || null,
+      tagNumber: tagRow?.tag_number || null,
+      issueId: doc.issue_id || null,
+      annexNumber: doc.annex_number,
+      originalName: doc.original_name,
+    });
+
+    sendStoredDocument(res, doc, friendlyName);
   }
 );
 

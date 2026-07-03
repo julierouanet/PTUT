@@ -25,6 +25,7 @@ function buildEquipmentFinalReport(equipment, rows) {
   return {
     equipment_id: equipment.id,
     equipment_name: equipment.name,
+    equipment_tag: equipment.tag_number || null,
     summary: {
       total_interventions: total,
       mttr_hours_avg: mttrHoursAvg,

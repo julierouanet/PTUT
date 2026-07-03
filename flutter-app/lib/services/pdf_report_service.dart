@@ -591,7 +591,7 @@ class PdfReportService {
               _td(p.originalName),
               _td('Photo'),
               _td(_s(p.uploadedAt).split(' ').first),
-              _td('-'),
+              _td(p.uploaderDisplay),
               _td(p.fileSizeKb.toString()),
             ])),
       ],
@@ -604,6 +604,7 @@ class PdfReportService {
     required IssueInterventionSession session,
     required String issueId,
     required String equipmentName,
+    String? equipmentTag,
     required String generatedByName,
     required String generatedByRole,
   }) async {
@@ -625,6 +626,7 @@ class PdfReportService {
           _twoColTextTable([
             MapEntry('Incident Reference', issueId),
             MapEntry('Equipment', equipmentName),
+            MapEntry('Tag Number', _s(equipmentTag)),
             MapEntry('Loop No.', session.loopNumber.toString()),
             MapEntry('Technician', _s(session.technicianName)),
             MapEntry('Started', session.startedAt.split('T').first),
@@ -691,7 +693,7 @@ class PdfReportService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
         header: (context) => _buildEquipmentFinalReportHeader(
-            now, generatedByName, generatedByRole, report.equipmentName, logo, reportNo),
+            now, generatedByName, generatedByRole, report.equipmentName, report.equipmentTag, logo, reportNo),
         footer: (context) => _buildFooter(context, reference: 'Equipment $equipmentId'),
         build: (context) => [
           // ── Section 1 : KPI ───────────────────────────────────────────
@@ -735,6 +737,7 @@ class PdfReportService {
     required IssueInterventionReport report,
     required String issueId,
     required String equipmentOrLocationName,
+    String? equipmentTag,
     required String urgency,
     required int sessionsCount,
     required String generatedByName,
@@ -750,7 +753,7 @@ class PdfReportService {
         pageFormat: PdfPageFormat.a4,
         margin: const pw.EdgeInsets.symmetric(horizontal: 28, vertical: 28),
         header: (context) => _buildIssueFinalReportHeader(
-            now, generatedByName, generatedByRole, equipmentOrLocationName, urgency, logo, reportNo),
+            now, generatedByName, generatedByRole, equipmentOrLocationName, equipmentTag, urgency, logo, reportNo),
         footer: (context) => _buildFooter(context, reference: 'Incident $issueId'),
         build: (context) => [
           // ── Section 1 : KPI ───────────────────────────────────────────
@@ -784,7 +787,7 @@ class PdfReportService {
 
   // En-tête dédié du rapport final par incident
   static pw.Widget _buildIssueFinalReportHeader(DateTime now, String byName, String byRole,
-      String equipmentOrLocationName, String urgency, pw.MemoryImage logo, String reportNo) {
+      String equipmentOrLocationName, String? equipmentTag, String urgency, pw.MemoryImage logo, String reportNo) {
     return pw.Column(children: [
       _buildLetterhead(logo),
       pw.Container(
@@ -807,6 +810,9 @@ class PdfReportService {
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
                 pw.Text('Equipment/Location: $equipmentOrLocationName',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                if (equipmentTag != null)
+                  pw.Text('Tag Number: $equipmentTag',
+                      style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
                 pw.Text('Urgency: $urgency',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
@@ -831,7 +837,7 @@ class PdfReportService {
 
   // En-tête dédié du rapport final équipement
   static pw.Widget _buildEquipmentFinalReportHeader(DateTime now, String byName,
-      String byRole, String equipmentName, pw.MemoryImage logo, String reportNo) {
+      String byRole, String equipmentName, String? equipmentTag, pw.MemoryImage logo, String reportNo) {
     return pw.Column(children: [
       _buildLetterhead(logo),
       pw.Container(
@@ -853,6 +859,8 @@ class PdfReportService {
                 pw.Text('Kabutare District Hospital — Rwanda',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
                 pw.Text('Equipment: $equipmentName',
+                    style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
+                pw.Text('Tag Number: ${_s(equipmentTag)}',
                     style: const pw.TextStyle(color: PdfColor(0.85, 0.85, 0.85), fontSize: 8)),
               ],
             ),

@@ -1379,6 +1379,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
         key: ValueKey('sessions-${issue.id}'),
         issueId: issue.id,
         equipmentName: issue.equipmentName ?? issue.id,
+        equipmentTag: issue.equipmentTag,
       ),
     );
   }

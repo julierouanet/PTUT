@@ -189,6 +189,9 @@ class Issue {
   final double? reportEstimatedCost;
   // Nombre de documents PDF d'intervention archivés sur cet incident (sous-requête serveur).
   final int documentsCount;
+  // Tag number de l'équipement lié (sous-requête serveur sur equipment_tags) — null
+  // si l'incident n'est lié à aucun équipement ou si l'équipement n'a pas de tag.
+  final String? equipmentTag;
 
   const Issue({
     required this.id,
@@ -216,6 +219,7 @@ class Issue {
     this.reportDurationHours,
     this.reportEstimatedCost,
     this.documentsCount = 0,
+    this.equipmentTag,
   });
 
   /// Meilleur libellé disponible pour cet incident (équipement, lieu, ou département).
@@ -259,6 +263,7 @@ class Issue {
       reportDurationHours: (json['report_duration_hours'] as num?)?.toDouble(),
       reportEstimatedCost: (json['report_estimated_cost'] as num?)?.toDouble(),
       documentsCount:     (json['documents_count'] as num?)?.toInt() ?? 0,
+      equipmentTag:       json['equipment_tag']         as String?,
     );
   }
 
@@ -288,6 +293,7 @@ class Issue {
     double? reportDurationHours,
     double? reportEstimatedCost,
     int? documentsCount,
+    String? equipmentTag,
   }) {
     return Issue(
       id:                 id                ?? this.id,
@@ -315,6 +321,7 @@ class Issue {
       reportDurationHours: reportDurationHours ?? this.reportDurationHours,
       reportEstimatedCost: reportEstimatedCost ?? this.reportEstimatedCost,
       documentsCount:     documentsCount ?? this.documentsCount,
+      equipmentTag:       equipmentTag ?? this.equipmentTag,
     );
   }
 }
