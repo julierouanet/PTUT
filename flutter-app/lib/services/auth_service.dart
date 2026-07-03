@@ -367,6 +367,7 @@ class AuthService extends ChangeNotifier {
   bool get canManageUsers     => hasPermission(Permission.manageUsers);
   bool get canGenerateReports => hasPermission(Permission.generateReports);
   bool get canViewInventory   => hasPermission(Permission.viewInventory);
+  bool get canViewInterventionDocuments => hasPermission(Permission.viewInterventionDocuments);
   // Accès technique élargi (édition équipement, validation ou réparation) —
   // utilisé pour gater les vues/exports réservés au personnel technique/admin.
   bool get canManageOperations => canManageEquipment || canApproveRequests || canUpdateRepairs;

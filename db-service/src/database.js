@@ -1038,6 +1038,9 @@ function initTables() {
   try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_type_index INTEGER'); } catch (_) {}
   try { db.exec('ALTER TABLE issue_photos ADD COLUMN annex_pdf_stored_name TEXT'); } catch (_) {}
 
+  // ── Migration : échéance de la prochaine action planifiée sur une boucle ───
+  try { db.exec('ALTER TABLE issue_intervention_sessions ADD COLUMN next_action_due_at TEXT'); } catch (_) {}
+
   // Créer le dossier d'upload au démarrage
   const fs = require('fs');
   const uploadDir = process.env.UPLOAD_DIR || '/data/uploads/documents';

@@ -51,43 +51,11 @@ class DocGroupTile extends StatelessWidget {
       subtitle: subtitle != null
           ? Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))
           : null,
-      children: issueId == null ? _flatChildren() : _groupedChildren(l10n),
+      children: issueId == null
+          ? _flatChildren()
+          : buildAnnexeGroupedChildren(l10n, groupDocs, rowBuilder),
     );
   }
 
   List<Widget> _flatChildren() => groupDocs.map(rowBuilder).toList();
-
-  List<Widget> _groupedChildren(AppLocalizations l10n) {
-    final split = splitInterventionAnnexe(groupDocs);
-    return [
-      if (split.intervention.isNotEmpty) ...[
-        _SubSectionLabel(l10n.techDocumentsSectionIntervention),
-        ...split.intervention.map(rowBuilder),
-      ],
-      if (split.annexe.isNotEmpty) ...[
-        _SubSectionLabel(l10n.techDocumentsSectionAnnexe),
-        ...split.annexe.map(rowBuilder),
-      ],
-    ];
-  }
-}
-
-class _SubSectionLabel extends StatelessWidget {
-  final String label;
-
-  const _SubSectionLabel(this.label);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 8, bottom: 4),
-    child: Text(
-      label,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.bold,
-        color: AppColors.textSecondary,
-        letterSpacing: 0.5,
-      ),
-    ),
-  );
 }

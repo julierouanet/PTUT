@@ -3180,7 +3180,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueDetailSectionFailure => 'Failure';
 
   @override
-  String get issueDetailSectionIntervention => 'Intervention Follow-up';
+  String get issueDetailSectionIntervention => 'Follow-up';
 
   @override
   String get issueDetailSectionResources => 'Resources';
@@ -3247,6 +3247,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueDetailNoIntervention => 'No intervention recorded';
+
+  @override
+  String get issueFollowUpDiagnosisTitle => 'Diagnoses';
+
+  @override
+  String issueFollowUpLoopDiagnosis(int n, String diagnosis) {
+    return 'Loop $n — $diagnosis';
+  }
+
+  @override
+  String get issueFollowUpLastAction => 'Last action taken';
+
+  @override
+  String get issueFollowUpLastOutcome => 'Last outcome';
+
+  @override
+  String get issueFollowUpNextAction => 'Next action to perform';
+
+  @override
+  String issueFollowUpNextActionDue(String date) {
+    return 'Due: $date';
+  }
 
   @override
   String get issueDetailNoMaintenance => 'No maintenance recorded';
@@ -5763,6 +5785,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techPlanNextActionToggle => 'Plan next action';
 
   @override
+  String get techNextActionDuePick => 'Pick a due date (optional)';
+
+  @override
+  String techNextActionDueSelected(String date) {
+    return 'Due: $date';
+  }
+
+  @override
   String get techCompleteDiagnosisButton => 'Add to diagnosis';
 
   @override
@@ -5801,7 +5831,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get techLoopNextActionsLabel => 'Planned actions';
 
   @override
-  String get interventionSessionsTitle => 'Intervention tracking';
+  String get interventionSessionsTitle => 'Intervention Tracking';
 
   @override
   String interventionSessionsTotalTime(String h) {
@@ -5876,7 +5906,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueDetailTabIdentification => 'Identification';
 
   @override
-  String get issueDetailTabIntervention => 'Intervention';
+  String get issueDetailTabIntervention => 'Follow-up';
 
   @override
   String get issueDetailTabDocuments => 'Documents';

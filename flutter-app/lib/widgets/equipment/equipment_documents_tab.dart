@@ -121,7 +121,9 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
 
   Future<void> _openDocument(BuildContext ctx, EquipmentDocument doc) async {
     final l10n = AppLocalizations.of(ctx)!;
-    final url = '$_baseUrl/documents/${doc.id}/download';
+    final url = doc.isPhoto
+        ? '${ApiConfig.issuesUrl}/${doc.issueId}/photos/${doc.id}/download'
+        : '$_baseUrl/documents/${doc.id}/download';
     try {
       final resp = await ApiClient.get(url);
       if (!mounted) return;
@@ -314,7 +316,12 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
     final techDocs = _docs
         .where((d) => d.documentType == 'technical' || d.documentType == 'certification')
         .toList();
-    final interDocs = _docs.where((d) => d.documentType == 'intervention').toList();
+    final interDocs = _docs
+        .where((d) =>
+            d.documentType == 'intervention' ||
+            d.documentType == 'completion' ||
+            d.isPhoto)
+        .toList();
 
     return RefreshIndicator(
       onRefresh: _loadDocuments,

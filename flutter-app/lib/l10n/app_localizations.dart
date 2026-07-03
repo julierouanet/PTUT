@@ -5987,7 +5987,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueDetailSectionIntervention.
   ///
   /// In fr, this message translates to:
-  /// **'Suivi d\'intervention'**
+  /// **'Follow up'**
   String get issueDetailSectionIntervention;
 
   /// No description provided for @issueDetailSectionResources.
@@ -6121,6 +6121,42 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucune intervention enregistrée'**
   String get issueDetailNoIntervention;
+
+  /// No description provided for @issueFollowUpDiagnosisTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diagnostics'**
+  String get issueFollowUpDiagnosisTitle;
+
+  /// No description provided for @issueFollowUpLoopDiagnosis.
+  ///
+  /// In fr, this message translates to:
+  /// **'Boucle {n} — {diagnosis}'**
+  String issueFollowUpLoopDiagnosis(int n, String diagnosis);
+
+  /// No description provided for @issueFollowUpLastAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernière action prise'**
+  String get issueFollowUpLastAction;
+
+  /// No description provided for @issueFollowUpLastOutcome.
+  ///
+  /// In fr, this message translates to:
+  /// **'Dernier résultat'**
+  String get issueFollowUpLastOutcome;
+
+  /// No description provided for @issueFollowUpNextAction.
+  ///
+  /// In fr, this message translates to:
+  /// **'Prochaine action à réaliser'**
+  String get issueFollowUpNextAction;
+
+  /// No description provided for @issueFollowUpNextActionDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échéance : {date}'**
+  String issueFollowUpNextActionDue(String date);
 
   /// No description provided for @issueDetailNoMaintenance.
   ///
@@ -10626,6 +10662,18 @@ abstract class AppLocalizations {
   /// **'Planifier une prochaine action'**
   String get techPlanNextActionToggle;
 
+  /// No description provided for @techNextActionDuePick.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisir une échéance (optionnel)'**
+  String get techNextActionDuePick;
+
+  /// No description provided for @techNextActionDueSelected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échéance : {date}'**
+  String techNextActionDueSelected(String date);
+
   /// No description provided for @techCompleteDiagnosisButton.
   ///
   /// In fr, this message translates to:
@@ -10695,7 +10743,7 @@ abstract class AppLocalizations {
   /// No description provided for @interventionSessionsTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Suivi des interventions'**
+  /// **'Intervention Tracking'**
   String get interventionSessionsTitle;
 
   /// No description provided for @interventionSessionsTotalTime.
@@ -10827,7 +10875,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueDetailTabIntervention.
   ///
   /// In fr, this message translates to:
-  /// **'Intervention'**
+  /// **'Suivi'**
   String get issueDetailTabIntervention;
 
   /// No description provided for @issueDetailTabDocuments.

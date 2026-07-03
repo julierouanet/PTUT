@@ -7,6 +7,7 @@ class IssueInterventionSession {
   final String? actionTaken;
   final String? outcome;
   final String? nextActions;
+  final String? nextActionDueAt;
   final bool resolved;
   final String? technicianName;
   final String startedAt;
@@ -22,6 +23,7 @@ class IssueInterventionSession {
     this.actionTaken,
     this.outcome,
     this.nextActions,
+    this.nextActionDueAt,
     this.resolved = false,
     this.technicianName,
     required this.startedAt,
@@ -41,6 +43,7 @@ class IssueInterventionSession {
         actionTaken:       json['action_taken']       as String?,
         outcome:           json['outcome']             as String?,
         nextActions:       json['next_actions']       as String?,
+        nextActionDueAt:   json['next_action_due_at'] as String?,
         resolved:          (json['resolved'] as int? ?? 0) == 1,
         technicianName:    json['technician_name']    as String?,
         startedAt:         json['started_at']         as String? ?? '',

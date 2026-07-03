@@ -1038,7 +1038,9 @@ router.get('/:id/photos/:photo_id/download', verifyToken, (req, res) => {
 
 // ── GET /api/issues/:id/documents ─────────────────────────────────────────────
 // Documents PDF d'intervention (rapport de boucle + compte-rendu final + pièces
-// jointes complémentaires) liés à l'incident via issue_id.
+// jointes complémentaires) liés à l'incident via issue_id, fusionnés avec les
+// photos tamponnées (document_type='photo') — même pattern que le combinedFrom
+// de intervention_documents.js, restreint à un seul incident.
 router.get('/:id/documents', verifyToken, (req, res) => {
   const db = getDb();
   const issue = db.prepare('SELECT id FROM issues WHERE id = ?').get(req.params.id);
@@ -1046,11 +1048,16 @@ router.get('/:id/documents', verifyToken, (req, res) => {
 
   const docs = db.prepare(`
     SELECT id, document_type, original_name, mime_type, file_size_kb,
-           uploader_name, uploaded_at
+           uploader_name, uploaded_at, annex_number, annex_type_index, 'document' AS kind
     FROM equipment_documents
     WHERE issue_id = ? AND deleted_at IS NULL
+    UNION ALL
+    SELECT id, 'photo' AS document_type, original_name, mime_type, file_size_kb,
+           NULL AS uploader_name, uploaded_at, annex_number, annex_type_index, 'photo' AS kind
+    FROM issue_photos
+    WHERE issue_id = ? AND annex_pdf_stored_name IS NOT NULL
     ORDER BY uploaded_at DESC
-  `).all(req.params.id);
+  `).all(req.params.id, req.params.id);
 
   res.json(docs);
 });
@@ -1416,7 +1423,7 @@ router.put('/:id/sessions/active', verifyToken, requireRole('admin', 'supervisor
 router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { id } = req.params;
-  const { resolved, outcome, next_actions } = req.body;
+  const { resolved, outcome, next_actions, next_action_due_at } = req.body;
 
   const issueForClose = db.prepare('SELECT equipment_name, department FROM issues WHERE id = ?').get(id);
   const active = db.prepare(
@@ -1428,15 +1435,20 @@ router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', 'sup
     return res.status(400).json({ error: 'next_actions est obligatoire si l\'incident n\'est pas résolu' });
   }
 
+  if (next_action_due_at && isNaN(Date.parse(next_action_due_at))) {
+    return res.status(400).json({ error: 'next_action_due_at invalide' });
+  }
+
   db.prepare(`UPDATE issue_intervention_sessions SET
-    closed_at      = datetime('now','localtime'),
-    resolved       = ?,
-    outcome        = COALESCE(?, outcome),
-    next_actions   = ?,
-    duration_hours = ROUND((julianday(datetime('now','localtime')) - julianday(started_at)) * 24, 1),
-    updated_at     = datetime('now','localtime')
+    closed_at           = datetime('now','localtime'),
+    resolved            = ?,
+    outcome             = COALESCE(?, outcome),
+    next_actions        = ?,
+    next_action_due_at  = ?,
+    duration_hours      = ROUND((julianday(datetime('now','localtime')) - julianday(started_at)) * 24, 1),
+    updated_at          = datetime('now','localtime')
     WHERE id = ?`
-  ).run(resolved ? 1 : 0, outcome || null, next_actions || null, active.id);
+  ).run(resolved ? 1 : 0, outcome || null, next_actions || null, next_action_due_at || null, active.id);
 
   const closed = db.prepare('SELECT * FROM issue_intervention_sessions WHERE id = ?').get(active.id);
 
@@ -1448,7 +1460,7 @@ router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', 'sup
     target_type: 'issue',
     target_id:   id,
     target_name: issueForClose?.equipment_name || issueForClose?.department || id,
-    details:     JSON.stringify({ resolved, loop_number: active.loop_number }),
+    details:     JSON.stringify({ resolved, loop_number: active.loop_number, next_action_due_at: next_action_due_at || null }),
     ...extractReqMeta(req),
   });
 

@@ -16,6 +16,7 @@ import '../widgets/status_badge.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/issue/intervention_documents_section.dart';
 import '../widgets/issue/intervention_sessions_timeline.dart';
+import '../widgets/issue/issue_follow_up_card.dart';
 import 'equipment_detail_screen.dart';
 
 /// Motifs de rejet catégorisés — alignés sur REJECT_REASONS côté db-service.
@@ -85,9 +86,14 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   bool get _isHospitalStaff =>
       _authService.currentRoles.contains(UserRole.hospitalStaff);
 
-  /// Nombre d'onglets de la page détail : 3 pour le personnel hospitalier
-  /// (onglet Documents masqué), 4 pour technicien/superviseur/admin.
-  int get _tabCount => _isHospitalStaff ? 3 : 4;
+  /// Accès aux documents/boucles d'intervention — basé sur la permission
+  /// applicative (pas sur le rôle) : un technicien cumulant aussi le rôle
+  /// hospitalStaff doit conserver l'accès à ces onglets.
+  bool get _canViewDocuments => _authService.canViewInterventionDocuments;
+
+  /// Nombre d'onglets de la page détail : 3 si l'utilisateur n'a pas la
+  /// permission de consulter les documents (onglet Documents masqué), 4 sinon.
+  int get _tabCount => _canViewDocuments ? 4 : 3;
 
   /// Groupes techniques assignables à l'utilisateur connecté (réplique exacte de
   /// _myAssignableGroups dans technician_update_screen.dart — mêmes littéraux
@@ -315,7 +321,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
   List<Tab> _tabs(AppLocalizations l10n) => [
         Tab(height: 40, text: l10n.issueDetailTabIdentification),
         Tab(height: 40, text: l10n.issueDetailTabIntervention),
-        if (!_isHospitalStaff) Tab(height: 40, text: l10n.issueDetailTabDocuments),
+        if (_canViewDocuments) Tab(height: 40, text: l10n.issueDetailTabDocuments),
         Tab(height: 40, text: l10n.issueDetailTabHistory),
       ];
 
@@ -339,7 +345,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
       children: [
         _buildIdentificationTab(l10n, detail),
         _buildInterventionTab(l10n, detail),
-        if (!_isHospitalStaff) _buildDocumentsTab(l10n, detail),
+        if (_canViewDocuments) _buildDocumentsTab(l10n, detail),
         _buildHistoryTab(l10n, detail),
       ],
     );
@@ -388,7 +394,15 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     return _tabScrollView(Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInterventionCard(l10n, detail.issue),
+        _SectionCard(
+          title: l10n.issueDetailSectionIntervention,
+          icon: Icons.build_outlined,
+          iconColor: AppColors.warning,
+          child: IssueFollowUpCard(
+            key: ValueKey('followup-${detail.issue.id}'),
+            issueId: detail.issue.id,
+          ),
+        ),
         const SizedBox(height: 80),
       ],
     ));
@@ -416,7 +430,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
           const SizedBox(height: 12),
         ],
         _buildTimelineCard(l10n, detail.auditLog),
-        if (!_isHospitalStaff) ...[
+        if (_canViewDocuments) ...[
           const SizedBox(height: 12),
           _buildSessionsTimelineCard(l10n, detail.issue),
         ],
@@ -1369,58 +1383,6 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
     );
   }
 
-  // ── Carte Intervention ─────────────────────────────────────────────────────
-
-  Widget _buildInterventionCard(AppLocalizations l10n, Issue issue) {
-    final hasTech    = issue.assignedTechnician != null &&
-        issue.assignedTechnician!.isNotEmpty;
-    final hasDiag    = issue.diagnosis    != null && issue.diagnosis!.isNotEmpty;
-    final hasActions = issue.actions      != null && issue.actions!.isNotEmpty;
-    final hasParts   = issue.partsReplaced != null && issue.partsReplaced!.isNotEmpty;
-    final hasAny     = hasTech || hasDiag || hasActions || hasParts;
-
-    return _SectionCard(
-      title: l10n.issueDetailSectionIntervention,
-      icon: Icons.build_outlined,
-      iconColor: AppColors.warning,
-      child: hasAny
-          ? Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              if (hasTech)
-                _InfoRow(
-                    label: l10n.issueDetailAssignedTech,
-                    value: issue.assignedTechnician!),
-              if (hasDiag) ...[
-                _LargeInfoBlock(
-                    label: l10n.issueDetailRootCause,
-                    value: issue.diagnosis!),
-                const SizedBox(height: 8),
-              ],
-              if (hasActions) ...[
-                _LargeInfoBlock(
-                    label: l10n.issueDetailCorrectiveActions,
-                    value: issue.actions!),
-                const SizedBox(height: 8),
-              ],
-              if (hasParts)
-                _InfoRow(
-                    label: l10n.issueDetailPartsUsed,
-                    value: issue.partsReplaced!),
-            ])
-          : Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(children: [
-                const Icon(Icons.hourglass_empty,
-                    color: AppColors.textMuted, size: 18),
-                const SizedBox(width: 8),
-                Text(l10n.issueDetailNoIntervention,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontStyle: FontStyle.italic)),
-              ]),
-            ),
-    );
-  }
-
   // ── Carte Maintenance récente ──────────────────────────────────────────────
 
   Widget _buildMaintenanceCard(
@@ -1687,34 +1649,6 @@ class _InfoRow extends StatelessWidget {
         ),
       ]),
     );
-  }
-}
-
-class _LargeInfoBlock extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _LargeInfoBlock({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label,
-          style: const TextStyle(
-              color: AppColors.textSecondary, fontSize: 13)),
-      const SizedBox(height: 6),
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: AppColors.background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Text(value,
-            style: const TextStyle(fontSize: 13, height: 1.5)),
-      ),
-    ]);
   }
 }
 

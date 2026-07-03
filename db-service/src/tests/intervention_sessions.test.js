@@ -248,3 +248,39 @@ describe('POST /api/issues/:id/sessions/active/close', () => {
     expect(active).toBeUndefined();
   });
 });
+
+// =============================================================================
+// 4. POST /:id/sessions/active/close — next_action_due_at
+// =============================================================================
+describe('POST /:id/sessions/active/close — next_action_due_at', () => {
+  test('✅ next_action_due_at valide → 200, persisté, relu via GET /:id/sessions', async () => {
+    seedIssue('iss-due-ok');
+    db.prepare(`INSERT INTO issue_intervention_sessions
+      (issue_id, loop_number, diagnosis)
+      VALUES ('iss-due-ok', 1, 'diag')`).run();
+    const dueAt = '2026-08-15T10:00:00.000Z';
+    const res = await request(app)
+      .post('/api/issues/iss-due-ok/sessions/active/close')
+      .set(AUTH)
+      .send({ resolved: false, next_actions: 'Recontacter le fournisseur', next_action_due_at: dueAt });
+    expect(res.status).toBe(200);
+    expect(res.body.next_action_due_at).toBe(dueAt);
+
+    const listRes = await request(app).get('/api/issues/iss-due-ok/sessions').set(AUTH);
+    expect(listRes.status).toBe(200);
+    expect(listRes.body[0].next_action_due_at).toBe(dueAt);
+  });
+
+  test('🚫 next_action_due_at invalide → 400', async () => {
+    seedIssue('iss-due-bad');
+    db.prepare(`INSERT INTO issue_intervention_sessions
+      (issue_id, loop_number, diagnosis)
+      VALUES ('iss-due-bad', 1, 'diag')`).run();
+    const res = await request(app)
+      .post('/api/issues/iss-due-bad/sessions/active/close')
+      .set(AUTH)
+      .send({ resolved: false, next_actions: 'Recontacter le fournisseur', next_action_due_at: 'pas-une-date' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/next_action_due_at/);
+  });
+});

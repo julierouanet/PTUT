@@ -8,6 +8,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/equipment_document.dart';
 import '../../services/db_api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/intervention_document_grouping.dart';
 import '../../utils/open_blob_url.dart';
 
 /// Section « Documents d'intervention » d'un incident.
@@ -51,8 +52,10 @@ class _InterventionDocumentsSectionState extends State<InterventionDocumentsSect
   Future<void> _openDocument(EquipmentDocument doc) async {
     final l10n = AppLocalizations.of(context)!;
     try {
-      final bytes = await DbApiService.instance
-          .downloadInterventionDocument(widget.issueId, doc.id);
+      final bytes = doc.isPhoto
+          ? await DbApiService.instance.downloadIssuePhoto(widget.issueId, doc.id)
+          : await DbApiService.instance
+              .downloadInterventionDocument(widget.issueId, doc.id);
       if (!mounted) return;
       if (doc.isPdf) {
         await Printing.layoutPdf(onLayout: (_) async => bytes, name: doc.originalName);
@@ -115,6 +118,21 @@ class _InterventionDocumentsSectionState extends State<InterventionDocumentsSect
     }
   }
 
+  /// Regroupe les documents en deux sous-sections (Intervention / Annexe),
+  /// chacune masquée si vide — même répartition que DocGroupTile côté
+  /// équipement (buildAnnexeGroupedChildren).
+  List<Widget> _buildGroupedDocs(AppLocalizations l10n) {
+    return buildAnnexeGroupedChildren(
+      l10n,
+      _docs,
+      (doc) => _DocumentTile(
+        doc: doc,
+        dateLabel: _formatDate(doc.uploadedAt),
+        onOpen: () => _openDocument(doc),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -155,11 +173,7 @@ class _InterventionDocumentsSectionState extends State<InterventionDocumentsSect
                   color: AppColors.textSecondary, fontStyle: FontStyle.italic, fontSize: 13),
             )
           else
-            ..._docs.map((doc) => _DocumentTile(
-              doc: doc,
-              dateLabel: _formatDate(doc.uploadedAt),
-              onOpen: () => _openDocument(doc),
-            )),
+            ..._buildGroupedDocs(l10n),
         ],
       ),
     );

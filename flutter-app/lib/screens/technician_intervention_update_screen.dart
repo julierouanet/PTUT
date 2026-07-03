@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:printing/printing.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/mime_from_extension.dart';
@@ -64,6 +65,7 @@ class _TechnicianInterventionUpdateScreenState
   bool _isClosingSession     = false;
   bool _isClosingAsDisposed  = false;
   bool _planNextAction       = false;
+  DateTime? _nextActionDueAt;
 
   // ── Case "Ajouter un document" inline ────────────────────────────────────────
   bool _wantsDocumentUpload = false;
@@ -189,6 +191,35 @@ class _TechnicianInterventionUpdateScreenState
   Future<void> _refreshAfterMutation() async {
     await DataService().reloadIssues();
     NotificationService().generateFromLoadedData();
+  }
+
+  static String _fmtDateTime(DateTime dt) =>
+      DateFormat('dd/MM/yyyy HH:mm').format(dt);
+
+  /// Sélection en deux étapes (date puis heure) de l'échéance de la prochaine
+  /// action — champ optionnel, aucune validation bloquante si annulé.
+  Future<void> _pickNextActionDueAt() async {
+    final now = DateTime.now();
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _nextActionDueAt ?? now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _nextActionDueAt != null
+          ? TimeOfDay.fromDateTime(_nextActionDueAt!)
+          : TimeOfDay.fromDateTime(now),
+    );
+    if (time == null || !mounted) return;
+
+    setState(() {
+      _nextActionDueAt =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
   }
 
   // ── Chronomètre ─────────────────────────────────────────────────────────────
@@ -423,7 +454,10 @@ class _TechnicianInterventionUpdateScreenState
               value: _planNextAction,
               onChanged: _isBusy ? null : (v) => setState(() {
                 _planNextAction = v;
-                if (!v) _nextActionsController.clear();
+                if (!v) {
+                  _nextActionsController.clear();
+                  _nextActionDueAt = null;
+                }
               }),
               activeThumbColor: AppColors.primary,
             ),
@@ -438,6 +472,15 @@ class _TechnicianInterventionUpdateScreenState
             controller: _nextActionsController,
             maxLines: 3,
             decoration: InputDecoration(hintText: l10n.techNextActionsHint),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: _isBusy ? null : () => _pickNextActionDueAt(),
+            icon: const Icon(Icons.event_outlined, size: 16),
+            label: Text(_nextActionDueAt != null
+                ? l10n.techNextActionDueSelected(_fmtDateTime(_nextActionDueAt!))
+                : l10n.techNextActionDuePick),
+            style: OutlinedButton.styleFrom(foregroundColor: AppColors.primary),
           ),
         ],
         const SizedBox(height: 28),
@@ -1811,6 +1854,27 @@ class _TechnicianInterventionUpdateScreenState
     }
   }
 
+  /// Génère le PDF individuel d'une boucle fermée et l'archive sur l'incident
+  /// (rattaché à l'équipement côté serveur si connu) — archivage non bloquant,
+  /// partagé entre `_doSaveAndClose` et `_doWorkOrderClose`.
+  Future<Uint8List> _generateAndArchiveLoopPdf(
+      Issue issue, IssueInterventionSession session) async {
+    final user = AuthService().currentUser;
+    final pdfBytes = await PdfReportService.generateInterventionSessionReport(
+      session: session,
+      issueId: issue.id,
+      equipmentName: issue.equipmentName ?? issue.id,
+      generatedByName: user?.name ?? '—',
+      generatedByRole: user?.roles.firstOrNull?.displayName ?? '—',
+    );
+    try {
+      await DbApiService.instance.archiveInterventionPdf(
+        issue.id, pdfBytes, 'rapport_boucle_${issue.id}_${session.loopNumber}.pdf',
+      );
+    } catch (_) { /* archivage non bloquant */ }
+    return pdfBytes;
+  }
+
   Future<void> _doSaveAndClose(Issue issue, bool inventoryEnabled) async {
     final l10n = AppLocalizations.of(context)!;
     setState(() => _isClosingSession = true);
@@ -1841,28 +1905,17 @@ class _TechnicianInterventionUpdateScreenState
       final sessionRaw = await DbApiService.instance.closeActiveInterventionSession(
         issue.id,
         {
-          'resolved':     false,
-          'outcome':      outcome.isNotEmpty     ? outcome     : null,
-          'next_actions': nextActions.isNotEmpty ? nextActions : null,
+          'resolved':            false,
+          'outcome':             outcome.isNotEmpty     ? outcome     : null,
+          'next_actions':        nextActions.isNotEmpty ? nextActions : null,
+          'next_action_due_at':  _nextActionDueAt?.toIso8601String(),
         },
       );
 
-      // 4. Génère le PDF de boucle
+      // 4-5. Génère le PDF de boucle et l'archive
       final session = IssueInterventionSession.fromApiJson(sessionRaw);
-      final user = AuthService().currentUser;
-      final pdfBytes = await PdfReportService.generateInterventionSessionReport(
-        session: session,
-        issueId: issue.id,
-        equipmentName: issue.equipmentName ?? issue.id,
-        generatedByName: user?.name ?? '—',
-        generatedByRole: user?.roles.firstOrNull?.displayName ?? '—',
-      );
-
-      // 5. Archive le PDF sur l'incident (rattaché à l'équipement côté serveur si connu)
+      final pdfBytes = await _generateAndArchiveLoopPdf(issue, session);
       final loopFileName = 'rapport_boucle_${issue.id}_${session.loopNumber}.pdf';
-      try {
-        await DbApiService.instance.archiveInterventionPdf(issue.id, pdfBytes, loopFileName);
-      } catch (_) { /* archivage non bloquant */ }
 
       await _uploadPickedDocumentsIfAny(issue.id);
 
@@ -1934,10 +1987,17 @@ class _TechnicianInterventionUpdateScreenState
         if (outcome.isNotEmpty)               'outcome':      outcome,
       });
 
-      await DbApiService.instance.closeActiveInterventionSession(issue.id, {
+      // Ferme la dernière boucle et archive son PDF individuel — même mécanisme
+      // que _doSaveAndClose, absent ici jusqu'à présent (bug : ce PDF n'apparaissait
+      // ni dans les documents de l'incident ni dans ceux de l'équipement, seulement
+      // régénéré à la volée depuis l'Historique).
+      final closedSessionRaw = await DbApiService.instance.closeActiveInterventionSession(issue.id, {
         'resolved': true,
         'outcome': outcome.isNotEmpty ? outcome : null,
+        'next_action_due_at': _nextActionDueAt?.toIso8601String(),
       });
+      final closedSession = IssueInterventionSession.fromApiJson(closedSessionRaw);
+      await _generateAndArchiveLoopPdf(issue, closedSession);
 
       await DbApiService.instance.updateIssue(issue.id, {
         'status':              'Completed',
