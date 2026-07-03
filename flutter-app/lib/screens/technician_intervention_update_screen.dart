@@ -2032,6 +2032,13 @@ class _TechnicianInterventionUpdateScreenState
         if (inventoryEnabled && _selectedParts.isNotEmpty)
           'parts_consumed': _buildPartsConsumed(),
       });
+      // Upload optionnel des documents cochés dans la case inline du formulaire —
+      // DOIT s'exécuter avant _generateAndFinalizeReport pour que ces pièces
+      // jointes apparaissent dans le tableau d'annexes du rapport final et
+      // bénéficient du tamponnage annexe serveur.
+      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
+      if (!mounted) return;
+
       final reportPdfBytes = await _generateAndFinalizeReport(issue, finalActions);
       await _refreshAfterMutation();
       if (!mounted) return;
@@ -2060,9 +2067,6 @@ class _TechnicianInterventionUpdateScreenState
         if (!mounted) return;
       }
 
-      // Upload optionnel des documents cochés dans la case inline du formulaire.
-      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
-      if (!mounted) return;
       if (!uploadOk) _showAttachmentUploadFailedWarning(l10n);
 
       _stopTimer();
@@ -2192,7 +2196,8 @@ class _TechnicianInterventionUpdateScreenState
       await Future.wait([generateEquipmentReport(), generateIssueFinalReport()]);
 
       return pdfBytes;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('[Flutter] Échec génération rapport intervention final (issue ${issue.id}): $e\n$st');
       return null;
     }
   }

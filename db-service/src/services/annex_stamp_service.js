@@ -28,6 +28,23 @@ function drawBand(page, font, { width, bandY, text }) {
   });
 }
 
+// ── Embarque une image (JPEG/PNG) dans un PDFDocument, partagé entre le tamponnage
+// 1-page et la grille de photos annexées ─────────────────────────────────────
+async function embedImage(outDoc, imageBuffer, mimeType) {
+  if (mimeType === 'image/png') {
+    return outDoc.embedPng(imageBuffer);
+  }
+  // Recopie dans un buffer non poolé : le JpegEmbedder de pdf-lib (contrairement
+  // au PngEmbedder) lit `imageData.buffer` sans tenir compte de byteOffset/
+  // byteLength, ce qui le fait échouer ("SOI not found in JPEG") sur tout
+  // buffer issu du pool interne de Node (fs.readFileSync sur un fichier < 4 Ko,
+  // ex. petite photo compressée) alors que l'image source est parfaitement valide.
+  const normalizedBuffer = Buffer.from(
+    imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength)
+  );
+  return outDoc.embedJpg(normalizedBuffer);
+}
+
 // ── Tamponne un PDF source (déjà PDF), page par page ─────────────────────────
 async function stampPdfAnnex(inputBuffer, { annexNumber, issueId, typeLabel, typeIndex }) {
   const srcPdf = await PDFDocument.load(inputBuffer);
@@ -59,20 +76,7 @@ async function imageToStampedPdf(imageBuffer, mimeType, { annexNumber, issueId, 
   const outDoc = await PDFDocument.create();
   const font = await outDoc.embedFont(StandardFonts.Helvetica);
 
-  let image;
-  if (mimeType === 'image/png') {
-    image = await outDoc.embedPng(imageBuffer);
-  } else {
-    // Recopie dans un buffer non poolé : le JpegEmbedder de pdf-lib (contrairement
-    // au PngEmbedder) lit `imageData.buffer` sans tenir compte de byteOffset/
-    // byteLength, ce qui le fait échouer ("SOI not found in JPEG") sur tout
-    // buffer issu du pool interne de Node (fs.readFileSync sur un fichier < 4 Ko,
-    // ex. petite photo compressée) alors que l'image source est parfaitement valide.
-    const normalizedBuffer = Buffer.from(
-      imageBuffer.buffer.slice(imageBuffer.byteOffset, imageBuffer.byteOffset + imageBuffer.byteLength)
-    );
-    image = await outDoc.embedJpg(normalizedBuffer);
-  }
+  const image = await embedImage(outDoc, imageBuffer, mimeType);
 
   const [pageWidth, pageHeight] = PageSizes.A4;
   const page = outDoc.addPage([pageWidth, pageHeight]);
@@ -95,4 +99,9 @@ async function imageToStampedPdf(imageBuffer, mimeType, { annexNumber, issueId, 
   return Buffer.from(await outDoc.save());
 }
 
-module.exports = { stampPdfAnnex, imageToStampedPdf };
+module.exports = {
+  stampPdfAnnex, imageToStampedPdf,
+  // Réexportés pour réutilisation par annex_photo_grid_service.js (même bandeau, même
+  // embarquement d'image) — évite de dupliquer le contournement JPEG et le style du bandeau.
+  drawBand, embedImage, BAND_HEIGHT, MARGIN, TEXT_COLOR,
+};

@@ -248,7 +248,10 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
       await onSuccess(bytes, from, to);
     } on ApiException catch (e) {
       if (!mounted) return;
-      _showSnack(e.statusCode == 404 ? emptyMessage : errorMessage, isError: e.statusCode != 404);
+      _showSnack(
+        e.statusCode == 404 ? emptyMessage : '$errorMessage : ${e.message}',
+        isError: e.statusCode != 404,
+      );
     } catch (_) {
       if (!mounted) return;
       _showSnack(errorMessage, isError: true);

@@ -92,6 +92,19 @@
       margin-top: 10px;
       font-variant-numeric: tabular-nums;
     }
+
+    /* Bouton Retry de l'écran hors-ligne (injecté par showOffline) */
+    .k-btn {
+      font-family: system-ui, -apple-system, Arial, sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      color: #fff;
+      background: #2563EB;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 24px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -186,10 +199,7 @@
           '<div class="k-sub" style="max-width:340px;text-align:center;line-height:1.6">' +
           'This app must be used on the hospital WiFi network. ' +
           'Please connect to the hospital WiFi, then try again.</div>' +
-          '<button onclick="location.reload()" style="font-size:.9rem;font-weight:600;' +
-          'color:#fff;background:#2563EB;border:none;border-radius:8px;' +
-          'padding:10px 24px;cursor:pointer;font-family:system-ui,-apple-system,Arial,sans-serif">' +
-          'Retry</button>';
+          '<button class="k-btn" onclick="location.reload()">Retry</button>';
       }
 
       if (navigator.onLine === false) {

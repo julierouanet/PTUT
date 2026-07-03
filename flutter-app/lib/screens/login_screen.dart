@@ -845,13 +845,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Le lien d'installation n'a de sens qu'en déploiement web réel :
-  /// la page /setup/ est générée par setup_ubuntu.sh et n'existe pas en dev
-  /// localhost (même logique de détection d'hôte que ApiConfig).
-  bool get _showInstallLink {
-    if (!kIsWeb) return false;
-    final host = Uri.base.host;
-    return host != 'localhost' && host != '127.0.0.1';
-  }
+  /// la page /setup/ est générée par setup_ubuntu.sh et n'existe pas en dev.
+  bool get _showInstallLink => kIsWeb && !ApiConfig.isLocalhost;
 
   /// Lien discret vers le guide d'installation PWA (CA + écran d'accueil).
   Widget _buildInstallAppLink(AppLocalizations l10n) {

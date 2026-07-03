@@ -8,6 +8,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { UPLOAD_DIR } = require('../config');
 const { buildSummaryPdf, summaryPageCount } = require('../services/annex_summary_service');
+const { buildPhotoGridPdf } = require('../services/annex_photo_grid_service');
 
 const router = express.Router();
 
@@ -146,6 +147,12 @@ function fetchFilteredPhotos(filters, { storedNameColumn, extraCondition = '' })
     ${where}${extraCondition}
     ORDER BY uploaded_at DESC
   `).all(...params);
+}
+
+// Réponse d'erreur commune aux deux chemins de fusion PDF (par incident et multi-incidents).
+function sendMergeError(res, err) {
+  console.error('[DB] Échec fusion PDF intervention:', err);
+  res.status(500).json({ error: 'Erreur lors de la fusion des PDF : ' + err.message });
 }
 
 // Audit trail commun aux deux exports (ZIP/PDF) — même forme, seule l'action diffère
@@ -325,14 +332,16 @@ async function buildIssuePrintPdf(issueId, docTypes) {
     WHERE issue_id = ? AND deleted_at IS NULL AND document_type = 'completion' AND annex_number IS NOT NULL
   `).all(issueId).map((d) => ({ ...d, kind: 'document' })) : [];
 
+  // Contrairement aux annexes documents (annex_pdf_stored_name pointe déjà vers un
+  // PDF 1 page/photo tamponné), les photos passent maintenant par une grille 2x2 :
+  // on charge donc l'image ORIGINALE (stored_name), pas le PDF individuel — voir
+  // annex_photo_grid_service.js.
   const numberedPhotoAnnexes = docTypes.includes('photo') ? db.prepare(`
-    SELECT id, original_name, annex_pdf_stored_name AS stored_name, annex_number, annex_type_index
+    SELECT id, original_name, stored_name, mime_type, annex_number, annex_type_index
     FROM issue_photos
-    WHERE issue_id = ? AND annex_pdf_stored_name IS NOT NULL
-  `).all(issueId).map((p) => ({ ...p, kind: 'photo' })) : [];
-
-  const numberedAnnexes = [...numberedDocAnnexes, ...numberedPhotoAnnexes]
-    .sort((a, b) => a.annex_number - b.annex_number);
+    WHERE issue_id = ? AND annex_number IS NOT NULL
+    ORDER BY annex_number ASC
+  `).all(issueId) : [];
 
   const legacyAnnexes = docTypes.includes('completion') ? db.prepare(`
     SELECT id, original_name, stored_name FROM equipment_documents
@@ -341,37 +350,56 @@ async function buildIssuePrintPdf(issueId, docTypes) {
     ORDER BY uploaded_at ASC
   `).all(issueId).map((d) => ({ ...d, kind: 'document' })) : [];
 
-  const totalDocs = (finalReportDoc ? 1 : 0) + interventionDocs.length + numberedAnnexes.length + legacyAnnexes.length;
+  const totalDocs = (finalReportDoc ? 1 : 0) + interventionDocs.length + numberedDocAnnexes.length
+    + numberedPhotoAnnexes.length + legacyAnnexes.length;
   if (totalDocs === 0) return null;
 
-  // Les 4 groupes sont indépendants (lignes DB et fichiers disque distincts) : chargés
-  // en parallèle plutôt qu'en 4 batches séquentiels.
-  const [finalReportLoaded, interventionLoaded, numberedLoaded, legacyLoaded] = await Promise.all([
+  // Les groupes sont indépendants (lignes DB et fichiers disque distincts) : chargés
+  // en parallèle plutôt qu'en batches séquentiels.
+  const [finalReportLoaded, interventionLoaded, numberedDocLoaded, legacyLoaded, photoGrid] = await Promise.all([
     finalReportDoc ? loadPdfGroup([finalReportDoc]).then((g) => g[0]) : Promise.resolve(null),
     loadPdfGroup(interventionDocs),
-    loadPdfGroup(numberedAnnexes),
+    loadPdfGroup(numberedDocAnnexes),
     loadPdfGroup(legacyAnnexes),
+    buildPhotoGridPdf(
+      numberedPhotoAnnexes.map((p) => ({
+        imageBuffer: fs.readFileSync(path.join(UPLOAD_DIR, p.stored_name)),
+        mimeType: p.mime_type,
+        label: p.original_name,
+        annexNumber: p.annex_number,
+        annexTypeIndex: p.annex_type_index,
+      })),
+      issueId
+    ),
   ]);
 
   // ── Sommaire : documents d'intervention + annexes numérotées, jamais les hérités ──
   const entries = [];
   let cursor = finalReportLoaded ? finalReportLoaded.pageCount : 0;
 
-  const entryCount = interventionLoaded.length + numberedLoaded.length;
+  const entryCount = interventionLoaded.length + numberedDocLoaded.length + numberedPhotoAnnexes.length;
   cursor += summaryPageCount(entryCount);
 
   for (const doc of interventionLoaded) {
     entries.push({ label: `Intervention — ${doc.original_name}`, startPage: cursor + 1 });
     cursor += doc.pageCount;
   }
-  for (const annex of numberedLoaded) {
-    const typeLabel = annex.kind === 'photo' ? 'Photo' : 'Pièce jointe';
+  for (const annex of numberedDocLoaded) {
     entries.push({
-      label: `Annexe ${annex.annex_number} — ${typeLabel} ${annex.annex_type_index} — ${annex.original_name}`,
+      label: `Annexe ${annex.annex_number} — Pièce jointe ${annex.annex_type_index} — ${annex.original_name}`,
       startPage: cursor + 1,
     });
     cursor += annex.pageCount;
   }
+  // Plusieurs photos peuvent partager la même page de grille : startPage n'est donc
+  // pas incrémenté entrée par entrée mais lu depuis pageStartByEntryIndex.
+  numberedPhotoAnnexes.forEach((annex, i) => {
+    entries.push({
+      label: `Annexe ${annex.annex_number} — Photo ${annex.annex_type_index} — ${annex.original_name}`,
+      startPage: cursor + photoGrid.pageStartByEntryIndex[i],
+    });
+  });
+  cursor += photoGrid.pageCount;
 
   const summaryBuffer = await buildSummaryPdf(entries);
 
@@ -382,7 +410,11 @@ async function buildIssuePrintPdf(issueId, docTypes) {
     await appendPdfGroup(mergedPdf, [{ srcPdf: summaryPdf }]);
   }
   await appendPdfGroup(mergedPdf, interventionLoaded);
-  await appendPdfGroup(mergedPdf, numberedLoaded);
+  await appendPdfGroup(mergedPdf, numberedDocLoaded);
+  if (photoGrid.buffer) {
+    const photoGridPdf = await PDFDocument.load(photoGrid.buffer);
+    await appendPdfGroup(mergedPdf, [{ srcPdf: photoGridPdf }]);
+  }
   await appendPdfGroup(mergedPdf, legacyLoaded);
 
   return { mergedPdf, docCount: totalDocs };
@@ -407,7 +439,7 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
       res.setHeader('Content-Type', 'application/pdf');
       res.send(Buffer.from(mergedBytes));
     } catch (err) {
-      res.status(500).json({ error: 'Erreur lors de la fusion des PDF' });
+      sendMergeError(res, err);
     }
     return;
   }
@@ -447,7 +479,7 @@ router.get('/print-pdf', verifyToken, requireRole(...ALLOWED_ROLES), async (req,
     res.setHeader('Content-Type', 'application/pdf');
     res.send(Buffer.from(mergedBytes));
   } catch (err) {
-    res.status(500).json({ error: 'Erreur lors de la fusion des PDF' });
+    sendMergeError(res, err);
   }
 });
 

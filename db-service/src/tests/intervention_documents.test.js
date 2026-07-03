@@ -738,12 +738,13 @@ describe('GET /api/documents/interventions/print-pdf', () => {
     const int1Stored = 'print-full-int1.pdf';
     const int2Stored = 'print-full-int2.pdf';
     const annexDocStored = 'print-full-annexdoc.pdf';
-    const annexPhotoStored = 'print-full-annexphoto.pdf';
+    const annexPhotoStored = 'print-full-annexphoto.png';
     await writeRealPdf(finalReportStored);
     await writeRealPdf(int1Stored);
     await writeRealPdf(int2Stored);
     await writeRealPdf(annexDocStored);
-    await writeRealPdf(annexPhotoStored);
+    // Image originale (pas un PDF pré-tamponné) : la grille photo la charge directement.
+    writeRealFile(annexPhotoStored, TINY_PNG);
 
     insertInterventionDoc({ equipmentId: eqId, issueId, storedName: finalReportStored, originalName: 'final.pdf', docType: 'final_report', uploadedBy: 'tech-full', uploaderName: 'Tech Full' });
     insertInterventionDoc({ equipmentId: eqId, issueId, storedName: int1Stored, originalName: 'int1.pdf', docType: 'intervention', uploadedBy: 'tech-full', uploaderName: 'Tech Full', uploadedAt: '2026-01-01 08:00:00' });
@@ -754,7 +755,7 @@ describe('GET /api/documents/interventions/print-pdf', () => {
 
     db.prepare(`
       INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index, annex_pdf_stored_name)
-      VALUES (?, 'orig-photo.jpg', 'photo.jpg', 'image/jpeg', 5, datetime('now','localtime'), 2, 1, ?)
+      VALUES (?, ?, 'photo.png', 'image/png', 5, datetime('now','localtime'), 2, 1, 'legacy-unused.pdf')
     `).run(issueId, annexPhotoStored);
 
     const res = await request(app)
@@ -766,7 +767,7 @@ describe('GET /api/documents/interventions/print-pdf', () => {
 
     expect(res.status).toBe(200);
     // 1 rapport final + 1 sommaire (4 entrées : 2 intervention + 2 annexes) +
-    // 2 pages intervention + 2 pages d'annexe tamponnée (1 page chacune) = 6 pages.
+    // 2 pages intervention + 1 page annexe document + 1 page grille photo (1 photo) = 6 pages.
     const merged = await PDFDocument.load(res.body);
     expect(merged.getPageCount()).toBe(6);
   });
@@ -832,6 +833,100 @@ describe('GET /api/documents/interventions/print-pdf', () => {
       .set('Authorization', 'Bearer fake-token');
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/documents/interventions/print-pdf — grille photos annexées', () => {
+  function seedNumberedPhoto(issueId, storedName, annexNumber, annexTypeIndex) {
+    writeRealFile(storedName, TINY_PNG);
+    db.prepare(`
+      INSERT INTO issue_photos (issue_id, stored_name, original_name, mime_type, file_size_kb, uploaded_at, annex_number, annex_type_index)
+      VALUES (?, ?, ?, 'image/png', 1, datetime('now','localtime'), ?, ?)
+    `).run(issueId, storedName, storedName, annexNumber, annexTypeIndex);
+  }
+
+  test('✅ 5 photos annexées → grille sur 2 pages (4 puis 1)', async () => {
+    const issueId = 'iss-print-grid5';
+    seedIssue(issueId);
+    for (let i = 1; i <= 5; i++) {
+      seedNumberedPhoto(issueId, `grid5-photo-${i}.png`, i, i);
+    }
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: 'photo' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    const merged = await PDFDocument.load(res.body);
+    // 1 sommaire (5 entrées → 1 page) + 2 pages de grille (4 puis 1 photo) = 3.
+    expect(merged.getPageCount()).toBe(3);
+  });
+
+  test('✅ 1 seule photo → grille sur 1 page (pas de crash sur page incomplète)', async () => {
+    const issueId = 'iss-print-grid1';
+    seedIssue(issueId);
+    seedNumberedPhoto(issueId, 'grid1-photo.png', 1, 1);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: 'photo' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    const merged = await PDFDocument.load(res.body);
+    expect(merged.getPageCount()).toBe(2); // sommaire (1) + grille (1)
+  });
+
+  test('✅ 0 photo, uniquement documents completion → comportement inchangé (pas de régression)', async () => {
+    const issueId = 'iss-print-grid0';
+    const eqId = 'idoc-eq-print-grid0';
+    seedIssue(issueId, { equipmentId: eqId });
+    const annexDocStored = 'grid0-annexdoc.pdf';
+    await writeRealPdf(annexDocStored);
+    const annexDocId = insertInterventionDoc({ equipmentId: eqId, issueId, storedName: annexDocStored, originalName: 'annexdoc.pdf', docType: 'completion', uploadedBy: 'tech-grid0', uploaderName: 'Tech Grid0' });
+    db.prepare('UPDATE equipment_documents SET annex_number = 1, annex_type_index = 1 WHERE id = ?').run(annexDocId);
+
+    const res = await request(app)
+      .get('/api/documents/interventions/print-pdf')
+      .query({ issue_id: issueId, types: 'completion' })
+      .set('Authorization', 'Bearer fake-token')
+      .buffer(true)
+      .parse(bufferParser);
+
+    expect(res.status).toBe(200);
+    const merged = await PDFDocument.load(res.body);
+    // 1 sommaire (1 entrée) + 1 page annexe document = 2 pages, aucune page de grille.
+    expect(merged.getPageCount()).toBe(2);
+  });
+
+  test('🚫 erreur de fusion → 500 avec message détaillé + log console.error', async () => {
+    const issueId = 'iss-print-grid-err';
+    const eqId = 'idoc-eq-print-grid-err';
+    seedIssue(issueId, { equipmentId: eqId });
+    // Document PDF corrompu : PDFDocument.load échoue dans loadPdfGroup.
+    const corruptStored = 'grid-err-final.pdf';
+    writeRealFile(corruptStored, 'pas un pdf du tout');
+    insertInterventionDoc({ equipmentId: eqId, issueId, storedName: corruptStored, originalName: 'final.pdf', docType: 'final_report', uploadedBy: 'tech-grid-err', uploaderName: 'Tech Grid Err' });
+
+    const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const res = await request(app)
+        .get('/api/documents/interventions/print-pdf')
+        .query({ issue_id: issueId })
+        .set('Authorization', 'Bearer fake-token');
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toContain('Erreur lors de la fusion des PDF :');
+      expect(res.body.error.length).toBeGreaterThan('Erreur lors de la fusion des PDF :'.length);
+      expect(consoleErrorSpy).toHaveBeenCalledWith('[DB] Échec fusion PDF intervention:', expect.any(Error));
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 });
 

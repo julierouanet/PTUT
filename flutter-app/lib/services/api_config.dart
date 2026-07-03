@@ -57,7 +57,9 @@ class ApiConfig {
 
   // ── Résolution automatique ────────────────────────────────────────────────────
 
-  static bool get _isLocalhost {
+  /// Vrai en dev local (ou hors web). Public : aussi utilisé par le
+  /// LoginScreen pour masquer le lien /setup/ qui n'existe qu'en déploiement.
+  static bool get isLocalhost {
     if (!kIsWeb) return true; // mobile/desktop → toujours localhost
     final host = Uri.base.host;
     return host == 'localhost' || host == '127.0.0.1';
@@ -75,19 +77,19 @@ class ApiConfig {
   }
 
   static String _resolveAuthUrl() {
-    if (_isLocalhost) return 'http://localhost:3001';
+    if (isLocalhost) return 'http://localhost:3001';
     // IP ou domaine → Nginx route /auth/ vers auth-service:3001
     return '$_webSchemeHost/auth';
   }
 
   static String _resolveDbUrl() {
-    if (_isLocalhost) return 'http://localhost:3002';
+    if (isLocalhost) return 'http://localhost:3002';
     // IP ou domaine → Nginx route /db/ vers db-service:3002
     return '$_webSchemeHost/db';
   }
 
   static String _resolveKcTokenUrl() {
-    if (_isLocalhost) {
+    if (isLocalhost) {
       return 'http://localhost:8080/realms/kabutare-hospital/protocol/openid-connect/token';
     }
     // IP ou domaine → Nginx route /keycloak/ vers keycloak:8080
