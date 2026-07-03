@@ -406,7 +406,10 @@ server {
         try_files /index.html =404;
         add_header Cache-Control "no-cache";
     }
-    client_max_body_size 10M;
+    # Taille max upload — couvre le pire cas Multer : /documents accepte
+    # jusqu'à 5 fichiers × 10 Mo (photoUpload/documentUpload dans
+    # db-service/src/middleware/upload.js), soit 50 Mo en une requête.
+    client_max_body_size 60M;
 }
 NGINXEOF
 # Injecter l'IP publique réelle dans le placeholder sub_filter

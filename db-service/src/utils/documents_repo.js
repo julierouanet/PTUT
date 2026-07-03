@@ -10,11 +10,18 @@ const { UPLOAD_DIR } = require('../config');
 // les pièces jointes 'completion' — cf. nextAnnexNumber / nextDocumentAnnexTypeIndex.
 function insertEquipmentDocument(db, { equipmentId, issueId, docType, file, userId, userName, annexNumber = null, annexTypeIndex = null }) {
   const fileSizeKb = Math.ceil(file.size / 1024);
+  // Lié en paramètre (plutôt que datetime('now','localtime') inline) pour que
+  // la valeur insérée et celle renvoyée au client restent identiques — sinon
+  // le modèle Flutter EquipmentDocument (uploadedAt non-nullable) ne peut pas
+  // être reconstruit depuis la seule réponse d'insertion. Locale 'sv-SE' sans
+  // timeZone forcé = format 'YYYY-MM-DD HH:MM:SS' dans le fuseau système du
+  // conteneur, identique à ce que produit `localtime` côté SQLite.
+  const uploadedAt = new Date().toLocaleString('sv-SE');
   const result = db.prepare(`
     INSERT INTO equipment_documents
       (equipment_id, issue_id, document_type, original_name, stored_name, mime_type,
        file_size_kb, uploaded_by, uploader_name, uploaded_at, annex_number, annex_type_index)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'), ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     equipmentId || null,
     issueId || null,
@@ -25,15 +32,20 @@ function insertEquipmentDocument(db, { equipmentId, issueId, docType, file, user
     fileSizeKb,
     userId,
     userName,
+    uploadedAt,
     annexNumber,
     annexTypeIndex,
   );
   return {
     id: result.lastInsertRowid,
+    document_type: docType,
     original_name: file.originalname,
     stored_name: file.filename,
     mime_type: file.mimetype,
     file_size_kb: fileSizeKb,
+    uploaded_by: userId,
+    uploader_name: userName,
+    uploaded_at: uploadedAt,
     annex_number: annexNumber,
     annex_type_index: annexTypeIndex,
   };
