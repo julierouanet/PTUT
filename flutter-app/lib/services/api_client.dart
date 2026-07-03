@@ -217,8 +217,8 @@ class ApiClient {
   /// [fields]   : champs de formulaire additionnels (ex. {"type": "technical"}).
   /// [fileField]: nom du champ fichier (défaut "file").
   ///
-  /// Retourne le JSON décodé ou lève une [Exception] avec le message d'erreur.
-  static Future<Map<String, dynamic>> postMultipart(
+  /// Retourne le JSON décodé (Map ou List selon l'endpoint) ou lève une [Exception].
+  static Future<dynamic> postMultipart(
     String url,
     Uint8List fileBytes,
     String fileName,
@@ -238,7 +238,8 @@ class ApiClient {
   }
 
   /// Upload de plusieurs fichiers (champ multi-values, ex. "photos" ou "files").
-  static Future<Map<String, dynamic>> postMultipartFiles(
+  /// Retourne la liste des documents insérés telle que renvoyée par le serveur.
+  static Future<List<dynamic>> postMultipartFiles(
     String url,
     List<({Uint8List bytes, String name, String mimeType})> files, {
     required String fileField,
@@ -249,10 +250,10 @@ class ApiClient {
       final refreshed = await _tryRefresh();
       if (refreshed) {
         final retried = await _sendMultipartFiles(url, files, fileField, fields);
-        return _parseMultipartResponse(retried);
+        return (await _parseMultipartResponse(retried)) as List<dynamic>;
       }
     }
-    return _parseMultipartResponse(result);
+    return (await _parseMultipartResponse(result)) as List<dynamic>;
   }
 
   static Future<http.StreamedResponse> _sendMultipart(
@@ -295,10 +296,11 @@ class ApiClient {
     return request.send().timeout(const Duration(seconds: 60));
   }
 
-  static Future<Map<String, dynamic>> _parseMultipartResponse(http.StreamedResponse response) async {
+  // Retourne dynamic car les endpoints renvoient tantôt un objet, tantôt un tableau.
+  static Future<dynamic> _parseMultipartResponse(http.StreamedResponse response) async {
     final body = await response.stream.bytesToString();
     if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(body) as Map<String, dynamic>;
+      return jsonDecode(body);
     }
     String message = 'Erreur ${response.statusCode}';
     try {

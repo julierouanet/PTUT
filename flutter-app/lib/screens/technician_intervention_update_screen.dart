@@ -21,6 +21,21 @@ import '../widgets/urgency_badge.dart';
 import '../widgets/equipment/equipment_decommission_dialog.dart'
     show kDisposalMethods, disposalMethodLabel;
 
+/// Suivi d'un fichier en attente d'upload vers l'incident.
+class _PendingUpload {
+  final PlatformFile file;
+  int? docId;
+  bool uploading;
+  bool failed;
+  bool removed;
+  Future<void>? uploadFuture;
+
+  _PendingUpload(this.file)
+      : uploading = true,
+        failed = false,
+        removed = false;
+}
+
 /// Pièce sélectionnée depuis le catalogue d'inventaire.
 class _SelectedPart {
   final String itemId;
@@ -69,7 +84,9 @@ class _TechnicianInterventionUpdateScreenState
 
   // ── Case "Ajouter un document" inline ────────────────────────────────────────
   bool _wantsDocumentUpload = false;
-  final List<PlatformFile> _pickedDocuments = [];
+  final List<_PendingUpload> _pendingUploads = [];
+  // Vrai si la clôture a réussi : les uploads ne sont pas des orphelins.
+  bool _committedUploads = false;
 
   /// Vrai si une action API du formulaire d'intervention est en cours
   /// (désactive tous les boutons d'action pour éviter les appels concurrents).
@@ -167,6 +184,16 @@ class _TechnicianInterventionUpdateScreenState
     _outcomeController.dispose();
     _nextActionsController.dispose();
     _partsSearchController.dispose();
+    // Supprime les uploads orphelins si l'écran est fermé sans clôture validée.
+    if (!_committedUploads) {
+      for (final p in _pendingUploads) {
+        if (p.docId != null && !p.removed) {
+          DbApiService.instance
+              .deleteInterventionDocument(widget.issue.id, p.docId!)
+              .ignore();
+        }
+      }
+    }
     super.dispose();
   }
 
@@ -837,6 +864,7 @@ class _TechnicianInterventionUpdateScreenState
         behavior: SnackBarBehavior.floating,
       ));
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (_) {
@@ -1053,6 +1081,7 @@ class _TechnicianInterventionUpdateScreenState
   // ─────────────────────────────────────────────────────────────────────────────
 
   Widget _buildDocumentUploadSection(AppLocalizations l10n) {
+    final activeUploads = _pendingUploads.where((p) => !p.removed).toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1062,10 +1091,12 @@ class _TechnicianInterventionUpdateScreenState
               value: _wantsDocumentUpload,
               onChanged: _isBusy
                   ? null
-                  : (v) => setState(() {
-                        _wantsDocumentUpload = v ?? false;
-                        if (!_wantsDocumentUpload) _pickedDocuments.clear();
-                      }),
+                  : (v) async {
+                      final wantsUpload = v ?? false;
+                      if (!wantsUpload) await _clearPendingUploads();
+                      if (!mounted) return;
+                      setState(() => _wantsDocumentUpload = wantsUpload);
+                    },
               activeColor: AppColors.primary,
             ),
             Expanded(
@@ -1077,17 +1108,17 @@ class _TechnicianInterventionUpdateScreenState
         if (_wantsDocumentUpload) ...[
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: _isBusy ? null : _pickDocuments,
+            onPressed: (_isBusy || activeUploads.length >= 5) ? null : _pickDocuments,
             icon: const Icon(Icons.attach_file, size: 16),
             label: Text(l10n.techAddDocumentPickButton),
           ),
-          if (_pickedDocuments.isNotEmpty) ...[
+          if (activeUploads.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: _pickedDocuments
-                  .map((f) => _buildPickedDocumentChip(f))
+              children: activeUploads
+                  .map((p) => _buildPendingUploadChip(p, l10n))
                   .toList(),
             ),
           ],
@@ -1097,6 +1128,7 @@ class _TechnicianInterventionUpdateScreenState
   }
 
   Future<void> _pickDocuments() async {
+    final active = _pendingUploads.where((p) => !p.removed).length;
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
@@ -1105,68 +1137,160 @@ class _TechnicianInterventionUpdateScreenState
     );
     if (result == null || result.files.isEmpty) return;
     if (!mounted) return;
-    setState(() {
-      _pickedDocuments.addAll(result.files.where((f) => f.bytes != null));
-      if (_pickedDocuments.length > 5) {
-        _pickedDocuments.removeRange(5, _pickedDocuments.length);
-      }
-    });
+
+    final toAdd = result.files
+        .where((f) => f.bytes != null)
+        .take(5 - active)
+        .map(_PendingUpload.new)
+        .toList();
+    if (toAdd.isEmpty) return;
+
+    setState(() => _pendingUploads.addAll(toAdd));
     _markDirty();
+
+    for (final upload in toAdd) {
+      upload.uploadFuture = _uploadOneFile(upload);
+    }
   }
 
-  Widget _buildPickedDocumentChip(PlatformFile file) {
+  Future<void> _uploadOneFile(_PendingUpload upload) async {
+    final issueId = widget.issue.id;
+    try {
+      final docs = await DbApiService.instance.uploadInterventionDocuments(
+        issueId,
+        [(
+          bytes: Uint8List.fromList(upload.file.bytes!),
+          name: upload.file.name,
+          mimeType: mimeFromExtension(upload.file.extension ?? ''),
+        )],
+      );
+      final docId = docs.isNotEmpty ? docs.first.id : null;
+      // Race condition : l'utilisateur a retiré le fichier pendant l'upload
+      if (upload.removed) {
+        if (docId != null) {
+          DbApiService.instance
+              .deleteInterventionDocument(issueId, docId)
+              .ignore();
+        }
+        return;
+      }
+      if (!mounted) return;
+      setState(() {
+        upload.docId = docId;
+        upload.uploading = false;
+      });
+    } catch (e) {
+      debugPrint('[DB] Échec upload pièce jointe intervention: $e');
+      if (upload.removed) return;
+      if (!mounted) return;
+      setState(() {
+        upload.uploading = false;
+        upload.failed = true;
+      });
+    }
+  }
+
+  /// Supprime côté serveur tous les uploads terminés puis vide la liste locale.
+  Future<void> _clearPendingUploads() async {
+    final issueId = widget.issue.id;
+    for (final p in _pendingUploads) {
+      p.removed = true;
+      if (p.docId != null && !p.uploading) {
+        DbApiService.instance
+            .deleteInterventionDocument(issueId, p.docId!)
+            .ignore();
+      }
+    }
+    if (mounted) setState(() => _pendingUploads.clear());
+  }
+
+  Widget _buildPendingUploadChip(_PendingUpload upload, AppLocalizations l10n) {
+    final Widget statusIcon;
+    if (upload.uploading) {
+      statusIcon = const SizedBox(
+        width: 12, height: 12,
+        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+      );
+    } else if (upload.failed) {
+      statusIcon = GestureDetector(
+        onTap: () {
+          setState(() {
+            upload.uploading = true;
+            upload.failed = false;
+          });
+          upload.uploadFuture = _uploadOneFile(upload);
+        },
+        child: const Icon(Icons.refresh, size: 14, color: AppColors.warning),
+      );
+    } else {
+      statusIcon = const Icon(Icons.check_circle_outline, size: 14, color: AppColors.success);
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
+        color: upload.failed
+            ? AppColors.warning.withValues(alpha: 0.1)
+            : AppColors.primaryLight,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.insert_drive_file_outlined,
-              size: 14, color: AppColors.primary),
+          statusIcon,
           const SizedBox(width: 6),
-          Text(file.name, style: const TextStyle(fontSize: 12, color: AppColors.primary)),
+          Text(upload.file.name,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: upload.failed ? AppColors.warning : AppColors.primary)),
           const SizedBox(width: 6),
           GestureDetector(
-            onTap: () => setState(() => _pickedDocuments.remove(file)),
-            child: const Icon(Icons.close, size: 14, color: AppColors.textSecondary),
+            onTap: upload.uploading
+                ? null
+                : () async {
+                    upload.removed = true;
+                    if (upload.docId != null) {
+                      DbApiService.instance
+                          .deleteInterventionDocument(
+                              widget.issue.id, upload.docId!)
+                          .ignore();
+                    }
+                    if (mounted) setState(() => _pendingUploads.remove(upload));
+                  },
+            child: Icon(Icons.close,
+                size: 14,
+                color: upload.uploading
+                    ? AppColors.textMuted
+                    : AppColors.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  /// Upload les documents cochés vers l'incident (type 'completion'). Non
-  /// bloquant : n'échoue jamais la clôture en cours (pattern archiveInterventionPdf).
-  /// Retourne `false` en cas d'échec réel de l'upload pour que l'appelant
-  /// puisse avertir le technicien — l'absence de document à uploader n'est
-  /// jamais un échec.
-  Future<bool> _uploadPickedDocumentsIfAny(String issueId) async {
-    if (!_wantsDocumentUpload || _pickedDocuments.isEmpty) return true;
-    try {
-      await DbApiService.instance.uploadInterventionDocuments(
-        issueId,
-        _pickedDocuments.map((f) => (
-          bytes: Uint8List.fromList(f.bytes!),
-          name: f.name,
-          mimeType: mimeFromExtension(f.extension ?? ''),
-        )).toList(),
-      );
-      return true;
-    } catch (e) {
-      debugPrint('[DB] Échec upload pièce jointe intervention: $e');
-      return false;
-    }
+  /// Attend la fin de tous les uploads en cours, puis retourne les noms
+  /// des fichiers en échec (liste vide = tout s'est bien passé).
+  Future<List<String>> _awaitPendingAndCollectFailed() async {
+    final futures = _pendingUploads
+        .where((p) => !p.removed && p.uploadFuture != null)
+        .map((p) => p.uploadFuture!)
+        .toList();
+    if (futures.isNotEmpty) await Future.wait(futures, eagerError: false);
+    return _pendingUploads
+        .where((p) => !p.removed && p.failed)
+        .map((p) => p.file.name)
+        .toList();
   }
 
-  /// Avertit le technicien que la clôture a réussi mais que la pièce jointe
-  /// n'a pas pu être téléversée — partagé entre `_doSaveAndClose` et
-  /// `_doWorkOrderClose`.
-  void _showAttachmentUploadFailedWarning(AppLocalizations l10n) {
+  /// Avertit le technicien que la clôture a réussi mais que certains fichiers
+  /// n'ont pas pu être téléversés — liste les noms pour qu'il sache lesquels.
+  void _showAttachmentUploadFailedWarning(
+      AppLocalizations l10n, List<String> failedNames) {
+    final message = failedNames.isEmpty
+        ? l10n.techAttachmentUploadFailed
+        : l10n.techAttachmentUploadFailedFiles(failedNames.join(', '));
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(l10n.techAttachmentUploadFailed),
+      content: Text(message),
       backgroundColor: AppColors.warning,
       behavior: SnackBarBehavior.floating,
     ));
@@ -1686,6 +1810,7 @@ class _TechnicianInterventionUpdateScreenState
         behavior: SnackBarBehavior.floating,
       ));
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (e) {
@@ -1800,6 +1925,7 @@ class _TechnicianInterventionUpdateScreenState
         behavior: SnackBarBehavior.floating,
       ));
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (_) {
@@ -1833,6 +1959,7 @@ class _TechnicianInterventionUpdateScreenState
         behavior: SnackBarBehavior.floating,
       ));
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (e) {
@@ -1935,7 +2062,8 @@ class _TechnicianInterventionUpdateScreenState
       final pdfBytes = await _generateAndArchiveLoopPdf(issue, session);
       final loopFileName = 'loop_report_${issue.id}_${session.loopNumber}.pdf';
 
-      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
+      // Attend la fin des uploads déjà en cours (démarrés à la sélection)
+      final failedNames = await _awaitPendingAndCollectFailed();
 
       await _refreshAfterMutation();
       if (!mounted) return;
@@ -1949,7 +2077,7 @@ class _TechnicianInterventionUpdateScreenState
         backgroundColor: AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ));
-      if (!uploadOk) _showAttachmentUploadFailedWarning(l10n);
+      if (failedNames.isNotEmpty) _showAttachmentUploadFailedWarning(l10n, failedNames);
 
       // Propose la consultation immédiate du PDF de boucle avant de quitter.
       await _promptViewPdf(
@@ -1961,6 +2089,7 @@ class _TechnicianInterventionUpdateScreenState
       if (!mounted) return;
 
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (e) {
@@ -2032,11 +2161,9 @@ class _TechnicianInterventionUpdateScreenState
         if (inventoryEnabled && _selectedParts.isNotEmpty)
           'parts_consumed': _buildPartsConsumed(),
       });
-      // Upload optionnel des documents cochés dans la case inline du formulaire —
-      // DOIT s'exécuter avant _generateAndFinalizeReport pour que ces pièces
-      // jointes apparaissent dans le tableau d'annexes du rapport final et
-      // bénéficient du tamponnage annexe serveur.
-      final uploadOk = await _uploadPickedDocumentsIfAny(issue.id);
+      // Attend la fin des uploads déjà en cours (démarrés à la sélection des fichiers)
+      // avant de générer le rapport final pour que les annexes soient incluses.
+      final failedNames = await _awaitPendingAndCollectFailed();
       if (!mounted) return;
 
       final reportPdfBytes = await _generateAndFinalizeReport(issue, finalActions);
@@ -2067,9 +2194,10 @@ class _TechnicianInterventionUpdateScreenState
         if (!mounted) return;
       }
 
-      if (!uploadOk) _showAttachmentUploadFailedWarning(l10n);
+      if (failedNames.isNotEmpty) _showAttachmentUploadFailedWarning(l10n, failedNames);
 
       _stopTimer();
+      _committedUploads = true;
       setState(() => _isDirty = false);
       Navigator.pop(context);
     } catch (e) {

@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../theme/app_theme.dart';
 import '../services/data_service.dart';
@@ -42,6 +43,10 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
   bool _canValidate = false;
   // Vrai si l'utilisateur peut consulter l'onglet Documents d'intervention
   bool _canViewDocuments = false;
+
+  // Stream déclenché après retour de TechnicianInterventionUpdateScreen pour forcer le
+  // rechargement de l'onglet Documents sans recréer le widget.
+  final StreamController<void> _docsReloadController = StreamController<void>.broadcast();
 
   // Index de l'onglet "Mes interventions" — dépend de la présence de "À valider"
   int get _myInterventionsIndex => _canValidate ? 2 : 1;
@@ -320,20 +325,23 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
 
   @override
   void dispose() {
+    _docsReloadController.close();
     _tabController.dispose();
     super.dispose();
   }
 
   // ── Ouverture de la page de mise à jour d'un incident ───────────────────────
 
-  void _openIssueUpdateScreen(String issueId) {
+  Future<void> _openIssueUpdateScreen(String issueId) async {
     final issue = DataService().issues.where((i) => i.id == issueId).firstOrNull;
     if (issue == null) return;
-    Navigator.push(
+    await Navigator.push(
       context,
       MaterialPageRoute(
           builder: (_) => TechnicianInterventionUpdateScreen(issue: issue)),
     );
+    // Déclenche le rechargement de l'onglet Documents après retour de l'écran de mise à jour.
+    if (mounted) _docsReloadController.add(null);
   }
 
   // ── Build principal ───────────────────────────────────────────────────────────
@@ -454,7 +462,7 @@ class _TechnicianUpdateScreenState extends State<TechnicianUpdateScreen>
                   ? _buildDesktopInterventionsTab(l10n)
                   : _buildMobileInterventionsTab(l10n),
               if (_canViewDocuments)
-                const InterventionDocumentsTab(),
+                InterventionDocumentsTab(reloadStream: _docsReloadController.stream),
             ],
           ),
         ),

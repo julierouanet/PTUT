@@ -502,16 +502,29 @@ class DbApiService {
   }
 
   /// Upload de documents complémentaires (PDF/JPEG/PNG, 5 max) sur un incident.
-  Future<void> uploadInterventionDocuments(
+  /// Retourne la liste des documents insérés avec leurs IDs (pour gestion côté client).
+  Future<List<EquipmentDocument>> uploadInterventionDocuments(
     String issueId,
     List<({Uint8List bytes, String name, String mimeType})> files,
   ) async {
-    await ApiClient.postMultipartFiles(
-      '${ApiConfig.issuesUrl}/$issueId/documents',
+    final url = '${ApiConfig.issuesUrl}/$issueId/documents';
+    final list = await ApiClient.postMultipartFiles(
+      url,
       files,
       fileField: 'files',
       fields: const {'type': 'completion'},
     );
+    return list
+        .map((j) => EquipmentDocument.fromJson(j as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Supprime (soft delete) un document d'intervention.
+  /// Seul l'auteur ou un admin/supervisor peut supprimer — le serveur vérifie.
+  Future<void> deleteInterventionDocument(String issueId, int docId) async {
+    final url = '${ApiConfig.issuesUrl}/$issueId/documents/$docId';
+    final response = await ApiClient.delete(url);
+    _checkStatus(response, url);
   }
 
   /// Télécharge le contenu binaire d'un document d'intervention pour visualisation.
@@ -862,13 +875,13 @@ class DbApiService {
     String fileName,
   ) async {
     final url = '${ApiConfig.dbBaseUrl}/api/debug/reseed-from-file';
-    return ApiClient.postMultipart(
+    return (await ApiClient.postMultipart(
       url,
       fileBytes,
       fileName,
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       const {},
-    );
+    )) as Map<String, dynamic>;
   }
 
   // ── Utilitaire ─────────────────────────────────────────────────────────────
@@ -1102,13 +1115,13 @@ class DbApiService {
     String mimeType, {
     String type = 'technical',
   }) async {
-    return ApiClient.postMultipart(
+    return (await ApiClient.postMultipart(
       ApiConfig.modelDocumentsUrl(modelId),
       bytes,
       fileName,
       mimeType,
       {'type': type},
-    );
+    )) as Map<String, dynamic>;
   }
 
   Future<void> deleteModelDocument(int modelId, int docId) async {

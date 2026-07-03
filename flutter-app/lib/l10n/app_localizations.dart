@@ -10266,6 +10266,18 @@ abstract class AppLocalizations {
   /// **'Incident clôturé, mais la pièce jointe n\'a pas pu être téléversée. Vous pouvez la rajouter depuis la fiche incident.'**
   String get techAttachmentUploadFailed;
 
+  /// No description provided for @techAttachmentUploadFailedFiles.
+  ///
+  /// In fr, this message translates to:
+  /// **'Clôture effectuée, mais certains fichiers n\'ont pu être téléversés : {names}. Vous pouvez les rajouter depuis la fiche incident.'**
+  String techAttachmentUploadFailedFiles(String names);
+
+  /// No description provided for @techDocumentUploadRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get techDocumentUploadRetry;
+
   /// No description provided for @reportsMaintenanceCost.
   ///
   /// In fr, this message translates to:

@@ -1148,6 +1148,89 @@ describe('Tamponnage et numérotation d\'annexe', () => {
   });
 });
 
+// =============================================================================
+// DELETE /api/issues/:id/documents/:doc_id
+// =============================================================================
+describe('DELETE /api/issues/:id/documents/:doc_id', () => {
+  function seedDoc(issueId, uploadedBy = 'test-uuid-admin-0001') {
+    seedIssue(issueId);
+    // stored_name basé sur issueId pour respecter la contrainte UNIQUE de la colonne.
+    const storedName = `${issueId}-del.pdf`;
+    const result = db.prepare(`
+      INSERT INTO equipment_documents
+        (equipment_id, issue_id, document_type, stored_name, original_name, mime_type,
+         file_size_kb, uploaded_by, uploader_name, uploaded_at)
+      VALUES (NULL, ?, 'completion', ?, 'del-doc.pdf', 'application/pdf',
+              5, ?, 'Tech', datetime('now','localtime'))
+    `).run(issueId, storedName, uploadedBy);
+    return result.lastInsertRowid;
+  }
+
+  test('✅ 200 pour l\'auteur du document', async () => {
+    setTestRole('technician_biomedical');
+    const docId = seedDoc('iss-del-author', 'test-uuid-admin-0001');
+    try {
+      const res = await request(app)
+        .delete(`/api/issues/iss-del-author/documents/${docId}`)
+        .set('Authorization', 'Bearer fake-token');
+      expect(res.status).toBe(200);
+      const row = db.prepare('SELECT deleted_at FROM equipment_documents WHERE id = ?').get(docId);
+      expect(row.deleted_at).not.toBeNull();
+    } finally {
+      setTestRole('admin');
+    }
+  });
+
+  test('✅ 200 pour admin sur le document d\'un tiers', async () => {
+    setTestRole('admin');
+    const docId = seedDoc('iss-del-admin', 'autre-technician-uuid');
+    const res = await request(app)
+      .delete(`/api/issues/iss-del-admin/documents/${docId}`)
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(200);
+  });
+
+  test('✅ 200 pour supervisor sur le document d\'un tiers', async () => {
+    setTestRole('supervisor');
+    const docId = seedDoc('iss-del-supervisor', 'autre-technician-uuid');
+    try {
+      const res = await request(app)
+        .delete(`/api/issues/iss-del-supervisor/documents/${docId}`)
+        .set('Authorization', 'Bearer fake-token');
+      expect(res.status).toBe(200);
+    } finally {
+      setTestRole('admin');
+    }
+  });
+
+  test('🚫 403 pour un technicien qui n\'est pas l\'auteur', async () => {
+    setTestRole('technician_biomedical');
+    const docId = seedDoc('iss-del-forbidden', 'autre-technician-uuid');
+    try {
+      const res = await request(app)
+        .delete(`/api/issues/iss-del-forbidden/documents/${docId}`)
+        .set('Authorization', 'Bearer fake-token');
+      expect(res.status).toBe(403);
+    } finally {
+      setTestRole('admin');
+    }
+  });
+
+  test('🚫 404 pour un doc_id invalide ou déjà supprimé (idempotence)', async () => {
+    setTestRole('admin');
+    const docId = seedDoc('iss-del-notfound', 'test-uuid-admin-0001');
+    // Première suppression → 200
+    await request(app)
+      .delete(`/api/issues/iss-del-notfound/documents/${docId}`)
+      .set('Authorization', 'Bearer fake-token');
+    // Deuxième tentative → 404 (deleted_at IS NOT NULL)
+    const res = await request(app)
+      .delete(`/api/issues/iss-del-notfound/documents/${docId}`)
+      .set('Authorization', 'Bearer fake-token');
+    expect(res.status).toBe(404);
+  });
+});
+
 describe('RBAC — rôle non autorisé sur les 4 endpoints', () => {
   test('🚫 hospitalStaff → 403 sur liste/technicians/zip/print-pdf', async () => {
     setTestRole('hospitalStaff');

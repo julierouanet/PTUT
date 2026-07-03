@@ -5630,6 +5630,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Incident clôturé, mais la pièce jointe n\'a pas pu être téléversée. Vous pouvez la rajouter depuis la fiche incident.';
 
   @override
+  String techAttachmentUploadFailedFiles(String names) {
+    return 'Clôture effectuée, mais certains fichiers n\'ont pu être téléversés : $names. Vous pouvez les rajouter depuis la fiche incident.';
+  }
+
+  @override
+  String get techDocumentUploadRetry => 'Réessayer';
+
+  @override
   String get reportsMaintenanceCost => 'Coût de maintenance';
 
   @override

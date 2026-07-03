@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -20,8 +21,13 @@ enum _PeriodPreset { last7Days, thisMonth, lastMonth, custom }
 /// confondus. Le rapport final (`final_report`) est toujours inclus côté serveur,
 /// sans case à cocher. Visible uniquement si `Permission.viewInterventionDocuments`
 /// est accordée (garde appliquée par l'écran appelant).
+///
+/// [reloadStream] : flux optionnel — chaque événement déclenche un rechargement
+/// immédiat (utilisé pour rafraîchir après retour d'un écran d'intervention).
 class InterventionDocumentsTab extends StatefulWidget {
-  const InterventionDocumentsTab({super.key});
+  final Stream<void>? reloadStream;
+
+  const InterventionDocumentsTab({super.key, this.reloadStream});
 
   @override
   State<InterventionDocumentsTab> createState() => _InterventionDocumentsTabState();
@@ -33,6 +39,8 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
   List<EquipmentDocument> _items = [];
   bool _loading = true;
   String? _error;
+
+  StreamSubscription<void>? _reloadSub;
 
   List<InterventionTechnician> _technicians = [];
   String? _selectedTechnicianId;
@@ -52,6 +60,13 @@ class _InterventionDocumentsTabState extends State<InterventionDocumentsTab> {
     super.initState();
     _loadTechnicians();
     _load();
+    _reloadSub = widget.reloadStream?.listen((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _reloadSub?.cancel();
+    super.dispose();
   }
 
   // ── Calcul des bornes de période ────────────────────────────────────────────

@@ -2222,6 +2222,13 @@
   "interventionReportEmptyReadonly": "No intervention report has been written yet",
   "techWorkOrderReportGenerationFailed": "Issue closed, but the intervention report could not be generated automatically. You can create it manually from the issue detail screen.",
   "techAttachmentUploadFailed": "Issue closed, but the attachment could not be uploaded. You can add it again from the issue detail screen.",
+  "techAttachmentUploadFailedFiles": "Closed successfully, but some files could not be uploaded: {names}. You can add them again from the issue detail screen.",
+  "@techAttachmentUploadFailedFiles": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
+  "techDocumentUploadRetry": "Retry",
 
   "reportsMaintenanceCost": "Maintenance cost",
   "reportsMaintenanceCostHint": "Sum of finalized reports (period)",

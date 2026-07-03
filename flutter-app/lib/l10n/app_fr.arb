@@ -2244,6 +2244,13 @@
   "interventionReportEmptyReadonly": "Aucun rapport d'intervention n'a encore été rédigé",
   "techWorkOrderReportGenerationFailed": "Incident clôturé, mais le rapport d'intervention n'a pas pu être généré automatiquement. Vous pouvez le créer manuellement depuis la fiche incident.",
   "techAttachmentUploadFailed": "Incident clôturé, mais la pièce jointe n'a pas pu être téléversée. Vous pouvez la rajouter depuis la fiche incident.",
+  "techAttachmentUploadFailedFiles": "Clôture effectuée, mais certains fichiers n'ont pu être téléversés : {names}. Vous pouvez les rajouter depuis la fiche incident.",
+  "@techAttachmentUploadFailedFiles": {
+    "placeholders": {
+      "names": {"type": "String"}
+    }
+  },
+  "techDocumentUploadRetry": "Réessayer",
 
   "reportsMaintenanceCost": "Coût de maintenance",
   "reportsMaintenanceCostHint": "Somme des rapports finalisés (période)",

@@ -5568,6 +5568,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Issue closed, but the attachment could not be uploaded. You can add it again from the issue detail screen.';
 
   @override
+  String techAttachmentUploadFailedFiles(String names) {
+    return 'Closed successfully, but some files could not be uploaded: $names. You can add them again from the issue detail screen.';
+  }
+
+  @override
+  String get techDocumentUploadRetry => 'Retry';
+
+  @override
   String get reportsMaintenanceCost => 'Maintenance cost';
 
   @override

@@ -1162,6 +1162,40 @@ router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ..
   }
 );
 
+// ── DELETE /api/issues/:id/documents/:doc_id ──────────────────────────────────
+// Soft delete réservé à l'auteur (technician) ou aux rôles admin/supervisor.
+// Un technicien ne peut pas supprimer la pièce jointe d'un collègue.
+router.delete('/:id/documents/:doc_id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
+  (req, res) => {
+    const db = getDb();
+    const doc = db.prepare(`
+      SELECT * FROM equipment_documents
+      WHERE id = ? AND issue_id = ? AND deleted_at IS NULL
+    `).get(req.params.doc_id, req.params.id);
+
+    if (!doc) return res.status(404).json({ error: 'Document introuvable' });
+
+    const isPrivileged = req.user.roles.includes('admin') || req.user.roles.includes('supervisor');
+    if (!isPrivileged && doc.uploaded_by !== req.user.id) {
+      return res.status(403).json({ error: 'Seul l\'auteur de la pièce jointe peut la supprimer' });
+    }
+
+    db.prepare(`
+      UPDATE equipment_documents SET deleted_at = datetime('now','localtime') WHERE id = ?
+    `).run(doc.id);
+
+    logAction({
+      user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+      action: 'delete_intervention_document',
+      target_type: 'issue', target_id: req.params.id, target_name: doc.original_name,
+      details: JSON.stringify({ doc_id: doc.id, doc_type: doc.document_type }),
+      ...extractReqMeta(req),
+    });
+
+    res.json({ message: 'Document supprimé' });
+  }
+);
+
 // ── GET /api/issues/:id/documents/:doc_id/download ────────────────────────────
 router.get('/:id/documents/:doc_id/download', verifyToken, (req, res) => {
   const db = getDb();
