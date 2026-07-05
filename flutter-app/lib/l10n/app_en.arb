@@ -1765,6 +1765,11 @@
   "notifPrefsPmDueDesc": "Email when a preventive maintenance is overdue or upcoming.",
   "@notifPrefsPmDueDesc": {},
 
+  "notifPrefsMonthlyReport": "Monthly report by email",
+  "@notifPrefsMonthlyReport": {},
+  "notifPrefsMonthlyReportDesc": "Summary of last month's CMMS KPIs, sent on the 1st of each month.",
+  "@notifPrefsMonthlyReportDesc": {},
+
   "reportsPdfExportTooltip": "Generate and download the PDF report",
   "@reportsPdfExportTooltip": {},
   "reportsPdfSuccess": "PDF report ready — save it from the dialog",

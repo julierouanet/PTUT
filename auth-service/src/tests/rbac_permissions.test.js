@@ -150,7 +150,7 @@ describe('RBAC — GET /api/auth/me', () => {
     expect(perms.length).toBe(3);
   });
 
-  test('✅ supervisor reçoit 5 permissions (base + approuver + assigner)', async () => {
+  test('✅ supervisor = consultation + signalement + rapports (sans validation)', async () => {
     setTestRole('supervisor');
 
     const res = await request(app)
@@ -159,8 +159,13 @@ describe('RBAC — GET /api/auth/me', () => {
 
     expect(res.status).toBe(200);
     const perms = res.body.permissions;
-    expect(perms).toContain('approveRequests');
-    expect(perms).toContain('assignTasks');
+    expect(perms).toContain('viewEquipment');
+    expect(perms).toContain('reportIssue');
+    expect(perms).toContain('trackIssues');
+    expect(perms).toContain('viewInterventionDocuments');
+    expect(perms).toContain('generateReports');
+    expect(perms).not.toContain('approveRequests');
+    expect(perms).not.toContain('assignTasks');
     expect(perms).not.toContain('updateRepairs');
     expect(perms).not.toContain('manageUsers');
   });

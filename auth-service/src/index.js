@@ -8,6 +8,7 @@ const authRoutes         = require('./routes/auth');
 const usersRoutes        = require('./routes/users');
 const debugRoutes        = require('./routes/debug');
 const { getDb }          = require('./database');
+const { checkAndFixVerifyEmailFlag } = require('./utils/keycloakRealmHealth');
 const rolesRoutes        = require('./routes/roles');
 const internalRoutes     = require('./routes/internal');
 const featureFlagsRoutes = require('./routes/featureFlags');
@@ -17,6 +18,11 @@ const app = express();
 
 // Initialize DB on startup
 getDb();
+
+// Auto-réparation dérive realm Keycloak (fire-and-forget, ne bloque jamais le démarrage)
+checkAndFixVerifyEmailFlag().catch((err) => {
+  console.error('[AUTH] Erreur inattendue lors de la vérification du realm Keycloak :', err.message);
+});
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());

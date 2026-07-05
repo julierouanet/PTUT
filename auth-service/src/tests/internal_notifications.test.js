@@ -21,9 +21,16 @@ jest.mock('../utils/email_service', () => ({
   buildEmailContent: jest.fn(() => ({ subject: 's', htmlContent: 'h', textContent: 't' })),
 }));
 
+// ── Mock Keycloak Admin API (résolution des utilisateurs par rôle) ────────────
+const mockKcAdminFetch = jest.fn();
+jest.mock('../utils/keycloakAdmin', () => ({
+  kcAdminFetch: (...args) => mockKcAdminFetch(...args),
+}));
+
 const request          = require('supertest');
 const { app, server }  = require('../index');
 const { getDb }        = require('../database');
+const { sendEmail }    = require('../utils/email_service');
 
 afterAll(() => server.close());
 
@@ -95,5 +102,87 @@ describe('Internal — send-email — seuil min_urgency_new_issue', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ sent: false, reason: 'below_urgency_threshold' });
+  });
+});
+
+// =============================================================================
+// POST /internal/notifications/send-to-roles — type monthly_report
+// =============================================================================
+describe('Internal — send-to-roles — type monthly_report', () => {
+  // Deux superviseurs Keycloak simulés pour tester l'opt-out individuel
+  const KC_SUPERVISORS = [
+    { id: 'sup-optin',  email: 'sup.optin@kabutare.rw',  firstName: 'Alice', lastName: 'OptIn' },
+    { id: 'sup-optout', email: 'sup.optout@kabutare.rw', firstName: 'Bob',   lastName: 'OptOut' },
+  ];
+
+  const kcOk = (data) => Promise.resolve({
+    ok:   true,
+    json: () => Promise.resolve(data),
+  });
+
+  // Laisse le setImmediate + les await internes de send-to-roles se terminer
+  const flushAsync = () => new Promise((resolve) => setTimeout(resolve, 30));
+
+  beforeEach(() => {
+    sendEmail.mockClear();
+    mockKcAdminFetch.mockReset();
+  });
+
+  test('✅ type monthly_report reconnu → 200 {queued:true} (plus de 400)', async () => {
+    mockKcAdminFetch.mockImplementation(() => kcOk([]));
+
+    const res = await request(app)
+      .post('/internal/notifications/send-to-roles')
+      .set(HEADERS)
+      .send({
+        type:    'monthly_report',
+        roles:   ['supervisor', 'admin'],
+        payload: { month_label: 'juin 2026', issues_created: 42 },
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ queued: true });
+    await flushAsync();
+  });
+
+  test('✅ opt-out individuel : notify_monthly_report = 0 → un seul envoi tenté', async () => {
+    const db = getDb();
+    // Bob a désactivé le rapport mensuel, Alice n'a pas de préférences (opt-in par défaut)
+    db.prepare(`
+      INSERT OR REPLACE INTO user_notification_preferences (user_id, notify_monthly_report, preferences_set)
+      VALUES ('sup-optout', 0, 1)
+    `).run();
+
+    mockKcAdminFetch.mockImplementation((path) =>
+      path.includes('/roles/supervisor/') ? kcOk(KC_SUPERVISORS) : kcOk([])
+    );
+
+    const res = await request(app)
+      .post('/internal/notifications/send-to-roles')
+      .set(HEADERS)
+      .send({
+        type:    'monthly_report',
+        roles:   ['supervisor'],
+        payload: { month_label: 'juin 2026' },
+      });
+
+    expect(res.status).toBe(200);
+    await flushAsync();
+
+    // Un seul email tenté : celui d'Alice (opt-in)
+    expect(sendEmail).toHaveBeenCalledTimes(1);
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ to: 'sup.optin@kabutare.rw' })
+    );
+  });
+
+  test('🚫 non-régression : un type réellement inconnu répond toujours 400', async () => {
+    const res = await request(app)
+      .post('/internal/notifications/send-to-roles')
+      .set(HEADERS)
+      .send({ type: 'type_inconnu_xyz', roles: ['supervisor'], payload: {} });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/inconnu/i);
   });
 });

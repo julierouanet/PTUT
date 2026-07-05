@@ -4656,6 +4656,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Email quand une maintenance préventive est en retard ou imminente.';
 
   @override
+  String get notifPrefsMonthlyReport => 'Rapport mensuel par email';
+
+  @override
+  String get notifPrefsMonthlyReportDesc =>
+      'Synthèse des KPIs GMAO du mois écoulé, envoyée le 1er du mois.';
+
+  @override
   String get reportsPdfExportTooltip => 'Générer et télécharger le rapport PDF';
 
   @override

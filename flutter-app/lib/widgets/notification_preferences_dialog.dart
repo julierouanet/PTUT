@@ -237,6 +237,15 @@ class _NotificationPreferencesDialogState
                             () => _prefs = _prefs.copyWith(notifyPmDue: v)),
                       ),
                     ],
+                    _PrefTile(
+                      icon: Icons.calendar_month_outlined,
+                      iconColor: AppColors.primary,
+                      title: l10n.notifPrefsMonthlyReport,
+                      subtitle: l10n.notifPrefsMonthlyReportDesc,
+                      value: _prefs.notifyMonthlyReport,
+                      onChanged: (v) => setState(() =>
+                          _prefs = _prefs.copyWith(notifyMonthlyReport: v)),
+                    ),
                     const SizedBox(height: 4),
                   ],
                 ],

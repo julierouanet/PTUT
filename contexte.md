@@ -29,7 +29,7 @@ Permettre au personnel hospitalier de **suivre, surveiller et signaler les probl
 | Rôle Keycloak | Profil | Permissions clés |
 |---|---|---|
 | `hospitalStaff` | Docteurs, infirmiers, techniciens labo | Voir équipements, signaler incidents, suivre ses demandes |
-| `supervisor` | Chefs de département | + Approuver demandes, assigner tâches |
+| `supervisor` | Chefs de département (« view-only manager ») | Consultation + signalement + rapports : `viewEquipment`, `reportIssue`, `trackIssues`, `viewInterventionDocuments`, `generateReports` — plus de validation ni d'assignation d'incidents (migration one-shot `_supervisor_role_v2`, 2026-07) |
 | `technician` / `technician_biomedical` / `technician_it` / `technician_infra` | Techniciens spécialisés | + Mettre à jour réparations, enregistrer pièces |
 | `admin` | ICT Admin | Toutes les 17 permissions |
 
@@ -171,7 +171,7 @@ PTUT/
 | `department_change_requests` | UUID TEXT | Demandes de changement de département (`pending` / `approved` / `rejected`) |
 | `role_change_requests` | UUID TEXT | Demandes de rôle supplémentaire (`pending` / `approved` / `rejected`) |
 | `access_requests` | AUTOINCREMENT | Traçabilité des comptes auto-créés via demande d'accès |
-| `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur — `notify_new_issue` (ex-`notify_critical_new_issue`, renommé) + `min_urgency_new_issue` TEXT (`Faible`/`Moyen`/`Urgent`/`Critique`, défaut `Critique`) pour le seuil d'urgence minimal déclenchant l'email "nouvel incident" technicien, 4 flags booléens superviseur (`notify_critical_acknowledged/diagnosed/resolved`, `notify_pm_due`) + `preferences_set` |
+| `user_notification_preferences` | `user_id` TEXT (UUID KC) | Préférences de notifications email par utilisateur — `notify_new_issue` (ex-`notify_critical_new_issue`, renommé) + `min_urgency_new_issue` TEXT (`Faible`/`Moyen`/`Urgent`/`Critique`, défaut `Critique`) pour le seuil d'urgence minimal déclenchant l'email "nouvel incident" technicien, 4 flags booléens superviseur (`notify_critical_acknowledged/diagnosed/resolved`, `notify_pm_due`) + `notify_monthly_report` (opt-out du rapport KPI mensuel, défaut 1) + `preferences_set` |
 | `feature_flags` | `id` TEXT | État global par module désactivable (`equipment`, `inventory`) — `enabled` INTEGER |
 | `feature_flag_overrides` | `(flag_id, role)` | Overrides par rôle Keycloak — permet de désactiver un module pour un rôle spécifique |
 | `app_settings` | `key` TEXT | **[NOUVEAU]** Paramètres applicatifs clé/valeur pilotés depuis l'UI admin — 6 clés : `login_contact_title`, `login_contact_email`, `login_contact_phone` (publics), `brevo_api_key` (secret), `brevo_sender_email`, `brevo_sender_name`. Brevo : priorité DB non vide → fallback env. |

@@ -1190,14 +1190,14 @@ describe('DELETE /api/issues/:id/documents/:doc_id', () => {
     expect(res.status).toBe(200);
   });
 
-  test('✅ 200 pour supervisor sur le document d\'un tiers', async () => {
+  test('🚫 403 pour supervisor (rôle consultation + rapports, plus de mutation)', async () => {
     setTestRole('supervisor');
     const docId = seedDoc('iss-del-supervisor', 'autre-technician-uuid');
     try {
       const res = await request(app)
         .delete(`/api/issues/iss-del-supervisor/documents/${docId}`)
         .set('Authorization', 'Bearer fake-token');
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(403);
     } finally {
       setTestRole('admin');
     }

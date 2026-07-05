@@ -397,6 +397,23 @@ function initTables() {
     );
   `);
 
+  // Seed de l'ordre sidebar par défaut du rôle supervisor (Dashboard → Rapports
+  // en tête, cohérent avec le rôle « consultation + rapports »). Exécuté
+  // uniquement si AUCUNE ligne n'existe pour ce rôle : ne jamais écraser une
+  // configuration posée par l'admin. Les valeurs sont les noms Dart de l'enum
+  // ScreenType (consommés via screenType.name côté Flutter) — pas des libellés.
+  const supervisorSidebarCount = db.prepare(
+    "SELECT COUNT(*) AS c FROM sidebar_config WHERE role = 'supervisor'"
+  ).get().c;
+  if (supervisorSidebarCount === 0) {
+    const insertSidebarEntry = db.prepare(
+      'INSERT INTO sidebar_config (role, screen_type, sort_order) VALUES (?, ?, ?)'
+    );
+    const supervisorSidebar = ['dashboard', 'reports', 'analytics', 'equipment', 'issueTracking', 'issueForm'];
+    supervisorSidebar.forEach((screenType, i) => insertSidebarEntry.run('supervisor', screenType, i));
+    console.log('[DB] Seed sidebar_config supervisor : ordre par défaut posé.');
+  }
+
   // ── Souscriptions Web Push ─────────────────────────────────────────────────
   db.exec(`
     CREATE TABLE IF NOT EXISTS push_subscriptions (

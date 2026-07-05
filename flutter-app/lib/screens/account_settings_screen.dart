@@ -179,6 +179,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                 prefs.notifyCriticalDiagnosed,
                                 prefs.notifyCriticalResolved,
                                 prefs.notifyPmDue,
+                                prefs.notifyMonthlyReport,
                               ];
                         final allEnabled  = prefs == null || flags.every((v) => v);
                         final someEnabled = prefs != null && flags.any((v) => v);

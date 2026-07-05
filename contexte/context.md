@@ -117,7 +117,7 @@ Architecture microservices composee de 3 services principaux, orchestres par Doc
 | Rôle                  | Permissions applicatives (SQLite role_permissions)                                  |
 |-----------------------|-------------------------------------------------------------------------------------|
 | hospitalStaff         | viewEquipment, reportIssue, trackIssues                                             |
-| supervisor            | viewEquipment, reportIssue, trackIssues, approveRequests, assignTasks, viewInterventionDocuments |
+| supervisor            | viewEquipment, reportIssue, trackIssues, viewInterventionDocuments, generateReports — « consultation + rapports » : plus de validation/assignation d'incidents (migration one-shot `_supervisor_role_v2`) |
 | technician            | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
 | technician_biomedical | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
 | technician_it         | viewEquipment, reportIssue, trackIssues, updateRepairs, registerParts, approveRequests, viewInterventionDocuments |
@@ -227,24 +227,29 @@ Les 8 comptes seed auth-service (admin@kabutare.rw, etc.) peuvent être migrés 
 #### GET /api/users/me/notifications (Auth — supervisor/technician/admin)
 - Retourne les préférences de notification email de l'utilisateur connecté
 - Crée une entrée par défaut si absente (`preferences_set = false`)
-- **Réponse** : `{ notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged, notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, preferences_set, updated_at }`
+- **Réponse** : `{ notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged, notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, notify_monthly_report, preferences_set, updated_at }`
 - `min_urgency_new_issue` (`Faible`/`Moyen`/`Urgent`/`Critique`, défaut `Critique`) : seuil d'urgence minimal déclenchant l'email "nouvel incident" — filtré côté `send-email`/`send-to-roles`, indépendamment des push (non filtrées)
 
 #### PUT /api/users/me/notifications (Auth — supervisor/technician/admin)
 - Met à jour les préférences + marque `preferences_set = 1`
-- **Body** : `{ notify_new_issue?, min_urgency_new_issue?, notify_critical_acknowledged?, notify_critical_diagnosed?, notify_critical_resolved?, notify_pm_due? }` (tous optionnels)
+- **Body** : `{ notify_new_issue?, min_urgency_new_issue?, notify_critical_acknowledged?, notify_critical_diagnosed?, notify_critical_resolved?, notify_pm_due?, notify_monthly_report? }` (tous optionnels)
 - `min_urgency_new_issue` validé contre `['Faible','Moyen','Urgent','Critique']` → `400` si invalide
 
 #### POST /internal/notifications/send-email (x-internal-secret)
 - Appelé par db-service — envoie un email à un utilisateur si ses préférences le permettent
 - **Body** : `{ type, to_email, to_name, user_id, payload }`
-- Types : `critical_new_issue` (seuil `min_urgency_new_issue` comparé à `payload.urgency`), `critical_acknowledged`, `critical_diagnosed`, `critical_resolved`, `pm_due`
+- Types : `critical_new_issue` (seuil `min_urgency_new_issue` comparé à `payload.urgency`), `critical_acknowledged`, `critical_diagnosed`, `critical_resolved`, `pm_due`, `monthly_report`
 - Répond immédiatement `{ sent: bool, reason? }` (`reason` : `preference_disabled` ou `below_urgency_threshold`)
 
 #### POST /internal/notifications/send-to-roles (x-internal-secret)
 - Notifie tous les utilisateurs des rôles spécifiés ayant la préférence activée
 - **Body** : `{ type, roles: string[], payload }`
 - Requête Keycloak Admin API pour récupérer les emails, asynchrone (réponse immédiate)
+- Type `monthly_report` : rapport KPI mensuel (cron db-service, 1er du mois 06h00) vers
+  `supervisor` + `admin` — payload `{ month_label, issues_created, issues_resolved,
+  issues_still_open, by_urgency, mttr_hours, pm_compliance_pct, equipment_out_of_service,
+  top_equipment }` ; opt-out individuel via `notify_monthly_report` ; la réponse
+  `{queued:true}` atteste du déclenchement, pas de la livraison (pas de retry — limitation assumée)
 
 #### Demandes de rôle (`role_change_requests`)
 
@@ -556,6 +561,11 @@ Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, 
 | role        | TEXT    | NOT NULL, PK composite             |
 | screen_type | TEXT    | NOT NULL, PK composite             |
 | sort_order  | INTEGER | NOT NULL DEFAULT 0                 |
+
+> Seed par défaut du rôle `supervisor` (posé uniquement si aucune ligne n'existe
+> pour ce rôle — jamais d'écrasement d'une config admin) :
+> `dashboard(0), reports(1), analytics(2), equipment(3), issueTracking(4), issueForm(5)`.
+> Les valeurs `screen_type` sont les noms Dart de l'enum `ScreenType`.
 
 ### Autres tables db-service (ajoutées au fil des features — audit 2026-06-10)
 
@@ -914,6 +924,7 @@ liste (bouton par groupe `ExpansionTile`, cf. `intervention_documents_tab.dart`)
 | POST    | /api/debug/clear-issues    | Admin  | Supprime tous les incidents (`DELETE FROM issues`). Retourne `{ deleted: N }`. Audit trail action `debug_clear_all_issues`. |
 | POST    | /api/debug/notify-now      | Admin  | Envoie une notification email de test immédiate à l'admin appelant (type `critical_new_issue`). Retourne `{ success, message, sent, reason }`. Audit `debug_notify_now`. |
 | POST    | /api/debug/notify-schedule | Admin  | Active/désactive les notifications email auto de test. Body: `{ interval: "minute" \| "hour" \| "stop" }`. Retourne `{ success, status, interval? }`. Audit `debug_notify_start` / `debug_notify_stop`. Scheduling in-memory (reset au redémarrage). |
+| POST    | /api/debug/send-monthly-report | Admin | Relance le calcul + envoi du rapport KPI mensuel (même code que le cron `0 6 1 * *`). Query optionnelle `?month=YYYY-MM` (défaut : mois civil précédent). Retourne `{ success, message, month, kpis }`. Audit `send_monthly_report`. |
 
 ## 2.5 Middleware
 
@@ -1146,7 +1157,7 @@ status: StockStatus (normal, low, outOfStock)
 | 2  | EquipmentListScreen      | viewEquipment           | SliverList virtualisé, tri sur 4 colonnes, filtres PM (retard/imminente), RBAC colonnes (staffMedical vs technicien), export CSV liste filtrée, bouton "Planifier PM" quick-action, délègue créa/édition à EquipmentFormScreen |
 | 2b | EquipmentFormScreen      | manageEquipment         | Nouvel écran dédié créa/édition : Stepper 3 étapes (Infos essentielles / Infos techniques / GMAO & Maintenance). Remplace le dialog mono-bloc. |
 | 3  | IssueTrackingScreen      | trackIssues             | Liste unique tous les incidents, filtres statut/urgence/période/groupe, recherche, vue Kanban (desktop), split view, export CSV. Onglet "À valider" déplacé vers TechnicianUpdateScreen. |
-| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte (localisation `location_text`/`location_tag` + indicateur téléphone absent), panne, **incidents récents liés** (section `related_issues` max 3 depuis `GET /api/issues/:id`), intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen). Actions admin/superviseur : **Valider** (si statut `reported` — choix groupe + urgence + délai depuis signalement, statut → Acknowledged), Réassigner (par groupe), Commenter. |
+| 3b | IssueDetailScreen        | trackIssues             | Sous-ecran GMAO : sections contexte (localisation `location_text`/`location_tag` + indicateur téléphone absent), panne, **incidents récents liés** (section `related_issues` max 3 depuis `GET /api/issues/:id`), intervention, **rapport d'intervention** (editable si pris en charge + technicien assigne/privilegie ; fige a la cloture ; reouverture admin ; export PDF + archivage auto), ressources, timeline. Charge GET /api/issues/:id enrichi + GET /api/issues/:id/report. Section rapport = widget reutilisable `widgets/issue/intervention_report_section.dart` (aussi en lecture seule dans IssueStaffDetailScreen). Actions admin/technicien (`canApproveRequests` — le supervisor ne les voit plus depuis 2026-07) : **Valider** (si statut `reported` — choix groupe + urgence + délai depuis signalement, statut → Acknowledged), Réassigner (par groupe), Commenter. |
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | Onglets : "À valider" (premier, conditionnel `canApproveRequests`) / Disponibles / Mes interventions (liste cliquable plein-écran, plus de master-detail). Bouton calendrier (à droite du TabBar) → TechnicianScheduleScreen. Le clic sur une carte d'intervention ouvre TechnicianInterventionUpdateScreen. L'onglet "À valider" propose un bouton unique "Examiner" qui ouvre IssueDetailScreen où se font validation + réassignation par groupe. |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
@@ -1166,6 +1177,12 @@ status: StockStatus (normal, low, outOfStock)
 | 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
 | 21 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
 | 22 | TechnicianInterventionUpdateScreen | updateRepairs OU approveRequests | Page dédiée à la mise à jour d'une intervention (diagnostic, actions, chrono, pièces, clôture/escalade/transfert/détachement), extraite du formulaire master-detail/inline de l'onglet "Mes interventions" de TechnicianUpdateScreen. Sélecteur de pièces masqué de façon réactive si le module `inventory` est désactivé (`FeatureService().isModuleEnabled`). `PopScope` + dialog de confirmation si modifications non sauvegardées. **2026-06-23 :** boutons Save + Save-and-Close fusionnés en un seul ElevatedButton `_doSaveAndClose` (màj incident + fermeture session + génération PDF) ; toggle `_planNextAction` conditionnel pour le champ next_actions (optionnel, sans validation minimum). |
+
+> **2026-07 — rôle supervisor « consultation + rapports »** : le supervisor perd `approveRequests`/`assignTasks`
+> (plus de page Technicien ni d'actions de validation/réassignation) et gagne `generateReports`
+> (ReportsScreen + AnalyticsScreen). `ScreenType.analytics` est désormais inclus dans le module
+> Équipement (`_equipmentScreens`, `main.dart`) — indispensable au supervisor qui n'a pas accès au
+> module Réglages ; ordre sidebar par défaut seedé côté db-service (Dashboard → Rapports → Analytique).
 
 ## 3.5 Navigation
 

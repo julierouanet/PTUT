@@ -1786,6 +1786,11 @@
   "notifPrefsPmDueDesc": "Email quand une maintenance préventive est en retard ou imminente.",
   "@notifPrefsPmDueDesc": {},
 
+  "notifPrefsMonthlyReport": "Rapport mensuel par email",
+  "@notifPrefsMonthlyReport": {},
+  "notifPrefsMonthlyReportDesc": "Synthèse des KPIs GMAO du mois écoulé, envoyée le 1er du mois.",
+  "@notifPrefsMonthlyReportDesc": {},
+
   "reportsPdfExportTooltip": "Générer et télécharger le rapport PDF",
   "@reportsPdfExportTooltip": {},
   "reportsPdfSuccess": "Rapport PDF prêt — enregistrez-le depuis la boîte de dialogue",

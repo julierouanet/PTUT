@@ -794,7 +794,7 @@ final List<User> mockUsers = [
     roles: const [UserRole.supervisor],
     permissions: const [
       Permission.viewEquipment, Permission.reportIssue, Permission.trackIssues,
-      Permission.approveRequests, Permission.assignTasks,
+      Permission.viewInterventionDocuments, Permission.generateReports,
     ],
     phone: '+250 788 123 002',
     createdAt: '2024-02-15',
@@ -809,7 +809,7 @@ final List<User> mockUsers = [
     roles: const [UserRole.supervisor],
     permissions: const [
       Permission.viewEquipment, Permission.reportIssue, Permission.trackIssues,
-      Permission.approveRequests, Permission.assignTasks,
+      Permission.viewInterventionDocuments, Permission.generateReports,
     ],
     phone: '+250 788 123 003',
     createdAt: '2024-03-10',

@@ -4610,6 +4610,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Email when a preventive maintenance is overdue or upcoming.';
 
   @override
+  String get notifPrefsMonthlyReport => 'Monthly report by email';
+
+  @override
+  String get notifPrefsMonthlyReportDesc =>
+      'Summary of last month\'s CMMS KPIs, sent on the 1st of each month.';
+
+  @override
   String get reportsPdfExportTooltip => 'Generate and download the PDF report';
 
   @override

@@ -8,6 +8,7 @@ const { sendPushToUser } = require('../utils/push_sender');
 const { xlsxUpload } = require('../middleware/upload');
 const { seed } = require('../../seed');
 const { seedReferences, importEquipment } = require('../../scripts/import_inventory');
+const { sendMonthlyReport, previousMonth } = require('../jobs/monthly_report_job');
 
 const router = express.Router();
 
@@ -228,6 +229,31 @@ router.post('/notify-now', verifyToken, requireRole('admin'), async (req, res) =
     return res.json({ success: true, message: `Notification envoyée à ${userEmail}`, sent: body.sent, reason: body.reason });
   } catch (err) {
     console.error('[debug/notify-now] Erreur:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── POST /send-monthly-report ─────────────────────────────────────────────────
+// Relance exactement le même calcul + envoi que le cron mensuel (test/debug).
+// Paramètre optionnel ?month=YYYY-MM (défaut : mois civil précédent).
+router.post('/send-monthly-report', verifyToken, requireRole('admin'), async (req, res) => {
+  const month = req.query.month || previousMonth();
+
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    return res.status(400).json({ error: 'Paramètre month invalide — format attendu : YYYY-MM' });
+  }
+
+  try {
+    // sendMonthlyReport pose le logAction du déclenchement (utilisateur fourni)
+    const payload = await sendMonthlyReport(month, req.user);
+    return res.json({
+      success: true,
+      message: `Rapport mensuel ${payload.month_label} déclenché (envoi asynchrone côté auth-service)`,
+      month,
+      kpis: payload,
+    });
+  } catch (err) {
+    console.error('[debug/send-monthly-report] Erreur:', err.message);
     return res.status(500).json({ success: false, error: err.message });
   }
 });

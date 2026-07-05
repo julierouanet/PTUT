@@ -4,6 +4,16 @@
 # Pré-requis : fichier .env renseigné (voir .env.ip.example)
 #              certificat SSL dans ./ssl/cert.pem et ./ssl/key.pem
 #              (généré par setup_ubuntu.sh — scp n'est pas nécessaire)
+#
+# ⚠ security_opt: no-new-privileges:true a été retiré volontairement.
+# Sous Docker installé via snap (AppArmor confiné), ce flag noyau empêche
+# TOUTE transition de profil AppArmor au démarrage du conteneur — y compris
+# vers "unconfined" — et fait échouer docker-entrypoint.sh avec
+# "operation not permitted", quel que soit le contenu du script ou les
+# capacités Linux accordées. Compromis : perte de la protection anti-
+# escalade-de-privilèges via binaires setuid/setgid pendant l'exécution des
+# conteneurs. cap_drop/cap_add (moindre privilège) restent inchangés.
+# Sur un hôte avec docker-ce (non-snap), ce flag peut être réactivé sans risque.
 # ============================================================
 
 # ── Réseaux cloisonnés (principe du moindre privilège) ─────
@@ -56,8 +66,6 @@ services:
         condition: service_healthy
       db-service:
         condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
@@ -117,8 +125,6 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     deploy:
@@ -163,8 +169,6 @@ services:
     depends_on:
       auth-service:
         condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     deploy:
@@ -198,8 +202,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
@@ -262,8 +264,6 @@ services:
       timeout: 5s
       retries: 15
       start_period: 120s
-    security_opt:
-      - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:

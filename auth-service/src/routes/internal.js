@@ -10,6 +10,7 @@
 //   critical_diagnosed    → superviseurs/admins : diagnostic posé sur un critique
 //   critical_resolved     → superviseurs/admins : incident critique résolu (avec KPIs)
 //   pm_due                → techniciens/admins  : maintenance préventive à planifier
+//   monthly_report        → superviseurs/admins : rapport KPI mensuel (cron db-service)
 
 'use strict';
 
@@ -38,6 +39,7 @@ function _prefColumnFor(type) {
     case 'critical_diagnosed':    return 'notify_critical_diagnosed';
     case 'critical_resolved':     return 'notify_critical_resolved';
     case 'pm_due':                return 'notify_pm_due';
+    case 'monthly_report':        return 'notify_monthly_report';
     default:                      return null;
   }
 }
@@ -120,6 +122,10 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
     try {
       const db   = getDb();
       const seen = new Set();
+      // Compteurs de traçabilité : la réponse {queued:true} atteste du
+      // déclenchement, ce log atteste des tentatives d'envoi réelles.
+      let attempted = 0;
+      let filtered  = 0;
 
       for (const role of roles) {
         let kcResp;
@@ -141,13 +147,16 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
             'SELECT * FROM user_notification_preferences WHERE user_id = ?'
           ).get(kcId);
           const shouldSend = prefs ? !!prefs[prefCol] : true;
-          if (!shouldSend) continue;
-          if (_belowUrgencyThreshold(prefCol, prefs, payload)) continue;
+          if (!shouldSend) { filtered++; continue; }
+          if (_belowUrgencyThreshold(prefCol, prefs, payload)) { filtered++; continue; }
 
           const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || email;
           sendEmail({ to: email, toName: name, ...content }).catch(() => {});
+          attempted++;
         }
       }
+
+      console.log(`[INTERNAL] send-to-roles "${type}" → ${attempted} email(s) tenté(s), ${filtered} filtré(s) par préférence`);
     } catch (err) {
       console.error('[INTERNAL] Erreur send-to-roles:', err.message);
     }

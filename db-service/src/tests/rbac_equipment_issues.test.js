@@ -360,15 +360,16 @@ describe('RBAC — POST /api/issues', () => {
 });
 
 // =============================================================================
-// 5. PUT /api/issues/:id — mettre à jour (admin, supervisor, technician*)
+// 5. PUT /api/issues/:id — mettre à jour (admin, technician*)
 //    ⚠️ Le rôle générique `technician` n'est PAS dans TECH_ROLES du service.
 //    Seuls technician_biomedical, technician_it, technician_infra sont autorisés.
+//    Le supervisor (consultation + rapports) ne peut plus agir sur les incidents.
 // =============================================================================
 describe('RBAC — PUT /api/issues/:id', () => {
   // TECH_ROLES dans db-service : ['technician_biomedical', 'technician_it', 'technician_infra']
-  const ROLES_AUTORISÉS = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
-  // hospitalStaff et technician (générique) ne peuvent pas modifier un incident
-  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician'];
+  const ROLES_AUTORISÉS = ['admin', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  // hospitalStaff, supervisor et technician (générique) ne peuvent pas modifier un incident
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'supervisor', 'technician'];
 
   const ISSUE_ID = 'iss-rbac-test';
 
@@ -644,11 +645,11 @@ describe('RBAC — GET /api/logs', () => {
 });
 
 // =============================================================================
-// 10. PATCH /api/issues/:id/escalate — escalade (admin, supervisor, technician*)
+// 10. PATCH /api/issues/:id/escalate — escalade (admin, technician*)
 // =============================================================================
 describe('RBAC — PATCH /api/issues/:id/escalate', () => {
-  const ROLES_AUTORISÉS = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
-  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician'];
+  const ROLES_AUTORISÉS = ['admin', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'supervisor', 'technician'];
   const ISSUE_ID        = 'iss-rbac-test';
 
   const escalateBody = {
@@ -687,7 +688,7 @@ describe('RBAC — PATCH /api/issues/:id/escalate', () => {
 
 // =============================================================================
 // 11. PATCH /api/issues/:id/reject — rejet d'un incident en file de validation
-//     (admin et supervisor uniquement, depuis le statut 'Reported')
+//     (admin et techniciens, depuis le statut 'Reported')
 // =============================================================================
 describe('PATCH /api/issues/:id/reject', () => {
   // Crée un incident 'Reported' frais avant chaque test
@@ -781,6 +782,18 @@ describe('PATCH /api/issues/:id/reject', () => {
 
   test('🚫 hospitalStaff ne peut PAS rejeter → 403', async () => {
     setTestRole('hospitalStaff');
+    const id = newReportedIssue();
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/reject`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ reason_code: 'duplicate' });
+
+    expect(res.status).toBe(403);
+  });
+
+  test('🚫 supervisor ne peut PAS rejeter → 403 (rôle consultation + rapports)', async () => {
+    setTestRole('supervisor');
     const id = newReportedIssue();
 
     const res = await request(app)

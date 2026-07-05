@@ -567,8 +567,9 @@ router.get('/me/notifications', verifyToken, (req, res) => {
     db.prepare(`
       INSERT INTO user_notification_preferences
         (user_id, notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged,
-         notify_critical_diagnosed, notify_critical_resolved, notify_pm_due, preferences_set)
-      VALUES (?, 1, 'Critique', 1, 1, 1, 1, 0)
+         notify_critical_diagnosed, notify_critical_resolved, notify_pm_due,
+         notify_monthly_report, preferences_set)
+      VALUES (?, 1, 'Critique', 1, 1, 1, 1, 1, 0)
     `).run(userId);
     prefs = db.prepare(
       'SELECT * FROM user_notification_preferences WHERE user_id = ?'
@@ -582,6 +583,7 @@ router.get('/me/notifications', verifyToken, (req, res) => {
     notify_critical_diagnosed:    !!prefs.notify_critical_diagnosed,
     notify_critical_resolved:     !!prefs.notify_critical_resolved,
     notify_pm_due:                !!prefs.notify_pm_due,
+    notify_monthly_report:        !!prefs.notify_monthly_report,
     preferences_set:              !!prefs.preferences_set,
     updated_at:                   prefs.updated_at,
   });
@@ -603,6 +605,7 @@ router.put('/me/notifications', verifyToken, (req, res) => {
     notify_critical_diagnosed,
     notify_critical_resolved,
     notify_pm_due,
+    notify_monthly_report,
   } = req.body;
 
   if (min_urgency_new_issue !== undefined && !isValidUrgency(min_urgency_new_issue)) {
@@ -614,8 +617,8 @@ router.put('/me/notifications', verifyToken, (req, res) => {
     INSERT INTO user_notification_preferences
       (user_id, notify_new_issue, min_urgency_new_issue, notify_critical_acknowledged,
        notify_critical_diagnosed, notify_critical_resolved, notify_pm_due,
-       preferences_set, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
+       notify_monthly_report, preferences_set, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now','localtime'))
     ON CONFLICT(user_id) DO UPDATE SET
       notify_new_issue              = excluded.notify_new_issue,
       min_urgency_new_issue         = excluded.min_urgency_new_issue,
@@ -623,6 +626,7 @@ router.put('/me/notifications', verifyToken, (req, res) => {
       notify_critical_diagnosed     = excluded.notify_critical_diagnosed,
       notify_critical_resolved      = excluded.notify_critical_resolved,
       notify_pm_due                 = excluded.notify_pm_due,
+      notify_monthly_report         = excluded.notify_monthly_report,
       preferences_set               = 1,
       updated_at                    = excluded.updated_at
   `).run(
@@ -633,6 +637,7 @@ router.put('/me/notifications', verifyToken, (req, res) => {
     toInt(notify_critical_diagnosed),
     toInt(notify_critical_resolved),
     toInt(notify_pm_due),
+    toInt(notify_monthly_report),
   );
 
   res.json({ message: 'Préférences de notification mises à jour' });

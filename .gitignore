@@ -40,6 +40,9 @@ prompts/
 # ── Préparation soutenance (notes perso, non versionnées) ─────
 soutenance/
 
+# ── Skills Claude Code (config perso, non versionnés) ─────────
+.claude/skills/
+
 # ── OS ────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

@@ -15,6 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:equipment_management/main.dart';
 import 'package:equipment_management/models/user.dart';
 import 'package:equipment_management/services/auth_service.dart';
+import 'package:equipment_management/services/data_service.dart';
 import 'package:equipment_management/data/mock_data.dart';
 import 'package:equipment_management/models/user_role.dart';
 
@@ -317,6 +318,37 @@ void main() {
         expect(find.text('Activity Logs'), findsNothing);
       },
     );
+
+    testWidgets(
+      'supervisor : nav Dashboard → Reports en tête, Analytics présent, PAS de page Technician',
+      (tester) async {
+        _setDesktopSize(tester);
+        _suppressOverflow(tester);
+        AuthService().switchUser(_supervisor);
+        // Simule le seed sidebar_config du supervisor servi par db-service
+        DataService().sidebarOrder = {
+          'supervisor': ['dashboard', 'reports', 'analytics', 'equipment', 'issueTracking', 'issueForm'],
+        };
+        addTearDown(() => DataService().sidebarOrder = {});
+
+        await tester.pumpWidget(const EquipmentManagementApp());
+        await _enterEquipmentModule(tester);
+
+        // Rapports et Analytique accessibles (generateReports)
+        expect(find.text('Reports'),   findsWidgets);
+        expect(find.text('Analytics'), findsWidgets);
+
+        // Plus de page technicien (ni updateRepairs ni approveRequests)
+        expect(find.text('Technician'), findsNothing);
+
+        // Ordre : Dashboard au-dessus de Reports, Reports au-dessus d'Equipment
+        final dashboardY = tester.getTopLeft(find.text('Dashboard').first).dy;
+        final reportsY   = tester.getTopLeft(find.text('Reports').first).dy;
+        final equipmentY = tester.getTopLeft(find.text('Equipment').first).dy;
+        expect(dashboardY, lessThan(reportsY));
+        expect(reportsY,   lessThan(equipmentY));
+      },
+    );
   });
 
   // ===========================================================================
@@ -499,11 +531,16 @@ void main() {
       expect(AuthService().hasPermission(Permission.viewInventory), isFalse);
     });
 
-    test('supervisor peut approuver et assigner mais PAS mettre à jour des réparations', () {
+    test('supervisor = consultation + rapports : generateReports mais PAS de validation', () {
       AuthService().switchUser(_supervisor);
 
-      expect(AuthService().hasPermission(Permission.approveRequests), isTrue);
-      expect(AuthService().hasPermission(Permission.assignTasks),     isTrue);
+      expect(AuthService().hasPermission(Permission.viewEquipment),   isTrue);
+      expect(AuthService().hasPermission(Permission.reportIssue),     isTrue);
+      expect(AuthService().hasPermission(Permission.trackIssues),     isTrue);
+      expect(AuthService().hasPermission(Permission.viewInterventionDocuments), isTrue);
+      expect(AuthService().hasPermission(Permission.generateReports), isTrue);
+      expect(AuthService().hasPermission(Permission.approveRequests), isFalse);
+      expect(AuthService().hasPermission(Permission.assignTasks),     isFalse);
       expect(AuthService().hasPermission(Permission.updateRepairs),   isFalse);
       expect(AuthService().hasPermission(Permission.manageUsers),     isFalse);
       expect(AuthService().hasPermission(Permission.viewInventory),   isFalse);

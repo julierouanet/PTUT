@@ -116,19 +116,22 @@ void main() {
       expect(techPerms, isNot(contains(Permission.manageUsers)));
     });
 
-    test('supervisor gets approval-related permissions', () {
+    test('supervisor gets consultation + reporting permissions', () {
       final supPerms = getPermissionsForRole(UserRole.supervisor);
 
-      expect(supPerms.length, 6);
-      expect(supPerms, contains(Permission.approveRequests));
-      expect(supPerms, contains(Permission.assignTasks));
+      expect(supPerms.length, 5);
       expect(supPerms, contains(Permission.viewEquipment));
+      expect(supPerms, contains(Permission.reportIssue));
+      expect(supPerms, contains(Permission.trackIssues));
       expect(supPerms, contains(Permission.viewInterventionDocuments));
+      expect(supPerms, contains(Permission.generateReports));
     });
 
-    test('supervisor does NOT get technician/admin permissions', () {
+    test('supervisor does NOT get approval/technician/admin permissions', () {
       final supPerms = getPermissionsForRole(UserRole.supervisor);
 
+      expect(supPerms, isNot(contains(Permission.approveRequests)));
+      expect(supPerms, isNot(contains(Permission.assignTasks)));
       expect(supPerms, isNot(contains(Permission.updateRepairs)));
       expect(supPerms, isNot(contains(Permission.manageUsers)));
     });

@@ -10,6 +10,7 @@ import 'issue.dart';
 ///   - [notifyCriticalDiagnosed]   : Superviseurs — diagnostic posé
 ///   - [notifyCriticalResolved]    : Superviseurs — incident résolu (avec KPIs)
 ///   - [notifyPmDue]               : Techniciens/Admins — maintenance préventive à planifier
+///   - [notifyMonthlyReport]       : Superviseurs/Admins — rapport KPI mensuel par email
 ///
 /// [preferencesSet] = false → première connexion, modal de configuration à afficher.
 class NotificationPreferences {
@@ -19,6 +20,7 @@ class NotificationPreferences {
   final bool notifyCriticalDiagnosed;
   final bool notifyCriticalResolved;
   final bool notifyPmDue;
+  final bool notifyMonthlyReport;
   final bool preferencesSet;
 
   const NotificationPreferences({
@@ -28,6 +30,7 @@ class NotificationPreferences {
     required this.notifyCriticalDiagnosed,
     required this.notifyCriticalResolved,
     required this.notifyPmDue,
+    required this.notifyMonthlyReport,
     required this.preferencesSet,
   });
 
@@ -39,6 +42,7 @@ class NotificationPreferences {
     notifyCriticalDiagnosed:    true,
     notifyCriticalResolved:     true,
     notifyPmDue:                true,
+    notifyMonthlyReport:        true,
     preferencesSet:             false,
   );
 
@@ -50,6 +54,7 @@ class NotificationPreferences {
       notifyCriticalDiagnosed:   (json['notify_critical_diagnosed']    as bool?) ?? true,
       notifyCriticalResolved:    (json['notify_critical_resolved']     as bool?) ?? true,
       notifyPmDue:               (json['notify_pm_due']                as bool?) ?? true,
+      notifyMonthlyReport:       (json['notify_monthly_report']        as bool?) ?? true,
       preferencesSet:            (json['preferences_set']              as bool?) ?? false,
     );
   }
@@ -61,6 +66,7 @@ class NotificationPreferences {
     'notify_critical_diagnosed':    notifyCriticalDiagnosed,
     'notify_critical_resolved':     notifyCriticalResolved,
     'notify_pm_due':                notifyPmDue,
+    'notify_monthly_report':        notifyMonthlyReport,
   };
 
   NotificationPreferences copyWith({
@@ -70,6 +76,7 @@ class NotificationPreferences {
     bool? notifyCriticalDiagnosed,
     bool? notifyCriticalResolved,
     bool? notifyPmDue,
+    bool? notifyMonthlyReport,
     bool? preferencesSet,
   }) {
     return NotificationPreferences(
@@ -79,6 +86,7 @@ class NotificationPreferences {
       notifyCriticalDiagnosed:   notifyCriticalDiagnosed   ?? this.notifyCriticalDiagnosed,
       notifyCriticalResolved:    notifyCriticalResolved     ?? this.notifyCriticalResolved,
       notifyPmDue:               notifyPmDue               ?? this.notifyPmDue,
+      notifyMonthlyReport:       notifyMonthlyReport       ?? this.notifyMonthlyReport,
       preferencesSet:            preferencesSet            ?? this.preferencesSet,
     );
   }

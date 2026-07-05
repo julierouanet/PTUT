@@ -23,6 +23,7 @@ const catalogRoutes        = require('./routes/catalog');
 const debugRoutes          = require('./routes/debug');
 const { getDb } = require('./database');
 const { startPmReminderJob } = require('./jobs/pm_reminder_job');
+const { initMonthlyReportCron } = require('./jobs/monthly_report_job');
 
 const app = express();
 
@@ -32,6 +33,8 @@ getDb();
 initBackupCron();
 // Démarrer le job quotidien de rappel PM (J-7 et J=0)
 startPmReminderJob();
+// Cron mensuel : rapport KPI par email aux superviseurs/admins (1er du mois, 06h00)
+initMonthlyReportCron();
 
 app.set('trust proxy', 1); // Pour récupérer la vraie IP derrière Nginx
 app.use(helmet());

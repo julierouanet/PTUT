@@ -133,12 +133,13 @@ void main() {
       expect(authService.hasPermission(Permission.manageUsers), isFalse);
     });
 
-    test('supervisor can approve requests but not update repairs', () {
+    test('supervisor can generate reports but not approve nor update repairs', () {
       final supervisor = mockUsers.firstWhere((u) => u.hasRole(UserRole.supervisor));
       authService.switchUser(supervisor);
 
-      expect(authService.hasPermission(Permission.approveRequests), isTrue);
-      expect(authService.hasPermission(Permission.assignTasks), isTrue);
+      expect(authService.hasPermission(Permission.generateReports), isTrue);
+      expect(authService.hasPermission(Permission.approveRequests), isFalse);
+      expect(authService.hasPermission(Permission.assignTasks), isFalse);
       expect(authService.hasPermission(Permission.updateRepairs), isFalse);
       expect(authService.hasPermission(Permission.manageUsers), isFalse);
     });
@@ -150,7 +151,7 @@ void main() {
         permissions: getPermissionsForRoles(const [UserRole.supervisor, UserRole.technicianBiomedical]),
       );
       authService.switchUser(hybrid);
-      expect(authService.hasPermission(Permission.approveRequests), isTrue); // supervisor
+      expect(authService.hasPermission(Permission.generateReports), isTrue); // supervisor
       expect(authService.hasPermission(Permission.updateRepairs), isTrue);   // tech
       expect(authService.hasPermission(Permission.manageUsers), isFalse);
     });

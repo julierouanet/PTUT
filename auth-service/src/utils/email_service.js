@@ -141,6 +141,7 @@ async function sendEmail({ to, toName, subject, htmlContent, textContent }) {
  *   critical_diagnosed    → superviseurs : diagnostic posé
  *   critical_resolved     → superviseurs : incident résolu (KPIs)
  *   pm_due                → techniciens/admins : maintenance préventive à planifier
+ *   monthly_report        → superviseurs/admins : synthèse KPI GMAO du mois écoulé
  *
  * @param {string} type
  * @param {object} payload
@@ -310,6 +311,95 @@ function buildEmailContent(type, payload = {}) {
         `Actions: ${actions || '—'}`,
         `Pièces: ${parts_replaced || '—'}`,
         `N° incident: ${issue_id || '—'}`,
+      ].join('\n');
+      return { subject, htmlContent, textContent };
+    }
+
+    // ── Superviseur / Admin : rapport KPI mensuel (cron db-service) ───────────
+    case 'monthly_report': {
+      const {
+        month_label,
+        issues_created,
+        issues_resolved,
+        issues_still_open,
+        by_urgency,
+        mttr_hours,
+        pm_compliance_pct,
+        equipment_out_of_service,
+        top_equipment,
+      } = payload;
+
+      const monthLabel = month_label || 'mois écoulé';
+      // Aucune division ici : mttr_hours est déjà calculé côté db-service,
+      // null signifie « aucun incident résolu ce mois » → afficher un tiret.
+      const mttrStr = (mttr_hours === null || mttr_hours === undefined) ? '—' : `${mttr_hours} h`;
+      const pmStr   = (pm_compliance_pct === null || pm_compliance_pct === undefined) ? '—' : `${pm_compliance_pct} %`;
+
+      // Répartition par urgence : ligne compacte "Critique : 3 · Urgent : 10 · …"
+      const urgencyStr = by_urgency && Object.keys(by_urgency).length > 0
+        ? Object.entries(by_urgency).map(([k, v]) => `${k} : ${v}`).join(' · ')
+        : '—';
+
+      // Top équipements du mois (max 3, calculé côté db-service)
+      const topRows = Array.isArray(top_equipment) && top_equipment.length > 0
+        ? top_equipment.map((e, i) => _row(`${i + 1}. ${e.name || '—'}`, `${e.count} incident(s)`)).join('')
+        : _row('Aucun', '—');
+
+      const subject = `📊 Rapport mensuel GMAO — ${monthLabel}`;
+      const htmlContent = `
+        <div style="font-family:Arial,sans-serif;max-width:600px;color:#212121">
+          <div style="background:${BLEU};padding:16px 24px;border-radius:6px 6px 0 0">
+            <h2 style="color:#fff;margin:0;font-size:18px">📊 Rapport mensuel GMAO — ${monthLabel}</h2>
+          </div>
+          <div style="border:1px solid #e0e0e0;border-top:none;border-radius:0 0 6px 6px;padding:20px 24px">
+            <p style="margin:0 0 16px;font-size:14px;color:${GRIS}">
+              Synthèse des indicateurs de maintenance de l'hôpital pour <strong>${monthLabel}</strong>.
+            </p>
+
+            <h3 style="font-size:14px;color:${GRIS};text-transform:uppercase;letter-spacing:.5px;margin:0 0 8px;border-bottom:1px solid #e0e0e0;padding-bottom:8px">
+              Incidents
+            </h3>
+            <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+              ${_row('Incidents signalés', `<strong>${issues_created ?? 0}</strong>`)}
+              ${_row('Incidents résolus', `<strong>${issues_resolved ?? 0}</strong>`, VERT)}
+              ${_row('Incidents encore ouverts', `${issues_still_open ?? 0}`, ORANGE)}
+              ${_row('Répartition par urgence', urgencyStr)}
+              ${_row('MTTR (délai moyen de résolution)', `<strong>${mttrStr}</strong>`)}
+            </table>
+
+            <h3 style="font-size:14px;color:${GRIS};text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;border-bottom:1px solid #e0e0e0;padding-bottom:8px">
+              Parc & maintenance préventive
+            </h3>
+            <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+              ${_row('Conformité maintenance préventive', `<strong>${pmStr}</strong>`)}
+              ${_row('Équipements hors service', `${equipment_out_of_service ?? 0}`, ROUGE)}
+            </table>
+
+            <h3 style="font-size:14px;color:${GRIS};text-transform:uppercase;letter-spacing:.5px;margin:20px 0 8px;border-bottom:1px solid #e0e0e0;padding-bottom:8px">
+              Équipements les plus signalés
+            </h3>
+            <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%">
+              ${topRows}
+            </table>
+
+            <div style="margin-top:20px;padding:12px;background:#E3F2FD;border-radius:4px;border-left:4px solid ${BLEU}">
+              <p style="margin:0;font-size:13px;color:${BLEU}">
+                Le détail complet est disponible dans les écrans <strong>Rapports</strong> et <strong>Analytique</strong> de l'application GMAO.
+              </p>
+            </div>
+          </div>
+          ${_footer}
+        </div>
+      `;
+      const textContent = [
+        `Rapport mensuel GMAO — ${monthLabel}`,
+        `Incidents signalés: ${issues_created ?? 0}`,
+        `Incidents résolus: ${issues_resolved ?? 0}`,
+        `Incidents encore ouverts: ${issues_still_open ?? 0}`,
+        `Répartition par urgence: ${urgencyStr}`,
+        `MTTR: ${mttrStr}`,
+        `Conformité PM: ${pmStr}`,
+        `Équipements hors service: ${equipment_out_of_service ?? 0}`,
       ].join('\n');
       return { subject, htmlContent, textContent };
     }

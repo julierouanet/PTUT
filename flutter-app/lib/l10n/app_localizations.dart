@@ -8576,6 +8576,18 @@ abstract class AppLocalizations {
   /// **'Email quand une maintenance préventive est en retard ou imminente.'**
   String get notifPrefsPmDueDesc;
 
+  /// No description provided for @notifPrefsMonthlyReport.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport mensuel par email'**
+  String get notifPrefsMonthlyReport;
+
+  /// No description provided for @notifPrefsMonthlyReportDesc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Synthèse des KPIs GMAO du mois écoulé, envoyée le 1er du mois.'**
+  String get notifPrefsMonthlyReportDesc;
+
   /// No description provided for @reportsPdfExportTooltip.
   ///
   /// In fr, this message translates to:

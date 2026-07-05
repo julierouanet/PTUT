@@ -181,6 +181,9 @@ class _AppRootState extends State<_AppRoot> {
     ScreenType.issueForm,
     ScreenType.technician,
     ScreenType.reports,
+    // Analytique accessible depuis le module équipement : indispensable au
+    // supervisor (generateReports) qui n'a pas accès au module Réglages.
+    ScreenType.analytics,
   ];
   static const _settingsScreens = [
     ScreenType.settings,

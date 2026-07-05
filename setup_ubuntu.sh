@@ -91,6 +91,25 @@ else
   echo "      Installation Docker ignorée."
 fi
 
+# Détection d'une installation Docker via snap : le confinement AppArmor de
+# snap.docker.dockerd interdit toute transition de profil AppArmor pour un
+# processus avec le flag noyau no_new_privs (posé par
+# security_opt: no-new-privileges:true) — y compris vers "unconfined".
+# Conséquence connue : docker-entrypoint.sh échoue avec "operation not
+# permitted" au démarrage du conteneur, quel que soit le script ou les
+# capacités Linux accordées. docker-compose.ip.secured.yml ne positionne
+# donc plus ce flag (voir commentaire en tête de ce fichier).
+if command -v docker &>/dev/null && command -v snap &>/dev/null && snap list 2>/dev/null | grep -q '^docker '; then
+  echo "      ⚠ Docker installé via snap détecté."
+  echo "        Le confinement AppArmor de snap.docker.dockerd est incompatible avec"
+  echo "        security_opt: no-new-privileges:true (utilisé par les configurations"
+  echo "        Docker Compose durcies) : les conteneurs échouent au démarrage avec"
+  echo "        \"operation not permitted\"."
+  echo "        → docker-compose.ip.secured.yml a déjà retiré ce flag (compromis accepté)."
+  echo "        → Pour conserver cette protection, migrer vers le paquet officiel docker-ce"
+  echo "          (relancer ce script avec réinstallation Docker acceptée)."
+fi
+
 # ── Étape 3 : Détection des IPs ──────────────────────────────
 echo "[3/9] Détection des IPs du serveur..."
 
@@ -187,10 +206,23 @@ if [[ -f ".env" ]]; then
 else
   echo "      Création du fichier .env..."
 
+  # Saisie répétée jusqu'à non-vide : un mot de passe vide écrit dans .env fait
+  # échouer postgres:16-alpine au démarrage ("superuser password is not
+  # specified") — échec rapide (~2-3s) facilement confondu avec l'incompatibilité
+  # AppArmor/snap (voir commentaire de l'étape 2).
+  read_required_password() {
+    local prompt="$1" value=""
+    while [[ -z "${value}" ]]; do
+      read -rp "${prompt}" -s value; echo >&2
+      [[ -z "${value}" ]] && echo "      ✗ Ce mot de passe ne peut pas être vide." >&2
+    done
+    printf '%s' "${value}"
+  }
+
   read -rp "      Docker Hub username : " DOCKER_USER_INPUT
-  read -rp "      Mot de passe admin Keycloak : " -s KC_ADMIN_PASSWORD_INPUT; echo
-  read -rp "      Mot de passe PostgreSQL Keycloak : " -s KC_DB_PASSWORD_INPUT; echo
-  read -rp "      Mot de passe de déverrouillage du mode Debug & Test : " -s DEBUG_MODE_PASSWORD_INPUT; echo
+  KC_ADMIN_PASSWORD_INPUT=$(read_required_password "      Mot de passe admin Keycloak : ")
+  KC_DB_PASSWORD_INPUT=$(read_required_password "      Mot de passe PostgreSQL Keycloak : ")
+  DEBUG_MODE_PASSWORD_INPUT=$(read_required_password "      Mot de passe de déverrouillage du mode Debug & Test : ")
 
   INTERNAL_SECRET_GEN=$(openssl rand -hex 32)
 

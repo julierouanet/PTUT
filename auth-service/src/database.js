@@ -159,6 +159,7 @@ function initTables() {
       notify_critical_diagnosed   INTEGER NOT NULL DEFAULT 1,
       notify_critical_resolved    INTEGER NOT NULL DEFAULT 1,
       notify_pm_due               INTEGER NOT NULL DEFAULT 1,
+      notify_monthly_report       INTEGER NOT NULL DEFAULT 1,
       preferences_set             INTEGER NOT NULL DEFAULT 0,
       updated_at                  TEXT DEFAULT (datetime('now','localtime'))
     );
@@ -173,12 +174,17 @@ function initTables() {
   // FEAT — Seuil d'urgence minimal pour la notification technicien "nouvel incident"
   try { db.exec("ALTER TABLE user_notification_preferences RENAME COLUMN notify_critical_new_issue TO notify_new_issue"); } catch (_) {}
   try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN min_urgency_new_issue TEXT NOT NULL DEFAULT 'Critique'"); } catch (_) {}
+  // FEAT — Rapport KPI mensuel par email (opt-out individuel, superviseurs et admins)
+  try { db.exec("ALTER TABLE user_notification_preferences ADD COLUMN notify_monthly_report INTEGER NOT NULL DEFAULT 1"); } catch (_) {}
 
   // ── Seed des permissions par défaut (idempotent) ───────────────────────────
   const techPerms = ['viewEquipment', 'reportIssue', 'trackIssues', 'updateRepairs', 'registerParts', 'approveRequests', 'viewInterventionDocuments'];
   const defaultPerms = {
     hospitalStaff:         ['viewEquipment', 'reportIssue', 'trackIssues'],
-    supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'approveRequests', 'assignTasks', 'viewInterventionDocuments'],
+    // supervisor = chef de département « view-only manager » : consultation +
+    // signalement + rapports. La validation des incidents revient aux
+    // techniciens et à l'admin (voir migration _supervisor_role_v2 ci-dessous).
+    supervisor:            ['viewEquipment', 'reportIssue', 'trackIssues', 'viewInterventionDocuments', 'generateReports'],
     technician:            techPerms,
     technician_biomedical: techPerms,
     technician_it:         techPerms,
@@ -193,6 +199,22 @@ function initTables() {
   const insertPerm = db.prepare('INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES (?, ?)');
   for (const [roleName, perms] of Object.entries(defaultPerms)) {
     for (const perm of perms) insertPerm.run(roleName, perm);
+  }
+
+  // ── Migration one-shot : rôle supervisor → consultation + rapports ─────────
+  // Retire approveRequests/assignTasks et ajoute generateReports au supervisor.
+  // One-shot (marqueur _supervisor_role_v2) : ne s'exécute qu'une fois pour ne
+  // pas écraser d'éventuels réglages admin ultérieurs faits via
+  // PUT /api/roles/:name/permissions.
+  db.exec('CREATE TABLE IF NOT EXISTS _supervisor_role_v2 (done INTEGER PRIMARY KEY)');
+  const supMigrated = db.prepare('SELECT done FROM _supervisor_role_v2 WHERE done = 1').get();
+  if (!supMigrated) {
+    db.transaction(() => {
+      db.prepare("DELETE FROM role_permissions WHERE role_name = 'supervisor' AND permission IN ('approveRequests', 'assignTasks')").run();
+      db.prepare("INSERT OR IGNORE INTO role_permissions (role_name, permission) VALUES ('supervisor', 'generateReports')").run();
+      db.prepare('INSERT OR IGNORE INTO _supervisor_role_v2 (done) VALUES (1)').run();
+    })();
+    console.log('[AUTH] Migration supervisor_role_v2 : supervisor = consultation + signalement + rapports.');
   }
 
   // ── Feature flags : table principale + overrides par rôle ─────────────────

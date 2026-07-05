@@ -196,14 +196,15 @@ List<Permission> getPermissionsForRole(UserRole role) {
         Permission.reportIssue,
         Permission.trackIssues,
       ];
+    // supervisor = chef de département « consultation + rapports » : plus de
+    // validation ni d'assignation d'incidents (aligné sur le seed auth-service).
     case UserRole.supervisor:
       return const [
         Permission.viewEquipment,
         Permission.reportIssue,
         Permission.trackIssues,
-        Permission.approveRequests,
-        Permission.assignTasks,
         Permission.viewInterventionDocuments,
+        Permission.generateReports,
       ];
     case UserRole.technician:
     case UserRole.technicianBiomedical:

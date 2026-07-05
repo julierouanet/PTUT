@@ -266,7 +266,7 @@ router.get('/:id', verifyToken, (req, res) => {
 // Retourne la liste des techniciens spécialisés actifs compatibles avec le
 // `assigned_group` de l'incident. Appelle auth-service en proxifiant le JWT
 // du caller (la route ?role= y est accessible à tout utilisateur authentifié).
-router.get('/:id/assignable-technicians', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), async (req, res) => {
+router.get('/:id/assignable-technicians', verifyToken, requireRole('admin', ...TECH_ROLES), async (req, res) => {
   const db = getDb();
   const issue = db.prepare('SELECT id, assigned_group FROM issues WHERE id = ?').get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
@@ -405,7 +405,7 @@ router.post('/', verifyToken, (req, res) => {
 });
 
 // PUT /api/issues/:id - mettre à jour un incident
-router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { status, assigned_technician, diagnosis, actions, parts_replaced, urgency, assigned_group, taken_at, parts_consumed } = req.body;
 
@@ -555,7 +555,7 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
 
 // ── PATCH /api/issues/:id/escalate ───────────────────────────────────────────
 // Suspend l'incident sur place (Waiting Materials ou Redirected) avec commentaire obligatoire.
-router.patch('/:id/escalate', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.patch('/:id/escalate', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { escalation_status, escalation_comment } = req.body;
 
@@ -595,7 +595,7 @@ router.patch('/:id/escalate', verifyToken, requireRole('admin', 'supervisor', ..
 // ── PATCH /api/issues/:id/close-as-disposed ──────────────────────────────────
 // Clôture un incident en marquant l'équipement lié comme irréparable (Disposed).
 // Issue → Completed, Equipment → Disposed, session active fermée silencieusement.
-router.patch('/:id/close-as-disposed', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.patch('/:id/close-as-disposed', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { reason, disposal_method } = req.body;
 
@@ -674,7 +674,7 @@ router.patch('/:id/close-as-disposed', verifyToken, requireRole('admin', 'superv
 });
 
 // ── PATCH /api/issues/:id/reassign ────────────────────────────────────────
-router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.patch('/:id/reassign', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { new_group, reason } = req.body;
 
@@ -715,9 +715,9 @@ router.patch('/:id/reassign', verifyToken, requireRole('admin', 'supervisor', ..
 
 // ── PATCH /api/issues/:id/reject ──────────────────────────────────────────────
 // Rejet rapide d'un incident encore en file de validation (statut 'Reported').
-// Le valideur (admin/superviseur) tranche la recevabilité avec un motif catégorisé.
+// Le valideur (admin/technicien) tranche la recevabilité avec un motif catégorisé.
 // L'incident n'est PAS supprimé : il est conservé pour la traçabilité.
-router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), async (req, res) => {
+router.patch('/:id/reject', verifyToken, requireRole('admin', ...TECH_ROLES), async (req, res) => {
   const db = getDb();
   const { reason_code, comment } = req.body;
 
@@ -805,7 +805,7 @@ router.patch('/:id/reject', verifyToken, requireRole('admin', 'supervisor', ...T
 // ── PATCH /api/issues/:id/detach ──────────────────────────────────────────────
 // Un technicien (ou un admin) se détache d'un incident pris en charge ('In Progress')
 // qui lui est assigné → l'incident retourne au pool (statut 'Acknowledged').
-router.patch('/:id/detach', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.patch('/:id/detach', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { reason } = req.body;
 
@@ -859,7 +859,7 @@ router.patch('/:id/detach', verifyToken, requireRole('admin', 'supervisor', ...T
 // Lie tardivement un incident créé sans équipement (cas "Autre"/"Infrastructure",
 // equipment_id IS NULL) à un équipement du catalogue. Horodate equipment_linked_at
 // pour alimenter le futur KPI « taux de signalement sans équipement identifié ».
-router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.patch('/:id/link-equipment', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { equipment_id } = req.body;
 
@@ -884,8 +884,8 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', 'superviso
     return res.status(409).json({ error: 'Impossible de lier un équipement à un incident clôturé' });
   }
 
-  // 5. Un technicien ne lie que ses propres incidents en cours (l'admin/supervisor n'ont pas cette restriction)
-  if (!hasRole(req, 'admin', 'supervisor') && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
+  // 5. Un technicien ne lie que ses propres incidents en cours (l'admin n'a pas cette restriction)
+  if (!hasRole(req, 'admin') && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
     return res.status(403).json({ error: 'Vous ne pouvez lier un équipement qu\'aux incidents qui vous sont assignés et en cours' });
   }
 
@@ -1085,7 +1085,7 @@ router.get('/:id/documents', verifyToken, (req, res) => {
 });
 
 // ── POST /api/issues/:id/documents (multi-fichiers, max 5) ───────────────────
-router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
+router.post('/:id/documents', verifyToken, requireRole('admin', ...TECH_ROLES),
   documentUpload.array('files', 5),
   async (req, res) => {
     if (!req.files || req.files.length === 0) {
@@ -1185,9 +1185,9 @@ router.post('/:id/documents', verifyToken, requireRole('admin', 'supervisor', ..
 );
 
 // ── DELETE /api/issues/:id/documents/:doc_id ──────────────────────────────────
-// Soft delete réservé à l'auteur (technician) ou aux rôles admin/supervisor.
+// Soft delete réservé à l'auteur (technician) ou au rôle admin.
 // Un technicien ne peut pas supprimer la pièce jointe d'un collègue.
-router.delete('/:id/documents/:doc_id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
+router.delete('/:id/documents/:doc_id', verifyToken, requireRole('admin', ...TECH_ROLES),
   (req, res) => {
     const db = getDb();
     const doc = db.prepare(`
@@ -1197,7 +1197,7 @@ router.delete('/:id/documents/:doc_id', verifyToken, requireRole('admin', 'super
 
     if (!doc) return res.status(404).json({ error: 'Document introuvable' });
 
-    if (!hasRole(req, 'admin', 'supervisor') && doc.uploaded_by !== req.user.id) {
+    if (!hasRole(req, 'admin') && doc.uploaded_by !== req.user.id) {
       return res.status(403).json({ error: 'Seul l\'auteur de la pièce jointe peut la supprimer' });
     }
 
@@ -1298,7 +1298,7 @@ router.get('/:id/report', verifyToken, (req, res) => {
 });
 
 // ── PUT /api/issues/:id/report (UPSERT) ────────────────────────────────────
-router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.put('/:id/report', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
@@ -1363,7 +1363,7 @@ router.put('/:id/report', verifyToken, requireRole('admin', 'supervisor', ...TEC
 });
 
 // ── POST /api/issues/:id/report/finalize ───────────────────────────────────
-router.post('/:id/report/finalize', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.post('/:id/report/finalize', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const issue = db.prepare(ISSUE_REPORT_SELECT).get(req.params.id);
   if (!issue) return res.status(404).json({ error: 'Incident introuvable' });
@@ -1433,7 +1433,7 @@ router.get('/:id/sessions', verifyToken, (req, res) => {
 });
 
 // ── PUT /api/issues/:id/sessions/active ──────────────────────────────────────
-router.put('/:id/sessions/active', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.put('/:id/sessions/active', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { id } = req.params;
   const issue = db.prepare('SELECT id, status, equipment_name, department FROM issues WHERE id = ?').get(id);
@@ -1494,7 +1494,7 @@ router.put('/:id/sessions/active', verifyToken, requireRole('admin', 'supervisor
 });
 
 // ── POST /api/issues/:id/sessions/active/close ───────────────────────────────
-router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
+router.post('/:id/sessions/active/close', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { id } = req.params;
   const { resolved, outcome, next_actions, next_action_due_at } = req.body;
