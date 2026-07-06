@@ -1509,6 +1509,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
       'ID', 'Nom', 'Département', 'Catégorie', 'Statut',
       'Fabricant', 'Modèle', 'N° Série', 'Année fab.',
       'Date install.', 'Dernière PM', 'Prochaine PM', 'Criticité', 'Tags',
+      'Sous-catégorie', 'Macro-catégorie', 'Créé le', 'Créé par',
     ].map(_csvEsc).join(';'));
 
     for (final eq in list) {
@@ -1527,6 +1528,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
         eq.nextPreventiveMaintenance ?? '',
         eq.criticality?.displayName ?? '',
         (tagsById[eq.id] ?? eq.tags).join(' | '),
+        eq.subcategoryName ?? '',
+        eq.macroCategory ?? '',
+        eq.createdAt ?? '',
+        eq.createdByName ?? '',
       ].map(_csvEsc).join(';'));
     }
 

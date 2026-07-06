@@ -42,7 +42,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navInventory => 'Inventory';
 
   @override
-  String get navReports => 'Reports';
+  String get navReports => 'Equipment Analytics';
 
   @override
   String get navUsers => 'Users';
@@ -75,7 +75,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navInventoryShort => 'Inventory';
 
   @override
-  String get navReportsShort => 'Reports';
+  String get navReportsShort => 'Analytics';
 
   @override
   String get navUsersShort => 'Users';
@@ -729,7 +729,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inventoryItemDeleted => 'Item deleted';
 
   @override
-  String get reportsTitle => 'Reports & Analytics';
+  String get reportsTitle => 'Equipment Analytics';
 
   @override
   String get reportsSubtitle => 'Statistics overview';
@@ -4243,6 +4243,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reportsResolutionRate => 'Resolution rate';
 
   @override
+  String get reportsExtraKpiSectionTitle => 'Additional indicators';
+
+  @override
+  String get reportsMtbf => 'MTBF (whole fleet)';
+
+  @override
+  String get reportsMtbfHint => 'Average time between failures, whole fleet';
+
+  @override
+  String get reportsMtbfNoData => 'No failure in period';
+
+  @override
+  String get reportsBacklog => 'Issue backlog';
+
+  @override
+  String reportsBacklogOver30(int count) {
+    return '$count over 30 days old';
+  }
+
+  @override
+  String get reportsBacklogHint => 'Unclosed issues, all statuses';
+
+  @override
+  String get reportsObsolescenceRate => 'Obsolescence rate';
+
+  @override
+  String get reportsObsolescenceHint => '(biomedical only)';
+
+  @override
+  String get reportsObsolescenceNoData => 'Unavailable';
+
+  @override
+  String get reportsCriticalityAbc => 'ABC breakdown';
+
+  @override
+  String get reportsCriticalityAbcHint => '(biomedical only)';
+
+  @override
+  String get reportsDowntimeTotal => 'Total downtime';
+
+  @override
+  String get reportsDowntimeHint =>
+      'Total downtime hours, closed issues in period';
+
+  @override
   String get analyticsIssueKpiSection => 'Incident metrics';
 
   @override
@@ -5040,7 +5085,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarTitleInventory => 'Inventory';
 
   @override
-  String get sidebarTitleReports => 'Reports';
+  String get sidebarTitleReports => 'Equipment Analytics';
 
   @override
   String get see => 'See';

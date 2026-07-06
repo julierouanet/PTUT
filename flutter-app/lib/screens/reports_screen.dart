@@ -10,6 +10,7 @@ import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../utils/csv_export.dart';
 import '../widgets/reports/report_kpi_section.dart';
+import '../widgets/reports/gmao_kpi_section_extra.dart';
 
 enum _ReportPeriod { last7, last30, last90, yearToDate, custom }
 
@@ -51,6 +52,25 @@ class _ReportsScreenState extends State<ReportsScreen> {
   bool _deptExpanded = false;
   bool _catExpanded  = false;
   static const int _kCollapsedItemCount = 5;
+
+  // ── Résumé du plan de remplacement biomédical (obsolescence + criticité ABC) ─
+  Map<String, dynamic>? _replacementSummary;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReplacementSummary();
+  }
+
+  Future<void> _loadReplacementSummary() async {
+    try {
+      final plan = await DbApiService.instance.getReplacementPlan();
+      if (!mounted) return;
+      setState(() => _replacementSummary = plan['summary'] as Map<String, dynamic>?);
+    } catch (_) {
+      // _replacementSummary reste null → cartes Obsolescence/ABC en état "Indisponible".
+    }
+  }
 
   // ── Calcul de la plage temporelle active ───────────────────────────────────
 
@@ -198,6 +218,48 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final sorted = counts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return sorted.take(3).toList();
+  }
+
+  /// MTBF (Mean Time Between Failures) sur le parc entier, en jours.
+  /// Null si aucun incident créé sur la période ou aucun équipement (division
+  /// par zéro évitée).
+  double? _computeMtbf(DateTimeRange range, int equipmentTotal, int issuesCreatedInPeriod) {
+    if (issuesCreatedInPeriod == 0 || equipmentTotal == 0) return null;
+    final periodDays = range.end.difference(range.start).inDays + 1;
+    return periodDays * equipmentTotal / issuesCreatedInPeriod;
+  }
+
+  /// Backlog d'incidents non résolus (tous statuts ouverts), instantané —
+  /// non filtré par période, comme _computePmCompliance().
+  /// Retourne (total, dont plus de 30 jours).
+  (int, int) _computeBacklog() {
+    final now = DateTime.now();
+    int total = 0;
+    int over30 = 0;
+    for (final i in DataService().issues) {
+      if (!i.status.isOpen) continue;
+      total++;
+      if (i.createdAt.length < 10) continue;
+      try {
+        final created = DateTime.parse(i.createdAt.substring(0, 10));
+        if (now.difference(created).inDays > 30) over30++;
+      } catch (_) {}
+    }
+    return (total, over30);
+  }
+
+  /// Downtime cumulé (heures d'arrêt) des incidents clôturés (completed /
+  /// verified / closed) de la période fournie. Toujours >= 0, jamais null.
+  double _computeDowntimeHours(List<Issue> issues) {
+    const terminal = {IssueStatus.completed, IssueStatus.verified, IssueStatus.closed};
+    double total = 0;
+    for (final i in issues) {
+      if (terminal.contains(i.status) &&
+          i.reportDurationHours != null && i.reportDurationHours! > 0) {
+        total += i.reportDurationHours!;
+      }
+    }
+    return total;
   }
 
   // ── Export CSV ─────────────────────────────────────────────────────────────
@@ -761,6 +823,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
         final topDepts                  = _topDepartments(periodIssues);
         final documentedClosureRate     = _computeDocumentedClosureRate(periodIssues);
 
+        // Indicateurs complémentaires GMAO
+        final mtbfDays                  = _computeMtbf(range, total, totalPeriod);
+        final (backlogTotal, backlogOver30Days) = _computeBacklog();
+        final downtimeHours             = _computeDowntimeHours(periodIssues);
+
         final isMobile = MediaQuery.of(context).size.width < AppBreakpoints.tablet;
         final pad      = isMobile ? 16.0 : 24.0;
 
@@ -797,6 +864,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 pmTotal:         pmTotal,
                 topDepartments:  topDepts,
                 documentedClosureRatePct: documentedClosureRate,
+              ),
+              const SizedBox(height: 24),
+
+              // ── Indicateurs complémentaires : MTBF, backlog, obsolescence, ABC, downtime ──
+              _buildSectionHeader(l10n.reportsExtraKpiSectionTitle, Icons.dashboard_customize_outlined),
+              const SizedBox(height: 12),
+              GmaoKpiSectionExtra(
+                mtbfDays:            mtbfDays,
+                backlogTotal:        backlogTotal,
+                backlogOver30Days:   backlogOver30Days,
+                replacementSummary:  _replacementSummary,
+                downtimeHours:       downtimeHours,
               ),
               const SizedBox(height: 24),
 

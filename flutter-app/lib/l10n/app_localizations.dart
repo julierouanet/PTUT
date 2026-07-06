@@ -167,7 +167,7 @@ abstract class AppLocalizations {
   /// No description provided for @navReports.
   ///
   /// In fr, this message translates to:
-  /// **'Rapports'**
+  /// **'Analytics Équipements'**
   String get navReports;
 
   /// No description provided for @navUsers.
@@ -233,7 +233,7 @@ abstract class AppLocalizations {
   /// No description provided for @navReportsShort.
   ///
   /// In fr, this message translates to:
-  /// **'Rapports'**
+  /// **'Analytics'**
   String get navReportsShort;
 
   /// No description provided for @navUsersShort.
@@ -1457,7 +1457,7 @@ abstract class AppLocalizations {
   /// No description provided for @reportsTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Rapports et Analyses'**
+  /// **'Analytics Équipements'**
   String get reportsTitle;
 
   /// No description provided for @reportsSubtitle.
@@ -7904,6 +7904,90 @@ abstract class AppLocalizations {
   /// **'Taux de résolution'**
   String get reportsResolutionRate;
 
+  /// No description provided for @reportsExtraKpiSectionTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indicateurs complémentaires'**
+  String get reportsExtraKpiSectionTitle;
+
+  /// No description provided for @reportsMtbf.
+  ///
+  /// In fr, this message translates to:
+  /// **'MTBF (parc entier)'**
+  String get reportsMtbf;
+
+  /// No description provided for @reportsMtbfHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Durée moyenne entre pannes, parc entier'**
+  String get reportsMtbfHint;
+
+  /// No description provided for @reportsMtbfNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pas de panne sur la période'**
+  String get reportsMtbfNoData;
+
+  /// No description provided for @reportsBacklog.
+  ///
+  /// In fr, this message translates to:
+  /// **'Backlog incidents'**
+  String get reportsBacklog;
+
+  /// No description provided for @reportsBacklogOver30.
+  ///
+  /// In fr, this message translates to:
+  /// **'dont {count} depuis plus de 30 jours'**
+  String reportsBacklogOver30(int count);
+
+  /// No description provided for @reportsBacklogHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Incidents non clôturés, tous statuts confondus'**
+  String get reportsBacklogHint;
+
+  /// No description provided for @reportsObsolescenceRate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Taux d\'obsolescence'**
+  String get reportsObsolescenceRate;
+
+  /// No description provided for @reportsObsolescenceHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'(biomédical uniquement)'**
+  String get reportsObsolescenceHint;
+
+  /// No description provided for @reportsObsolescenceNoData.
+  ///
+  /// In fr, this message translates to:
+  /// **'Indisponible'**
+  String get reportsObsolescenceNoData;
+
+  /// No description provided for @reportsCriticalityAbc.
+  ///
+  /// In fr, this message translates to:
+  /// **'Répartition ABC'**
+  String get reportsCriticalityAbc;
+
+  /// No description provided for @reportsCriticalityAbcHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'(biomédical uniquement)'**
+  String get reportsCriticalityAbcHint;
+
+  /// No description provided for @reportsDowntimeTotal.
+  ///
+  /// In fr, this message translates to:
+  /// **'Downtime cumulé'**
+  String get reportsDowntimeTotal;
+
+  /// No description provided for @reportsDowntimeHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Heures d\'arrêt total, incidents clôturés sur la période'**
+  String get reportsDowntimeHint;
+
   /// No description provided for @analyticsIssueKpiSection.
   ///
   /// In fr, this message translates to:
@@ -9335,7 +9419,7 @@ abstract class AppLocalizations {
   /// No description provided for @sidebarTitleReports.
   ///
   /// In fr, this message translates to:
-  /// **'Rapports'**
+  /// **'Analytics Équipements'**
   String get sidebarTitleReports;
 
   /// No description provided for @see.

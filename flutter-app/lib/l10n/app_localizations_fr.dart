@@ -42,7 +42,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navInventory => 'Inventaire';
 
   @override
-  String get navReports => 'Rapports';
+  String get navReports => 'Analytics Équipements';
 
   @override
   String get navUsers => 'Utilisateurs';
@@ -75,7 +75,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navInventoryShort => 'Inventaire';
 
   @override
-  String get navReportsShort => 'Rapports';
+  String get navReportsShort => 'Analytics';
 
   @override
   String get navUsersShort => 'Usagers';
@@ -733,7 +733,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get inventoryItemDeleted => 'Article supprime';
 
   @override
-  String get reportsTitle => 'Rapports et Analyses';
+  String get reportsTitle => 'Analytics Équipements';
 
   @override
   String get reportsSubtitle => 'Vue d\'ensemble des statistiques';
@@ -4285,6 +4285,52 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reportsResolutionRate => 'Taux de résolution';
 
   @override
+  String get reportsExtraKpiSectionTitle => 'Indicateurs complémentaires';
+
+  @override
+  String get reportsMtbf => 'MTBF (parc entier)';
+
+  @override
+  String get reportsMtbfHint => 'Durée moyenne entre pannes, parc entier';
+
+  @override
+  String get reportsMtbfNoData => 'Pas de panne sur la période';
+
+  @override
+  String get reportsBacklog => 'Backlog incidents';
+
+  @override
+  String reportsBacklogOver30(int count) {
+    return 'dont $count depuis plus de 30 jours';
+  }
+
+  @override
+  String get reportsBacklogHint =>
+      'Incidents non clôturés, tous statuts confondus';
+
+  @override
+  String get reportsObsolescenceRate => 'Taux d\'obsolescence';
+
+  @override
+  String get reportsObsolescenceHint => '(biomédical uniquement)';
+
+  @override
+  String get reportsObsolescenceNoData => 'Indisponible';
+
+  @override
+  String get reportsCriticalityAbc => 'Répartition ABC';
+
+  @override
+  String get reportsCriticalityAbcHint => '(biomédical uniquement)';
+
+  @override
+  String get reportsDowntimeTotal => 'Downtime cumulé';
+
+  @override
+  String get reportsDowntimeHint =>
+      'Heures d\'arrêt total, incidents clôturés sur la période';
+
+  @override
   String get analyticsIssueKpiSection => 'Métriques incidents';
 
   @override
@@ -5092,7 +5138,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sidebarTitleInventory => 'Inventaire';
 
   @override
-  String get sidebarTitleReports => 'Rapports';
+  String get sidebarTitleReports => 'Analytics Équipements';
 
   @override
   String get see => 'Voir';

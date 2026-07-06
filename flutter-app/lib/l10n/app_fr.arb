@@ -13,7 +13,7 @@
   "navReportIssue": "Signaler",
   "navTechnician": "Technicien",
   "navInventory": "Inventaire",
-  "navReports": "Rapports",
+  "navReports": "Analytics Équipements",
   "navUsers": "Utilisateurs",
   "navSettings": "Admin",
   "navLogs": "Journaux",
@@ -24,7 +24,7 @@
   "navReportIssueShort": "Signaler",
   "navTechnicianShort": "Technicien",
   "navInventoryShort": "Inventaire",
-  "navReportsShort": "Rapports",
+  "navReportsShort": "Analytics",
   "navUsersShort": "Usagers",
   "navSettingsShort": "Admin",
 
@@ -258,7 +258,7 @@
   "@inventoryDeleteConfirm": { "placeholders": { "name": { "type": "String" } } },
   "inventoryItemDeleted": "Article supprime",
 
-  "reportsTitle": "Rapports et Analyses",
+  "reportsTitle": "Analytics Équipements",
   "reportsSubtitle": "Vue d'ensemble des statistiques",
   "reportsExport": "Exporter",
   "reportsTotalEquipment": "Total equipements",
@@ -1590,6 +1590,27 @@
   "reportsIssuesInPeriod": "Incidents (période)",
   "reportsResolutionRate": "Taux de résolution",
 
+  "reportsExtraKpiSectionTitle": "Indicateurs complémentaires",
+
+  "reportsMtbf": "MTBF (parc entier)",
+  "reportsMtbfHint": "Durée moyenne entre pannes, parc entier",
+  "reportsMtbfNoData": "Pas de panne sur la période",
+
+  "reportsBacklog": "Backlog incidents",
+  "reportsBacklogOver30": "dont {count} depuis plus de 30 jours",
+  "@reportsBacklogOver30": { "placeholders": { "count": { "type": "int" } } },
+  "reportsBacklogHint": "Incidents non clôturés, tous statuts confondus",
+
+  "reportsObsolescenceRate": "Taux d'obsolescence",
+  "reportsObsolescenceHint": "(biomédical uniquement)",
+  "reportsObsolescenceNoData": "Indisponible",
+
+  "reportsCriticalityAbc": "Répartition ABC",
+  "reportsCriticalityAbcHint": "(biomédical uniquement)",
+
+  "reportsDowntimeTotal": "Downtime cumulé",
+  "reportsDowntimeHint": "Heures d'arrêt total, incidents clôturés sur la période",
+
   "analyticsIssueKpiSection": "Métriques incidents",
   "@analyticsIssueKpiSection": {},
   "analyticsEquipmentSection": "État des équipements",
@@ -2062,7 +2083,7 @@
   "sidebarTitleEquipment": "Gestion des équipements",
   "sidebarTitleSettings": "Configuration",
   "sidebarTitleInventory": "Inventaire",
-  "sidebarTitleReports": "Rapports",
+  "sidebarTitleReports": "Analytics Équipements",
   "see": "Voir",
   "exportingPdf": "Génération du PDF…",
   "exportError": "Erreur lors de l'export. Réessayez.",

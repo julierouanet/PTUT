@@ -1,7 +1,15 @@
 #!/usr/bin/env node
 // ── Seed des comptes de démonstration dans Keycloak ───────────────────────────
 // Crée les utilisateurs de base avec leurs rôles et mots de passe définitifs.
-// Idempotent : si un utilisateur existe déjà, ses rôles sont synchronisés.
+//
+// Idempotent au sens strict : le realm est marqué via l'attribut "demoSeeded"
+// après le premier passage réussi. Ce script est appelé automatiquement par le
+// Jenkinsfile à CHAQUE déploiement (prod + dev) — sans ce marqueur, un admin
+// qui supprime un compte démo via l'app le voyait recréé au build suivant
+// (findUserByEmail() ne fait pas la différence entre "jamais créé" et "supprimé
+// volontairement"). Voir le fix du 2026-07-07.
+// Pour forcer un re-seed (ex: realm recréé de zéro) : retirer l'attribut
+// "demoSeeded" du realm via la console admin, ou le recréer entièrement.
 //
 // Usage : node scripts/keycloak-seed.js
 //
@@ -74,6 +82,24 @@ async function getRealmRole(roleName) {
   return resp.ok ? resp.json() : null;
 }
 
+async function getRealmRepresentation() {
+  const resp = await kc('GET', '');
+  if (!resp.ok) throw new Error(`Lecture du realm échouée : ${resp.status} ${await resp.text()}`);
+  return resp.json();
+}
+
+async function isAlreadySeeded() {
+  const realm = await getRealmRepresentation();
+  return realm.attributes?.demoSeeded === 'true';
+}
+
+async function markAsSeeded() {
+  const realm = await getRealmRepresentation();
+  const attributes = { ...(realm.attributes || {}), demoSeeded: 'true' };
+  const resp = await kc('PUT', '', { ...realm, attributes });
+  if (!resp.ok) console.warn(`  ⚠  Marquage du realm "demoSeeded" échoué : ${resp.status}`);
+}
+
 async function assignRoles(kcId, roleNames) {
   const roles = (await Promise.all(roleNames.map(getRealmRole))).filter(Boolean);
   if (!roles.length) return;
@@ -131,11 +157,20 @@ async function main() {
   console.log(`  Keycloak : ${KC_ADMIN_URL}`);
   console.log('════════════════════════════════════════════\n');
 
+  if (await isAlreadySeeded()) {
+    console.log('ℹ️  Realm déjà marqué "demoSeeded" — comptes de démonstration non re-créés.');
+    console.log('   Les suppressions volontaires effectuées via l\'app sont donc respectées.');
+    console.log('   Pour forcer un re-seed : retirer l\'attribut "demoSeeded" du realm (console admin).');
+    return;
+  }
+
   for (const u of USERS) {
     await seedUser(u);
   }
 
-  console.log('\n✅ Seed terminé.');
+  await markAsSeeded();
+
+  console.log('\n✅ Seed terminé — realm marqué "demoSeeded" (ne sera plus re-exécuté automatiquement).');
   console.log('\nComptes créés :');
   for (const u of USERS) {
     console.log(`  ${u.email.padEnd(30)} ${u.password}  [${u.roles.join(', ')}]`);

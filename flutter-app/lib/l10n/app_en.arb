@@ -13,7 +13,7 @@
   "navReportIssue": "Report",
   "navTechnician": "Technician",
   "navInventory": "Inventory",
-  "navReports": "Reports",
+  "navReports": "Equipment Analytics",
   "navUsers": "Users",
   "navSettings": "Admin",
   "navLogs": "Activity Logs",
@@ -24,7 +24,7 @@
   "navReportIssueShort": "Report",
   "navTechnicianShort": "Technician",
   "navInventoryShort": "Inventory",
-  "navReportsShort": "Reports",
+  "navReportsShort": "Analytics",
   "navUsersShort": "Users",
   "navSettingsShort": "Admin",
 
@@ -243,7 +243,7 @@
   "inventoryDeleteConfirm": "Delete \"{name}\" from inventory?",
   "inventoryItemDeleted": "Item deleted",
 
-  "reportsTitle": "Reports & Analytics",
+  "reportsTitle": "Equipment Analytics",
   "reportsSubtitle": "Statistics overview",
   "reportsExport": "Export",
   "reportsTotalEquipment": "Total equipment",
@@ -1569,6 +1569,27 @@
   "reportsIssuesInPeriod": "Issues (period)",
   "reportsResolutionRate": "Resolution rate",
 
+  "reportsExtraKpiSectionTitle": "Additional indicators",
+
+  "reportsMtbf": "MTBF (whole fleet)",
+  "reportsMtbfHint": "Average time between failures, whole fleet",
+  "reportsMtbfNoData": "No failure in period",
+
+  "reportsBacklog": "Issue backlog",
+  "reportsBacklogOver30": "{count} over 30 days old",
+  "@reportsBacklogOver30": { "placeholders": { "count": { "type": "int" } } },
+  "reportsBacklogHint": "Unclosed issues, all statuses",
+
+  "reportsObsolescenceRate": "Obsolescence rate",
+  "reportsObsolescenceHint": "(biomedical only)",
+  "reportsObsolescenceNoData": "Unavailable",
+
+  "reportsCriticalityAbc": "ABC breakdown",
+  "reportsCriticalityAbcHint": "(biomedical only)",
+
+  "reportsDowntimeTotal": "Total downtime",
+  "reportsDowntimeHint": "Total downtime hours, closed issues in period",
+
   "analyticsIssueKpiSection": "Incident metrics",
   "@analyticsIssueKpiSection": {},
   "analyticsEquipmentSection": "Equipment status",
@@ -2041,7 +2062,7 @@
   "sidebarTitleEquipment": "Equipment management",
   "sidebarTitleSettings": "Settings",
   "sidebarTitleInventory": "Inventory",
-  "sidebarTitleReports": "Reports",
+  "sidebarTitleReports": "Equipment Analytics",
   "see": "See",
   "exportingPdf": "Generating PDF…",
   "exportError": "Export failed. Please try again.",
