@@ -2420,5 +2420,26 @@
   "issueDetailTabDocuments": "Documents",
   "issueDetailTabHistory": "Historique",
 
-  "installAppLink": "Installer cette application sur votre téléphone"
+  "installAppLink": "Installer cette application sur votre téléphone",
+
+  "equipmentWarrantyEndDate": "Fin de garantie",
+
+  "equipmentImportCsvButton": "Importer CSV",
+  "equipmentImportCsvDialogTitle": "Import CSV d'équipements",
+  "equipmentImportCsvDownloadTemplate": "Télécharger le modèle",
+  "equipmentImportCsvPickFile": "Choisir un fichier CSV",
+  "equipmentImportCsvVerifyOnly": "Vérifier sans importer",
+  "equipmentImportCsvImport": "Importer",
+  "equipmentImportCsvNoFileSelected": "Aucun fichier sélectionné",
+  "equipmentImportCsvResultTitle": "Résultat de l'import",
+  "equipmentImportCsvResultInserted": "{count} équipements importés, {errorCount} erreurs",
+  "@equipmentImportCsvResultInserted": {
+    "placeholders": { "count": {"type": "int"}, "errorCount": {"type": "int"} }
+  },
+  "equipmentImportCsvResultWouldInsert": "{count} équipements à importer, {errorCount} erreurs",
+  "@equipmentImportCsvResultWouldInsert": {
+    "placeholders": { "count": {"type": "int"}, "errorCount": {"type": "int"} }
+  },
+  "equipmentImportCsvDownloadReport": "Télécharger le rapport",
+  "equipmentImportCsvClose": "Fermer"
 }

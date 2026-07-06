@@ -62,6 +62,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
   String? _lastPmDate;
   String? _nextPmDate;
   String? _nextRevisionDate;
+  String? _warrantyEndDate;
 
   final _configService = ConfigService();
 
@@ -84,6 +85,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       _lastPmDate = eq.lastPreventiveMaintenance;
       _nextPmDate = eq.nextPreventiveMaintenance;
       _nextRevisionDate = eq.nextRevisionDate;
+      _warrantyEndDate = eq.warrantyEndDate;
       _buildingController.text = eq.building ?? '';
       _tagController.text = eq.tags.isNotEmpty ? eq.tags.first : '';
       _selectedBrandId = eq.brandId;
@@ -230,6 +232,7 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
     if (manufYear != null)     data['manuf_year']  = manufYear;
     if (_installDate != null)  data['install_date'] = _installDate;
     if (_nextRevisionDate != null) data['next_revision_date'] = _nextRevisionDate;
+    if (_warrantyEndDate != null)  data['warranty_end_date']  = _warrantyEndDate;
     if (_selectedCriticality != null) data['criticality'] = _selectedCriticality!.displayName;
     if (building.isNotEmpty)   data['building']    = building;
     if (tagNumber.isNotEmpty)  data['tag_number']  = tagNumber;
@@ -677,6 +680,17 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
                 )),
           ],
           onChanged: (v) => setState(() => _selectedCriticality = v),
+        ),
+        const SizedBox(height: 16),
+        // ── Fin de garantie (toujours visible, non liée au toggle PM) ──────
+        _buildDateField(
+          label: l10n.equipmentWarrantyEndDate,
+          iso: _warrantyEndDate,
+          onPicked: (v) => setState(() => _warrantyEndDate = v),
+          icon: Icons.verified_outlined,
+          firstDate: DateTime(1980),
+          lastDate: DateTime(DateTime.now().year + 20),
+          l10n: l10n,
         ),
         const SizedBox(height: 16),
         // ── Toggle maintenance préventive ─────────────────────────────────

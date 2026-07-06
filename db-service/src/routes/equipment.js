@@ -1,4 +1,5 @@
 const express = require('express');
+const XLSX = require('xlsx');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
@@ -6,6 +7,7 @@ const { TECH_ROLES, rolesCsv } = require('../utils/roles');
 const { generateMaintenanceLabelPdf } = require('../services/pdf_label_service');
 const { buildReplacementPlan } = require('../utils/replacement');
 const { buildEquipmentFinalReport } = require('../utils/final_report');
+const { csvUpload } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -406,9 +408,9 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
         manufacturer, model, manuf_year, install_date, next_revision_date,
         last_preventive_maintenance, next_preventive_maintenance,
         subcategory_id, macro_category_id, warranty_end_date, criticality,
-        building, model_id
+        building, model_id, created_by_id, created_by_name
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       id, name, department, category,
       serial_number || null,
@@ -424,6 +426,8 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
       criticality || null,
       building || null,
       model_id ? parseInt(model_id, 10) : null,
+      req.user.id,
+      req.user.name || null,
     );
 
     const tagVal = insertTagIfProvided(db, id, tag_number);
@@ -441,6 +445,186 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── Import CSV en masse ────────────────────────────────────────────────────────
+const CSV_REQUIRED_HEADERS = ['name', 'department', 'category', 'serial_number'];
+
+// Translittère les accents et ne garde que [a-z0-9-] pour produire un id lisible.
+function slugifyCsv(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// Génère un id slug unique (contre les slugs déjà générés dans le fichier ET
+// les ids déjà en base, chargés une fois dans `existingIds`), en tronquant à
+// 100 caractères et en réservant la place du suffixe de collision (-2, -3, …).
+function generateEquipmentSlug(name, serialNumber, slugsInFile, existingIds) {
+  let base = slugifyCsv(name);
+  if (!base) base = `equip-${Date.now()}`;
+
+  const serialSlug = serialNumber ? slugifyCsv(serialNumber) : '';
+  let candidate = serialSlug ? `${base}-${serialSlug}` : base;
+  candidate = candidate.slice(0, 100).replace(/^-+|-+$/g, '') || `equip-${Date.now()}`;
+
+  const exists = (slug) => slugsInFile.has(slug) || existingIds.has(slug);
+
+  let finalSlug = candidate;
+  let suffix = 1;
+  while (exists(finalSlug)) {
+    suffix += 1;
+    const suffixStr = `-${suffix}`;
+    finalSlug = candidate.slice(0, 100 - suffixStr.length) + suffixStr;
+  }
+  return finalSlug;
+}
+
+// ── POST /api/equipment/import-csv ──────────────────────────────────────────────
+router.post('/import-csv', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES),
+  csvUpload.single('file'), (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Fichier CSV manquant (champ "file")' });
+    }
+
+    const dryRun = req.query.dry_run === 'true';
+    const db = getDb();
+
+    let workbook;
+    try {
+      workbook = XLSX.read(req.file.buffer, { type: 'buffer', raw: true });
+    } catch (_err) {
+      return res.status(400).json({ error: 'Fichier CSV vide ou illisible' });
+    }
+
+    const sheetName = workbook.SheetNames[0];
+    const sheet = sheetName ? workbook.Sheets[sheetName] : null;
+    const rows = sheet ? XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: '' }) : [];
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Fichier CSV vide ou illisible' });
+    }
+
+    const headerRow = rows[0].map((h) => String(h).trim().toLowerCase());
+    const missingHeaders = CSV_REQUIRED_HEADERS.filter((h) => !headerRow.includes(h));
+    if (missingHeaders.length > 0) {
+      return res.status(400).json({ error: `Colonne(s) manquante(s) : ${missingHeaders.join(', ')}` });
+    }
+
+    const dataRows = rows.slice(1).filter((r) => r.some((cell) => String(cell).trim() !== ''));
+    if (dataRows.length === 0) {
+      return res.status(400).json({ error: 'Fichier CSV vide ou illisible' });
+    }
+
+    const col = (row, key) => {
+      const idx = headerRow.indexOf(key);
+      return idx === -1 ? '' : String(row[idx] ?? '').trim();
+    };
+
+    // Chargées une seule fois (au lieu d'une requête par ligne) pour la
+    // détection de collision de slug et de doublon de numéro de série.
+    const existingIds = new Set(db.prepare('SELECT id FROM equipment').all().map((r) => r.id));
+    const existingSerials = new Set(
+      db.prepare("SELECT serial_number FROM equipment WHERE serial_number IS NOT NULL AND serial_number != ''")
+        .all().map((r) => r.serial_number)
+    );
+
+    const slugsInFile = new Set();
+    const serialsInFile = new Set();
+    const errors = [];
+    const toInsert = [];
+
+    dataRows.forEach((row, i) => {
+      const line = i + 2; // +1 pour l'en-tête, +1 pour l'index 0-based
+      const name = col(row, 'name');
+      const department = col(row, 'department');
+      const category = col(row, 'category');
+      const serial_number = col(row, 'serial_number');
+
+      if (!name) return errors.push({ line, reason: "champ 'name' manquant" });
+      if (!department) return errors.push({ line, reason: "champ 'department' manquant" });
+      if (!category) return errors.push({ line, reason: "champ 'category' manquant" });
+
+      const status = col(row, 'status');
+      if (status && !VALID_STATUSES_EQ.includes(status)) {
+        return errors.push({ line, reason: 'status invalide' });
+      }
+
+      const criticality = col(row, 'criticality');
+      if (criticality && !VALID_CRITICALITIES.includes(criticality)) {
+        return errors.push({ line, reason: 'criticality invalide' });
+      }
+
+      const manufYearRaw = col(row, 'manuf_year');
+      let manufYearInt = null;
+      if (manufYearRaw) {
+        manufYearInt = parseInt(manufYearRaw, 10);
+        if (!Number.isFinite(manufYearInt) || manufYearInt < 1900 || manufYearInt > 2100) {
+          return errors.push({ line, reason: 'manuf_year invalide' });
+        }
+      }
+
+      const serialExists = serial_number && (
+        serialsInFile.has(serial_number) || existingSerials.has(serial_number)
+      );
+      if (serialExists) {
+        return errors.push({ line, reason: 'équipement déjà existant (numéro de série en doublon)' });
+      }
+
+      const id = generateEquipmentSlug(name, serial_number, slugsInFile, existingIds);
+      slugsInFile.add(id);
+      if (serial_number) serialsInFile.add(serial_number);
+
+      toInsert.push({
+        id, name, department, category,
+        serial_number: serial_number || null,
+        status: status || 'Operational',
+        location: col(row, 'location') || null,
+        manufacturer: col(row, 'manufacturer') || null,
+        model: col(row, 'model') || null,
+        manuf_year: manufYearInt,
+        install_date: col(row, 'install_date') || null,
+        building: col(row, 'building') || null,
+        tag_number: col(row, 'tag_number') || null,
+        criticality: criticality || null,
+      });
+    });
+
+    if (dryRun) {
+      return res.json({ dry_run: true, would_insert: toInsert.length, errors });
+    }
+
+    const insertStmt = db.prepare(`
+      INSERT INTO equipment (
+        id, name, department, category, serial_number, status, location,
+        manufacturer, model, manuf_year, install_date, building,
+        created_by_id, created_by_name
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    let inserted = 0;
+    for (const eq of toInsert) {
+      insertStmt.run(
+        eq.id, eq.name, eq.department, eq.category, eq.serial_number, eq.status,
+        eq.location, eq.manufacturer, eq.model, eq.manuf_year, eq.install_date,
+        eq.building, req.user.id, req.user.name || null,
+      );
+      insertTagIfProvided(db, eq.id, eq.tag_number);
+      inserted += 1;
+
+      logAction({
+        user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
+        action: 'create_equipment_import_csv', target_type: 'equipment', target_id: eq.id, target_name: eq.name,
+        details: JSON.stringify({ serial_number: eq.serial_number }),
+        ...extractReqMeta(req),
+      });
+    }
+
+    res.json({ inserted, errors });
+  });
 
 // ── PUT /api/equipment/:id ────────────────────────────────────────────────────
 router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {

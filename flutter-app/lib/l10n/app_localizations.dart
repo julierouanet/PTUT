@@ -10907,6 +10907,84 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Installer cette application sur votre téléphone'**
   String get installAppLink;
+
+  /// No description provided for @equipmentWarrantyEndDate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fin de garantie'**
+  String get equipmentWarrantyEndDate;
+
+  /// No description provided for @equipmentImportCsvButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Importer CSV'**
+  String get equipmentImportCsvButton;
+
+  /// No description provided for @equipmentImportCsvDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Import CSV d\'équipements'**
+  String get equipmentImportCsvDialogTitle;
+
+  /// No description provided for @equipmentImportCsvDownloadTemplate.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger le modèle'**
+  String get equipmentImportCsvDownloadTemplate;
+
+  /// No description provided for @equipmentImportCsvPickFile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisir un fichier CSV'**
+  String get equipmentImportCsvPickFile;
+
+  /// No description provided for @equipmentImportCsvVerifyOnly.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vérifier sans importer'**
+  String get equipmentImportCsvVerifyOnly;
+
+  /// No description provided for @equipmentImportCsvImport.
+  ///
+  /// In fr, this message translates to:
+  /// **'Importer'**
+  String get equipmentImportCsvImport;
+
+  /// No description provided for @equipmentImportCsvNoFileSelected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun fichier sélectionné'**
+  String get equipmentImportCsvNoFileSelected;
+
+  /// No description provided for @equipmentImportCsvResultTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résultat de l\'import'**
+  String get equipmentImportCsvResultTitle;
+
+  /// No description provided for @equipmentImportCsvResultInserted.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} équipements importés, {errorCount} erreurs'**
+  String equipmentImportCsvResultInserted(int count, int errorCount);
+
+  /// No description provided for @equipmentImportCsvResultWouldInsert.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} équipements à importer, {errorCount} erreurs'**
+  String equipmentImportCsvResultWouldInsert(int count, int errorCount);
+
+  /// No description provided for @equipmentImportCsvDownloadReport.
+  ///
+  /// In fr, this message translates to:
+  /// **'Télécharger le rapport'**
+  String get equipmentImportCsvDownloadReport;
+
+  /// No description provided for @equipmentImportCsvClose.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fermer'**
+  String get equipmentImportCsvClose;
 }
 
 class _AppLocalizationsDelegate

@@ -59,4 +59,21 @@ const xlsxUpload = multer({
   limits: { fileSize: MAX_XLSX_MB * 1024 * 1024 },
 });
 
-module.exports = { documentUpload, photoUpload, xlsxUpload };
+// ── Profil CSV (import équipements en masse, 5 Mo max) ───────────────────────
+// Stockage en mémoire : le fichier n'est utile qu'une fois, le temps du parsing.
+const CSV_MIME = ['text/csv', 'application/vnd.ms-excel', 'application/csv', 'text/plain'];
+const MAX_CSV_MB = 5;
+
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: (_req, file, cb) => {
+    if (CSV_MIME.includes(file.mimetype) || file.originalname.toLowerCase().endsWith('.csv')) {
+      return cb(null, true);
+    }
+    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE',
+      `Type non supporté : ${file.mimetype}. Seul .csv est accepté.`));
+  },
+  limits: { fileSize: MAX_CSV_MB * 1024 * 1024 },
+});
+
+module.exports = { documentUpload, photoUpload, xlsxUpload, csvUpload };

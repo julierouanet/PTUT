@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -219,7 +220,8 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
   bool get _isTechnician =>
       _auth.canUpdateRepairs && !_auth.canManageEquipment;
 
-  /// true → peut accéder au formulaire d'édition (admin + techniciens)
+  /// true → peut accéder au formulaire d'édition (admin + techniciens) ;
+  /// même périmètre pour l'import CSV en masse.
   bool get _canEdit =>
       _auth.canManageEquipment || _auth.canUpdateRepairs;
 
@@ -601,6 +603,17 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           )
         : null;
 
+    final importCsvBtn = _canEdit
+        ? OutlinedButton.icon(
+            onPressed: _openImportCsvDialog,
+            icon: const Icon(Icons.upload_file, size: 18),
+            label: Text(l10n.equipmentImportCsvButton),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          )
+        : null;
+
     final qrBtn = IconButton(
       icon: const Icon(Icons.qr_code_scanner),
       onPressed: _scanQr,
@@ -643,6 +656,10 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
             if (addBtn != null) ...[Expanded(child: addBtn), const SizedBox(width: 8)],
             if (exportBtn != null) Expanded(child: exportBtn),
           ]),
+          if (importCsvBtn != null) ...[
+            const SizedBox(height: 8),
+            SizedBox(width: double.infinity, child: importCsvBtn),
+          ],
         ],
       );
     }
@@ -674,6 +691,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           ),
           refreshBtn,
           qrBtn,
+          if (importCsvBtn != null) ...[const SizedBox(width: 4), importCsvBtn],
           if (addBtn != null) ...[const SizedBox(width: 4), addBtn],
         ]),
       ],
@@ -1516,35 +1534,212 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
     final filename = 'equipements_${DateTime.now().toIso8601String().substring(0, 10)}.csv';
 
     if (kIsWeb) {
-      // Web : téléchargement direct via l'API HTML
-      downloadCsv(content, filename);
-    } else {
-      // Android / iOS / Desktop : partage natif via share_plus
-      try {
-        final bytes = Uint8List.fromList(utf8.encode(content));
-        final xFile = XFile.fromData(bytes, mimeType: 'text/csv');
-        await Share.shareXFiles(
-          [xFile],
-          subject: filename,
-          fileNameOverrides: [filename],
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(l10n.equipmentCsvShared),
-            backgroundColor: AppColors.success,
-            behavior: SnackBarBehavior.floating,
-          ));
-        }
-      } catch (_) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(l10n.equipmentCsvShareError),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-          ));
-        }
-      }
+      _deliverTextFile(content, filename, 'text/csv');
+      return;
     }
+    final shared = await _deliverTextFile(content, filename, 'text/csv');
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(shared ? l10n.equipmentCsvShared : l10n.equipmentCsvShareError),
+        backgroundColor: shared ? AppColors.success : AppColors.error,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  /// Déclenche le téléchargement (web) ou le partage natif (mobile/desktop)
+  /// d'un contenu texte. Retourne `false` si le partage natif a échoué
+  /// (le web ne peut pas échouer silencieusement — `downloadCsv` renvoie déjà
+  /// un booléen).
+  Future<bool> _deliverTextFile(String content, String filename, String mimeType) async {
+    if (kIsWeb) return downloadCsv(content, filename);
+    try {
+      final bytes = Uint8List.fromList(utf8.encode(content));
+      await Share.shareXFiles(
+        [XFile.fromData(bytes, mimeType: mimeType)],
+        subject: filename,
+        fileNameOverrides: [filename],
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Import CSV en masse
+  // ══════════════════════════════════════════════════════════════════════════
+
+  void _downloadCsvTemplate() {
+    const header = 'name,department,category,serial_number,status,location,'
+        'manufacturer,model,manuf_year,install_date,building,tag_number,criticality';
+    const example = 'Moniteur cardiaque exemple,OPD,Monitoring,SN-EXEMPLE-001,'
+        'Operational,Salle 3,GE Healthcare,Dash 3000,2020,2021-05-10,Bloc A,TAG-001,B';
+    const content = '$header\n$example\n';
+    const filename = 'modele_import_equipements.csv';
+    _deliverTextFile(content, filename, 'text/csv');
+  }
+
+  void _downloadImportErrorReport(List<Map<String, dynamic>> errors) {
+    final content = errors.map((e) => 'Ligne ${e['line']}: ${e['reason']}').join('\n');
+    final filename = 'import_csv_erreurs_${DateTime.now().toIso8601String().substring(0, 10)}.txt';
+    _deliverTextFile(content, filename, 'text/plain');
+  }
+
+  Future<void> _showImportResultDialog(
+    AppLocalizations l10n, {
+    required bool isDryRun,
+    required int count,
+    required List<Map<String, dynamic>> errors,
+  }) {
+    return showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.equipmentImportCsvResultTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(isDryRun
+                  ? l10n.equipmentImportCsvResultWouldInsert(count, errors.length)
+                  : l10n.equipmentImportCsvResultInserted(count, errors.length)),
+              if (errors.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                ...errors.map((e) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text(
+                        'Ligne ${e['line']}: ${e['reason']}',
+                        style: const TextStyle(fontSize: 13, color: AppColors.error),
+                      ),
+                    )),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          if (errors.isNotEmpty)
+            TextButton(
+              onPressed: () => _downloadImportErrorReport(errors),
+              child: Text(l10n.equipmentImportCsvDownloadReport),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(l10n.equipmentImportCsvClose),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openImportCsvDialog() async {
+    final l10n = AppLocalizations.of(context)!;
+    PlatformFile? pickedFile;
+    bool isProcessing = false;
+
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) {
+          Future<void> runImport(bool dryRun) async {
+            if (pickedFile?.bytes == null) return;
+            setDialogState(() => isProcessing = true);
+            try {
+              final response = await DbApiService.instance.importEquipmentCsv(
+                Uint8List.fromList(pickedFile!.bytes!),
+                pickedFile!.name,
+                dryRun: dryRun,
+              );
+              if (dialogCtx.mounted) Navigator.pop(dialogCtx, response);
+            } catch (e) {
+              setDialogState(() => isProcessing = false);
+              if (dialogCtx.mounted) {
+                ScaffoldMessenger.of(dialogCtx).showSnackBar(SnackBar(
+                  content: Text(e.toString().replaceFirst('Exception: ', '')),
+                  backgroundColor: AppColors.error,
+                  behavior: SnackBarBehavior.floating,
+                ));
+              }
+            }
+          }
+
+          return AlertDialog(
+            title: Text(l10n.equipmentImportCsvDialogTitle),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _downloadCsvTemplate,
+                    icon: const Icon(Icons.description_outlined),
+                    label: Text(l10n.equipmentImportCsvDownloadTemplate),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: isProcessing
+                        ? null
+                        : () async {
+                            final picked = await FilePicker.platform.pickFiles(
+                              type: FileType.custom,
+                              allowedExtensions: ['csv'],
+                              withData: true,
+                            );
+                            if (picked != null && picked.files.isNotEmpty) {
+                              setDialogState(() => pickedFile = picked.files.first);
+                            }
+                          },
+                    icon: const Icon(Icons.attach_file),
+                    label: Text(pickedFile?.name ?? l10n.equipmentImportCsvPickFile),
+                  ),
+                  if (pickedFile == null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      l10n.equipmentImportCsvNoFileSelected,
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                  if (isProcessing) ...[
+                    const SizedBox(height: 16),
+                    const Center(child: CircularProgressIndicator()),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isProcessing ? null : () => Navigator.pop(dialogCtx),
+                child: Text(l10n.commonCancel),
+              ),
+              TextButton(
+                onPressed: (pickedFile == null || isProcessing) ? null : () => runImport(true),
+                child: Text(l10n.equipmentImportCsvVerifyOnly),
+              ),
+              ElevatedButton(
+                onPressed: (pickedFile == null || isProcessing) ? null : () => runImport(false),
+                child: Text(l10n.equipmentImportCsvImport),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    if (result == null || !mounted) return;
+
+    final isDryRun = result['dry_run'] == true;
+    final count = isDryRun
+        ? (result['would_insert'] as int? ?? 0)
+        : (result['inserted'] as int? ?? 0);
+    final errors = List<Map<String, dynamic>>.from(result['errors'] as List? ?? []);
+
+    if (!isDryRun && count > 0) {
+      await DataService().reloadEquipment();
+      if (mounted) setState(() {});
+    }
+
+    if (!mounted) return;
+    await _showImportResultDialog(l10n, isDryRun: isDryRun, count: count, errors: errors);
   }
 
   // ══════════════════════════════════════════════════════════════════════════

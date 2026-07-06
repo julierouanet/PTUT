@@ -597,6 +597,12 @@ function initTables() {
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_equipment_replaced_by ON equipment(replaced_by_id)"); } catch (_) {}
   try { db.exec("ALTER TABLE equipment ADD COLUMN building TEXT"); } catch (_) {}
 
+  // ── Traçabilité de création (saisie unitaire + import CSV) ────────────────
+  // NULL pour les équipements existants (seed, import XLSX physique) : on ne
+  // rétro-remplit pas, l'info n'existe pas pour eux.
+  try { db.exec("ALTER TABLE equipment ADD COLUMN created_by_id TEXT");   } catch (_) {}
+  try { db.exec("ALTER TABLE equipment ADD COLUMN created_by_name TEXT"); } catch (_) {}
+
   // ── Plan de remplacement biomédical (RA3 S5) ──────────────────────────────
   // Durée de vie de référence d'une sous-catégorie (en années). NULL = non
   // définie (l'admin la saisit ; aucun seed). Sert au calcul serveur du statut

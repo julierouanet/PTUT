@@ -159,6 +159,24 @@ class DbApiService {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  /// Import en masse d'équipements depuis un fichier CSV (multipart).
+  /// [dryRun] valide le fichier sans écrire en base (réponse `would_insert`
+  /// au lieu de `inserted`). Retourne le JSON serveur tel quel.
+  Future<Map<String, dynamic>> importEquipmentCsv(
+    Uint8List fileBytes,
+    String fileName, {
+    bool dryRun = false,
+  }) async {
+    final url = '${ApiConfig.equipmentUrl}/import-csv${dryRun ? '?dry_run=true' : ''}';
+    return (await ApiClient.postMultipart(
+      url,
+      fileBytes,
+      fileName,
+      'text/csv',
+      const {},
+    )) as Map<String, dynamic>;
+  }
+
   Future<void> updateEquipment(String id, Map<String, dynamic> data) async {
     final url = '${ApiConfig.equipmentUrl}/$id';
     final response = await ApiClient.put(url, data);

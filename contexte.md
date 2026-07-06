@@ -182,7 +182,7 @@ PTUT/
 
 | Table | PK | Description |
 |---|---|---|
-| `equipment` | TEXT slug (`a-z0-9_-`, max 100) | Équipements médicaux |
+| `equipment` | TEXT slug (`a-z0-9_-`, max 100) | Équipements médicaux. **[MODIFIÉ 2026-07-06]** colonnes `created_by_id`/`created_by_name` (nullable, TEXT) — traçabilité de création (saisie unitaire `POST /api/equipment` ET import CSV `POST /api/equipment/import-csv`), `NULL` pour l'existant (seed/import XLSX) |
 | `equipment_tags` | AUTOINCREMENT | Numéros de tags physiques par équipement (1 équipement → N tags) |
 | `departments` | AUTOINCREMENT | Référentiel départements (~56 entrées en anglais) |
 | `equipment_categories` | AUTOINCREMENT | Référentiel de noms standards (~626 entrées XLSX) |

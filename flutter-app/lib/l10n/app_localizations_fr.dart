@@ -5996,4 +5996,47 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get installAppLink =>
       'Installer cette application sur votre téléphone';
+
+  @override
+  String get equipmentWarrantyEndDate => 'Fin de garantie';
+
+  @override
+  String get equipmentImportCsvButton => 'Importer CSV';
+
+  @override
+  String get equipmentImportCsvDialogTitle => 'Import CSV d\'équipements';
+
+  @override
+  String get equipmentImportCsvDownloadTemplate => 'Télécharger le modèle';
+
+  @override
+  String get equipmentImportCsvPickFile => 'Choisir un fichier CSV';
+
+  @override
+  String get equipmentImportCsvVerifyOnly => 'Vérifier sans importer';
+
+  @override
+  String get equipmentImportCsvImport => 'Importer';
+
+  @override
+  String get equipmentImportCsvNoFileSelected => 'Aucun fichier sélectionné';
+
+  @override
+  String get equipmentImportCsvResultTitle => 'Résultat de l\'import';
+
+  @override
+  String equipmentImportCsvResultInserted(int count, int errorCount) {
+    return '$count équipements importés, $errorCount erreurs';
+  }
+
+  @override
+  String equipmentImportCsvResultWouldInsert(int count, int errorCount) {
+    return '$count équipements à importer, $errorCount erreurs';
+  }
+
+  @override
+  String get equipmentImportCsvDownloadReport => 'Télécharger le rapport';
+
+  @override
+  String get equipmentImportCsvClose => 'Fermer';
 }

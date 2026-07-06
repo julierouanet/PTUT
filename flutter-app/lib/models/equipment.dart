@@ -191,6 +191,10 @@ class Equipment {
   // ── Métadonnées système (lecture seule) ───────────────────────────────
   final String? createdAt;
   final String? updatedAt;
+  /// ID Keycloak de l'utilisateur ayant créé l'équipement (null si inconnu — seed/import XLSX)
+  final String? createdById;
+  /// Nom de l'utilisateur ayant créé l'équipement (null si inconnu)
+  final String? createdByName;
 
   // ── Tags d'inventaire (table equipment_tags) ──────────────────────────
   final List<String> tags;
@@ -242,6 +246,8 @@ class Equipment {
     this.building,
     this.createdAt,
     this.updatedAt,
+    this.createdById,
+    this.createdByName,
     this.tags = const [],
     this.maintenanceHistory = const [],
     this.futureMaintenance = const [],
@@ -345,6 +351,8 @@ class Equipment {
       building:            json['building']               as String?,
       createdAt:          json['created_at']           as String?,
       updatedAt:          json['updated_at']           as String?,
+      createdById:        json['created_by_id']        as String?,
+      createdByName:      json['created_by_name']      as String?,
       tags:               tags,
       maintenanceHistory: history,
       futureMaintenance:  future,
