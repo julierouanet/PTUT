@@ -465,7 +465,7 @@ class _IssueDetailScreenState extends State<IssueDetailScreen> {
             _load();
           },
           icon: const Icon(Icons.refresh),
-          label: const Text('Réessayer'),
+          label: Text(l10n.commonRetry),
         ),
       ]),
     );

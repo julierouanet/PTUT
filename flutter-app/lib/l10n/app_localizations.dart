@@ -10985,6 +10985,174 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Fermer'**
   String get equipmentImportCsvClose;
+
+  /// No description provided for @settingsAccountDepartmentUpdated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Département mis à jour'**
+  String get settingsAccountDepartmentUpdated;
+
+  /// No description provided for @usersDeptRequestApproved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande approuvée — département mis à jour'**
+  String get usersDeptRequestApproved;
+
+  /// No description provided for @usersRoleRequestApproved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande approuvée — rôle assigné'**
+  String get usersRoleRequestApproved;
+
+  /// No description provided for @usersRoleRequestApprovedAttributed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande approuvée — rôle attribué'**
+  String get usersRoleRequestApprovedAttributed;
+
+  /// No description provided for @usersRequestRejected.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande rejetée'**
+  String get usersRequestRejected;
+
+  /// No description provided for @usersDeleteReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison de la suppression (optionnel)'**
+  String get usersDeleteReasonLabel;
+
+  /// No description provided for @usersVerificationEmailSent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Email de vérification envoyé'**
+  String get usersVerificationEmailSent;
+
+  /// No description provided for @usersEmailNotVerified.
+  ///
+  /// In fr, this message translates to:
+  /// **'Adresse email non vérifiée'**
+  String get usersEmailNotVerified;
+
+  /// No description provided for @commonResend.
+  ///
+  /// In fr, this message translates to:
+  /// **'Renvoyer'**
+  String get commonResend;
+
+  /// No description provided for @usersDeptRequestTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande de changement de département'**
+  String get usersDeptRequestTitle;
+
+  /// No description provided for @usersRoleRequestTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demande de changement de rôle'**
+  String get usersRoleRequestTitle;
+
+  /// No description provided for @commonAlerts.
+  ///
+  /// In fr, this message translates to:
+  /// **'Alertes'**
+  String get commonAlerts;
+
+  /// No description provided for @commonCurrent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Actuel'**
+  String get commonCurrent;
+
+  /// No description provided for @commonRequested.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demandé'**
+  String get commonRequested;
+
+  /// No description provided for @usersProfileInfoTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Informations du profil'**
+  String get usersProfileInfoTitle;
+
+  /// No description provided for @usersMemberSince.
+  ///
+  /// In fr, this message translates to:
+  /// **'Membre depuis'**
+  String get usersMemberSince;
+
+  /// No description provided for @usersKeycloakUuid.
+  ///
+  /// In fr, this message translates to:
+  /// **'UUID Keycloak'**
+  String get usersKeycloakUuid;
+
+  /// No description provided for @usersEditProfile.
+  ///
+  /// In fr, this message translates to:
+  /// **'Modifier le profil'**
+  String get usersEditProfile;
+
+  /// No description provided for @usersViewActivityLogs.
+  ///
+  /// In fr, this message translates to:
+  /// **'Voir les logs d\'activité'**
+  String get usersViewActivityLogs;
+
+  /// No description provided for @usersDeleteSelfDisabled.
+  ///
+  /// In fr, this message translates to:
+  /// **'Impossible de supprimer son propre compte'**
+  String get usersDeleteSelfDisabled;
+
+  /// No description provided for @usersDeptRequestsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demandes de changement de département'**
+  String get usersDeptRequestsTitle;
+
+  /// No description provided for @usersRoleRequestsTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Demandes de rôle en attente'**
+  String get usersRoleRequestsTitle;
+
+  /// No description provided for @commonNoteOptional.
+  ///
+  /// In fr, this message translates to:
+  /// **'Note (optionnel)'**
+  String get commonNoteOptional;
+
+  /// No description provided for @commonDecisionReasonHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Raison de la décision…'**
+  String get commonDecisionReasonHint;
+
+  /// No description provided for @usersNoUsersFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucun utilisateur'**
+  String get usersNoUsersFound;
+
+  /// No description provided for @usersNotFound.
+  ///
+  /// In fr, this message translates to:
+  /// **'Utilisateur introuvable (peut-être supprimé)'**
+  String get usersNotFound;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In fr, this message translates to:
+  /// **'Réessayer'**
+  String get commonRetry;
+
+  /// No description provided for @debugNotificationSent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notification envoyée'**
+  String get debugNotificationSent;
 }
 
 class _AppLocalizationsDelegate

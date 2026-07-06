@@ -133,7 +133,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         color: canChangeDirect ? AppColors.primary : AppColors.warning,
                       ),
                       title: Text(
-                        canChangeDirect ? 'Changer de département' : l10n.accountDepartmentChange,
+                        l10n.accountDepartmentChange,
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       subtitle: Text(
@@ -152,7 +152,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                                 color: AppColors.primaryLight,
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Text('Direct', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                              child: Text(l10n.accountDirectChange, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
                             ),
                           const SizedBox(width: 4),
                           const Icon(Icons.chevron_right, color: AppColors.textSecondary),
@@ -418,9 +418,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: firstNameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Prénom',
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        labelText: l10n.accountFirstName,
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                     ),
                   ),
@@ -428,9 +428,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: lastNameCtrl,
-                      decoration: const InputDecoration(
-                        labelText: 'Nom',
-                        prefixIcon: Icon(Icons.person_outline),
+                      decoration: InputDecoration(
+                        labelText: l10n.accountLastName,
+                        prefixIcon: const Icon(Icons.person_outline),
                       ),
                     ),
                   ),
@@ -497,6 +497,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   // ── Dialog : changement direct de département (si permission) ─────────────
 
   void _showDirectDepartmentDialog() {
+    final l10n = AppLocalizations.of(context)!;
     final user = _authService.currentUser;
     final departments = ConfigService().departmentNames;
     String selectedDept = (user?.department != null && departments.contains(user!.department))
@@ -519,28 +520,28 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Changer de département', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Text(l10n.accountDepartmentChange, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                     IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close)),
                   ],
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Votre département sera modifié immédiatement.',
-                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                Text(
+                  l10n.accountDirectChangeSubtitle,
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 20),
                 Row(children: [
                   const Icon(Icons.business, size: 18, color: AppColors.textSecondary),
                   const SizedBox(width: 8),
-                  const Text('Actuel : ', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(l10n.accountDepartmentCurrent, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   Text(user?.department ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
                 ]),
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedDept,
-                  decoration: const InputDecoration(
-                    labelText: 'Nouveau département',
-                    prefixIcon: Icon(Icons.swap_horiz),
+                  decoration: InputDecoration(
+                    labelText: l10n.accountDepartmentNew,
+                    prefixIcon: const Icon(Icons.swap_horiz),
                   ),
                   items: departments.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                   onChanged: (v) => setDialogState(() => selectedDept = v!),
@@ -550,7 +551,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: loading ? null : () => Navigator.pop(ctx),
-                      child: const Text('Annuler'),
+                      child: Text(l10n.commonCancel),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -564,8 +565,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           if (ctx.mounted) Navigator.pop(ctx);
                           if (mounted) {
                             setState(() {});
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                              content: Text('Département mis à jour'),
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(l10n.settingsAccountDepartmentUpdated),
                               backgroundColor: AppColors.success,
                               behavior: SnackBarBehavior.floating,
                             ));
@@ -574,7 +575,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           setDialogState(() => loading = false);
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(AppLocalizations.of(context)!.commonApiError),
+                              content: Text(l10n.commonApiError),
                               backgroundColor: AppColors.error,
                               behavior: SnackBarBehavior.floating,
                             ));
@@ -583,7 +584,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       },
                       child: loading
                           ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Confirmer'),
+                          : Text(l10n.commonConfirm),
                     ),
                   ),
                 ]),

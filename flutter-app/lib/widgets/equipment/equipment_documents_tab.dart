@@ -187,8 +187,9 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
       );
     } else {
       // PDF natif : informer que l'ouverture nécessite un plugin externe
+      final l10n = AppLocalizations.of(context)!;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('$name — ouverture PDF non supportée sur cette plateforme natif'),
+        content: Text('$name — ${l10n.docOpenNativeUnsupported}'),
         behavior: SnackBarBehavior.floating,
       ));
     }
@@ -307,7 +308,7 @@ class _EquipmentDocumentsTabState extends State<EquipmentDocumentsTab> {
           TextButton.icon(
             onPressed: _loadDocuments,
             icon: const Icon(Icons.refresh),
-            label: const Text('Réessayer'),
+            label: Text(l10n.commonRetry),
           ),
         ]),
       );
@@ -381,6 +382,7 @@ class _DocumentSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Row(children: [
       Icon(icon, size: 18, color: AppColors.primary),
       const SizedBox(width: 8),
@@ -398,7 +400,7 @@ class _DocumentSectionHeader extends StatelessWidget {
         TextButton.icon(
           onPressed: onAdd,
           icon: const Icon(Icons.upload_file, size: 16),
-          label: const Text('Ajouter', style: TextStyle(fontSize: 12)),
+          label: Text(l10n.commonAdd, style: const TextStyle(fontSize: 12)),
           style: TextButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
           ),
@@ -579,6 +581,7 @@ class _DocumentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     final icon = doc.isPdf
         ? Icons.picture_as_pdf
         : doc.isImage
@@ -613,14 +616,14 @@ class _DocumentTile extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.open_in_new, size: 18),
-            tooltip: 'Ouvrir',
+            tooltip: l10n.commonOpen,
             color: AppColors.primary,
             onPressed: onOpen,
           ),
           if (canManage)
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 18),
-              tooltip: 'Supprimer',
+              tooltip: l10n.commonDelete,
               color: AppColors.error,
               onPressed: onDelete,
             ),

@@ -94,7 +94,7 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
         }
       } else {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
-        final error = body['error'] as String? ?? 'Erreur ${response.statusCode}';
+        final error = body['error'] as String? ?? '${l10n.commonError} ${response.statusCode}';
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text(l10n.debugClearIssuesError(error)),
@@ -261,16 +261,17 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
   // ── Tests de notifications ────────────────────────────────────────────────────
 
   Future<void> _sendNotifyNow() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _loadingNotifyNow = true);
     try {
       final result = await DbApiService.instance.debugNotifyNow();
-      final msg = result['message'] as String? ?? 'Notification envoyée';
+      final msg = result['message'] as String? ?? l10n.debugNotificationSent;
       _addHistory(msg);
       _showSnackBar(msg, success: true);
       // Recharge les notifs in-app pour mettre à jour le badge cloche
       await NotificationService().fetchFromApi();
     } catch (e) {
-      _showSnackBar('Erreur : $e', success: false);
+      _showSnackBar('${l10n.commonError} : $e', success: false);
     } finally {
       if (mounted) setState(() => _loadingNotifyNow = false);
     }
@@ -278,7 +279,8 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
 
   Future<void> _startSchedule(String interval) async {
     // Capture avant l'await pour éviter l'utilisation de context après une gap asynchrone
-    final startedMsg = AppLocalizations.of(context)!.debugNotifyStarted(interval);
+    final l10n = AppLocalizations.of(context)!;
+    final startedMsg = l10n.debugNotifyStarted(interval);
     setState(() => _loadingSchedule = true);
     try {
       final result = await DbApiService.instance.debugNotifySchedule(interval);
@@ -289,11 +291,11 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
             _scheduleInterval  = interval;
           });
         }
-        _addHistory('Scheduling démarré ($interval)');
+        _addHistory(startedMsg);
         _showSnackBar(startedMsg, success: true);
       }
     } catch (e) {
-      _showSnackBar('Erreur : $e', success: false);
+      _showSnackBar('${l10n.commonError} : $e', success: false);
     } finally {
       if (mounted) setState(() => _loadingSchedule = false);
     }
@@ -301,8 +303,9 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
 
   Future<void> _stopSchedule() async {
     // Capture avant l'await pour éviter l'utilisation de context après une gap asynchrone
-    final stoppedMsg       = AppLocalizations.of(context)!.debugNotifyStopped;
-    final alreadyStoppedMsg = AppLocalizations.of(context)!.debugNotifyAlreadyStopped;
+    final l10n = AppLocalizations.of(context)!;
+    final stoppedMsg       = l10n.debugNotifyStopped;
+    final alreadyStoppedMsg = l10n.debugNotifyAlreadyStopped;
     setState(() => _loadingSchedule = true);
     try {
       final result = await DbApiService.instance.debugNotifySchedule('stop');
@@ -319,7 +322,7 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
         _showSnackBar(msg, success: true);
       }
     } catch (e) {
-      _showSnackBar('Erreur : $e', success: false);
+      _showSnackBar('${l10n.commonError} : $e', success: false);
     } finally {
       if (mounted) setState(() => _loadingSchedule = false);
     }

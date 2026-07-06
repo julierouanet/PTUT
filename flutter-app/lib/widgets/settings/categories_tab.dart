@@ -114,7 +114,7 @@ class _CategoriesTabState extends State<CategoriesTab> {
             OutlinedButton.icon(
               onPressed: _load,
               icon: const Icon(Icons.refresh),
-              label: const Text('Réessayer'),
+              label: Text(l10n.commonRetry),
             ),
           ],
         ),

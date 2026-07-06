@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../l10n/app_localizations.dart';
 import '../models/equipment.dart';
 import '../models/issue.dart';
 import '../services/db_api_service.dart';
@@ -58,6 +59,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
   }
 
   Future<void> _loadHistory() async {
+    final l10n = AppLocalizations.of(context)!;
     try {
       final issuesRaw = await DbApiService.instance.getIssues(
         equipmentId: widget.equipment.id,
@@ -91,7 +93,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
           date: date,
           isIssue: false,
           isFuture: false,
-          title: 'Maintenance — ${m.intervention}',
+          title: l10n.widgetMaintenanceEvent(m.intervention),
           subtitle: m.technician,
         ));
       }
@@ -105,7 +107,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
           date: date,
           isIssue: false,
           isFuture: true,
-          title: 'Maintenance planifiée — ${m.intervention}',
+          title: l10n.widgetPlannedMaintenance(m.intervention),
           subtitle: m.technician,
         ));
       }
@@ -121,6 +123,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Dialog(
       insetPadding: const EdgeInsets.all(16),
       child: Container(
@@ -144,12 +147,12 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(
-                      'Historique — ${widget.equipment.name}',
+                      l10n.widgetHistoryTitle(widget.equipment.name),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                     Text(
                       widget.equipment.serialNumber.isNotEmpty
-                          ? 'N° ${widget.equipment.serialNumber}'
+                          ? l10n.widgetSerialNumber(widget.equipment.serialNumber)
                           : widget.equipment.department,
                       style: const TextStyle(fontSize: 12, color: Colors.white70),
                     ),
@@ -172,7 +175,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
                   : _error != null
                       ? Center(child: Padding(
                           padding: const EdgeInsets.all(24),
-                          child: Text('Erreur : $_error', style: const TextStyle(color: AppColors.error)),
+                          child: Text('${l10n.commonError} : $_error', style: const TextStyle(color: AppColors.error)),
                         ))
                       : _events.isEmpty
                           ? Center(child: Padding(
@@ -180,7 +183,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
                               child: Column(mainAxisSize: MainAxisSize.min, children: [
                                 const Icon(Icons.history_toggle_off, size: 48, color: AppColors.textSecondary),
                                 const SizedBox(height: 12),
-                                const Text('Aucun historique pour cet équipement.', style: TextStyle(color: AppColors.textSecondary)),
+                                Text(l10n.widgetNoHistory, style: const TextStyle(color: AppColors.textSecondary)),
                               ]),
                             ))
                           : ListView.builder(
@@ -195,7 +198,7 @@ class _EquipmentHistoryDialogState extends State<EquipmentHistoryDialog> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(
-                  '${_events.length} événement${_events.length > 1 ? 's' : ''}',
+                  l10n.widgetEventCount(_events.length),
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ),

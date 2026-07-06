@@ -574,7 +574,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: _fetchHealth,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                tooltip: 'Réessayer',
+                tooltip: l10n.commonRetry,
               ),
             ],
           ),

@@ -332,6 +332,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildDeptRequestsSection() {
+    final l10n = AppLocalizations.of(context)!;
     final count = _deptRequests.length;
     return Card(
       child: ExpansionTile(
@@ -353,7 +354,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
           ],
         ),
-        title: const Text('Demandes de changement de département', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(l10n.usersDeptRequestsTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           _deptRequestsLoading ? 'Chargement…' : '$count demande${count > 1 ? 's' : ''} en attente',
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -367,9 +368,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_deptRequests.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Text('Aucune demande en attente.', style: TextStyle(color: AppColors.textSecondary)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Text(l10n.usersNoPendingRequests, style: const TextStyle(color: AppColors.textSecondary)),
             )
           else
             ...  _deptRequests.map((req) => ListTile(
@@ -393,12 +394,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
-                    tooltip: 'Approuver',
+                    tooltip: l10n.usersApproveTooltip,
                     onPressed: () => _resolveDeptRequest(req, 'approved'),
                   ),
                   IconButton(
                     icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
-                    tooltip: 'Rejeter',
+                    tooltip: l10n.usersRejectTooltip,
                     onPressed: () => _resolveDeptRequest(req, 'rejected'),
                   ),
                 ],
@@ -414,6 +415,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   // ══════════════════════════════════════════════════════════════════════════
 
   Widget _buildRoleRequestsSection() {
+    final l10n = AppLocalizations.of(context)!;
     final count = _roleRequests.length;
     return Card(
       child: ExpansionTile(
@@ -435,7 +437,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ),
           ],
         ),
-        title: const Text('Demandes de rôle en attente', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(l10n.usersRoleRequestsTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           _roleRequestsLoading ? 'Chargement…' : '$count demande${count > 1 ? 's' : ''} en attente',
           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -449,9 +451,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_roleRequests.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: Text('Aucune demande en attente.', style: TextStyle(color: AppColors.textSecondary)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: Text(l10n.usersNoPendingRequests, style: const TextStyle(color: AppColors.textSecondary)),
             )
           else
             ..._roleRequests.map((req) {
@@ -487,12 +489,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.check_circle_outline, color: AppColors.success),
-                      tooltip: 'Approuver',
+                      tooltip: l10n.usersApproveTooltip,
                       onPressed: () => _resolveRoleRequest(req, 'approved'),
                     ),
                     IconButton(
                       icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
-                      tooltip: 'Rejeter',
+                      tooltip: l10n.usersRejectTooltip,
                       onPressed: () => _resolveRoleRequest(req, 'rejected'),
                     ),
                   ],
@@ -505,6 +507,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _resolveRoleRequest(_RoleRequest req, String status) async {
+    final l10n = AppLocalizations.of(context)!;
     final noteCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -515,7 +518,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             color: status == 'approved' ? AppColors.success : AppColors.error,
           ),
           const SizedBox(width: 8),
-          Text(status == 'approved' ? 'Approuver la demande' : 'Rejeter la demande'),
+          Text(status == 'approved' ? l10n.usersApproveTitle : l10n.usersRejectTitle),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -534,23 +537,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Note (optionnel)',
-                hintText: 'Raison de la décision…',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                hintText: l10n.commonDecisionReasonHint,
               ),
               maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(status == 'approved' ? 'Approuver' : 'Rejeter'),
+            child: Text(status == 'approved' ? l10n.usersApproveTooltip : l10n.usersRejectTooltip),
           ),
         ],
       ),
@@ -563,8 +566,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(status == 'approved'
-              ? 'Demande approuvée — rôle attribué'
-              : 'Demande rejetée'),
+              ? l10n.usersRoleRequestApprovedAttributed
+              : l10n.usersRequestRejected),
           backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -572,7 +575,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Erreur : $e'),
+          content: Text('${l10n.commonError} : $e'),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -582,6 +585,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Future<void> _resolveDeptRequest(_DeptRequest req, String status) async {
+    final l10n = AppLocalizations.of(context)!;
     final noteCtrl = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
@@ -592,7 +596,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             color: status == 'approved' ? AppColors.success : AppColors.error,
           ),
           const SizedBox(width: 8),
-          Text(status == 'approved' ? 'Approuver la demande' : 'Rejeter la demande'),
+          Text(status == 'approved' ? l10n.usersApproveTitle : l10n.usersRejectTitle),
         ]),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -611,23 +615,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: noteCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Note (optionnel)',
-                hintText: 'Raison de la décision…',
+              decoration: InputDecoration(
+                labelText: l10n.commonNoteOptional,
+                hintText: l10n.commonDecisionReasonHint,
               ),
               maxLines: 2,
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l10n.commonCancel)),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
               foregroundColor: Colors.white,
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: Text(status == 'approved' ? 'Approuver' : 'Rejeter'),
+            child: Text(status == 'approved' ? l10n.usersApproveTooltip : l10n.usersRejectTooltip),
           ),
         ],
       ),
@@ -643,8 +647,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(status == 'approved'
-              ? 'Demande approuvée — département mis à jour'
-              : 'Demande rejetée'),
+              ? l10n.usersDeptRequestApproved
+              : l10n.usersRequestRejected),
           backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -680,9 +684,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       child: Card(
         clipBehavior: Clip.hardEdge,
         child: _filteredUsers.isEmpty
-            ? const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: Text('Aucun utilisateur', style: TextStyle(color: AppColors.textSecondary))),
+            ? Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(child: Text(l10n.usersNoUsersFound, style: const TextStyle(color: AppColors.textSecondary))),
               )
             : LayoutBuilder(
                 builder: (context, constraints) {
@@ -713,14 +717,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               Expanded(flex: 5, child: Text(l10n.usersUser,       style: _headerStyle)),
               Expanded(flex: 4, child: Text(l10n.commonEmail,     style: _headerStyle)),
               Expanded(flex: 3, child: Text(l10n.commonDepartment, style: _headerStyle)),
-              const SizedBox(width: 118, child: Text('Rôle',      style: _headerStyle)),
-              const SizedBox(width: 80,  child: Text('Statut',    style: _headerStyle)),
-              const SizedBox(width: 132, child: Text('Actions',   style: _headerStyle)),
+              SizedBox(width: 118, child: Text(l10n.commonRole,      style: _headerStyle)),
+              SizedBox(width: 80,  child: Text(l10n.commonStatus,    style: _headerStyle)),
+              SizedBox(width: 132, child: Text(l10n.commonActions,   style: _headerStyle)),
             ])
           : Row(children: [
               const SizedBox(width: 44),
               Expanded(child: Text(l10n.usersUser, style: _headerStyle)),
-              SizedBox(width: 76, child: Text('Statut', style: _headerStyle, textAlign: TextAlign.center)),
+              SizedBox(width: 76, child: Text(l10n.commonStatus, style: _headerStyle, textAlign: TextAlign.center)),
               const SizedBox(width: 40),
             ]),
     );
@@ -899,7 +903,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   PopupMenuButton<_UserAction>(
                     padding: EdgeInsets.zero,
                     iconSize: 20,
-                    tooltip: 'Actions',
+                    tooltip: l10n.commonActions,
                     onSelected: (action) {
                       switch (action) {
                         case _UserAction.edit:        _showUserDialog(user);
@@ -1113,8 +1117,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     final user = DataService().users.where((u) => u.id == req.userId).firstOrNull;
     if (user == null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Utilisateur introuvable (peut-être supprimé)'),
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.usersNotFound),
           backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -1183,14 +1188,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             Expanded(
                               child: TextField(
                                 controller: firstNameCtrl,
-                                decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)),
+                                decoration: InputDecoration(labelText: l10n.accountFirstName, prefixIcon: const Icon(Icons.person)),
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: TextField(
                                 controller: lastNameCtrl,
-                                decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)),
+                                decoration: InputDecoration(labelText: l10n.accountLastName, prefixIcon: const Icon(Icons.person)),
                               ),
                             ),
                           ],
@@ -1409,9 +1414,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
-              decoration: const InputDecoration(
-                labelText: 'Raison de la suppression (optionnel)',
-                hintText: 'Ex : Départ de l\'établissement, doublon…',
+              decoration: InputDecoration(
+                labelText: l10n.usersDeleteReasonLabel,
+                hintText: l10n.usersDeleteReasonHint,
               ),
               maxLines: 2,
             ),

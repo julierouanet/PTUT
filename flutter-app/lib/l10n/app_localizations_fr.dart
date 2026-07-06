@@ -6039,4 +6039,91 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get equipmentImportCsvClose => 'Fermer';
+
+  @override
+  String get settingsAccountDepartmentUpdated => 'Département mis à jour';
+
+  @override
+  String get usersDeptRequestApproved =>
+      'Demande approuvée — département mis à jour';
+
+  @override
+  String get usersRoleRequestApproved => 'Demande approuvée — rôle assigné';
+
+  @override
+  String get usersRoleRequestApprovedAttributed =>
+      'Demande approuvée — rôle attribué';
+
+  @override
+  String get usersRequestRejected => 'Demande rejetée';
+
+  @override
+  String get usersDeleteReasonLabel => 'Raison de la suppression (optionnel)';
+
+  @override
+  String get usersVerificationEmailSent => 'Email de vérification envoyé';
+
+  @override
+  String get usersEmailNotVerified => 'Adresse email non vérifiée';
+
+  @override
+  String get commonResend => 'Renvoyer';
+
+  @override
+  String get usersDeptRequestTitle => 'Demande de changement de département';
+
+  @override
+  String get usersRoleRequestTitle => 'Demande de changement de rôle';
+
+  @override
+  String get commonAlerts => 'Alertes';
+
+  @override
+  String get commonCurrent => 'Actuel';
+
+  @override
+  String get commonRequested => 'Demandé';
+
+  @override
+  String get usersProfileInfoTitle => 'Informations du profil';
+
+  @override
+  String get usersMemberSince => 'Membre depuis';
+
+  @override
+  String get usersKeycloakUuid => 'UUID Keycloak';
+
+  @override
+  String get usersEditProfile => 'Modifier le profil';
+
+  @override
+  String get usersViewActivityLogs => 'Voir les logs d\'activité';
+
+  @override
+  String get usersDeleteSelfDisabled =>
+      'Impossible de supprimer son propre compte';
+
+  @override
+  String get usersDeptRequestsTitle => 'Demandes de changement de département';
+
+  @override
+  String get usersRoleRequestsTitle => 'Demandes de rôle en attente';
+
+  @override
+  String get commonNoteOptional => 'Note (optionnel)';
+
+  @override
+  String get commonDecisionReasonHint => 'Raison de la décision…';
+
+  @override
+  String get usersNoUsersFound => 'Aucun utilisateur';
+
+  @override
+  String get usersNotFound => 'Utilisateur introuvable (peut-être supprimé)';
+
+  @override
+  String get commonRetry => 'Réessayer';
+
+  @override
+  String get debugNotificationSent => 'Notification envoyée';
 }

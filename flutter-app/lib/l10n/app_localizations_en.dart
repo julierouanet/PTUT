@@ -5969,4 +5969,90 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get equipmentImportCsvClose => 'Close';
+
+  @override
+  String get settingsAccountDepartmentUpdated => 'Department updated';
+
+  @override
+  String get usersDeptRequestApproved =>
+      'Request approved — department updated';
+
+  @override
+  String get usersRoleRequestApproved => 'Request approved — role assigned';
+
+  @override
+  String get usersRoleRequestApprovedAttributed =>
+      'Request approved — role granted';
+
+  @override
+  String get usersRequestRejected => 'Request rejected';
+
+  @override
+  String get usersDeleteReasonLabel => 'Deletion reason (optional)';
+
+  @override
+  String get usersVerificationEmailSent => 'Verification email sent';
+
+  @override
+  String get usersEmailNotVerified => 'Email address not verified';
+
+  @override
+  String get commonResend => 'Resend';
+
+  @override
+  String get usersDeptRequestTitle => 'Department change request';
+
+  @override
+  String get usersRoleRequestTitle => 'Role change request';
+
+  @override
+  String get commonAlerts => 'Alerts';
+
+  @override
+  String get commonCurrent => 'Current';
+
+  @override
+  String get commonRequested => 'Requested';
+
+  @override
+  String get usersProfileInfoTitle => 'Profile information';
+
+  @override
+  String get usersMemberSince => 'Member since';
+
+  @override
+  String get usersKeycloakUuid => 'Keycloak UUID';
+
+  @override
+  String get usersEditProfile => 'Edit profile';
+
+  @override
+  String get usersViewActivityLogs => 'View activity logs';
+
+  @override
+  String get usersDeleteSelfDisabled => 'Cannot delete your own account';
+
+  @override
+  String get usersDeptRequestsTitle => 'Department change requests';
+
+  @override
+  String get usersRoleRequestsTitle => 'Pending role requests';
+
+  @override
+  String get commonNoteOptional => 'Note (optional)';
+
+  @override
+  String get commonDecisionReasonHint => 'Reason for the decision…';
+
+  @override
+  String get usersNoUsersFound => 'No users';
+
+  @override
+  String get usersNotFound => 'User not found (may have been deleted)';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get debugNotificationSent => 'Notification sent';
 }

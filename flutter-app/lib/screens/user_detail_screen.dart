@@ -168,8 +168,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       }
       await _loadPendingDeptRequest();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(status == 'approved' ? 'Demande approuvée — département mis à jour' : 'Demande rejetée'),
+          content: Text(status == 'approved' ? l10n.usersDeptRequestApproved : l10n.usersRequestRejected),
           backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -193,8 +194,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       }
       await _loadPendingRoleRequests();
       if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(status == 'approved' ? 'Demande approuvée — rôle assigné' : 'Demande rejetée'),
+          content: Text(status == 'approved' ? l10n.usersRoleRequestApproved : l10n.usersRequestRejected),
           backgroundColor: status == 'approved' ? AppColors.success : AppColors.error,
           behavior: SnackBarBehavior.floating,
         ));
@@ -220,9 +222,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: reasonCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Raison de la suppression (optionnel)',
-                hintText: 'Ex : Départ de l\'établissement, doublon…',
+              decoration: InputDecoration(
+                labelText: l10n.usersDeleteReasonLabel,
+                hintText: l10n.usersDeleteReasonHint,
               ),
               maxLines: 2,
             ),
@@ -300,9 +302,9 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(children: [
-                          Expanded(child: TextField(controller: firstNameCtrl, decoration: const InputDecoration(labelText: 'Prénom', prefixIcon: Icon(Icons.person)))),
+                          Expanded(child: TextField(controller: firstNameCtrl, decoration: InputDecoration(labelText: l10n.accountFirstName, prefixIcon: const Icon(Icons.person)))),
                           const SizedBox(width: 12),
-                          Expanded(child: TextField(controller: lastNameCtrl, decoration: const InputDecoration(labelText: 'Nom', prefixIcon: Icon(Icons.person)))),
+                          Expanded(child: TextField(controller: lastNameCtrl, decoration: InputDecoration(labelText: l10n.accountLastName, prefixIcon: const Icon(Icons.person)))),
                         ]),
                         const SizedBox(height: 12),
                         TextField(
@@ -404,13 +406,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   Future<void> _sendVerificationEmail() async {
+    final l10n = AppLocalizations.of(context)!;
     setState(() => _sendingVerification = true);
     try {
       await AuthApiService.instance.sendVerificationEmail(_user.id);
       if (mounted) {
         setState(() => _sendingVerification = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Email de vérification envoyé'),
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(l10n.usersVerificationEmailSent),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ));
@@ -709,14 +712,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
-            SizedBox(width: 8),
+            const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 18),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Numéro de téléphone manquant',
-                style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.w500, fontSize: 13),
+                l10n.accountAlertPhoneMissingTitle,
+                style: const TextStyle(color: AppColors.warning, fontWeight: FontWeight.w500, fontSize: 13),
               ),
             ),
           ],
@@ -738,10 +741,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
           children: [
             const Icon(Icons.mark_email_unread_outlined, color: AppColors.error, size: 18),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: Text(
-                'Adresse email non vérifiée',
-                style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w500, fontSize: 13),
+                l10n.usersEmailNotVerified,
+                style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.w500, fontSize: 13),
               ),
             ),
             const SizedBox(width: 8),
@@ -753,7 +756,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 : TextButton.icon(
                     onPressed: _sendVerificationEmail,
                     icon: const Icon(Icons.send_outlined, size: 14),
-                    label: const Text('Renvoyer', style: TextStyle(fontSize: 12)),
+                    label: Text(l10n.commonResend, style: const TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.error,
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -773,7 +776,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       final req = _pendingDeptRequest!;
       alerts.add(_buildRequestAlertCard(
         icon: Icons.swap_horiz,
-        title: 'Demande de changement de département',
+        title: l10n.usersDeptRequestTitle,
         currentValue: req.currentDepartment,
         requestedValue: req.requestedDepartment,
         resolving: _resolvingRequest,
@@ -789,7 +792,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
       for (final req in _pendingRoleRequests) {
         alerts.add(_buildRequestAlertCard(
           icon: Icons.badge_outlined,
-          title: 'Demande de changement de rôle',
+          title: l10n.usersRoleRequestTitle,
           currentValue: req.currentRoles.join(', '),
           requestedValue: req.requestedRole,
           resolving: _resolvingRoleRequest,
@@ -804,7 +807,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Alertes', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+        Text(l10n.commonAlerts, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
         const SizedBox(height: 8),
         ...alerts.map((w) => Padding(padding: const EdgeInsets.only(bottom: 8), child: w)),
       ],
@@ -847,6 +850,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
     required VoidCallback onReject,
     required VoidCallback onApprove,
   }) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       color: AppColors.warningLight,
       child: Padding(
@@ -861,12 +865,12 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              Expanded(child: _buildRequestChip(currentValue, label: 'Actuel')),
+              Expanded(child: _buildRequestChip(currentValue, label: l10n.commonCurrent)),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8),
                 child: Icon(Icons.arrow_forward, size: 16, color: AppColors.textMuted),
               ),
-              Expanded(child: _buildRequestChip(requestedValue, label: 'Demandé', isTarget: true)),
+              Expanded(child: _buildRequestChip(requestedValue, label: l10n.commonRequested, isTarget: true)),
             ]),
             const SizedBox(height: 12),
             resolving
@@ -876,7 +880,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       child: OutlinedButton.icon(
                         onPressed: onReject,
                         icon: const Icon(Icons.cancel_outlined, size: 16),
-                        label: const Text('Rejeter'),
+                        label: Text(l10n.usersRejectTooltip),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.error,
                           side: const BorderSide(color: AppColors.error),
@@ -888,7 +892,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                       child: ElevatedButton.icon(
                         onPressed: onApprove,
                         icon: const Icon(Icons.check_circle_outline, size: 16),
-                        label: const Text('Approuver'),
+                        label: Text(l10n.usersApproveTooltip),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           foregroundColor: Colors.white,
@@ -911,7 +915,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Informations du profil', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(l10n.usersProfileInfoTitle, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 16),
             _buildInfoRow(Icons.business_outlined, l10n.commonDepartment,
                 _user.department.isNotEmpty ? _user.department : '—'),
@@ -919,10 +923,10 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
             _buildInfoRow(Icons.phone_outlined, l10n.usersPhone,
                 _user.phone?.isNotEmpty == true ? _user.phone! : '—'),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.calendar_today_outlined, 'Membre depuis',
+            _buildInfoRow(Icons.calendar_today_outlined, l10n.usersMemberSince,
                 _formatDate(_user.createdAt)),
             const SizedBox(height: 12),
-            _buildInfoRow(Icons.fingerprint_outlined, 'UUID Keycloak',
+            _buildInfoRow(Icons.fingerprint_outlined, l10n.usersKeycloakUuid,
                 _user.id.isNotEmpty ? _user.id : '—', monospace: true),
           ],
         ),
@@ -968,14 +972,14 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Actions', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            Text(l10n.commonActions, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             const SizedBox(height: 16),
 
             // Modifier le profil
             ElevatedButton.icon(
               onPressed: _showEditDialog,
               icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Modifier le profil'),
+              label: Text(l10n.usersEditProfile),
             ),
             const SizedBox(height: 8),
 
@@ -991,7 +995,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                 ),
               ),
               icon: const Icon(Icons.history_outlined, size: 18),
-              label: const Text('Voir les logs d\'activité'),
+              label: Text(l10n.usersViewActivityLogs),
             ),
 
             const SizedBox(height: 16),
@@ -1000,7 +1004,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
 
             // Supprimer l'utilisateur — désactivé si c'est son propre compte
             Tooltip(
-              message: isSelf ? 'Impossible de supprimer son propre compte' : '',
+              message: isSelf ? l10n.usersDeleteSelfDisabled : '',
               child: ElevatedButton.icon(
                 onPressed: (isSelf || _deletingUser) ? null : _confirmAndDeleteUser,
                 icon: _deletingUser
@@ -1009,7 +1013,7 @@ class _UserDetailScreenState extends State<UserDetailScreen> {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
                     : const Icon(Icons.delete_outline, size: 18),
-                label: const Text('Supprimer l\'utilisateur'),
+                label: Text(l10n.usersDeleteTitle),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
                   foregroundColor: Colors.white,
