@@ -42,7 +42,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-COMPOSE_FILE="docker-compose.ip.yml"
+COMPOSE_FILE="docker-compose.ip.secured.yml"
 CONTAINER="db-service-ip"
 XLSX_DEST="/tmp/inventory_import.xlsx"
 DRY_RUN=false

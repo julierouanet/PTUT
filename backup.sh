@@ -26,7 +26,7 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-COMPOSE_FILE="docker-compose.ip.yml"
+COMPOSE_FILE="docker-compose.ip.secured.yml"
 BACKUP_DIR="${SCRIPT_DIR}/backups"
 DATE=$(date +%Y%m%d_%H%M)
 KEEP_DAYS=7
