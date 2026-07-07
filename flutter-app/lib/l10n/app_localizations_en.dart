@@ -42,9 +42,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navInventory => 'Inventory';
 
   @override
-  String get navReports => 'Equipment Analytics';
-
-  @override
   String get navUsers => 'Users';
 
   @override
@@ -73,9 +70,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navInventoryShort => 'Inventory';
-
-  @override
-  String get navReportsShort => 'Analytics';
 
   @override
   String get navUsersShort => 'Users';
@@ -729,7 +723,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inventoryItemDeleted => 'Item deleted';
 
   @override
-  String get reportsTitle => 'Equipment Analytics';
+  String get reportsTitle => 'Reports';
 
   @override
   String get reportsSubtitle => 'Statistics overview';
@@ -2793,6 +2787,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get navAnalyticsShort => 'Stats';
+
+  @override
+  String get analyticsTabReports => 'Reports';
+
+  @override
+  String get analyticsTabTrends => 'Trends';
 
   @override
   String get healthAuth => 'Auth';
@@ -5085,7 +5085,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sidebarTitleInventory => 'Inventory';
 
   @override
-  String get sidebarTitleReports => 'Equipment Analytics';
+  String get sidebarTitleAnalytics => 'Reports & Analytics';
 
   @override
   String get see => 'See';

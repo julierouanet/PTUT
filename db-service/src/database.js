@@ -409,10 +409,23 @@ function initTables() {
     const insertSidebarEntry = db.prepare(
       'INSERT INTO sidebar_config (role, screen_type, sort_order) VALUES (?, ?, ?)'
     );
-    const supervisorSidebar = ['dashboard', 'reports', 'analytics', 'equipment', 'issueTracking', 'issueForm'];
+    const supervisorSidebar = ['dashboard', 'analytics', 'equipment', 'issueTracking', 'issueForm'];
     supervisorSidebar.forEach((screenType, i) => insertSidebarEntry.run('supervisor', screenType, i));
     console.log('[DB] Seed sidebar_config supervisor : ordre par défaut posé.');
   }
+
+  // Migration idempotente : les déploiements provisionnés avant la fusion Reports+Analytics ont
+  // pu accumuler des lignes sidebar_config avec screen_type='reports' (enum ScreenType.reports
+  // supprimé). Sans effet sur la navigation utilisateur (le tri par index tolère déjà un orphelin),
+  // mais évite une ligne dupliquée dans l'éditeur d'ordre sidebar de RoleDetailScreen (admin).
+  // 1) Pour un rôle qui a DÉJÀ une ligne 'analytics', la ligne 'reports' est un pur doublon : la supprimer.
+  db.prepare(`
+    DELETE FROM sidebar_config
+    WHERE screen_type = 'reports'
+      AND role IN (SELECT role FROM sidebar_config WHERE screen_type = 'analytics')
+  `).run();
+  // 2) Pour un rôle qui n'a QUE 'reports' (pas encore de ligne 'analytics'), renommer en place.
+  db.prepare(`UPDATE sidebar_config SET screen_type = 'analytics' WHERE screen_type = 'reports'`).run();
 
   // ── Souscriptions Web Push ─────────────────────────────────────────────────
   db.exec(`
@@ -451,9 +464,14 @@ function initTables() {
   );
   insertFeature.run('inventory_module', 'Inventaire', "Module de gestion de l'inventaire physique des equipements", 1);
   insertFeature.run('environmental_health_module', 'Sante environnementale', "Module de suivi hygiene des mains et tri des dechets (futur)", 0);
-  insertFeature.run('analytics_module', 'Analytiques', "Module de rapports et analyses avancees", 1);
-  insertFeature.run('reports_module', 'Rapports', "Module de generation de rapports PDF", 1);
+  insertFeature.run('analytics_module', 'Analytics', "Rapports et analyses avancees (KPIs GMAO, exports, graphiques de tendance)", 1);
   insertFeature.run('push_notifications_module', 'Notifications Push', "Activation des notifications push navigateur", 1);
+  // Nettoyage idempotent : fusionne l'ancien flag 'reports_module' dans 'analytics_module' pour les
+  // déploiements déjà provisionnés. feature_role_overrides est nettoyé par le ON DELETE CASCADE
+  // existant (database.js:441) — tout override de rôle posé spécifiquement sur 'reports_module' est
+  // perdu (accepté : ces 2 flags ne gatent aujourd'hui aucun comportement Flutter réel, vérifié par
+  // grep sur FeatureService().isModuleEnabled).
+  db.prepare("DELETE FROM features WHERE id = 'reports_module'").run();
 
   // ── Paramètres et historique des sauvegardes ───────────────────────────────
   db.exec(`

@@ -995,7 +995,9 @@ lib/
 │   ├── technician_update_screen.dart
 │   ├── technician_schedule_screen.dart  # Planning technicien (calendrier), extrait de l'onglet Agenda
 │   ├── inventory_screen.dart
-│   ├── reports_screen.dart
+│   ├── analytics_screen.dart          # Coquille TabController — fusionne reports_tab.dart + analytics_tab.dart
+│   ├── reports_tab.dart
+│   ├── analytics_tab.dart
 │   ├── user_management_screen.dart
 │   ├── settings_screen.dart
 │   ├── logs_screen.dart
@@ -1151,7 +1153,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (27 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4 — +1 le 2026-06-23 : technician_intervention_update, extrait de TechnicianUpdateScreen)
+## 3.4 Ecrans (27 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4 — +1 le 2026-06-23 : technician_intervention_update, extrait de TechnicianUpdateScreen — 2026-07-07 : ReportsScreen + AnalyticsScreen fusionnés en un seul écran "Analytics" à 2 onglets, compteur d'écrans décrémenté de 1)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -1164,7 +1166,7 @@ status: StockStatus (normal, low, outOfStock)
 | 4  | IssueFormScreen          | reportIssue             | Formulaire : equipement picker (filtre par categoryFilter), type, urgence, description, photos (max 5). Parametre `categoryFilter: List<String>?` restreint les equipements selectionables. |
 | 5  | TechnicianUpdateScreen   | updateRepairs OU approveRequests | Onglets : "À valider" (premier, conditionnel `canApproveRequests`) / Disponibles / Mes interventions (liste cliquable plein-écran, plus de master-detail). Bouton calendrier (à droite du TabBar) → TechnicianScheduleScreen. Le clic sur une carte d'intervention ouvre TechnicianInterventionUpdateScreen. L'onglet "À valider" propose un bouton unique "Examiner" qui ouvre IssueDetailScreen où se font validation + réassignation par groupe. |
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
-| 7  | ReportsScreen (libellé nav "Analytics Équipements", classe/route inchangées) | generateReports         | Statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Indicateurs complémentaires** (`GmaoKpiSectionExtra`) : MTBF parc entier, backlog d'incidents non résolus (+ dont >30j), taux d'obsolescence + âge moyen du parc biomédical, répartition par criticité ABC biomédicale, downtime cumulé (heures d'arrêt incidents clôturés) — réutilise `getReplacementPlan()` (déjà existant, aucun nouvel endpoint). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. |
+| 7  | AnalyticsScreen (fusion ReportsScreen+AnalyticsScreen, 2 onglets "Rapports"/"Analytique" via `TabController`) | generateReports         | **Onglet Rapports** (`ReportsTab`) : statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Indicateurs complémentaires** (`GmaoKpiSectionExtra`) : MTBF parc entier, backlog d'incidents non résolus (+ dont >30j), taux d'obsolescence + âge moyen du parc biomédical, répartition par criticité ABC biomédicale, downtime cumulé (heures d'arrêt incidents clôturés) — réutilise `getReplacementPlan()` (déjà existant, aucun nouvel endpoint). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. **Onglet Analytique** (`AnalyticsTab`) : tableaux de bord analytiques (GET /api/analytics), graphiques de tendance (13 semaines glissantes), filtres période jour/semaine/mois. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
 | 9  | SettingsScreen           | manageDepartments       | **5 onglets** : Départements, Rôles, Activité, Feature Flags, Paramètres généraux (contact login + config Brevo avec email de test) |
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
@@ -1175,17 +1177,24 @@ status: StockStatus (normal, low, outOfStock)
 | 15 | IssueStaffDetailScreen   | trackIssues             | Vue lecture seule incidents pour hospitalStaff (timeline) |
 | 16 | UserDetailScreen         | manageUsers             | Fiche utilisateur : profil, demandes dept/rôle, actions admin |
 | 17 | RoleDetailScreen         | manageUsers             | Détail rôle : hiérarchie, permissions, ordre sidebar, utilisateurs |
-| 18 | AnalyticsScreen          | generateReports         | Tableaux de bord analytiques (GET /api/analytics) |
-| 19 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle — **n'a plus d'entrée sidebar autonome** ; réutilisé comme onglet 4 de SettingsScreen via `FeaturesTab` |
-| 20 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
-| 21 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
-| 22 | TechnicianInterventionUpdateScreen | updateRepairs OU approveRequests | Page dédiée à la mise à jour d'une intervention (diagnostic, actions, chrono, pièces, clôture/escalade/transfert/détachement), extraite du formulaire master-detail/inline de l'onglet "Mes interventions" de TechnicianUpdateScreen. Sélecteur de pièces masqué de façon réactive si le module `inventory` est désactivé (`FeatureService().isModuleEnabled`). `PopScope` + dialog de confirmation si modifications non sauvegardées. **2026-06-23 :** boutons Save + Save-and-Close fusionnés en un seul ElevatedButton `_doSaveAndClose` (màj incident + fermeture session + génération PDF) ; toggle `_planNextAction` conditionnel pour le champ next_actions (optionnel, sans validation minimum). |
+| 18 | FeatureManagementScreen  | manageFeatures          | Gestion des feature flags par module et par rôle — **n'a plus d'entrée sidebar autonome** ; réutilisé comme onglet 4 de SettingsScreen via `FeaturesTab` |
+| 19 | BackupManagementScreen   | manageBackups           | Sauvegardes : déclenchement, historique, téléchargement, cron |
+| 20 | TechnicianScheduleScreen | updateRepairs OU approveRequests | Planning du technicien (calendrier `table_calendar` + historique mensuel). Extrait de l'ancien onglet "Agenda" de TechnicianUpdateScreen, désormais autonome (Scaffold) atteint via le bouton calendrier. |
+| 21 | TechnicianInterventionUpdateScreen | updateRepairs OU approveRequests | Page dédiée à la mise à jour d'une intervention (diagnostic, actions, chrono, pièces, clôture/escalade/transfert/détachement), extraite du formulaire master-detail/inline de l'onglet "Mes interventions" de TechnicianUpdateScreen. Sélecteur de pièces masqué de façon réactive si le module `inventory` est désactivé (`FeatureService().isModuleEnabled`). `PopScope` + dialog de confirmation si modifications non sauvegardées. **2026-06-23 :** boutons Save + Save-and-Close fusionnés en un seul ElevatedButton `_doSaveAndClose` (màj incident + fermeture session + génération PDF) ; toggle `_planNextAction` conditionnel pour le champ next_actions (optionnel, sans validation minimum). |
 
 > **2026-07 — rôle supervisor « consultation + rapports »** : le supervisor perd `approveRequests`/`assignTasks`
 > (plus de page Technicien ni d'actions de validation/réassignation) et gagne `generateReports`
-> (ReportsScreen + AnalyticsScreen). `ScreenType.analytics` est désormais inclus dans le module
+> (AnalyticsScreen, écran fusionné Rapports+Analytique). `ScreenType.analytics` est désormais inclus dans le module
 > Équipement (`_equipmentScreens`, `main.dart`) — indispensable au supervisor qui n'a pas accès au
-> module Réglages ; ordre sidebar par défaut seedé côté db-service (Dashboard → Rapports → Analytique).
+> module Réglages ; ordre sidebar par défaut seedé côté db-service (Dashboard → Analytique → Équipements → …).
+>
+> **2026-07-07 — fusion ReportsScreen + AnalyticsScreen** : les deux écrans distincts (même permission
+> `generateReports`) sont fusionnés en un seul `AnalyticsScreen` à 2 onglets (`ReportsTab` / `AnalyticsTab`,
+> `TabController`), pour éliminer la confusion de libellés préexistante ("Analytics Équipements" désignait
+> en fait ReportsScreen). `ScreenType.reports` est supprimé de l'enum ; `l10n.navReports`/`navReportsShort`/
+> `sidebarTitleReports` supprimés au profit de `l10n.navAnalytics` et `l10n.sidebarTitleAnalytics` (nouvelle
+> clé). Feature flags `analytics_module`/`reports_module` fusionnés en `analytics_module` ; migration
+> idempotente des lignes `sidebar_config` legacy `screen_type='reports'` → `'analytics'` côté `database.js`.
 
 ## 3.5 Navigation
 

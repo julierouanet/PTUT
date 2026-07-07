@@ -14,7 +14,7 @@ import '../models/issue_photo.dart';
 
 /// Génère un rapport PDF GMAO pour l'Hôpital de District de Kabutare.
 ///
-/// Toutes les données sont passées en paramètre depuis [ReportsScreen] —
+/// Toutes les données sont passées en paramètre depuis [ReportsTab] —
 /// aucun appel API supplémentaire (Option B : génération 100% côté client).
 class PdfReportService {
   // Palette de couleurs du rapport

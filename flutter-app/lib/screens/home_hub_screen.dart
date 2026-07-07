@@ -1046,7 +1046,7 @@ class HomeHubScreen extends StatelessWidget {
           _PageEntry(l10n.navIssueTracking, Icons.troubleshoot_outlined),
           _PageEntry(l10n.navReportIssue,   Icons.report_problem_outlined),
           _PageEntry(l10n.navTechnician,    Icons.build_outlined),
-          _PageEntry(l10n.navReports,       Icons.analytics_outlined),
+          _PageEntry(l10n.navAnalytics,     Icons.analytics_outlined),
         ],
         onTap: onEquipmentModule,
       );

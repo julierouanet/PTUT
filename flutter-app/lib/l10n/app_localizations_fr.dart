@@ -42,9 +42,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navInventory => 'Inventaire';
 
   @override
-  String get navReports => 'Analytics Équipements';
-
-  @override
   String get navUsers => 'Utilisateurs';
 
   @override
@@ -73,9 +70,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get navInventoryShort => 'Inventaire';
-
-  @override
-  String get navReportsShort => 'Analytics';
 
   @override
   String get navUsersShort => 'Usagers';
@@ -733,7 +727,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get inventoryItemDeleted => 'Article supprime';
 
   @override
-  String get reportsTitle => 'Analytics Équipements';
+  String get reportsTitle => 'Rapports';
 
   @override
   String get reportsSubtitle => 'Vue d\'ensemble des statistiques';
@@ -2813,10 +2807,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Vous possédez déjà tous les rôles disponibles.';
 
   @override
-  String get navAnalytics => 'Analytiques';
+  String get navAnalytics => 'Analytics';
 
   @override
   String get navAnalyticsShort => 'Stats';
+
+  @override
+  String get analyticsTabReports => 'Rapports';
+
+  @override
+  String get analyticsTabTrends => 'Analytique';
 
   @override
   String get healthAuth => 'Auth';
@@ -5138,7 +5138,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sidebarTitleInventory => 'Inventaire';
 
   @override
-  String get sidebarTitleReports => 'Analytics Équipements';
+  String get sidebarTitleAnalytics => 'Rapports & Analytique';
 
   @override
   String get see => 'Voir';

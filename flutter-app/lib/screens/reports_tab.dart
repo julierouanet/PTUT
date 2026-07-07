@@ -26,14 +26,14 @@ enum _ArchiveType { monthly, annual }
 /// - Statistiques des incidents filtrées sur la période sélectionnée
 /// - Export CSV réel (web) ou message informatif (mobile/desktop)
 /// - Section "Archives" : téléchargement des rapports mensuels (24 mois) ou annuels
-class ReportsScreen extends StatefulWidget {
-  const ReportsScreen({super.key});
+class ReportsTab extends StatefulWidget {
+  const ReportsTab({super.key});
 
   @override
-  State<ReportsScreen> createState() => _ReportsScreenState();
+  State<ReportsTab> createState() => _ReportsTabState();
 }
 
-class _ReportsScreenState extends State<ReportsScreen> {
+class _ReportsTabState extends State<ReportsTab> {
   _ReportPeriod _period = _ReportPeriod.last30;
   DateTimeRange? _customRange;
   bool _isExporting    = false;

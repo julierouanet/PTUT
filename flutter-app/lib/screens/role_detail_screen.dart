@@ -755,7 +755,7 @@ class _RoleDetailScreenState extends State<RoleDetailScreen>
         'issueForm'     => l10n.navReportIssue,
         'technician'    => l10n.navTechnician,
         'inventory'     => l10n.navInventory,
-        'reports'       => l10n.navReports,
+        'reports' || 'analytics' => l10n.navAnalytics,
         'users'         => l10n.navUsers,
         'settings'      => l10n.navSettings,
         'logs'          => l10n.navLogs,

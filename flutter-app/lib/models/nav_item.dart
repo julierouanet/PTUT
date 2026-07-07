@@ -9,7 +9,6 @@ enum ScreenType {
   issueForm,
   technician,
   inventory,
-  reports,
   users,
   settings,
   logs,

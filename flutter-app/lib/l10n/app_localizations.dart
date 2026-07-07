@@ -164,12 +164,6 @@ abstract class AppLocalizations {
   /// **'Inventaire'**
   String get navInventory;
 
-  /// No description provided for @navReports.
-  ///
-  /// In fr, this message translates to:
-  /// **'Analytics Équipements'**
-  String get navReports;
-
   /// No description provided for @navUsers.
   ///
   /// In fr, this message translates to:
@@ -229,12 +223,6 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Inventaire'**
   String get navInventoryShort;
-
-  /// No description provided for @navReportsShort.
-  ///
-  /// In fr, this message translates to:
-  /// **'Analytics'**
-  String get navReportsShort;
 
   /// No description provided for @navUsersShort.
   ///
@@ -1457,7 +1445,7 @@ abstract class AppLocalizations {
   /// No description provided for @reportsTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Analytics Équipements'**
+  /// **'Rapports'**
   String get reportsTitle;
 
   /// No description provided for @reportsSubtitle.
@@ -5273,7 +5261,7 @@ abstract class AppLocalizations {
   /// No description provided for @navAnalytics.
   ///
   /// In fr, this message translates to:
-  /// **'Analytiques'**
+  /// **'Analytics'**
   String get navAnalytics;
 
   /// No description provided for @navAnalyticsShort.
@@ -5281,6 +5269,18 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Stats'**
   String get navAnalyticsShort;
+
+  /// No description provided for @analyticsTabReports.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapports'**
+  String get analyticsTabReports;
+
+  /// No description provided for @analyticsTabTrends.
+  ///
+  /// In fr, this message translates to:
+  /// **'Analytique'**
+  String get analyticsTabTrends;
 
   /// No description provided for @healthAuth.
   ///
@@ -9416,11 +9416,11 @@ abstract class AppLocalizations {
   /// **'Inventaire'**
   String get sidebarTitleInventory;
 
-  /// No description provided for @sidebarTitleReports.
+  /// No description provided for @sidebarTitleAnalytics.
   ///
   /// In fr, this message translates to:
-  /// **'Analytics Équipements'**
-  String get sidebarTitleReports;
+  /// **'Rapports & Analytique'**
+  String get sidebarTitleAnalytics;
 
   /// No description provided for @see.
   ///
