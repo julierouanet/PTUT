@@ -107,16 +107,16 @@ describe('POST /api/equipment/import-csv — RBAC', () => {
   });
 
   test.each(['technician_biomedical', 'technician_it', 'technician_infra'])(
-    '🚫 rôle %s refusé sur POST /api/equipment unitaire → 403',
+    '✅ rôle %s peut créer un équipement via POST unitaire → 201',
     async (role) => {
       setTestRole(role);
 
       const res = await request(app)
         .post('/api/equipment')
         .set('Authorization', 'Bearer fake-token')
-        .send({ id: `eq-unit-${role}`, name: 'Test', department: 'OPD', category: 'Monitoring' });
+        .send({ id: `eq-unit-${role}`, name: 'Test', department: 'OPD', category: 'Monitoring', tag_number: `TAG-unit-${role}` });
 
-      expect(res.status).toBe(403);
+      expect(res.status).toBe(201);
     }
   );
 });
@@ -198,6 +198,40 @@ describe('POST /api/equipment/import-csv — doublon serial_number', () => {
     });
 
     const valid = db.prepare('SELECT * FROM equipment WHERE serial_number = ?').get('SN-NOUVEAU-VALIDE');
+    expect(valid).toBeDefined();
+  });
+});
+
+describe('POST /api/equipment/import-csv — doublon tag_number', () => {
+  test('🚫 ligne rejetée pour tag physique déjà utilisé, les autres lignes valides restent importées', async () => {
+    setTestRole('admin');
+
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment (id, name, department, category, serial_number, status)
+      VALUES ('eq-existant-tag', 'Déjà en base tag', 'OPD', 'Monitoring', 'SN-DEJA-TAG', 'Operational')
+    `).run();
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment_tags (equipment_id, tag_number) VALUES ('eq-existant-tag', 'TAG-DEJA-EXISTANT')
+    `).run();
+
+    const csv = `${HEADER}\n`
+      + 'Nouveau Valide Tag,OPD,Monitoring,SN-NOUVEAU-TAG-VALIDE,,,,,,,,TAG-NOUVEAU,\n'
+      + 'Doublon Tag,OPD,Monitoring,SN-NOUVEAU-TAG-2,,,,,,,,TAG-DEJA-EXISTANT,\n';
+
+    const res = await request(app)
+      .post('/api/equipment/import-csv')
+      .set('Authorization', 'Bearer fake-token')
+      .attach('file', csvBuffer(csv), 'import.csv');
+
+    expect(res.status).toBe(200);
+    expect(res.body.inserted).toBe(1);
+    expect(res.body.errors).toHaveLength(1);
+    expect(res.body.errors[0]).toEqual({
+      line: 3,
+      reason: 'tag physique déjà utilisé (doublon)',
+    });
+
+    const valid = db.prepare('SELECT * FROM equipment WHERE serial_number = ?').get('SN-NOUVEAU-TAG-VALIDE');
     expect(valid).toBeDefined();
   });
 });

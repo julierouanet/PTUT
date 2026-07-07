@@ -154,8 +154,8 @@ describe('RBAC — GET /api/equipment', () => {
 // 2. POST /api/equipment — créer un équipement (admin et supervisor)
 // =============================================================================
 describe('RBAC — POST /api/equipment', () => {
-  const ROLES_AUTORISÉS = ['admin', 'supervisor'];
-  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  const ROLES_AUTORISÉS = ['admin', 'supervisor', 'technician_biomedical', 'technician_it', 'technician_infra'];
+  const ROLES_REFUSÉS   = ['hospitalStaff', 'technician'];
 
   let counter = 0;
   const newEq = () => ({
@@ -164,6 +164,7 @@ describe('RBAC — POST /api/equipment', () => {
     department: 'OPD',
     category:   'Monitoring',
     status:     'Operational',
+    tag_number: `TAG-${counter}`,
   });
 
   test.each(ROLES_AUTORISÉS)(
@@ -212,7 +213,7 @@ describe('RBAC — POST /api/equipment', () => {
     const res = await request(app)
       .post('/api/equipment')
       .set('Authorization', 'Bearer fake-token')
-      .send({ id: 'eq-bad-status', name: 'Test', department: 'OPD', category: 'Monitoring', status: 'StatutInvalide' });
+      .send({ id: 'eq-bad-status', name: 'Test', department: 'OPD', category: 'Monitoring', status: 'StatutInvalide', tag_number: 'TAG-bad-status' });
 
     expect(res.status).toBe(400);
   });
@@ -224,15 +225,100 @@ describe('RBAC — POST /api/equipment', () => {
     await request(app)
       .post('/api/equipment')
       .set('Authorization', 'Bearer fake-token')
-      .send({ id: 'eq-duplicate-test', name: 'Dupliqué', department: 'OPD', category: 'Monitoring' });
+      .send({ id: 'eq-duplicate-test', name: 'Dupliqué', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-dup-1' });
 
-    // Deuxième insertion avec le même ID
+    // Deuxième insertion avec le même ID (tag différent pour ne tester que le conflit d'ID)
     const res = await request(app)
       .post('/api/equipment')
       .set('Authorization', 'Bearer fake-token')
-      .send({ id: 'eq-duplicate-test', name: 'Dupliqué 2', department: 'OPD', category: 'Monitoring' });
+      .send({ id: 'eq-duplicate-test', name: 'Dupliqué 2', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-dup-2' });
 
     expect(res.status).toBe(409);
+  });
+
+  test('🚫 admin — création sans tag physique → 400', async () => {
+    setTestRole('admin');
+
+    const res = await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-sans-tag', name: 'Sans tag', department: 'OPD', category: 'Monitoring' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — tag physique déjà utilisé par un autre équipement → 409', async () => {
+    setTestRole('admin');
+
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-tag-owner', name: 'Propriétaire du tag', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-conflit' });
+
+    const res = await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-tag-conflit', name: 'Conflit de tag', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-conflit' });
+
+    expect(res.status).toBe(409);
+  });
+});
+
+// =============================================================================
+// 2 bis. PUT /api/equipment/:id — tag physique obligatoire et unique
+// =============================================================================
+describe('RBAC — PUT /api/equipment/:id — tag physique', () => {
+  test('🚫 admin — retirer le seul tag existant sans en fournir un autre → 400', async () => {
+    setTestRole('admin');
+
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-put-tag-1', name: 'Équipement PUT tag', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-put-1' });
+
+    const res = await request(app)
+      .put('/api/equipment/eq-put-tag-1')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ tag_number: '' });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 admin — tag physique déjà utilisé par un autre équipement → 409', async () => {
+    setTestRole('admin');
+
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-put-tag-2a', name: 'Équipement A', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-put-2a' });
+
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-put-tag-2b', name: 'Équipement B', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-put-2b' });
+
+    const res = await request(app)
+      .put('/api/equipment/eq-put-tag-2b')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ tag_number: 'TAG-put-2a' });
+
+    expect(res.status).toBe(409);
+  });
+
+  test('✅ admin — modifier le département sans toucher au tag existant → 200', async () => {
+    setTestRole('admin');
+
+    await request(app)
+      .post('/api/equipment')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ id: 'eq-put-tag-3', name: 'Équipement C', department: 'OPD', category: 'Monitoring', tag_number: 'TAG-put-3' });
+
+    const res = await request(app)
+      .put('/api/equipment/eq-put-tag-3')
+      .set('Authorization', 'Bearer fake-token')
+      .send({ department: 'ICU' });
+
+    expect(res.status).toBe(200);
   });
 });
 

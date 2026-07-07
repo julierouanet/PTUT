@@ -592,7 +592,7 @@ class _EquipmentListScreenState extends State<EquipmentListScreen> {
           )
         : null;
 
-    final addBtn = _auth.canManageEquipment
+    final addBtn = _canEdit
         ? ElevatedButton.icon(
             onPressed: _addEquipment,
             icon: const Icon(Icons.add, size: 18),

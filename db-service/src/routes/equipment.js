@@ -363,8 +363,17 @@ function insertTagIfProvided(db, equipmentId, tagNumber) {
   return tagVal;
 }
 
+// Retourne l'equipment_id qui possède déjà ce tag (hors `excludeEquipmentId`),
+// ou null si le tag est libre. Utilisé par POST et PUT pour l'unicité globale.
+function findTagOwner(db, tagNumber, excludeEquipmentId = null) {
+  const row = db.prepare(
+    'SELECT equipment_id FROM equipment_tags WHERE tag_number = ? AND equipment_id != ? LIMIT 1'
+  ).get(tagNumber, excludeEquipmentId || '');
+  return row ? row.equipment_id : null;
+}
+
 // ── POST /api/equipment ───────────────────────────────────────────────────────
-router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => {
+router.post('/', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const {
     id, name, department, category, serial_number, status, location,
@@ -376,6 +385,9 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 
   if (!id || !name || !department || !category) {
     return res.status(400).json({ error: 'Champs requis: id, name, department, category' });
+  }
+  if (!tag_number || !tag_number.trim()) {
+    return res.status(400).json({ error: 'Le tag physique (tag_number) est requis' });
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(id) || id.length > 100) {
     return res.status(400).json({ error: 'ID invalide (alphanumérique, max 100 caractères)' });
@@ -400,6 +412,12 @@ router.post('/', verifyToken, requireRole('admin', 'supervisor'), (req, res) => 
 
   const subIdInt = subcategory_id ? parseInt(subcategory_id, 10) : null;
   const resolvedMacroCategoryId = resolveMacroCategoryId(db, subIdInt, macro_category_id);
+
+  const tagTrim = tag_number.trim();
+  const tagOwner = findTagOwner(db, tagTrim);
+  if (tagOwner) {
+    return res.status(409).json({ error: `Tag déjà utilisé par l'équipement ${tagOwner}` });
+  }
 
   try {
     db.prepare(`
@@ -530,9 +548,13 @@ router.post('/import-csv', verifyToken, requireRole('admin', 'supervisor', ...TE
       db.prepare("SELECT serial_number FROM equipment WHERE serial_number IS NOT NULL AND serial_number != ''")
         .all().map((r) => r.serial_number)
     );
+    const existingTags = new Set(
+      db.prepare('SELECT tag_number FROM equipment_tags').all().map((r) => r.tag_number)
+    );
 
     const slugsInFile = new Set();
     const serialsInFile = new Set();
+    const tagsInFile = new Set();
     const errors = [];
     const toInsert = [];
 
@@ -573,9 +595,18 @@ router.post('/import-csv', verifyToken, requireRole('admin', 'supervisor', ...TE
         return errors.push({ line, reason: 'équipement déjà existant (numéro de série en doublon)' });
       }
 
+      const tag_number = col(row, 'tag_number');
+      const tagExists = tag_number && (
+        tagsInFile.has(tag_number) || existingTags.has(tag_number)
+      );
+      if (tagExists) {
+        return errors.push({ line, reason: 'tag physique déjà utilisé (doublon)' });
+      }
+
       const id = generateEquipmentSlug(name, serial_number, slugsInFile, existingIds);
       slugsInFile.add(id);
       if (serial_number) serialsInFile.add(serial_number);
+      if (tag_number) tagsInFile.add(tag_number);
 
       toInsert.push({
         id, name, department, category,
@@ -645,6 +676,24 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
   }
   if (criticality && !VALID_CRITICALITIES.includes(criticality)) {
     return res.status(400).json({ error: 'criticality invalide (A, B ou C)' });
+  }
+
+  // Le tag physique est obligatoire : soit fourni dans la requête, soit déjà en base.
+  if (tag_number === undefined) {
+    const hasExistingTag = db.prepare(
+      'SELECT 1 FROM equipment_tags WHERE equipment_id = ? LIMIT 1'
+    ).get(req.params.id);
+    if (!hasExistingTag) {
+      return res.status(400).json({ error: 'Le tag physique (tag_number) est requis' });
+    }
+  } else {
+    if (!tag_number.trim()) {
+      return res.status(400).json({ error: 'Le tag physique (tag_number) est requis' });
+    }
+    const tagOwner = findTagOwner(db, tag_number.trim(), req.params.id);
+    if (tagOwner) {
+      return res.status(409).json({ error: `Tag déjà utilisé par l'équipement ${tagOwner}` });
+    }
   }
 
   let manufYearInt = null;

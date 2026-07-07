@@ -257,15 +257,23 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
       }
       await DataService().reloadEquipment();
       if (mounted) Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      _showErrorSnackBar(e.message);
     } catch (_) {
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(AppLocalizations.of(context)!.commonApiError),
-        backgroundColor: AppColors.error,
-        behavior: SnackBarBehavior.floating,
-      ));
+      _showErrorSnackBar(AppLocalizations.of(context)!.commonApiError);
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      backgroundColor: AppColors.error,
+      behavior: SnackBarBehavior.floating,
+    ));
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────
@@ -511,6 +519,8 @@ class _EquipmentFormScreenState extends State<EquipmentFormScreen> {
             hintText: l10n.equipmentTagHint,
             prefixIcon: const Icon(Icons.label_outline),
           ),
+          validator: (v) =>
+              (v == null || v.trim().isEmpty) ? l10n.commonFillRequiredFields : null,
         ),
         const SizedBox(height: 16),
         // ── Bâtiment ─────────────────────────────────────────────────────
