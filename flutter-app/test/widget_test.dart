@@ -96,7 +96,7 @@ void main() {
       expect(find.text('Issue Tracking'), findsWidgets);
       expect(find.text('Report'), findsWidgets);
       expect(find.text('Technician'), findsWidgets);
-      expect(find.text('Reports'), findsWidgets);
+      expect(find.text('Analytics'), findsWidgets);
     });
   });
 
@@ -126,7 +126,7 @@ void main() {
       // Staff does NOT see admin/tech/supervisor items
       expect(find.text('Users'), findsNothing);
       expect(find.text('Technician'), findsNothing);
-      expect(find.text('Reports'), findsNothing);
+      expect(find.text('Analytics'), findsNothing);
       expect(find.text('Settings'), findsNothing);
       expect(find.text('Activity Logs'), findsNothing);
     });
