@@ -1775,6 +1775,24 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       ),
       const SizedBox(height: 16),
 
+      Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          onPressed: () => setState(() {
+            _infraCategory    = 'Other';
+            _infraSubcategory = null;
+            _infraIssue       = null;
+          }),
+          style: TextButton.styleFrom(foregroundColor: AppColors.warning),
+          icon: const Icon(CupertinoIcons.question_circle, size: 18),
+          label: Text(
+            l10n.issueFormInfraNotListed,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+
       Text(l10n.issueFormQuickSearch,
           style: const TextStyle(fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),

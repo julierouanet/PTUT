@@ -2692,6 +2692,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please enter a tag number and search for the equipment';
 
   @override
+  String get issueFormInfraNotListed => 'My problem isn\'t in the list';
+
+  @override
   String get issueFormQuickSearch => 'Quick Search';
 
   @override

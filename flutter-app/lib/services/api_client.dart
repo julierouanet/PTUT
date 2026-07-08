@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -15,11 +16,40 @@ class ApiClient {
   /// Callback appelé quand la session expire (refresh token invalide).
   static VoidCallback? onSessionExpired;
 
+  /// Marge de sécurité avant l'expiration de l'access token pour déclencher
+  /// un refresh proactif — évite de dépendre uniquement du 401 réactif si le
+  /// réseau est lent au moment exact de l'expiration.
+  static const _proactiveRefreshMargin = Duration(minutes: 2);
+
+  /// Délai plancher avant un refresh proactif. Absorbe un décalage d'horloge
+  /// locale (clock skew navigateur/OS) sans déclencher une rafale de refresh
+  /// rapprochés vers Keycloak si l'horloge du client est significativement en
+  /// avance sur celle du serveur (l'`exp` du token paraîtrait alors toujours
+  /// "presque expiré").
+  static const _proactiveRefreshFloor = Duration(seconds: 30);
+
+  static Timer? _proactiveRefreshTimer;
+
+  /// Future du refresh Keycloak en cours, s'il y en a un. Garantit qu'un seul
+  /// appel de refresh est en vol à la fois : les 401 concurrents (ex. plusieurs
+  /// requêtes du dashboard lancées en parallèle) attendent ce même Future au
+  /// lieu de déclencher chacun un refresh distinct. Sans ce verrou, la rotation
+  /// stricte de Keycloak (`revokeRefreshToken: true`) rejette les appels de
+  /// refresh suivants (refresh token déjà consommé par le premier) et
+  /// provoque une déconnexion forcée alors que la session est valide.
+  static Future<bool>? _refreshInFlight;
+
   // ── Token storage ─────────────────────────────────────────────────────────
 
   static Future<void> saveTokens(String access, String refresh) async {
     await SecureTokenStorage.write(_accessTokenKey, access);
     await SecureTokenStorage.write(_refreshTokenKey, refresh);
+    // Réarme le timer proactif à chaque sauvegarde de tokens (login, refresh
+    // réactif sur 401, ou restauration explicite). Un réarmement redondant
+    // (ex. un refresh réactif suivi de près par le timer proactif encore en
+    // vol au moment du 401) est sans effet indésirable : `_scheduleProactiveRefresh`
+    // annule systématiquement le timer précédent avant d'en poser un nouveau.
+    _scheduleProactiveRefresh(access);
   }
 
   static Future<String?> getAccessToken() async {
@@ -31,6 +61,8 @@ class ApiClient {
   }
 
   static Future<void> clearTokens() async {
+    _proactiveRefreshTimer?.cancel();
+    _proactiveRefreshTimer = null;
     await SecureTokenStorage.deleteAll([_accessTokenKey, _refreshTokenKey]);
   }
 
@@ -38,6 +70,15 @@ class ApiClient {
   static Future<bool> hasStoredTokens() async {
     final token = await getAccessToken();
     return token != null;
+  }
+
+  /// À appeler après un `restoreSession()` réussi (auto-login au démarrage,
+  /// `main.dart`) : réarme le timer de refresh proactif depuis le token déjà
+  /// stocké, qui n'est pas repassé par [saveTokens] lors d'une simple
+  /// restauration de session (seul un login ou un refresh y repasse).
+  static Future<void> armProactiveRefreshFromStorage() async {
+    final token = await getAccessToken();
+    if (token != null) _scheduleProactiveRefresh(token);
   }
 
   // ── Requêtes HTTP ──────────────────────────────────────────────────────────
@@ -312,9 +353,62 @@ class ApiClient {
     return http.MediaType(parts[0], parts.length > 1 ? parts[1] : '*');
   }
 
+  // ── Refresh proactif (avant expiration) ──────────────────────────────────
+
+  /// Décode le claim `exp` (secondes epoch UTC, `num` — Keycloak encode
+  /// habituellement un entier mais un `double` JSON reste accepté par
+  /// robustesse) du payload JWT, sans vérifier la signature — la validation
+  /// cryptographique de l'access token reste faite par le backend via JWKS
+  /// (`auth-service/src/middleware/auth.js`). Ce décodage local sert
+  /// uniquement à planifier le timer de refresh proactif ; un token malformé
+  /// ou un `exp` absent/de type inattendu retourne `null` (le refresh
+  /// proactif est alors simplement désactivé, le fallback réactif sur 401
+  /// reste actif).
+  @visibleForTesting
+  static DateTime? decodeExpiry(String jwt) {
+    final parts = jwt.split('.');
+    if (parts.length != 3) return null;
+    try {
+      var payload = parts[1].replaceAll('-', '+').replaceAll('_', '/');
+      payload += '=' * ((4 - payload.length % 4) % 4);
+      final decoded = jsonDecode(utf8.decode(base64.decode(payload))) as Map<String, dynamic>;
+      final exp = decoded['exp'];
+      if (exp is! num) return null;
+      return DateTime.fromMillisecondsSinceEpoch((exp * 1000).round(), isUtc: true);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static void _scheduleProactiveRefresh(String accessToken) {
+    _proactiveRefreshTimer?.cancel();
+    final expiry = decodeExpiry(accessToken);
+    if (expiry == null) return;
+    var delay = expiry.difference(DateTime.now().toUtc()) - _proactiveRefreshMargin;
+    if (delay < _proactiveRefreshFloor) delay = _proactiveRefreshFloor;
+    _proactiveRefreshTimer = Timer(delay, () {
+      _tryRefresh();
+    });
+  }
+
   // ── Refresh token via Keycloak (rotation stricte) ────────────────────────
 
-  static Future<bool> _tryRefresh() async {
+  /// Point d'entrée public — garantit qu'un seul refresh Keycloak est en vol
+  /// à la fois (voir [_refreshInFlight]). Volontairement NON `async` :
+  /// `_tryRefresh` elle-même ne contient aucun `await`, donc son corps
+  /// s'exécute intégralement de façon synchrone (test de `_refreshInFlight`
+  /// PUIS affectation, sans point de suspension entre les deux) avant de
+  /// rendre la main à l'appelant. C'est cette absence d'`await` DANS
+  /// `_tryRefresh` elle-même qui élimine la race condition — PAS le fait que
+  /// `_doRefresh` (appelée à l'intérieur) contiendrait elle-même des `await` :
+  /// `_doRefresh()` peut suspendre autant qu'elle veut une fois sa Future
+  /// créée et stockée dans `_refreshInFlight`, cela n'affecte plus la section
+  /// critique. Ne JAMAIS ajouter `async` à `_tryRefresh` elle-même, même si
+  /// une revue de style le suggère — ce serait réintroduire la race condition.
+  static Future<bool> _tryRefresh() =>
+      _refreshInFlight ??= _doRefresh().whenComplete(() => _refreshInFlight = null);
+
+  static Future<bool> _doRefresh() async {
     final refreshToken = await getRefreshToken();
     // Pas de refresh token = jamais connecté ou déjà déconnecté → pas d'alerte
     if (refreshToken == null) return false;

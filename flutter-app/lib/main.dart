@@ -48,6 +48,7 @@ void main() async {
     if (await ApiClient.hasStoredTokens()) {
       final restored = await AuthService().restoreSession();
       if (restored) {
+        await ApiClient.armProactiveRefreshFromStorage();
         await DataService().loadAll();
         NotificationService().generateFromLoadedData();
       }

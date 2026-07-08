@@ -2711,6 +2711,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Veuillez saisir un numéro de tag et rechercher l\'équipement';
 
   @override
+  String get issueFormInfraNotListed =>
+      'Mon problème ne figure pas dans la liste';
+
+  @override
   String get issueFormQuickSearch => 'Recherche rapide';
 
   @override

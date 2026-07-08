@@ -5084,6 +5084,12 @@ abstract class AppLocalizations {
   /// **'Veuillez saisir un numéro de tag et rechercher l\'équipement'**
   String get issueFormTagRequired;
 
+  /// No description provided for @issueFormInfraNotListed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Mon problème ne figure pas dans la liste'**
+  String get issueFormInfraNotListed;
+
   /// No description provided for @issueFormQuickSearch.
   ///
   /// In fr, this message translates to:

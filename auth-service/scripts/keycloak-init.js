@@ -62,11 +62,31 @@ async function exists(token, path) {
 // ── Création / vérification du realm ──────────────────────────────────────────
 
 async function ensureRealm(token) {
+  const sessionConfig = {
+    accessTokenLifespan:      900,       // 15 min
+    ssoSessionIdleTimeout:    604800,    // 7 jours
+    ssoSessionMaxLifespan:    2592000,   // 30 jours
+    refreshTokenMaxReuse:     0,
+    revokeRefreshToken:       true,      // rotation stricte des refresh tokens
+  };
+
   const resp = await kc(token, 'GET', `/${REALM}`);
   if (resp.ok) {
-    console.log(`[init] Realm "${REALM}" déjà présent.`);
+    console.log(`[init] Realm "${REALM}" déjà présent — synchronisation des durées de session...`);
+    // Hypothèse non vérifiée en environnement réel (nécessite un Keycloak vivant) :
+    // l'API admin fusionne un PUT partiel sans réinitialiser les champs absents
+    // (bruteForceProtected, loginWithEmailAllowed, etc.). Si un déploiement futur
+    // constate une perte de config après ce PUT, remplacer par un GET-merge-PUT
+    // complet plutôt que ce PUT partiel.
+    const putResp = await kc(token, 'PUT', `/${REALM}`, sessionConfig);
+    if (!putResp.ok) {
+      console.warn(`[init] Synchronisation des durées de session échouée : ${putResp.status} ${await putResp.text()}`);
+    } else {
+      console.log('[init] Durées de session synchronisées.');
+    }
     return;
   }
+
   const r = await fetch(`${KC_ADMIN_URL}/admin/realms`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -74,11 +94,7 @@ async function ensureRealm(token) {
       realm:                    REALM,
       enabled:                  true,
       displayName:              'Hôpital de Kabutare',
-      accessTokenLifespan:      900,       // 15 min
-      ssoSessionIdleTimeout:    604800,    // 7 jours
-      ssoSessionMaxLifespan:    2592000,   // 30 jours
-      refreshTokenMaxReuse:     0,
-      revokeRefreshToken:       true,      // rotation stricte des refresh tokens
+      ...sessionConfig,
       bruteForceProtected:      true,
       loginWithEmailAllowed:    true,
       duplicateEmailsAllowed:   false,
