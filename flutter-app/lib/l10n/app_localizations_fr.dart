@@ -1621,6 +1621,27 @@ class AppLocalizationsFr extends AppLocalizations {
   String get linkEquipmentSuccess => 'Équipement lié à l\'incident';
 
   @override
+  String get changeEquipmentButton => 'Changer d\'équipement';
+
+  @override
+  String get changeEquipmentDialogTitle =>
+      'Corriger l\'équipement lié à cet incident';
+
+  @override
+  String get changeEquipmentReasonLabel =>
+      'Motif de la correction (obligatoire)';
+
+  @override
+  String get changeEquipmentReasonTooShort =>
+      'Le motif doit contenir au moins 10 caractères';
+
+  @override
+  String get changeEquipmentPickRequired => 'Sélectionnez un équipement';
+
+  @override
+  String get changeEquipmentSuccess => 'Équipement corrigé';
+
+  @override
   String get urgencyLow => 'Faible';
 
   @override
@@ -5238,6 +5259,50 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get debugNotifyAlreadyStopped => 'Aucune notification auto en cours';
+
+  @override
+  String get debugBroadcastSection => 'Diffusion de test par rôle';
+
+  @override
+  String get debugBroadcastRolesLabel => 'Rôles destinataires';
+
+  @override
+  String get debugBroadcastTypeLabel => 'Type d\'événement simulé';
+
+  @override
+  String get debugBroadcastSend => 'Envoyer la diffusion de test';
+
+  @override
+  String get debugBroadcastNoRoleError => 'Sélectionnez au moins un rôle';
+
+  @override
+  String debugBroadcastSuccess(String roles) {
+    return 'Diffusion lancée vers : $roles';
+  }
+
+  @override
+  String get debugBroadcastHistoryTitle => 'Historique des diffusions';
+
+  @override
+  String get debugBroadcastPending => 'en cours…';
+
+  @override
+  String get debugBroadcastTypeNewIssue => 'Nouvel incident';
+
+  @override
+  String get debugBroadcastTypeAcknowledged => 'Pris en charge';
+
+  @override
+  String get debugBroadcastTypeDiagnosed => 'Diagnostic posé';
+
+  @override
+  String get debugBroadcastTypeResolved => 'Résolu';
+
+  @override
+  String get debugBroadcastTypeMonthlyReport => 'Rapport mensuel';
+
+  @override
+  String get debugBroadcastTypePmDue => 'Maintenance préventive due';
 
   @override
   String get notificationsBell => 'Notifications';

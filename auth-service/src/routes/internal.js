@@ -20,6 +20,7 @@ const { INTERNAL_SECRET } = require('../config');
 const { sendEmail, buildEmailContent } = require('../utils/email_service');
 const { kcAdminFetch } = require('../utils/keycloakAdmin');
 const { urgencyIndex } = require('../utils/urgency');
+const { sendLog } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -98,7 +99,7 @@ router.post('/notifications/send-email', requireInternalSecret, (req, res) => {
 // en respectant leurs préférences individuelles.
 // Body: { type, roles: string[], payload }
 router.post('/notifications/send-to-roles', requireInternalSecret, async (req, res) => {
-  const { type, roles, payload } = req.body;
+  const { type, roles, payload, triggered_by } = req.body;
 
   if (!type || !Array.isArray(roles) || roles.length === 0) {
     return res.status(400).json({ error: 'type et roles[] sont requis' });
@@ -157,6 +158,22 @@ router.post('/notifications/send-to-roles', requireInternalSecret, async (req, r
       }
 
       console.log(`[INTERNAL] send-to-roles "${type}" → ${attempted} email(s) tenté(s), ${filtered} filtré(s) par préférence`);
+
+      // ── Journalisation agrégée du batch (couvre prod ET debug) ────────────
+      // sendLog ne bloque jamais en cas d'échec (déjà try/catch en interne) — voir
+      // auth-service/src/utils/logger.js. Si l'envoi échoue de façon répétée (ex.
+      // DB_SERVICE_URL mal configuré), l'historique de la page Debug restera vide
+      // sans autre signal — grep "[LOG] Impossible d'envoyer le log" pour diagnostiquer.
+      await sendLog({
+        user_id:     triggered_by?.user_id ?? null,
+        user_name:   triggered_by?.user_name ?? 'system',
+        user_role:   triggered_by?.user_role ?? 'cron',
+        action:      'notify_send_to_roles',
+        target_type: 'roles',
+        target_id:   null,
+        target_name: roles.join(', '),
+        details: JSON.stringify({ type, roles, attempted, filtered, recipients: seen.size }),
+      });
     } catch (err) {
       console.error('[INTERNAL] Erreur send-to-roles:', err.message);
     }

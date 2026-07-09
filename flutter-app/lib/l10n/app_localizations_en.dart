@@ -1611,6 +1611,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkEquipmentSuccess => 'Equipment linked to the issue';
 
   @override
+  String get changeEquipmentButton => 'Change equipment';
+
+  @override
+  String get changeEquipmentDialogTitle =>
+      'Correct the equipment linked to this issue';
+
+  @override
+  String get changeEquipmentReasonLabel =>
+      'Reason for the correction (required)';
+
+  @override
+  String get changeEquipmentReasonTooShort =>
+      'The reason must be at least 10 characters long';
+
+  @override
+  String get changeEquipmentPickRequired => 'Select an equipment';
+
+  @override
+  String get changeEquipmentSuccess => 'Equipment corrected';
+
+  @override
   String get urgencyLow => 'Low';
 
   @override
@@ -5182,6 +5203,50 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get debugNotifyAlreadyStopped => 'No auto notifications running';
+
+  @override
+  String get debugBroadcastSection => 'Test broadcast by role';
+
+  @override
+  String get debugBroadcastRolesLabel => 'Recipient roles';
+
+  @override
+  String get debugBroadcastTypeLabel => 'Simulated event type';
+
+  @override
+  String get debugBroadcastSend => 'Send test broadcast';
+
+  @override
+  String get debugBroadcastNoRoleError => 'Select at least one role';
+
+  @override
+  String debugBroadcastSuccess(String roles) {
+    return 'Broadcast triggered to: $roles';
+  }
+
+  @override
+  String get debugBroadcastHistoryTitle => 'Broadcast history';
+
+  @override
+  String get debugBroadcastPending => 'pending…';
+
+  @override
+  String get debugBroadcastTypeNewIssue => 'New issue';
+
+  @override
+  String get debugBroadcastTypeAcknowledged => 'Acknowledged';
+
+  @override
+  String get debugBroadcastTypeDiagnosed => 'Diagnosis set';
+
+  @override
+  String get debugBroadcastTypeResolved => 'Resolved';
+
+  @override
+  String get debugBroadcastTypeMonthlyReport => 'Monthly report';
+
+  @override
+  String get debugBroadcastTypePmDue => 'PM due';
 
   @override
   String get notificationsBell => 'Notifications';

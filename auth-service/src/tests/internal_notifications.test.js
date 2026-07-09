@@ -27,6 +27,9 @@ jest.mock('../utils/keycloakAdmin', () => ({
   kcAdminFetch: (...args) => mockKcAdminFetch(...args),
 }));
 
+// ── Mock de l'appel de journalisation vers db-service (introduit par cette feature) ──
+global.fetch = jest.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
+
 const request          = require('supertest');
 const { app, server }  = require('../index');
 const { getDb }        = require('../database');

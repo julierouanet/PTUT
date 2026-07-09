@@ -856,17 +856,21 @@ router.patch('/:id/detach', verifyToken, requireRole('admin', ...TECH_ROLES), (r
 });
 
 // ── PATCH /api/issues/:id/link-equipment ──────────────────────────────────────
-// Lie tardivement un incident créé sans équipement (cas "Autre"/"Infrastructure",
-// equipment_id IS NULL) à un équipement du catalogue. Horodate equipment_linked_at
-// pour alimenter le futur KPI « taux de signalement sans équipement identifié ».
+// Lie un incident sans équipement (equipment_id IS NULL, cas "Autre"/
+// "Infrastructure") à un équipement du catalogue, OU corrige un équipement déjà
+// lié quand le signalant s'est trompé (motif obligatoire dans ce cas).
+// Horodate equipment_linked_at pour alimenter le futur KPI « taux de
+// signalement sans équipement identifié / mal identifié ».
 router.patch('/:id/link-equipment', verifyToken, requireRole('admin', ...TECH_ROLES), (req, res) => {
   const db = getDb();
-  const { equipment_id } = req.body;
+  const { equipment_id, reason } = req.body;
 
   // 1. Validation explicite
   if (typeof equipment_id !== 'string' || !equipment_id.trim()) {
     return res.status(400).json({ error: 'equipment_id est requis' });
   }
+  const trimmedId     = equipment_id.trim();
+  const trimmedReason = typeof reason === 'string' ? reason.trim() : '';
 
   // 2. Vérifier existence de l'incident
   const existing = db.prepare(
@@ -874,23 +878,30 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', ...TECH_RO
   ).get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Incident introuvable' });
 
-  // 3. Un seul rattachement tardif possible
-  if (existing.equipment_id) {
-    return res.status(409).json({ error: 'Cet incident est déjà lié à un équipement' });
+  const isCorrection = !!existing.equipment_id;
+
+  // 3. Une correction (équipement déjà lié) exige un motif ; une 1ère liaison non
+  if (isCorrection) {
+    if (trimmedReason.length < 10) {
+      return res.status(400).json({ error: 'reason est requis (min 10 caractères) pour changer un équipement déjà lié' });
+    }
+    if (existing.equipment_id === trimmedId) {
+      return res.status(400).json({ error: 'Cet équipement est déjà celui lié à cet incident' });
+    }
   }
 
-  // 4. Pas de rattachement sur un incident clôturé
+  // 4. Pas de rattachement/changement sur un incident clôturé
   if (existing.status === 'Completed' || existing.status === 'Rejected') {
     return res.status(409).json({ error: 'Impossible de lier un équipement à un incident clôturé' });
   }
 
-  // 5. Un technicien ne lie que ses propres incidents en cours (l'admin n'a pas cette restriction)
+  // 5. Un technicien ne lie/change que ses propres incidents en cours (l'admin n'a pas cette restriction)
   if (!hasRole(req, 'admin') && (existing.assigned_technician !== req.user.name || existing.status !== 'In Progress')) {
     return res.status(403).json({ error: 'Vous ne pouvez lier un équipement qu\'aux incidents qui vous sont assignés et en cours' });
   }
 
   // 6. Vérifier existence de l'équipement
-  const equipment = db.prepare('SELECT id, name, status FROM equipment WHERE id = ?').get(equipment_id.trim());
+  const equipment = db.prepare('SELECT id, name, status FROM equipment WHERE id = ?').get(trimmedId);
   if (!equipment) return res.status(404).json({ error: 'Équipement introuvable' });
 
   // 7. Interdire le rattachement à un équipement réformé
@@ -901,8 +912,12 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', ...TECH_RO
   // 8. Opération DB (synchrone) — pose equipment_id/equipment_name/equipment_linked_at + journal d'actions
   const now = new Date();
   const linkedAt = now.toISOString();
-  const linkLine = `[${linkedAt.replace('T', ' ').slice(0, 19)}] Liaison équipement par ${req.user.name} — ${equipment.name}`;
-  const appendedActions = appendLine(existing.actions, linkLine);
+  const ts = linkedAt.replace('T', ' ').slice(0, 19);
+  const previousLabel = existing.equipment_name || existing.equipment_id;
+  const line = isCorrection
+    ? `[${ts}] Changement d'équipement par ${req.user.name} — ${previousLabel} → ${equipment.name} (motif : ${trimmedReason})`
+    : `[${ts}] Liaison équipement par ${req.user.name} — ${equipment.name}`;
+  const appendedActions = appendLine(existing.actions, line);
 
   db.prepare(`
     UPDATE issues
@@ -915,13 +930,21 @@ router.patch('/:id/link-equipment', verifyToken, requireRole('admin', ...TECH_RO
   `).run(equipment.id, equipment.name, linkedAt, appendedActions, req.params.id);
 
   // 9. Audit trail
+  const details = { equipment_id: equipment.id, equipment_name: equipment.name };
+  if (isCorrection) {
+    details.previous_equipment_id   = existing.equipment_id;
+    details.previous_equipment_name = existing.equipment_name;
+    details.reason                  = trimmedReason;
+  }
   logAction({ user_id: req.user.id, user_name: req.user.name, user_role: rolesCsv(req),
     action: 'link_issue_equipment', target_type: 'issue', target_id: req.params.id,
-    target_name: equipment.name,
-    details: { equipment_id: equipment.id, equipment_name: equipment.name },
-    ...extractReqMeta(req) });
+    target_name: equipment.name, details, ...extractReqMeta(req) });
 
-  res.json({ message: 'Équipement lié', equipment_id: equipment.id, equipment_name: equipment.name });
+  res.json({
+    message: isCorrection ? 'Équipement changé' : 'Équipement lié',
+    equipment_id: equipment.id,
+    equipment_name: equipment.name,
+  });
 });
 
 // ── POST /api/issues/:id/photos ──────────────────────────────────────────────

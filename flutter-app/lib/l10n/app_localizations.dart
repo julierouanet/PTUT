@@ -3074,6 +3074,42 @@ abstract class AppLocalizations {
   /// **'Équipement lié à l\'incident'**
   String get linkEquipmentSuccess;
 
+  /// No description provided for @changeEquipmentButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Changer d\'équipement'**
+  String get changeEquipmentButton;
+
+  /// No description provided for @changeEquipmentDialogTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Corriger l\'équipement lié à cet incident'**
+  String get changeEquipmentDialogTitle;
+
+  /// No description provided for @changeEquipmentReasonLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Motif de la correction (obligatoire)'**
+  String get changeEquipmentReasonLabel;
+
+  /// No description provided for @changeEquipmentReasonTooShort.
+  ///
+  /// In fr, this message translates to:
+  /// **'Le motif doit contenir au moins 10 caractères'**
+  String get changeEquipmentReasonTooShort;
+
+  /// No description provided for @changeEquipmentPickRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez un équipement'**
+  String get changeEquipmentPickRequired;
+
+  /// No description provided for @changeEquipmentSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Équipement corrigé'**
+  String get changeEquipmentSuccess;
+
   /// No description provided for @urgencyLow.
   ///
   /// In fr, this message translates to:
@@ -9577,6 +9613,90 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucune notification auto en cours'**
   String get debugNotifyAlreadyStopped;
+
+  /// No description provided for @debugBroadcastSection.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffusion de test par rôle'**
+  String get debugBroadcastSection;
+
+  /// No description provided for @debugBroadcastRolesLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rôles destinataires'**
+  String get debugBroadcastRolesLabel;
+
+  /// No description provided for @debugBroadcastTypeLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Type d\'événement simulé'**
+  String get debugBroadcastTypeLabel;
+
+  /// No description provided for @debugBroadcastSend.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer la diffusion de test'**
+  String get debugBroadcastSend;
+
+  /// No description provided for @debugBroadcastNoRoleError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Sélectionnez au moins un rôle'**
+  String get debugBroadcastNoRoleError;
+
+  /// No description provided for @debugBroadcastSuccess.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diffusion lancée vers : {roles}'**
+  String debugBroadcastSuccess(String roles);
+
+  /// No description provided for @debugBroadcastHistoryTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Historique des diffusions'**
+  String get debugBroadcastHistoryTitle;
+
+  /// No description provided for @debugBroadcastPending.
+  ///
+  /// In fr, this message translates to:
+  /// **'en cours…'**
+  String get debugBroadcastPending;
+
+  /// No description provided for @debugBroadcastTypeNewIssue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Nouvel incident'**
+  String get debugBroadcastTypeNewIssue;
+
+  /// No description provided for @debugBroadcastTypeAcknowledged.
+  ///
+  /// In fr, this message translates to:
+  /// **'Pris en charge'**
+  String get debugBroadcastTypeAcknowledged;
+
+  /// No description provided for @debugBroadcastTypeDiagnosed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diagnostic posé'**
+  String get debugBroadcastTypeDiagnosed;
+
+  /// No description provided for @debugBroadcastTypeResolved.
+  ///
+  /// In fr, this message translates to:
+  /// **'Résolu'**
+  String get debugBroadcastTypeResolved;
+
+  /// No description provided for @debugBroadcastTypeMonthlyReport.
+  ///
+  /// In fr, this message translates to:
+  /// **'Rapport mensuel'**
+  String get debugBroadcastTypeMonthlyReport;
+
+  /// No description provided for @debugBroadcastTypePmDue.
+  ///
+  /// In fr, this message translates to:
+  /// **'Maintenance préventive due'**
+  String get debugBroadcastTypePmDue;
 
   /// No description provided for @notificationsBell.
   ///

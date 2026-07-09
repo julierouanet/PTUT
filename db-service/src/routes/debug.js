@@ -361,6 +361,109 @@ router.post('/notify-schedule', verifyToken, requireRole('admin'), async (req, r
   }
 });
 
+// ── POST /notify-broadcast ────────────────────────────────────────────────────
+// Déclenche une diffusion de test vers un ou plusieurs rôles, via send-to-roles.
+router.post('/notify-broadcast', verifyToken, requireRole('admin'), async (req, res) => {
+  const { roles, type } = req.body;
+
+  const VALID_TYPES = [
+    'critical_new_issue', 'critical_acknowledged', 'critical_diagnosed',
+    'critical_resolved', 'monthly_report', 'pm_due',
+  ];
+
+  if (!Array.isArray(roles) || roles.length === 0) {
+    return res.status(400).json({ success: false, error: 'roles[] requis et non vide' });
+  }
+  if (!type || !VALID_TYPES.includes(type)) {
+    return res.status(400).json({ success: false, error: `type invalide. Valeurs acceptées : ${VALID_TYPES.join(', ')}` });
+  }
+
+  // Payloads de test fixes par type — champs minimaux attendus par buildEmailContent
+  // (auth-service/src/utils/email_service.js:150-428), valeurs '[TEST]' explicites.
+  const TEST_BASE = { equipment_name: '[TEST] Diffusion debug', department: 'Administration', issue_id: 'DEBUG-BROADCAST' };
+  const TEST_PAYLOADS = {
+    critical_new_issue: {
+      ...TEST_BASE, urgency: 'Critique',
+      description: 'Notification de diffusion de test envoyée depuis le panneau admin debug.',
+      reporter_name: req.user.name,
+    },
+    critical_acknowledged: {
+      ...TEST_BASE, technician_name: req.user.name,
+    },
+    critical_diagnosed: {
+      ...TEST_BASE, technician_name: req.user.name, diagnosis: 'Diagnostic de test.',
+    },
+    critical_resolved: {
+      ...TEST_BASE, technician_name: req.user.name,
+      created_at: new Date(Date.now() - 3600_000).toISOString(), resolved_at: new Date().toISOString(),
+      diagnosis: 'Diagnostic de test.', actions: 'Actions de test.', parts_replaced: 'Aucune',
+    },
+    monthly_report: {
+      month_label: '[TEST] Mois de démonstration', issues_created: 0, issues_resolved: 0,
+      issues_still_open: 0, by_urgency: {}, mttr_hours: null, pm_compliance_pct: null,
+      equipment_out_of_service: 0, top_equipment: [],
+    },
+    pm_due: { equipment_name: TEST_BASE.equipment_name, department: TEST_BASE.department },
+  };
+
+  try {
+    const resp = await fetch(`${AUTH_SERVICE_URL}/internal/notifications/send-to-roles`, {
+      method:  'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'x-internal-secret': INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
+        type,
+        roles,
+        payload: TEST_PAYLOADS[type],
+        triggered_by: { user_id: req.user.id, user_name: req.user.name, user_role: req.user.roles[0] },
+      }),
+    });
+
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      return res.status(500).json({ success: false, error: body.error || `HTTP ${resp.status}` });
+    }
+
+    return res.json({ success: true, message: `Diffusion de test lancée vers : ${roles.join(', ')}`, queued: body.queued });
+  } catch (err) {
+    console.error('[debug/notify-broadcast] Erreur:', err.message);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── GET /notification-logs ────────────────────────────────────────────────────
+// Historique formaté des diffusions send-to-roles (prod + test), le plus récent d'abord.
+router.get('/notification-logs', verifyToken, requireRole('admin'), (req, res) => {
+  const db = getDb();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+
+  const rows = db.prepare(
+    `SELECT id, timestamp, user_name, user_role, target_name, details
+     FROM logs WHERE action = 'notify_send_to_roles'
+     ORDER BY timestamp DESC LIMIT ?`
+  ).all(limit);
+
+  const formatted = rows.map(r => {
+    let details = {};
+    try { details = JSON.parse(r.details || '{}'); } catch (_) {}
+    return {
+      id: r.id,
+      timestamp: r.timestamp,
+      triggered_by: r.user_name,
+      triggered_role: r.user_role,
+      roles: r.target_name,
+      type: details.type || null,
+      attempted: details.attempted ?? null,
+      filtered: details.filtered ?? null,
+      recipients: details.recipients ?? null,
+    };
+  });
+
+  res.json(formatted);
+});
+
 router.get('/', (req, res) => {
   const db = getDb();
 

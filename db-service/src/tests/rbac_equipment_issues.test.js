@@ -1004,7 +1004,8 @@ describe('PATCH /api/issues/:id/detach', () => {
 // =============================================================================
 // 13. PATCH /api/issues/:id/link-equipment — liaison tardive d'un incident
 //     créé sans équipement (admin, supervisor, technician* ; un technicien
-//     uniquement ses incidents 'In Progress')
+//     uniquement ses incidents 'In Progress'), ou correction d'un équipement
+//     déjà lié (motif obligatoire dans ce cas)
 // =============================================================================
 describe('PATCH /api/issues/:id/link-equipment', () => {
   let linkCounter = 0;
@@ -1023,6 +1024,13 @@ describe('PATCH /api/issues/:id/link-equipment', () => {
     `).run(id, status, technicianName);
     return id;
   };
+
+  beforeAll(() => {
+    db.prepare(`
+      INSERT OR IGNORE INTO equipment (id, name, department, category, status)
+      VALUES ('eq-rbac-test-2', 'Pousse-seringue test', 'OPD', 'Monitoring', 'Operational')
+    `).run();
+  });
 
   const linkBody = { equipment_id: 'eq-rbac-test' };
 
@@ -1091,7 +1099,7 @@ describe('PATCH /api/issues/:id/link-equipment', () => {
     expect(res.status).toBe(404);
   });
 
-  test('🚫 409 déjà lié', async () => {
+  test('🚫 400 reason manquant pour corriger un équipement déjà lié', async () => {
     setTestRole('admin');
     const id = newUnlinkedIssue('Reported', null);
     db.prepare("UPDATE issues SET equipment_id = 'eq-rbac-test', equipment_name = 'Moniteur cardiaque test' WHERE id = ?").run(id);
@@ -1099,9 +1107,52 @@ describe('PATCH /api/issues/:id/link-equipment', () => {
     const res = await request(app)
       .patch(`/api/issues/${id}/link-equipment`)
       .set('Authorization', 'Bearer fake-token')
-      .send(linkBody);
+      .send(linkBody); // { equipment_id: 'eq-rbac-test' } — pas de reason
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
+  });
+
+  test('✅ 200 corrige un équipement déjà lié avec motif valide', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+    db.prepare("UPDATE issues SET equipment_id = 'eq-rbac-test', equipment_name = 'Moniteur cardiaque test' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ equipment_id: 'eq-rbac-test-2', reason: 'Le signalant a désigné le mauvais moniteur' });
+
+    expect(res.status).toBe(200);
+    const iss = db.prepare('SELECT equipment_id, equipment_name, actions FROM issues WHERE id = ?').get(id);
+    expect(iss.equipment_id).toBe('eq-rbac-test-2');
+    expect(iss.equipment_name).toBe('Pousse-seringue test');
+    expect(iss.actions).toContain('Changement d\'équipement');
+  });
+
+  test('🚫 400 motif trop court (< 10 caractères) pour une correction', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+    db.prepare("UPDATE issues SET equipment_id = 'eq-rbac-test', equipment_name = 'Moniteur cardiaque test' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ equipment_id: 'eq-rbac-test-2', reason: 'court' }); // 5 caractères, strictement < 10
+
+    expect(res.status).toBe(400);
+  });
+
+  test('🚫 400 correction vers le même équipement (no-op)', async () => {
+    setTestRole('admin');
+    const id = newUnlinkedIssue('Reported', null);
+    db.prepare("UPDATE issues SET equipment_id = 'eq-rbac-test', equipment_name = 'Moniteur cardiaque test' WHERE id = ?").run(id);
+
+    const res = await request(app)
+      .patch(`/api/issues/${id}/link-equipment`)
+      .set('Authorization', 'Bearer fake-token')
+      .send({ equipment_id: 'eq-rbac-test', reason: 'Nouvelle vérification du diagnostic technique' });
+
+    expect(res.status).toBe(400);
   });
 
   test('🚫 409 incident clôturé', async () => {

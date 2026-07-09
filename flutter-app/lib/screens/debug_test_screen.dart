@@ -12,6 +12,16 @@ import '../services/db_api_service.dart';
 import '../services/notification_service.dart';
 import '../theme/app_theme.dart';
 
+/// Rôles proposés pour le test de diffusion — exclut `hospitalStaff`, qui n'est
+/// jamais destinataire d'aucun des 6 types de notification `send-to-roles`.
+const List<UserRole> _kBroadcastTestRoles = [
+  UserRole.supervisor,
+  UserRole.technicianBiomedical,
+  UserRole.technicianIt,
+  UserRole.technicianInfra,
+  UserRole.admin,
+];
+
 /// Écran Debug & Test — réservé aux administrateurs.
 /// Permet d'exécuter des scénarios de test et de manipuler l'état des données.
 class DebugTestScreen extends StatefulWidget {
@@ -32,8 +42,18 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
   bool   _loadingNotifyNow  = false;
   bool   _loadingSchedule   = false;
 
-  // Mini-historique des 3 derniers envois (in-memory Flutter)
-  final List<String> _notifyHistory = [];
+  // ── État de la diffusion de test par rôle ───────────────────────────────────
+  List<Map<String, dynamic>> _broadcastLogs = [];
+  bool _loadingBroadcastLogs = false;
+  bool _loadingBroadcast = false;
+  final Set<String> _selectedRoleApiNames = {}; // apiName, ex. 'supervisor'
+  String _broadcastType = 'critical_new_issue';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBroadcastLogs();
+  }
 
   // ── Nettoyage de tous les incidents ─────────────────────────────────────────
   Future<void> _clearAllIssues() async {
@@ -266,7 +286,6 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
     try {
       final result = await DbApiService.instance.debugNotifyNow();
       final msg = result['message'] as String? ?? l10n.debugNotificationSent;
-      _addHistory(msg);
       _showSnackBar(msg, success: true);
       // Recharge les notifs in-app pour mettre à jour le badge cloche
       await NotificationService().fetchFromApi();
@@ -291,7 +310,6 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
             _scheduleInterval  = interval;
           });
         }
-        _addHistory(startedMsg);
         _showSnackBar(startedMsg, success: true);
       }
     } catch (e) {
@@ -318,7 +336,6 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
         }
         final status = result['status'] as String? ?? 'stopped';
         final msg = status == 'already_stopped' ? alreadyStoppedMsg : stoppedMsg;
-        _addHistory(msg);
         _showSnackBar(msg, success: true);
       }
     } catch (e) {
@@ -328,13 +345,54 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
     }
   }
 
-  /// Ajoute une entrée à l'historique (max 3 entrées).
-  void _addHistory(String message) {
-    if (!mounted) return;
-    setState(() {
-      _notifyHistory.insert(0, message);
-      if (_notifyHistory.length > 3) _notifyHistory.removeLast();
-    });
+  // ── Diffusion de test par rôle ──────────────────────────────────────────────
+
+  Future<void> _loadBroadcastLogs() async {
+    setState(() => _loadingBroadcastLogs = true);
+    try {
+      final logs = await DbApiService.instance.getNotificationBroadcastLogs();
+      if (!mounted) return;
+      setState(() => _broadcastLogs = logs);
+    } catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      _showSnackBar('${l10n.commonError} : $e', success: false);
+    } finally {
+      if (mounted) setState(() => _loadingBroadcastLogs = false);
+    }
+  }
+
+  Future<void> _sendBroadcast() async {
+    final l10n = AppLocalizations.of(context)!;
+    if (_selectedRoleApiNames.isEmpty) {
+      _showSnackBar(l10n.debugBroadcastNoRoleError, success: false);
+      return;
+    }
+
+    setState(() => _loadingBroadcast = true);
+    try {
+      final result = await DbApiService.instance.debugNotifyBroadcast(
+        _selectedRoleApiNames.toList(),
+        _broadcastType,
+      );
+      if (result['success'] == true) {
+        _showSnackBar(
+          l10n.debugBroadcastSuccess(_selectedRoleApiNames.join(', ')),
+          success: true,
+        );
+      }
+      // Le log agrégé n'est écrit qu'après le traitement asynchrone côté serveur
+      // (setImmediate dans send-to-roles) — ce délai est une atténuation, pas une
+      // garantie : sur un serveur chargé, l'entrée peut n'apparaître qu'au
+      // rafraîchissement manuel suivant.
+      await Future.delayed(const Duration(seconds: 1));
+      if (!mounted) return;
+      await _loadBroadcastLogs();
+    } catch (e) {
+      _showSnackBar('${l10n.commonError} : $e', success: false);
+    } finally {
+      if (mounted) setState(() => _loadingBroadcast = false);
+    }
   }
 
   void _showSnackBar(String message, {required bool success}) {
@@ -623,29 +681,116 @@ class _DebugTestScreenState extends State<DebugTestScreen> {
                     color: AppColors.error,
                   ),
 
-                  // Mini-historique des 3 derniers envois
-                  if (_notifyHistory.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Divider(),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Derniers envois :',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
+                  // ── Diffusion de test par rôle ────────────────────────────────
+                  const Divider(height: 32),
+                  Text(
+                    l10n.debugBroadcastSection,
+                    style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n.debugBroadcastRolesLabel,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
                     ),
-                    const SizedBox(height: 4),
-                    ..._notifyHistory.map((e) => Padding(
-                      padding: const EdgeInsets.only(top: 2),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _kBroadcastTestRoles.map((role) {
+                      final selected = _selectedRoleApiNames.contains(role.apiName);
+                      return FilterChip(
+                        label: Text(role.localizedName(l10n)),
+                        selected: selected,
+                        onSelected: (value) {
+                          setState(() {
+                            if (value) {
+                              _selectedRoleApiNames.add(role.apiName);
+                            } else {
+                              _selectedRoleApiNames.remove(role.apiName);
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: _broadcastType,
+                    decoration: InputDecoration(
+                      labelText: l10n.debugBroadcastTypeLabel,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    items: [
+                      DropdownMenuItem(value: 'critical_new_issue', child: Text(l10n.debugBroadcastTypeNewIssue)),
+                      DropdownMenuItem(value: 'critical_acknowledged', child: Text(l10n.debugBroadcastTypeAcknowledged)),
+                      DropdownMenuItem(value: 'critical_diagnosed', child: Text(l10n.debugBroadcastTypeDiagnosed)),
+                      DropdownMenuItem(value: 'critical_resolved', child: Text(l10n.debugBroadcastTypeResolved)),
+                      DropdownMenuItem(value: 'monthly_report', child: Text(l10n.debugBroadcastTypeMonthlyReport)),
+                      DropdownMenuItem(value: 'pm_due', child: Text(l10n.debugBroadcastTypePmDue)),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) setState(() => _broadcastType = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  _buildNotifyButton(
+                    label: l10n.debugBroadcastSend,
+                    icon: Icons.campaign_outlined,
+                    loading: _loadingBroadcast,
+                    onPressed: _selectedRoleApiNames.isEmpty ? null : _sendBroadcast,
+                    color: AppColors.primary,
+                  ),
+
+                  // ── Historique persisté des diffusions ────────────────────────
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        l10n.debugBroadcastHistoryTitle,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 18),
+                        onPressed: _loadingBroadcastLogs ? null : _loadBroadcastLogs,
+                        tooltip: l10n.debugBroadcastHistoryTitle,
+                      ),
+                    ],
+                  ),
+                  if (_broadcastLogs.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '• $e',
+                        '—',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),
                       ),
-                    )),
-                  ],
+                    )
+                  else
+                    ..._broadcastLogs.map((log) {
+                      final attempted = log['attempted'];
+                      final counters = attempted == null
+                          ? l10n.debugBroadcastPending
+                          : '${log['attempted']} tentés, ${log['filtered']} filtrés, ${log['recipients']} destinataires';
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '• ${log['timestamp']} — ${log['type']} → ${log['roles']} ($counters)',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      );
+                    }),
                 ],
               ),
             ),

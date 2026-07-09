@@ -20,6 +20,8 @@ import '../models/inventory_item.dart';
 import '../widgets/urgency_badge.dart';
 import '../widgets/equipment/equipment_decommission_dialog.dart'
     show kDisposalMethods, disposalMethodLabel;
+import '../widgets/equipment_link_dialog.dart';
+import '../models/user_role.dart';
 
 /// Suivi d'un fichier en attente d'upload vers l'incident.
 class _PendingUpload {
@@ -110,6 +112,10 @@ class _TechnicianInterventionUpdateScreenState
 
   // ── Sélection de pièces depuis l'inventaire ──────────────────────────────────
   final List<_SelectedPart> _selectedParts = [];
+
+  // ── État local de l'incident (reflète une correction d'équipement sans
+  // quitter l'écran) ───────────────────────────────────────────────────────────
+  late Issue _issue = widget.issue;
 
   String get _currentTechnicianName => AuthService().currentUser?.fullName ?? '';
 
@@ -317,10 +323,22 @@ class _TechnicianInterventionUpdateScreenState
 
   // ── Build principal ───────────────────────────────────────────────────────────
 
+  /// Vrai si l'utilisateur peut lier/corriger l'équipement de cet incident
+  /// depuis l'écran d'intervention : admin/supervisor toujours ; technicien
+  /// seulement s'il est le technicien assigné à un incident 'In Progress'
+  /// (aligné sur la restriction RBAC serveur de PATCH /link-equipment).
+  bool get _canChangeEquipment {
+    if (_issue.status != IssueStatus.inProgress) return false;
+    final roles = AuthService().currentRoles;
+    if (roles.contains(UserRole.supervisor) || roles.contains(UserRole.admin)) return true;
+    final me = AuthService().currentUser?.name;
+    return me != null && me.isNotEmpty && me == _issue.assignedTechnician;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n  = AppLocalizations.of(context)!;
-    final issue = widget.issue;
+    final issue = _issue;
 
     return PopScope(
       canPop: !_isDirty,
@@ -370,6 +388,34 @@ class _TechnicianInterventionUpdateScreenState
                     child: Text(issue.displayName,
                         style: const TextStyle(fontWeight: FontWeight.w600))),
                 UrgencyBadge(urgency: issue.urgency, isCompact: true),
+              ]),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(
+                  child: Text(
+                    issue.equipmentName ?? issue.displayName,
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                if (_canChangeEquipment)
+                  TextButton.icon(
+                    onPressed: () => showEquipmentLinkDialog(
+                      context: context,
+                      issueId: issue.id,
+                      isCorrection: issue.equipmentId != null,
+                      onLinked: (eq) => setState(() => _issue = _issue.copyWith(
+                          equipmentId: eq.id, equipmentName: eq.name)),
+                    ),
+                    icon: Icon(issue.equipmentId != null ? Icons.swap_horiz : Icons.link, size: 16),
+                    label: Text(issue.equipmentId != null
+                        ? l10n.changeEquipmentButton
+                        : l10n.linkEquipmentButton),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                  ),
               ]),
               const SizedBox(height: 4),
               Text(issue.description,

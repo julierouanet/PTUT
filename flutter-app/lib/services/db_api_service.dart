@@ -440,12 +440,15 @@ class DbApiService {
     _checkStatus(response, url);
   }
 
-  /// Lie tardivement un incident créé sans équipement (cas "Autre"/
-  /// "Infrastructure") à un équipement du catalogue. Pose equipment_id/
-  /// equipment_name/equipment_linked_at côté serveur.
-  Future<void> linkEquipment(String issueId, String equipmentId) async {
+  /// Lie un incident sans équipement (cas "Autre"/"Infrastructure") à un
+  /// équipement du catalogue, ou corrige un équipement déjà lié (motif requis
+  /// dans ce cas). Pose equipment_id/equipment_name/equipment_linked_at côté
+  /// serveur.
+  Future<void> linkEquipment(String issueId, String equipmentId, {String? reason}) async {
     final url = '${ApiConfig.issuesUrl}/$issueId/link-equipment';
-    final response = await ApiClient.patch(url, {'equipment_id': equipmentId});
+    final body = <String, dynamic>{'equipment_id': equipmentId};
+    if (reason != null) body['reason'] = reason;
+    final response = await ApiClient.patch(url, body);
     _checkStatus(response, url);
   }
 
@@ -872,6 +875,25 @@ class DbApiService {
     final response = await ApiClient.post(url, {'interval': interval});
     _checkStatus(response, url);
     return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Déclenche une diffusion de notification de test vers les rôles donnés.
+  /// [roles] : chaînes API Keycloak — TOUJOURS `UserRole.x.apiName`, jamais le nom d'enum Dart
+  /// (ex. 'technician_biomedical', pas 'technicianBiomedical').
+  /// [type] : un des 6 types reconnus par auth-service (voir buildEmailContent).
+  Future<Map<String, dynamic>> debugNotifyBroadcast(List<String> roles, String type) async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/notify-broadcast';
+    final response = await ApiClient.post(url, {'roles': roles, 'type': type});
+    _checkStatus(response, url);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  /// Historique persisté des diffusions send-to-roles (prod + test), le plus récent d'abord.
+  Future<List<Map<String, dynamic>>> getNotificationBroadcastLogs({int limit = 20}) async {
+    final url = '${ApiConfig.dbBaseUrl}/api/debug/notification-logs?limit=$limit';
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    return (jsonDecode(response.body) as List).cast<Map<String, dynamic>>();
   }
 
   /// Réinitialise les données d'instance (équipements, incidents, inventaire,
