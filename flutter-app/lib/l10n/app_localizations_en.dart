@@ -33,7 +33,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navIssueTracking => 'Issue Tracking';
 
   @override
-  String get navReportIssue => 'Report';
+  String get navReportIssue => 'Report a problem';
 
   @override
   String get navTechnician => 'Technician';
@@ -60,7 +60,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navEquipmentShort => 'Equipment';
 
   @override
-  String get navIssueTrackingShort => 'Incidents';
+  String get navIssueTrackingShort => 'Issues';
 
   @override
   String get navReportIssueShort => 'Report';
@@ -376,7 +376,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issuesResolved => 'Completed';
 
   @override
-  String get issuesReport => 'Report an issue';
+  String get issuesReport => 'Report a problem';
 
   @override
   String get issuesFilterByStatus => 'Filter by status: ';
@@ -1350,10 +1350,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hubKpiNoAlert => 'No alerts';
 
   @override
-  String get hubReportUrgentButton => 'Report an incident';
+  String get hubReportUrgentButton => 'Report a problem';
 
   @override
-  String get hubReportUrgentTooltip => 'Report an incident immediately';
+  String get hubReportUrgentTooltip => 'Report an equipment problem';
 
   @override
   String get hubQuickAccessTitle => 'Quick access to modules';
@@ -2597,14 +2597,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueCategoryBiomedicalDesc =>
-      'Scanner, MRI, ultrasound, analyzers, monitors, infusion pumps, ventilators…';
+      'Blood pressure monitor, patient monitor, infusion pump, oxygen concentrator, ultrasound, analyzers…';
 
   @override
-  String get issueCategoryInfrastructure => 'Infrastructure & Electrical';
+  String get issueCategoryInfrastructure => 'Building, Furniture & Electrical';
 
   @override
   String get issueCategoryInfrastructureDesc =>
-      'Beds, examination tables, wheelchairs, lighting, electrical outlets, plumbing…';
+      'Beds, wheelchairs, lighting, electrical outlets, plumbing, air conditioning…';
 
   @override
   String get issueCategoryIT => 'IT (Information Technology)';
@@ -2618,14 +2618,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueCategoryOtherDesc =>
-      'Unclassified issue or unknown category — all equipment remains available.';
+      'You can pick any equipment at the next step.';
 
   @override
   String get issueFormNoEquipmentInCategory =>
       'No equipment of this type found in your department.';
 
   @override
-  String get issueFormTagNumberHint => 'E.g.: TG-0042';
+  String get issueFormTagNumberHint =>
+      'E.g.: Blood pressure monitor, TG-0042 (tag no. on the label)';
 
   @override
   String get issueFormTagSearching => 'Searching...';
@@ -2676,10 +2677,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueFormLocationHint => 'E.g.: Room 12, North Corridor...';
 
   @override
-  String get issueFormBuildingRequired => 'Please select a building';
+  String get issueFormBuildingRequired => 'Please enter the building name';
 
   @override
-  String get issueFormLocationRequired2 => 'Please select a location';
+  String get issueFormLocationRequired2 => 'Please enter the location';
 
   @override
   String get issueFormCategoryRequired => 'Please select a category';
@@ -2689,7 +2690,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormTagRequired =>
-      'Please enter a tag number and search for the equipment';
+      'Select an equipment from the list, or tick “Unlisted equipment”';
 
   @override
   String get issueFormInfraNotListed => 'My problem isn\'t in the list';
@@ -3516,7 +3517,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get dashboardWeatherReportBtn => 'Report an incident';
+  String get dashboardWeatherReportBtn => 'Report a problem';
 
   @override
   String get dashboardMyTasksTitle => 'My tasks today';
@@ -3638,7 +3639,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get equipDetailCreatePm => 'Create PM intervention';
 
   @override
-  String get equipDetailStaffReportButton => 'Report a breakdown';
+  String get equipDetailStaffReportButton => 'Report a problem';
 
   @override
   String get equipDetailStaffContactSection => 'Technical team contact';
@@ -3816,7 +3817,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueFormScanQrFallbackTitle => 'Enter equipment ID';
 
   @override
-  String get issueFormScanQrFallbackHint => 'Equipment ID or serial number';
+  String get issueFormScanQrFallbackHint =>
+      'ID or serial number (on the label stuck on the device)';
 
   @override
   String get issueFormScanQrFallbackConfirm => 'Confirm';
@@ -3827,7 +3829,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormEquipmentAvailableLabel =>
-      'Available for immediate intervention';
+      'Equipment available for immediate repair';
 
   @override
   String get issueFormEquipmentAvailableHint =>
@@ -3842,19 +3844,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get issueFormSuccessSlaLabel => 'Target deadline (SLA)';
+  String get issueFormSuccessSlaLabel => 'A technician will take over within';
 
   @override
-  String get issueFormSla2h => '2 hours — critical priority';
+  String get issueFormSla2h => '2 hours — “Critical” urgency';
 
   @override
-  String get issueFormSla12h => '12 hours — urgent';
+  String get issueFormSla12h => '12 hours — “High” urgency';
 
   @override
-  String get issueFormSla48h => '48 hours — medium priority';
+  String get issueFormSla48h => '48 hours — “Medium” urgency';
 
   @override
-  String get issueFormSla1week => '1 week — low priority';
+  String get issueFormSla1week => '1 week — “Low” urgency';
 
   @override
   String get issueFormSuccessClose => 'Close';
@@ -3878,7 +3880,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issuesFilterUrgency => 'Urgency';
 
   @override
-  String get issuesFilterGroup => 'Group';
+  String get issuesFilterGroup => 'Assigned team';
 
   @override
   String get issuesFilterGroupBiomedical => 'Biomedical';
@@ -4424,7 +4426,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hubStaffTitle => 'What would you like to do?';
 
   @override
-  String get hubStaffReportButton => 'Report a breakdown';
+  String get hubStaffReportButton => 'Report a problem';
 
   @override
   String get hubStaffActiveIssuesButton => 'My active incidents';
@@ -4532,7 +4534,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueFormStep2Label => 'Step 2 / 2 — Description & Photos';
 
   @override
-  String get issueFormScanBlock => 'Report by QR Code';
+  String get issueFormScanBlock =>
+      'Blocking failure — QR scan (Critical urgency)';
 
   @override
   String get issueFormScanBlockTooltip =>

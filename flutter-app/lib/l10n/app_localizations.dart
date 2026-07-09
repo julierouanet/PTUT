@@ -137,7 +137,7 @@ abstract class AppLocalizations {
   /// No description provided for @navEquipment.
   ///
   /// In fr, this message translates to:
-  /// **'Equipements'**
+  /// **'Équipements'**
   String get navEquipment;
 
   /// No description provided for @navIssueTracking.
@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// No description provided for @navReportIssue.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler'**
+  /// **'Signaler une panne'**
   String get navReportIssue;
 
   /// No description provided for @navTechnician.
@@ -395,7 +395,7 @@ abstract class AppLocalizations {
   /// No description provided for @commonDepartment.
   ///
   /// In fr, this message translates to:
-  /// **'Departement'**
+  /// **'Département'**
   String get commonDepartment;
 
   /// No description provided for @commonName.
@@ -521,7 +521,7 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardReportProblem.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un probleme'**
+  /// **'Signaler une panne'**
   String get dashboardReportProblem;
 
   /// No description provided for @dashboardViewIssues.
@@ -797,7 +797,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Gerer et suivre les incidents des equipements'**
+  /// **'Gérer et suivre les incidents des équipements'**
   String get issuesSubtitle;
 
   /// No description provided for @issuesOpen.
@@ -821,7 +821,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesReport.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un incident'**
+  /// **'Signaler une panne'**
   String get issuesReport;
 
   /// No description provided for @issuesFilterByStatus.
@@ -851,7 +851,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesNoMyIssues.
   ///
   /// In fr, this message translates to:
-  /// **'Vous n\'avez pas encore signale d\'incident'**
+  /// **'Vous n\'avez pas encore signalé d\'incident'**
   String get issuesNoMyIssues;
 
   /// No description provided for @issuesDeptIssues.
@@ -941,7 +941,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesReportedByDate.
   ///
   /// In fr, this message translates to:
-  /// **'Signale par {reporter} • {date}'**
+  /// **'Signalé par {reporter} • {date}'**
   String issuesReportedByDate(String reporter, String date);
 
   /// No description provided for @issuesTabMine.
@@ -959,25 +959,25 @@ abstract class AppLocalizations {
   /// No description provided for @issuesTabCompleted.
   ///
   /// In fr, this message translates to:
-  /// **'Termines'**
+  /// **'Terminés'**
   String get issuesTabCompleted;
 
   /// No description provided for @issuesResolvedOn.
   ///
   /// In fr, this message translates to:
-  /// **'Resolu le {date}'**
+  /// **'Résolu le {date}'**
   String issuesResolvedOn(String date);
 
   /// No description provided for @issueFormTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un probleme'**
+  /// **'Signaler une panne'**
   String get issueFormTitle;
 
   /// No description provided for @issueFormSubtitle.
   ///
   /// In fr, this message translates to:
-  /// **'Remplissez le formulaire pour signaler un probleme d\'equipement'**
+  /// **'Remplissez le formulaire pour signaler une panne d\'équipement'**
   String get issueFormSubtitle;
 
   /// No description provided for @issueFormRelatedEquipment.
@@ -995,7 +995,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormProblemType.
   ///
   /// In fr, this message translates to:
-  /// **'Type de probleme *'**
+  /// **'Type de problème *'**
   String get issueFormProblemType;
 
   /// No description provided for @issueFormBreakdown.
@@ -1067,7 +1067,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormPhotosHint.
   ///
   /// In fr, this message translates to:
-  /// **'Ajoutez jusqu\'a {max} photos pour illustrer le probleme'**
+  /// **'Ajoutez jusqu\'à {max} photos pour illustrer le problème'**
   String issueFormPhotosHint(int max);
 
   /// No description provided for @issueFormAddPhoto.
@@ -1079,7 +1079,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormMaxPhotos.
   ///
   /// In fr, this message translates to:
-  /// **'Maximum {max} photos autorisees'**
+  /// **'Maximum {max} photos autorisées'**
   String issueFormMaxPhotos(int max);
 
   /// No description provided for @issueFormYourName.
@@ -2573,13 +2573,13 @@ abstract class AppLocalizations {
   /// No description provided for @hubReportUrgentButton.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un incident'**
+  /// **'Signaler une panne'**
   String get hubReportUrgentButton;
 
   /// No description provided for @hubReportUrgentTooltip.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un incident immédiatement'**
+  /// **'Signaler une panne d\'équipement'**
   String get hubReportUrgentTooltip;
 
   /// No description provided for @hubQuickAccessTitle.
@@ -4907,19 +4907,19 @@ abstract class AppLocalizations {
   /// No description provided for @issueCategoryBiomedicalDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Scanner, IRM, échographe, analyseurs, moniteurs, pompes à perfusion, ventilateurs…'**
+  /// **'Tensiomètre, moniteur patient, pompe à perfusion, concentrateur d\'oxygène, échographe, analyseurs…'**
   String get issueCategoryBiomedicalDesc;
 
   /// No description provided for @issueCategoryInfrastructure.
   ///
   /// In fr, this message translates to:
-  /// **'Infrastructure & Électricité'**
+  /// **'Bâtiment, Mobilier & Électricité'**
   String get issueCategoryInfrastructure;
 
   /// No description provided for @issueCategoryInfrastructureDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Lits, tables d\'examen, fauteuils roulants, éclairage, prises électriques, plomberie…'**
+  /// **'Lits, fauteuils roulants, éclairage, prises électriques, plomberie, climatisation…'**
   String get issueCategoryInfrastructureDesc;
 
   /// No description provided for @issueCategoryIT.
@@ -4943,7 +4943,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueCategoryOtherDesc.
   ///
   /// In fr, this message translates to:
-  /// **'Problème non classé ou dont vous ne connaissez pas la catégorie — tous les équipements restent disponibles.'**
+  /// **'Vous pourrez choisir n\'importe quel équipement à l\'étape suivante.'**
   String get issueCategoryOtherDesc;
 
   /// No description provided for @issueFormNoEquipmentInCategory.
@@ -4955,7 +4955,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormTagNumberHint.
   ///
   /// In fr, this message translates to:
-  /// **'Ex: TG-0042'**
+  /// **'Ex : Tensiomètre, TG-0042 (n° sur l\'étiquette)'**
   String get issueFormTagNumberHint;
 
   /// No description provided for @issueFormTagSearching.
@@ -5081,7 +5081,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormTagRequired.
   ///
   /// In fr, this message translates to:
-  /// **'Veuillez saisir un numéro de tag et rechercher l\'équipement'**
+  /// **'Sélectionnez un équipement dans la liste, ou cochez “Équipement non répertorié”'**
   String get issueFormTagRequired;
 
   /// No description provided for @issueFormInfraNotListed.
@@ -6575,7 +6575,7 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardWeatherTitle.
   ///
   /// In fr, this message translates to:
-  /// **'Météo de l\'hôpital'**
+  /// **'État de l\'hôpital'**
   String get dashboardWeatherTitle;
 
   /// No description provided for @dashboardWeatherAllGood.
@@ -6599,7 +6599,7 @@ abstract class AppLocalizations {
   /// No description provided for @dashboardWeatherReportBtn.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler un incident'**
+  /// **'Signaler une panne'**
   String get dashboardWeatherReportBtn;
 
   /// No description provided for @dashboardMyTasksTitle.
@@ -7157,7 +7157,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormScanQrFallbackHint.
   ///
   /// In fr, this message translates to:
-  /// **'ID ou numéro de série de l\'équipement'**
+  /// **'ID ou n° de série (sur l\'étiquette collée sur l\'appareil)'**
   String get issueFormScanQrFallbackHint;
 
   /// No description provided for @issueFormScanQrFallbackConfirm.
@@ -7175,7 +7175,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormEquipmentAvailableLabel.
   ///
   /// In fr, this message translates to:
-  /// **'Disponible pour intervention immédiate'**
+  /// **'Équipement disponible pour réparation immédiate'**
   String get issueFormEquipmentAvailableLabel;
 
   /// No description provided for @issueFormEquipmentAvailableHint.
@@ -7199,31 +7199,31 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormSuccessSlaLabel.
   ///
   /// In fr, this message translates to:
-  /// **'Délai cible (SLA)'**
+  /// **'Prise en charge par un technicien sous'**
   String get issueFormSuccessSlaLabel;
 
   /// No description provided for @issueFormSla2h.
   ///
   /// In fr, this message translates to:
-  /// **'2 heures — urgence critique'**
+  /// **'2 heures — urgence “Critique”'**
   String get issueFormSla2h;
 
   /// No description provided for @issueFormSla12h.
   ///
   /// In fr, this message translates to:
-  /// **'12 heures — urgent'**
+  /// **'12 heures — urgence “Urgent”'**
   String get issueFormSla12h;
 
   /// No description provided for @issueFormSla48h.
   ///
   /// In fr, this message translates to:
-  /// **'48 heures — priorité moyenne'**
+  /// **'48 heures — urgence “Moyen”'**
   String get issueFormSla48h;
 
   /// No description provided for @issueFormSla1week.
   ///
   /// In fr, this message translates to:
-  /// **'1 semaine — faible priorité'**
+  /// **'1 semaine — urgence “Faible”'**
   String get issueFormSla1week;
 
   /// No description provided for @issueFormSuccessClose.
@@ -7271,7 +7271,7 @@ abstract class AppLocalizations {
   /// No description provided for @issuesFilterGroup.
   ///
   /// In fr, this message translates to:
-  /// **'Groupe'**
+  /// **'Équipe en charge'**
   String get issuesFilterGroup;
 
   /// No description provided for @issuesFilterGroupBiomedical.
@@ -8453,7 +8453,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormScanBlock.
   ///
   /// In fr, this message translates to:
-  /// **'Signaler par QR Code'**
+  /// **'Panne bloquante — scan QR (urgence Critique)'**
   String get issueFormScanBlock;
 
   /// No description provided for @issueFormScanBlockTooltip.

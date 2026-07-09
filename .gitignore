@@ -51,3 +51,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# ── Documentation technique générée (notes perso, non versionnée) ─
+TECHNICAL_DOCUMENTATION.md
+TECHNICAL_DOCUMENTATION.pdf
