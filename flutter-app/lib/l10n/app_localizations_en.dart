@@ -500,10 +500,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get issueFormDescription => 'Problem description *';
 
   @override
-  String get issueFormDescriptionHint => 'Describe the problem in detail...';
+  String get issueFormDescriptionHint =>
+      'E.g.: What happened, since when, and what you observed (noise, smoke, black screen...)';
 
   @override
   String get issueFormDescriptionRequired => 'Description is required';
+
+  @override
+  String get issueFormStep1IntroBanner =>
+      'First choose the type of problem below, then search for the equipment. If you can\'t find it in the list, check the box provided for that.';
+
+  @override
+  String get issueFormUrgencyHelp =>
+      'Critical = response within 2h · Urgent = 12h · Medium = 48h · Low = 1 week';
+
+  @override
+  String get issueFormUnlistedHelp =>
+      'Can\'t find the equipment by name or number? Check the box below.';
 
   @override
   String get issueFormDescriptionMinLength =>
@@ -2626,7 +2639,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get issueFormTagNumberHint =>
-      'E.g.: Blood pressure monitor, TG-0042 (tag no. on the label)';
+      'Type the equipment name or its tag number (e.g.: kabdh-mi-conc-p006)';
 
   @override
   String get issueFormTagSearching => 'Searching...';

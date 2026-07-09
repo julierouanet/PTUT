@@ -1279,6 +1279,25 @@ class IssueFormScreenState extends State<IssueFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Bandeau d'aide pour utilisateur novice
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryLight,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.info_outline, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(l10n.issueFormStep1IntroBanner,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  ),
+                ]),
+              ),
+              const SizedBox(height: 20),
+
               // Onglets de catégorie
               Wrap(
                 spacing: 8, runSpacing: 8,
@@ -1304,6 +1323,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
               const SizedBox(height: 8),
               _buildUrgencySelector(),
+              const SizedBox(height: 6),
+              Text(l10n.issueFormUrgencyHelp,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(height: 16),
 
               // Disponibilité pour intervention
@@ -1650,6 +1672,9 @@ class IssueFormScreenState extends State<IssueFormScreen> {
         _buildUnlistedWarning(l10n),
       ],
       const SizedBox(height: 10),
+      Text(l10n.issueFormUnlistedHelp,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+      const SizedBox(height: 6),
       _buildUnlistedToggle(
         unlisted: unlisted,
         label: l10n.issueFormUnlistedEquipment,

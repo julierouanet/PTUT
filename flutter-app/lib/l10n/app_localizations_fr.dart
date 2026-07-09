@@ -504,10 +504,23 @@ class AppLocalizationsFr extends AppLocalizations {
   String get issueFormDescription => 'Description du probleme *';
 
   @override
-  String get issueFormDescriptionHint => 'Decrivez le probleme en detail...';
+  String get issueFormDescriptionHint =>
+      'Ex : Ce qui s\'est passé, depuis quand, et ce que vous avez observé (bruit, fumée, écran noir...)';
 
   @override
   String get issueFormDescriptionRequired => 'La description est obligatoire';
+
+  @override
+  String get issueFormStep1IntroBanner =>
+      'Choisissez d\'abord le type de problème ci-dessous, puis cherchez l\'équipement concerné. Si vous ne le trouvez pas dans la liste, cochez la case prévue à cet effet.';
+
+  @override
+  String get issueFormUrgencyHelp =>
+      'Critique = intervention sous 2h · Urgent = 12h · Moyen = 48h · Faible = 1 semaine';
+
+  @override
+  String get issueFormUnlistedHelp =>
+      'Vous ne trouvez pas l\'équipement en cherchant son nom ou son numéro ? Cochez la case ci-dessous.';
 
   @override
   String get issueFormDescriptionMinLength =>
@@ -2640,7 +2653,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get issueFormTagNumberHint =>
-      'Ex : Tensiomètre, TG-0042 (n° sur l\'étiquette)';
+      'Tapez le nom de l\'équipement ou son numéro d\'étiquette (ex : kabdh-mi-conc-p006)';
 
   @override
   String get issueFormTagSearching => 'Recherche en cours...';

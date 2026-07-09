@@ -1043,7 +1043,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormDescriptionHint.
   ///
   /// In fr, this message translates to:
-  /// **'Decrivez le probleme en detail...'**
+  /// **'Ex : Ce qui s\'est passé, depuis quand, et ce que vous avez observé (bruit, fumée, écran noir...)'**
   String get issueFormDescriptionHint;
 
   /// No description provided for @issueFormDescriptionRequired.
@@ -1051,6 +1051,24 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'La description est obligatoire'**
   String get issueFormDescriptionRequired;
+
+  /// No description provided for @issueFormStep1IntroBanner.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez d\'abord le type de problème ci-dessous, puis cherchez l\'équipement concerné. Si vous ne le trouvez pas dans la liste, cochez la case prévue à cet effet.'**
+  String get issueFormStep1IntroBanner;
+
+  /// No description provided for @issueFormUrgencyHelp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Critique = intervention sous 2h · Urgent = 12h · Moyen = 48h · Faible = 1 semaine'**
+  String get issueFormUrgencyHelp;
+
+  /// No description provided for @issueFormUnlistedHelp.
+  ///
+  /// In fr, this message translates to:
+  /// **'Vous ne trouvez pas l\'équipement en cherchant son nom ou son numéro ? Cochez la case ci-dessous.'**
+  String get issueFormUnlistedHelp;
 
   /// No description provided for @issueFormDescriptionMinLength.
   ///
@@ -4955,7 +4973,7 @@ abstract class AppLocalizations {
   /// No description provided for @issueFormTagNumberHint.
   ///
   /// In fr, this message translates to:
-  /// **'Ex : Tensiomètre, TG-0042 (n° sur l\'étiquette)'**
+  /// **'Tapez le nom de l\'équipement ou son numéro d\'étiquette (ex : kabdh-mi-conc-p006)'**
   String get issueFormTagNumberHint;
 
   /// No description provided for @issueFormTagSearching.
