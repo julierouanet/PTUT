@@ -269,7 +269,7 @@ void main() {
         expect(find.text('Dashboard'),      findsWidgets);
         expect(find.text('Equipment'),      findsWidgets);
         expect(find.text('Issue Tracking'), findsWidgets);
-        expect(find.text('Report'),         findsWidgets);
+        expect(find.text('Report a problem'), findsWidgets);
         expect(find.text('Technician'),     findsWidgets);
         expect(find.text('Analytics'),      findsWidgets);
       },
@@ -288,7 +288,7 @@ void main() {
         // Éléments de base disponibles pour le personnel soignant
         expect(find.text('Dashboard'),      findsWidgets);
         expect(find.text('Equipment'),      findsWidgets);
-        expect(find.text('Report'),         findsWidgets);
+        expect(find.text('Report a problem'), findsWidgets);
         expect(find.text('Issue Tracking'), findsWidgets);
 
         // Éléments admin/supervisor/tech — absents pour hospitalStaff
