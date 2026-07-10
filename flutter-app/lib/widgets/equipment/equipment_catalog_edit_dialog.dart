@@ -128,6 +128,114 @@ class _EquipmentCatalogEditDialogState
     return newId;
   }
 
+  // ── Dialog générique de création catalogue (fabricant ou modèle) ─────────
+  Future<void> _showCreateCatalogDialog({
+    required AppLocalizations l10n,
+    required String title,
+    required String labelText,
+    required Future<void> Function(String name) onCreate,
+  }) async {
+    final ctrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+    String? errorMessage;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(title),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: ctrl,
+                  autofocus: true,
+                  enabled: !saving,
+                  decoration: InputDecoration(labelText: labelText),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? l10n.commonFillRequiredFields
+                      : null,
+                ),
+                if (errorMessage != null) ...[
+                  const SizedBox(height: 8),
+                  Text(errorMessage!,
+                      style: const TextStyle(color: AppColors.error, fontSize: 12)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx),
+              child: Text(l10n.commonCancel),
+            ),
+            ElevatedButton(
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!(formKey.currentState?.validate() ?? false)) return;
+                      setDialogState(() {
+                        saving = true;
+                        errorMessage = null;
+                      });
+                      try {
+                        await onCreate(ctrl.text.trim());
+                        if (ctx.mounted) Navigator.pop(ctx);
+                      } on ApiException catch (e) {
+                        // Ex. 409 "Un fabricant avec ce nom existe déjà" (catalog.js:113/143)
+                        setDialogState(() {
+                          saving = false;
+                          errorMessage = e.message;
+                        });
+                      } catch (_) {
+                        setDialogState(() {
+                          saving = false;
+                          errorMessage = l10n.commonApiError;
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+              child: saving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(l10n.commonSave),
+            ),
+          ],
+        ),
+      ),
+    );
+    ctrl.dispose();
+  }
+
+  Future<void> _openAddBrandDialog(AppLocalizations l10n) => _showCreateCatalogDialog(
+        l10n: l10n,
+        title: l10n.equipmentAddBrand,
+        labelText: l10n.equipmentBrandLabel,
+        onCreate: (name) async {
+          final newId = await _createBrand(name);
+          if (mounted) await _onBrandSelected(newId);
+        },
+      );
+
+  Future<void> _openAddModelDialog(AppLocalizations l10n) {
+    if (_selectedBrandId == null) return Future.value();
+    return _showCreateCatalogDialog(
+      l10n: l10n,
+      title: l10n.equipmentAddModel,
+      labelText: l10n.equipmentModelLabel,
+      onCreate: (name) async {
+        final newId = await _createModel(name);
+        if (mounted) setState(() => _selectedModelId = newId);
+      },
+    );
+  }
+
   Future<void> _save(AppLocalizations l10n) async {
     if (_selectedModelId == null) {
       setState(() => _errorMessage = l10n.equipmentSelectModelRequired);
@@ -176,30 +284,54 @@ class _EquipmentCatalogEditDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CatalogSearchField(
-              label: l10n.equipmentBrandLabel,
-              icon: Icons.precision_manufacturing,
-              items: _brands,
-              selectedId: _selectedBrandId,
-              loading: _loadingBrands,
-              apiErrorLabel: l10n.commonApiError,
-              addOptionLabel: (q) => l10n.equipmentCatalogAddOption(q),
-              onCreate: _createBrand,
-              onSelected: (id) => _onBrandSelected(id),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: CatalogSearchField(
+                    label: l10n.equipmentBrandLabel,
+                    icon: Icons.precision_manufacturing,
+                    items: _brands,
+                    selectedId: _selectedBrandId,
+                    loading: _loadingBrands,
+                    apiErrorLabel: l10n.commonApiError,
+                    addOptionLabel: (q) => l10n.equipmentCatalogAddOption(q),
+                    onCreate: _createBrand,
+                    onSelected: (id) => _onBrandSelected(id),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  tooltip: l10n.equipmentAddBrand,
+                  onPressed: () => _openAddBrandDialog(l10n),
+                ),
+              ],
             ),
             const SizedBox(height: 16),
-            CatalogSearchField(
-              label: l10n.equipmentModelLabel,
-              icon: Icons.developer_board,
-              items: _models,
-              selectedId: _selectedModelId,
-              enabled: _selectedBrandId != null,
-              disabledHint: l10n.equipmentSelectBrandFirst,
-              loading: _loadingModels,
-              apiErrorLabel: l10n.commonApiError,
-              addOptionLabel: (q) => l10n.equipmentCatalogAddOption(q),
-              onCreate: _createModel,
-              onSelected: (id) => setState(() => _selectedModelId = id),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: CatalogSearchField(
+                    label: l10n.equipmentModelLabel,
+                    icon: Icons.developer_board,
+                    items: _models,
+                    selectedId: _selectedModelId,
+                    enabled: _selectedBrandId != null,
+                    disabledHint: l10n.equipmentSelectBrandFirst,
+                    loading: _loadingModels,
+                    apiErrorLabel: l10n.commonApiError,
+                    addOptionLabel: (q) => l10n.equipmentCatalogAddOption(q),
+                    onCreate: _createModel,
+                    onSelected: (id) => setState(() => _selectedModelId = id),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline),
+                  tooltip: l10n.equipmentAddModel,
+                  onPressed: _selectedBrandId == null ? null : () => _openAddModelDialog(l10n),
+                ),
+              ],
             ),
             if (_errorMessage != null) ...[
               const SizedBox(height: 12),
