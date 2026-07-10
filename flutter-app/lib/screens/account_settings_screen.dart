@@ -8,6 +8,7 @@ import '../providers/locale_provider.dart';
 import '../models/user_role.dart';
 import '../widgets/notification_preferences_dialog.dart';
 import '../widgets/role_request_dialog.dart';
+import '../services/push_notification_web_service.dart';
 
 /// Paramètres du compte utilisateur — accessible à tous via l'icône engrenage.
 class AccountSettingsScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class AccountSettingsScreen extends StatefulWidget {
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   final AuthService _authService = AuthService();
+  bool _pushTestLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -240,6 +242,39 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     ),
                   ],
                 ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Notifications Push (auto-diagnostic) ───────────────────────────
+            Text(l10n.pushTestSectionTitle, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+            const SizedBox(height: 8),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active_outlined, color: AppColors.primary),
+                title: Text(l10n.pushTestButton, style: const TextStyle(fontWeight: FontWeight.w500)),
+                trailing: _pushTestLoading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.send_outlined, color: AppColors.primary),
+                onTap: _pushTestLoading ? null : () async {
+                  setState(() => _pushTestLoading = true);
+                  final result = await PushNotificationWebService().sendTestPush();
+                  if (mounted) {
+                    setState(() => _pushTestLoading = false);
+                    final message = result.networkError
+                        ? l10n.pushTestNetworkError
+                        : result.attempted == 0
+                            ? l10n.pushTestNoSubscription
+                            : result.expired > 0
+                                ? l10n.pushTestExpired(result.expired)
+                                : l10n.pushTestSent(result.sent, result.attempted);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(message),
+                      backgroundColor: AppColors.warning,
+                      behavior: SnackBarBehavior.floating,
+                    ));
+                  }
+                },
               ),
             ),
             const SizedBox(height: 24),

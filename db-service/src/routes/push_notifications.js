@@ -1,9 +1,10 @@
 // ── Routes : Web Push Notifications ──────────────────────────────────────────
 const express = require('express');
 const { getDb }  = require('../database');
-const { verifyToken } = require('../middleware/auth');
+const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { rolesCsv } = require('../utils/roles');
+const { sendPushToUser } = require('../utils/push_sender');
 const config = require('../config');
 
 const router = express.Router();
@@ -21,13 +22,16 @@ router.get('/vapid-key', (req, res) => {
 // Enregistre (ou met à jour) la souscription push de l'utilisateur connecté.
 // Body : { endpoint, keys: { p256dh, auth } }
 router.post('/subscribe', verifyToken, (req, res) => {
-  const { endpoint, keys } = req.body;
+  const { endpoint, keys, platform } = req.body;
 
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     return res.status(400).json({ error: 'endpoint, keys.p256dh et keys.auth sont requis' });
   }
   if (typeof endpoint !== 'string' || endpoint.length > 2000) {
     return res.status(400).json({ error: 'endpoint invalide' });
+  }
+  if (platform !== undefined && platform !== null && (typeof platform !== 'string' || platform.length > 200)) {
+    return res.status(400).json({ error: 'platform invalide' });
   }
 
   const db     = getDb();
@@ -36,21 +40,23 @@ router.post('/subscribe', verifyToken, (req, res) => {
 
   try {
     db.prepare(`
-      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_roles)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_roles, user_name, platform)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(endpoint) DO UPDATE SET
         user_id    = excluded.user_id,
         p256dh     = excluded.p256dh,
         auth       = excluded.auth,
         user_roles = excluded.user_roles,
+        user_name  = excluded.user_name,
+        platform   = excluded.platform,
         created_at = datetime('now','localtime')
-    `).run(userId, endpoint, keys.p256dh, keys.auth, roles);
+    `).run(userId, endpoint, keys.p256dh, keys.auth, roles, req.user.name || null, platform || null);
 
     logAction({
       user_id: userId, user_name: req.user.name, user_role: roles,
       action: 'push_subscribe', target_type: 'push_subscription',
       target_id: userId, target_name: req.user.email || userId,
-      details: { endpoint: endpoint.substring(0, 80) },
+      details: { endpoint: endpoint.substring(0, 80), platform: platform || null },
       ...extractReqMeta(req),
     });
 
@@ -90,6 +96,63 @@ router.post('/unsubscribe', verifyToken, (req, res) => {
     console.error('[PUSH] Erreur unsubscribe :', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── POST /api/notifications/test-push ────────────────────────────────────────
+// Envoie une notification push de test à l'utilisateur connecté (auto-diagnostic).
+// Contrat : toujours 200 ; distinguer succès/absence/expiration via le corps JSON.
+router.post('/test-push', verifyToken, async (req, res) => {
+  const userId = req.user.id;
+  const result = await sendPushToUser(userId, {
+    title: 'Kabutare Hospital — Test',
+    body: `Notification de test envoyée le ${new Date().toLocaleString('fr-FR')}`,
+  });
+
+  if (result.attempted === 0) {
+    return res.json({ attempted: 0, sent: 0, expired: 0, message: 'Aucune souscription push active pour ce compte' });
+  }
+
+  logAction({
+    user_id: userId, user_name: req.user.name, user_role: rolesCsv(req),
+    action: 'push_test_send', target_type: 'push_subscription',
+    target_id: userId, target_name: req.user.email || userId,
+    details: result,
+    ...extractReqMeta(req),
+  });
+
+  // Le message est indicatif — le client (Flutter) reconstruit son propre texte
+  // localisé à partir de attempted/sent/expired, il ne lit pas ce champ.
+  res.json({ attempted: result.attempted, sent: result.succeeded, expired: result.expired, message: 'Test envoyé' });
+});
+
+// ── GET /api/notifications/push-subscriptions ────────────────────────────────
+// Liste toutes les souscriptions push actives — diagnostic admin uniquement.
+router.get('/push-subscriptions', verifyToken, requireRole('admin'), (req, res) => {
+  const db   = getDb();
+  const rows = db.prepare(`
+    SELECT id, user_id, user_name, user_roles, platform, created_at,
+           last_sent_at, last_success_at, last_delivered_at, last_error
+    FROM push_subscriptions
+    ORDER BY created_at DESC
+  `).all();
+  res.json(rows);
+});
+
+// ── POST /api/notifications/delivery-ack ─────────────────────────────────────
+// Accusé de réception envoyé par le service worker après traitement effectif
+// d'un push sur l'appareil — PUBLIC (appelé sans session HTTP depuis le SW),
+// identifié uniquement par l'endpoint (déjà un secret porteur du Web Push standard).
+router.post('/delivery-ack', (req, res) => {
+  const { endpoint } = req.body;
+  if (!endpoint || typeof endpoint !== 'string') {
+    return res.status(400).json({ error: 'endpoint requis' });
+  }
+  const db     = getDb();
+  const result = db.prepare('UPDATE push_subscriptions SET last_delivered_at = ? WHERE endpoint = ?')
+    .run(new Date().toISOString(), endpoint);
+  // 200 dans tous les cas (y compris endpoint inconnu/déjà supprimé) — le SW ne doit jamais
+  // logger d'erreur bruyante pour un accusé de réception, c'est un best-effort silencieux.
+  res.json({ acknowledged: result.changes > 0 });
 });
 
 // ── GET /api/notifications ─────────────────────────────────────────────────────

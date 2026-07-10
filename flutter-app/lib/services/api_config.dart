@@ -207,4 +207,6 @@ class ApiConfig {
   static String get vapidKeyUrl        => '$dbBaseUrl/api/notifications/vapid-key';
   static String get pushSubscribeUrl   => '$dbBaseUrl/api/notifications/subscribe';
   static String get pushUnsubscribeUrl => '$dbBaseUrl/api/notifications/unsubscribe';
+  static String get pushTestUrl               => '$dbBaseUrl/api/notifications/test-push';
+  static String get pushSubscriptionsAdminUrl  => '$dbBaseUrl/api/notifications/push-subscriptions';
 }

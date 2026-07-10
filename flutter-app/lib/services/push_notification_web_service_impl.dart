@@ -55,6 +55,22 @@ class PushEnvironment {
   }
 }
 
+/// Résultat structuré d'un auto-test push — laisse l'appelant construire le
+/// message localisé via AppLocalizations plutôt que de figer du texte ici.
+class PushTestResult {
+  final int attempted;
+  final int sent;
+  final int expired;
+  final bool networkError;
+
+  const PushTestResult({
+    this.attempted = 0,
+    this.sent = 0,
+    this.expired = 0,
+    this.networkError = false,
+  });
+}
+
 // ── Service ──────────────────────────────────────────────────────────────────
 
 class PushNotificationWebService {
@@ -66,35 +82,62 @@ class PushNotificationWebService {
   // ── API publique ────────────────────────────────────────────────────────────
 
   /// Demande la permission au navigateur puis envoie la souscription au backend.
-  /// Silencieux si le navigateur ne supporte pas Push ou si l'utilisateur refuse.
-  Future<void> requestAndSubscribe() async {
-    if (!kIsWeb) return;
+  /// Retourne true seulement si le POST /subscribe backend a réussi.
+  Future<bool> requestAndSubscribe() async {
+    if (!kIsWeb) return false;
     try {
       final permJs = await _jsRequestPermission().toDart;
-      if (permJs.toDart != 'granted') return;
+      if (permJs.toDart != 'granted') return false;
 
       final vapidKey = await _fetchVapidKey();
-      if (vapidKey == null) return;
+      if (vapidKey == null) return false;
 
       final subJs = await _jsSubscribe(vapidKey.toJS).toDart;
-      if (subJs == null) return;
+      if (subJs == null) return false;
       final subJson = subJs.toDart;
 
       final sub = jsonDecode(subJson) as Map<String, dynamic>;
       final endpoint = sub['endpoint'] as String?;
       final keys = sub['keys'] as Map<String, dynamic>?;
 
-      if (endpoint == null || keys == null) return;
+      if (endpoint == null || keys == null) return false;
 
-      await ApiClient.post(ApiConfig.pushSubscribeUrl, {
+      final env = await getEnvironment();
+      final platformLabel = '${env.isIos ? "iOS" : "Desktop/Android"} · ${env.isStandalone ? "PWA installée" : "Navigateur"}';
+
+      final resp = await ApiClient.post(ApiConfig.pushSubscribeUrl, {
         'endpoint': endpoint,
         'keys': {
           'p256dh': keys['p256dh'],
           'auth': keys['auth'],
         },
+        'platform': platformLabel,
       });
+      return resp.statusCode >= 200 && resp.statusCode < 300;
     } catch (_) {
-      // Silencieux — les push notifications sont optionnelles
+      // Erreur réseau/JS — les push notifications restent optionnelles,
+      // mais l'appelant sait maintenant que ça a échoué (retour false).
+      return false;
+    }
+  }
+
+  /// Envoie une notification de test à l'utilisateur connecté (auto-diagnostic).
+  /// Retourne un résultat structuré — distingue succès / absence de souscription / expiration
+  /// via le corps JSON (attempted/sent/expired), jamais via le status code seul
+  /// (POST /test-push répond toujours 200, voir contrat backend). L'appelant construit
+  /// le message affiché via AppLocalizations (aucun texte figé ici).
+  Future<PushTestResult> sendTestPush() async {
+    try {
+      final resp = await ApiClient.post(ApiConfig.pushTestUrl, {});
+      if (resp.statusCode != 200) return const PushTestResult(networkError: true);
+      final body = jsonDecode(resp.body) as Map<String, dynamic>;
+      return PushTestResult(
+        attempted: body['attempted'] as int? ?? 0,
+        sent: body['sent'] as int? ?? 0,
+        expired: body['expired'] as int? ?? 0,
+      );
+    } catch (_) {
+      return const PushTestResult(networkError: true);
     }
   }
 

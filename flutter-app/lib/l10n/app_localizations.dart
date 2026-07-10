@@ -9602,6 +9602,78 @@ abstract class AppLocalizations {
   /// **'Notifications bloquées — réactive-les dans les réglages de ton navigateur/téléphone.'**
   String get pushBannerPermissionDenied;
 
+  /// No description provided for @pushSubscribeFailed.
+  ///
+  /// In fr, this message translates to:
+  /// **'Échec de l\'activation des notifications — réessaie plus tard.'**
+  String get pushSubscribeFailed;
+
+  /// No description provided for @pushTestButton.
+  ///
+  /// In fr, this message translates to:
+  /// **'Envoyer une notification de test'**
+  String get pushTestButton;
+
+  /// No description provided for @pushTestSectionTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notifications Push'**
+  String get pushTestSectionTitle;
+
+  /// No description provided for @settingsTabPushDiagnostics.
+  ///
+  /// In fr, this message translates to:
+  /// **'Diagnostic Push'**
+  String get settingsTabPushDiagnostics;
+
+  /// No description provided for @pushDiagEmpty.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune souscription push enregistrée.'**
+  String get pushDiagEmpty;
+
+  /// No description provided for @pushDiagLegend.
+  ///
+  /// In fr, this message translates to:
+  /// **'« Accepté » = envoyé au service de notifications. « Confirmé » = reçu sur l\'appareil.'**
+  String get pushDiagLegend;
+
+  /// No description provided for @pushDiagServerLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Service'**
+  String get pushDiagServerLabel;
+
+  /// No description provided for @pushDiagDeviceLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Appareil'**
+  String get pushDiagDeviceLabel;
+
+  /// No description provided for @pushTestNetworkError.
+  ///
+  /// In fr, this message translates to:
+  /// **'Erreur réseau'**
+  String get pushTestNetworkError;
+
+  /// No description provided for @pushTestNoSubscription.
+  ///
+  /// In fr, this message translates to:
+  /// **'Aucune souscription push active pour ce compte'**
+  String get pushTestNoSubscription;
+
+  /// No description provided for @pushTestExpired.
+  ///
+  /// In fr, this message translates to:
+  /// **'{count} souscription(s) expirée(s) supprimée(s) — réactive les notifications'**
+  String pushTestExpired(int count);
+
+  /// No description provided for @pushTestSent.
+  ///
+  /// In fr, this message translates to:
+  /// **'Notification envoyée à {sent}/{attempted} appareil(s) (accepté par le service — vérifie que tu l\'as bien reçue)'**
+  String pushTestSent(int sent, int attempted);
+
   /// No description provided for @debugNotifySection.
   ///
   /// In fr, this message translates to:

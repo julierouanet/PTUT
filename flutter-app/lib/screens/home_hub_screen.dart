@@ -1740,10 +1740,19 @@ class _PushNotificationBannerState extends State<_PushNotificationBanner> {
 
   Future<void> _activate() async {
     setState(() => _loading = true);
-    await PushNotificationWebService().requestAndSubscribe();
+    final ok = await PushNotificationWebService().requestAndSubscribe();
     final env = await PushNotificationWebService().getEnvironment();
     final visible = await _computeVisible(env);
-    if (mounted) setState(() { _env = env; _visible = visible; _loading = false; });
+    if (mounted) {
+      setState(() { _env = env; _visible = visible; _loading = false; });
+      if (!ok && env.permissionState == 'granted') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(AppLocalizations.of(context)!.pushSubscribeFailed),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ));
+      }
+    }
   }
 
   @override

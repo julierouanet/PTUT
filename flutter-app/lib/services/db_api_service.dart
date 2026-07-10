@@ -10,6 +10,7 @@ import '../models/issue.dart';
 import '../models/issue_detail.dart';
 import '../models/issue_photo.dart';
 import '../models/pm_protocol.dart';
+import '../models/push_subscription_admin.dart';
 
 /// Résultat paginé générique pour les listes en pagination serveur
 /// (GET /api/equipment et GET /api/issues avec ?page=).
@@ -1279,6 +1280,17 @@ class DbApiService {
       {'role': role, 'order': order},
     );
     _checkStatus(response, ApiConfig.sidebarUrl);
+  }
+
+  // ── DIAGNOSTIC PUSH (admin) ───────────────────────────────────────────────────
+
+  /// Liste toutes les souscriptions push actives (admin uniquement) — diagnostic.
+  Future<List<PushSubscriptionAdmin>> getPushSubscriptions() async {
+    final url  = ApiConfig.pushSubscriptionsAdminUrl;
+    final resp = await ApiClient.get(url);
+    _checkStatus(resp, url);
+    final list = jsonDecode(resp.body) as List<dynamic>;
+    return list.map((j) => PushSubscriptionAdmin.fromApiJson(j as Map<String, dynamic>)).toList();
   }
 }
 

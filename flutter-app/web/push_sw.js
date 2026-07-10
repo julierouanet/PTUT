@@ -19,15 +19,28 @@ self.addEventListener('push', (event) => {
     data = { title: 'Kabutare Hospital', body: event.data ? event.data.text() : '' };
   }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title || 'Kabutare Hospital', {
-      body:  data.body  || '',
-      icon:  data.icon  || '/icons/Icon-192.png',
-      badge: '/icons/Icon-192.png',
-      data:  data.data  || {},
-      requireInteraction: false,
-    })
-  );
+  const notify = self.registration.showNotification(data.title || 'Kabutare Hospital', {
+    body:  data.body  || '',
+    icon:  data.icon  || '/icons/Icon-192.png',
+    badge: '/icons/Icon-192.png',
+    data:  data.data  || {},
+    requireInteraction: false,
+  });
+
+  // Accusé de réception best-effort : confirme que CET appareil a bien reçu et traité
+  // le push (distinct de « accepté par le service Apple/Google », voir push_sender.js).
+  // Chemin relatif same-origin, cohérent avec le fetch offline.html plus bas dans ce fichier.
+  const ack = self.registration.pushManager.getSubscription()
+    .then((sub) => sub
+      ? fetch('/api/notifications/delivery-ack', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ endpoint: sub.endpoint }),
+        })
+      : null)
+    .catch(() => {});
+
+  event.waitUntil(Promise.all([notify, ack]));
 });
 
 self.addEventListener('notificationclick', (event) => {

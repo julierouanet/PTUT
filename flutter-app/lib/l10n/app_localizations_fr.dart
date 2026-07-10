@@ -5254,6 +5254,49 @@ class AppLocalizationsFr extends AppLocalizations {
       'Notifications bloquées — réactive-les dans les réglages de ton navigateur/téléphone.';
 
   @override
+  String get pushSubscribeFailed =>
+      'Échec de l\'activation des notifications — réessaie plus tard.';
+
+  @override
+  String get pushTestButton => 'Envoyer une notification de test';
+
+  @override
+  String get pushTestSectionTitle => 'Notifications Push';
+
+  @override
+  String get settingsTabPushDiagnostics => 'Diagnostic Push';
+
+  @override
+  String get pushDiagEmpty => 'Aucune souscription push enregistrée.';
+
+  @override
+  String get pushDiagLegend =>
+      '« Accepté » = envoyé au service de notifications. « Confirmé » = reçu sur l\'appareil.';
+
+  @override
+  String get pushDiagServerLabel => 'Service';
+
+  @override
+  String get pushDiagDeviceLabel => 'Appareil';
+
+  @override
+  String get pushTestNetworkError => 'Erreur réseau';
+
+  @override
+  String get pushTestNoSubscription =>
+      'Aucune souscription push active pour ce compte';
+
+  @override
+  String pushTestExpired(int count) {
+    return '$count souscription(s) expirée(s) supprimée(s) — réactive les notifications';
+  }
+
+  @override
+  String pushTestSent(int sent, int attempted) {
+    return 'Notification envoyée à $sent/$attempted appareil(s) (accepté par le service — vérifie que tu l\'as bien reçue)';
+  }
+
+  @override
   String get debugNotifySection => 'Tests de Notifications';
 
   @override

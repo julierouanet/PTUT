@@ -111,7 +111,7 @@ class AuthService extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         // Demande permission push et envoie la souscription (non-bloquant)
-        PushNotificationWebService().requestAndSubscribe().catchError((_) {});
+        PushNotificationWebService().requestAndSubscribe().catchError((_) => false);
         // Charge les préférences de notification et détecte la 1ère connexion
         _loadNotificationPreferences();
         return true;
@@ -165,7 +165,7 @@ class AuthService extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
         // Réabonnement push si la session est restaurée depuis le token stocké
-        PushNotificationWebService().requestAndSubscribe().catchError((_) {});
+        PushNotificationWebService().requestAndSubscribe().catchError((_) => false);
         // Charge les préférences de notification
         _loadNotificationPreferences();
         return true;

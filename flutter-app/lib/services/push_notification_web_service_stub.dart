@@ -29,6 +29,22 @@ class PushEnvironment {
   }
 }
 
+/// Résultat structuré d'un auto-test push — laisse l'appelant construire le
+/// message localisé via AppLocalizations plutôt que de figer du texte ici.
+class PushTestResult {
+  final int attempted;
+  final int sent;
+  final int expired;
+  final bool networkError;
+
+  const PushTestResult({
+    this.attempted = 0,
+    this.sent = 0,
+    this.expired = 0,
+    this.networkError = false,
+  });
+}
+
 class PushNotificationWebService {
   static final PushNotificationWebService _instance =
       PushNotificationWebService._internal();
@@ -36,10 +52,13 @@ class PushNotificationWebService {
   PushNotificationWebService._internal();
 
   /// No-op sur les plateformes non-web.
-  Future<void> requestAndSubscribe() async {}
+  Future<bool> requestAndSubscribe() async => false;
 
   /// No-op sur les plateformes non-web.
   Future<void> unsubscribe() async {}
+
+  /// Non disponible sur les plateformes non-web.
+  Future<PushTestResult> sendTestPush() async => const PushTestResult(networkError: true);
 
   /// Toujours actif sur les plateformes non-web (pas de bannière).
   Future<bool> isPushActive() async => true;

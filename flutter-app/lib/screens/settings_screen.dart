@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import '../l10n/app_localizations.dart';
 import '../services/app_settings_service.dart';
 import '../services/feature_service.dart';
+import '../services/auth_service.dart';
+import '../models/user_role.dart';
 import '../theme/app_theme.dart';
 import '../widgets/settings/departments_tab.dart';
 import '../widgets/settings/roles_tab.dart';
 import '../screens/feature_management_screen.dart';
 import '../widgets/settings/app_settings_tab.dart';
+import '../widgets/settings/push_diagnostics_tab.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,11 +20,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final bool _isAdmin;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _isAdmin = AuthService().currentUser?.hasRole(UserRole.admin) ?? false;
+    _tabController = TabController(length: _isAdmin ? 5 : 4, vsync: this);
 
     // Charger les données des deux onglets ajoutés si pas déjà chargées
     final featureSvc = FeatureService();
@@ -116,6 +121,8 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
                     _tab(Icons.admin_panel_settings,   l10n.settingsTabRoles),
                     _tab(Icons.tune,                   l10n.settingsTabFeatureFlags),
                     _tab(Icons.settings_applications,  l10n.settingsTabAppSettings),
+                    if (_isAdmin)
+                      _tab(Icons.troubleshoot,          l10n.settingsTabPushDiagnostics),
                   ],
                 ),
               ),
@@ -126,11 +133,12 @@ class _SettingsScreenState extends State<SettingsScreen> with SingleTickerProvid
       // ── Contenu des onglets ─────────────────────────────────────────────────
       body: TabBarView(
         controller: _tabController,
-        children: const [
-          DepartmentsTab(),
-          RolesTab(),
-          FeatureManagementScreen(),
-          AppSettingsTab(),
+        children: [
+          const DepartmentsTab(),
+          const RolesTab(),
+          const FeatureManagementScreen(),
+          const AppSettingsTab(),
+          if (_isAdmin) const PushDiagnosticsTab(),
         ],
       ),
     );

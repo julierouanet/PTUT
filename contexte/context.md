@@ -573,7 +573,7 @@ Plans de maintenance preventive (1 equipement -> N plans : trimestriel, annuel, 
 
 | Table | Création (`src/database.js`) | Rôle |
 |---|---|---|
-| `push_subscriptions` | :381 | Souscriptions Web Push par utilisateur |
+| `push_subscriptions` | :381 | Souscriptions Web Push par utilisateur. **[MODIFIÉ 2026-07-10]** colonnes `user_name`, `platform` (nullable, dénormalisées à `POST /subscribe`), `last_sent_at`/`last_success_at`/`last_error` (posées par `push_sender.js` à chaque tentative d'envoi) et `last_delivered_at` (accusé de réception envoyé par le service worker via `POST /delivery-ack`) — distinction explicite entre *accepté par le service de push* (`last_success_at`) et *confirmé reçu sur l'appareil* (`last_delivered_at`), pour diagnostiquer les pannes de livraison spécifiques à un appareil (ex. iOS). Souscriptions antérieures à cette migration : ces colonnes restent `NULL` jusqu'au prochain `/subscribe` ou envoi. |
 | `features` + `feature_role_overrides` | :395, :402 | Feature flags **locaux db-service** (distincts de `feature_flags` auth-service) |
 | `backup_settings` + `backup_history` | :422, :429 | Configuration et historique des sauvegardes SQLite |
 | `equipment_macro_categories` / `equipment_subcategories` | :454, :467 | Taxonomie GMAO (3 macro-catégories) |
@@ -912,8 +912,11 @@ liste (bouton par groupe `ExpansionTile`, cf. `intervention_documents_tab.dart`)
 | Methode | Route | Auth | Description |
 |---|---|---|---|
 | GET | /api/notifications/vapid-key | Public | Clé publique VAPID (Web Push) |
-| POST | /api/notifications/subscribe | Auth | Enregistre une souscription push (`push_subscriptions`) |
+| POST | /api/notifications/subscribe | Auth | Enregistre une souscription push (`push_subscriptions`). **[MODIFIÉ 2026-07-10]** accepte un champ optionnel `platform` (string, max 200 car.), dénormalisé avec `user_name` |
 | POST | /api/notifications/unsubscribe | Auth | Supprime la souscription |
+| POST | /api/notifications/test-push | Auth | **[AJOUTÉ 2026-07-10]** Auto-diagnostic : envoie une notification de test à l'utilisateur connecté. Répond toujours 200 — succès/absence/expiration distingués via le corps JSON (`attempted`/`sent`/`expired`), jamais via le status code |
+| GET | /api/notifications/push-subscriptions | Admin | **[AJOUTÉ 2026-07-10]** Liste toutes les souscriptions push avec leurs colonnes de diagnostic (sans exposer `endpoint`/`p256dh`/`auth`) — écran admin "Diagnostic Push" |
+| POST | /api/notifications/delivery-ack | Public (sans session) | **[AJOUTÉ 2026-07-10]** Accusé de réception envoyé par le service worker (`push_sw.js`) après traitement effectif d'un push sur l'appareil — identifié par `endpoint` uniquement, met à jour `last_delivered_at` |
 | GET | /api/notifications | Auth | Notifications in-app de l'utilisateur (table `notifications`) |
 | PATCH | /api/notifications/read-all | Auth | Tout marquer lu |
 | PATCH | /api/notifications/:id/read | Auth | Marquer une notification lue |
@@ -1175,9 +1178,9 @@ status: StockStatus (normal, low, outOfStock)
 | 6  | InventoryScreen          | viewInventory           | Table stock, filtres categorie/statut, CRUD                      |
 | 7  | AnalyticsScreen (fusion ReportsScreen+AnalyticsScreen, 2 onglets "Rapports"/"Analytique" via `TabController`) | generateReports         | **Onglet Rapports** (`ReportsTab`) : statistiques maintenance, équipements, KPIs GMAO (MTTR, PM). **Indicateurs complémentaires** (`GmaoKpiSectionExtra`) : MTBF parc entier, backlog d'incidents non résolus (+ dont >30j), taux d'obsolescence + âge moyen du parc biomédical, répartition par criticité ABC biomédicale, downtime cumulé (heures d'arrêt incidents clôturés) — réutilise `getReplacementPlan()` (déjà existant, aucun nouvel endpoint). **Export CSV** + **Export PDF** multi-sections (synthèse, équipements, incidents, PM, MTTR, inventaire critique). **Section Archives** (FEAT-039) : sélecteur Mensuel/Annuel + dropdown (24 derniers mois ou 2 dernières années) → bouton "Télécharger le rapport PDF". Génération 100% côté client via `PdfReportService`. Toute la section Archives est conditionnée par `canGenerateReports`. **Onglet Analytique** (`AnalyticsTab`) : tableaux de bord analytiques (GET /api/analytics), graphiques de tendance (13 semaines glissantes), filtres période jour/semaine/mois. |
 | 8  | UserManagementScreen     | manageUsers             | CRUD users, demandes dept (approve/reject), filtres role          |
-| 9  | SettingsScreen           | manageDepartments       | **5 onglets** : Départements, Rôles, Activité, Feature Flags, Paramètres généraux (contact login + config Brevo avec email de test) |
+| 9  | SettingsScreen           | manageDepartments       | **5 onglets** (**6 pour `admin`**) : Départements, Rôles, Activité, Feature Flags, Paramètres généraux (contact login + config Brevo avec email de test), **[AJOUTÉ 2026-07-10]** Diagnostic Push (`PushDiagnosticsTab`, visible uniquement si `hasRole(UserRole.admin)` — gate distinct du gate d'entrée `manageDepartments` de l'écran) : liste des souscriptions push avec deux badges de statut distincts (accepté par le service / confirmé reçu par l'appareil) |
 | 10 | LogsScreen               | manageUsers             | Logs d'audit filtres (action, user, type, dates, limit)          |
-| 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe                        |
+| 11 | AccountSettingsScreen    | -                       | Profil personnel, changement mot de passe. **[AJOUTÉ 2026-07-10]** Section "Notifications Push" : bouton auto-test (`POST /api/notifications/test-push`), visible à tout utilisateur authentifié |
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
 | 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues) ; section "Tests de Notifications" : 4 boutons (notify-now, auto/minute, auto/heure, stop) + mini-historique des 3 derniers envois |
 | 14 | EquipmentDetailScreen    | viewEquipment           | Détail équipement (historique maintenance, PM, documents) |

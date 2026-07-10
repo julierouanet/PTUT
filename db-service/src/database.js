@@ -441,6 +441,14 @@ function initTables() {
     CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
   `);
 
+  // ── Colonnes de diagnostic Web Push ─────────────────────────────────────────
+  // last_success_at  = accepté par le service de push (Apple/Google/Mozilla) — PAS une preuve de réception.
+  // last_delivered_at = accusé de réception envoyé par le service worker de l'appareil — preuve réelle de traitement local.
+  const pushCols = db.prepare("PRAGMA table_info(push_subscriptions)").all().map((c) => c.name);
+  for (const col of ['user_name', 'platform', 'last_sent_at', 'last_success_at', 'last_delivered_at', 'last_error']) {
+    if (!pushCols.includes(col)) db.exec(`ALTER TABLE push_subscriptions ADD COLUMN ${col} TEXT`);
+  }
+
   // ── Feature Flags ──────────────────────────────────────────────────────────
   db.exec(`
     CREATE TABLE IF NOT EXISTS features (
