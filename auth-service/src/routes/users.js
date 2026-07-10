@@ -171,10 +171,15 @@ router.put('/:id', verifyToken, requireAdmin, async (req, res) => {
     }
 
     // Construire le corps de mise à jour Keycloak
+    // NB: email/username sont toujours renvoyés (valeur actuelle si non fournie) —
+    // certains déploiements Keycloak effacent le champ s'il est absent du PUT au
+    // lieu de conserver la valeur existante (cf. bug compte bloqué après édition).
+    const newEmail = email !== undefined ? email : current.email;
     const updateBody = {
       ...(first_name  !== undefined && { firstName: first_name }),
       ...(last_name   !== undefined && { lastName:  last_name }),
-      ...(email       !== undefined && { email, username: email }),
+      email:    newEmail,
+      username: newEmail,
       attributes: {
         ...(current.attributes ?? {}),
         ...(department !== undefined && { department: [department] }),
