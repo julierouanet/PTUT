@@ -678,15 +678,11 @@ router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES
     return res.status(400).json({ error: 'criticality invalide (A, B ou C)' });
   }
 
-  // Le tag physique est obligatoire : soit fourni dans la requête, soit déjà en base.
-  if (tag_number === undefined) {
-    const hasExistingTag = db.prepare(
-      'SELECT 1 FROM equipment_tags WHERE equipment_id = ? LIMIT 1'
-    ).get(req.params.id);
-    if (!hasExistingTag) {
-      return res.status(400).json({ error: 'Le tag physique (tag_number) est requis' });
-    }
-  } else {
+  // Le tag physique est déjà obligatoire à la création (POST /api/equipment).
+  // Sur PUT, ne le valider que s'il est explicitement fourni dans la requête :
+  // les éditions partielles (fabricant/modèle, département, localisation, ...)
+  // n'exposent pas ce champ et ne doivent pas être bloquées par son absence.
+  if (tag_number !== undefined) {
     if (!tag_number.trim()) {
       return res.status(400).json({ error: 'Le tag physique (tag_number) est requis' });
     }
