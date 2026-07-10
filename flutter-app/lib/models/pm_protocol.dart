@@ -1,6 +1,10 @@
 /// Protocole de maintenance préventive lié à un type d'équipement (sous-catégorie).
 /// Distinct de `preventive_maintenance_plans` qui est par équipement individuel.
 class PmProtocol {
+  /// Fréquences PM proposées dans les sélecteurs (mois) — partagé entre l'onglet
+  /// Maintenance équipement et le formulaire de protocole PM.
+  static const List<int> frequencyOptions = [1, 3, 6, 12, 24, 36];
+
   final int id;
   final int subcategoryId;
   final String name;

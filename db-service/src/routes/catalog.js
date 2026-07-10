@@ -5,6 +5,7 @@ const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
 const { documentUpload } = require('../middleware/upload');
 const { UPLOAD_DIR } = require('../config');
+const { TECH_ROLES } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -101,7 +102,7 @@ router.get('/brands/:id', verifyToken, (req, res) => {
 });
 
 // ── POST /api/brands ──────────────────────────────────────────────────────────
-router.post('/brands', verifyToken, requireRole('admin'), (req, res) => {
+router.post('/brands', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name est requis' });
@@ -125,7 +126,7 @@ router.post('/brands', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // ── PUT /api/brands/:id ───────────────────────────────────────────────────────
-router.put('/brands/:id', verifyToken, requireRole('admin'), (req, res) => {
+router.put('/brands/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
@@ -273,7 +274,7 @@ router.get('/models/:id', verifyToken, (req, res) => {
 });
 
 // ── POST /api/models ──────────────────────────────────────────────────────────
-router.post('/models', verifyToken, requireRole('admin'), (req, res) => {
+router.post('/models', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { brand_id, subcategory_id, name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'name est requis' });
@@ -320,7 +321,7 @@ router.post('/models', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // ── PUT /api/models/:id ───────────────────────────────────────────────────────
-router.put('/models/:id', verifyToken, requireRole('admin'), (req, res) => {
+router.put('/models/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });

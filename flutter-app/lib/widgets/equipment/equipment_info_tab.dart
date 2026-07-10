@@ -9,6 +9,7 @@ import '../../services/pdf_label_service.dart';
 import '../../theme/app_theme.dart';
 import '../replacement_badge.dart';
 import '../status_badge.dart';
+import 'equipment_catalog_edit_dialog.dart';
 import 'equipment_critical_banner.dart';
 import 'equipment_detail_helpers.dart';
 import 'equipment_field_edit_dialog.dart';
@@ -150,6 +151,12 @@ class EquipmentInfoTab extends StatelessWidget {
       type: type,
       initialValue: initial,
     );
+    // On reste sur l'onglet ; on recharge la fiche pour refléter l'état serveur.
+    if (ok) onRefresh?.call();
+  }
+
+  Future<void> _editCatalog(BuildContext context, Equipment eq) async {
+    final ok = await showEquipmentCatalogEditDialog(context: context, equipment: eq);
     // On reste sur l'onglet ; on recharge la fiche pour refléter l'état serveur.
     if (ok) onRefresh?.call();
   }
@@ -497,18 +504,14 @@ class EquipmentInfoTab extends StatelessWidget {
             if (eq.subcategoryName != null && eq.subcategoryName!.isNotEmpty)
               DetailInfoRow(l10n.subcategoryLabel, eq.subcategoryName!,
                   onTap: _link(handlers.onSubcategory)),
-            // Modèle remonté ici (drill-down conservé) + édition libre.
+            // Modèle remonté ici (drill-down conservé) + édition catalogue.
             if ((eq.model != null && eq.model!.isNotEmpty) || _canEdit)
               DetailInfoRow(
                   l10n.equipmentModel,
                   (eq.model != null && eq.model!.isNotEmpty) ? eq.model! : '—',
                   onTap: _link(handlers.onModel),
                   onEdit: _canEdit
-                      ? () => _editField(context, l10n, eq,
-                          apiKey: 'model',
-                          label: l10n.equipmentModel,
-                          type: EquipmentFieldType.text,
-                          initial: eq.model)
+                      ? () => _editCatalog(context, eq)
                       : null),
             if (eq.serialNumber.isNotEmpty || _canEdit)
               DetailInfoRow(
@@ -608,11 +611,7 @@ class EquipmentInfoTab extends StatelessWidget {
                       : '—',
                   onTap: _link(handlers.onManufacturer),
                   onEdit: _canEdit
-                      ? () => _editField(context, l10n, eq,
-                          apiKey: 'manufacturer',
-                          label: l10n.equipmentManufacturer,
-                          type: EquipmentFieldType.text,
-                          initial: eq.manufacturer)
+                      ? () => _editCatalog(context, eq)
                       : null),
             if (eq.manufYear != null || _canEdit)
               DetailInfoRow(

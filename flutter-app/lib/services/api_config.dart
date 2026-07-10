@@ -183,6 +183,12 @@ class ApiConfig {
   static String equipmentValidatePmUrl(String id) =>
       '$dbBaseUrl/api/equipment/${Uri.encodeComponent(id)}/maintenance/validate';
 
+  // ── Protocoles PM par sous-catégorie ──────────────────────────────────────────
+  static String pmProtocolsUrl({int? subcategoryId}) => subcategoryId != null
+      ? '$dbBaseUrl/api/pm-protocols?subcategory_id=$subcategoryId'
+      : '$dbBaseUrl/api/pm-protocols';
+  static String pmProtocolItemUrl(int id) => '$dbBaseUrl/api/pm-protocols/$id';
+
   // ── Détail d'un rôle (auth-service) ──────────────────────────────────────────
   static String roleHierarchyUrl(String n)   => '$rolesUrl/${Uri.encodeComponent(n)}/hierarchy';
   static String rolePermissionsUrl(String n) => '$rolesUrl/${Uri.encodeComponent(n)}/permissions';

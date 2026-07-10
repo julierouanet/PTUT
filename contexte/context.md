@@ -701,15 +701,22 @@ Les equipements de seed (id `eq-001`...`eq-045`) cohabitent avec les equipements
 | PUT     | /api/categories/sub/:id  | Admin | Renomme la sous-catégorie. Body `{name, macro_category_id?, description?}`. **[NOUVEAU]** `description` (TEXT, optionnel ; chaîne vide/null = effacement) affichée sur la fiche équipement. `logAction('update_subcategory')` (audit `old_description`/`description`) |
 | PUT     | /api/categories/sub/:id/lifespan | Admin | **[NOUVEAU]** Durée de vie de référence (RA3 S5). Body `{expected_lifespan_years: int>=0\|null}`. `logAction('update_subcategory_lifespan')` |
 
-### Protocoles de Maintenance Préventive (`/api/pm-protocols`) **[NOUVEAU]**
+### Protocoles de Maintenance Préventive (`/api/pm-protocols`)
+
+Consommé depuis Flutter par `PmProtocolsScreen`/`PmProtocolFormScreen` (onglet Maintenance
+de la fiche équipement, via l'icône ⚙️ ou le texte cliquable "Aucun protocole défini").
+Protocoles rattachés à la **sous-catégorie**, pas à l'équipement individuel — modifier un
+protocole affecte tous les équipements du même type (avertissement affiché côté UI).
 
 | Methode | Route              | Auth  | Description                                                               |
 |---------|--------------------|-------|---------------------------------------------------------------------------|
 | GET     | /api/pm-protocols  | Auth  | Liste (filtres: ?subcategory_id=, ?macro_category_id=). Checklist désérialisée en tableau |
 | GET     | /api/pm-protocols/:id | Auth | Détail avec checklist |
-| POST    | /api/pm-protocols  | Admin | Créer (required: subcategory_id, name, frequency_months ; optionnel: estimated_duration_hours, checklist[]) |
-| PUT     | /api/pm-protocols/:id | Admin | Modifier (COALESCE partiel) |
-| DELETE  | /api/pm-protocols/:id | Admin | Supprimer |
+| POST    | /api/pm-protocols  | Admin, Supervisor, Technicien* | **[NOUVEAU]** RBAC élargi (créer : required subcategory_id, name, frequency_months ; optionnel : estimated_duration_hours, checklist[] — chaque élément doit être une chaîne) |
+| PUT     | /api/pm-protocols/:id | Admin, Supervisor, Technicien* | **[NOUVEAU]** RBAC élargi (modifier, COALESCE partiel). Validation checklist alignée avec POST (élément non-string → 400) |
+| DELETE  | /api/pm-protocols/:id | Admin | Supprimer — reste admin only (non élargi) |
+
+\* Technicien = `technician_biomedical`, `technician_it`, `technician_infra` (`TECH_ROLES`).
 
 ### Catalogue Fabricant → Modèle (`/api/brands`, `/api/models`) **[NOUVEAU]**
 
@@ -1153,7 +1160,7 @@ currentStock, minStock: int
 status: StockStatus (normal, low, outOfStock)
 ```
 
-## 3.4 Ecrans (27 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4 — +1 le 2026-06-23 : technician_intervention_update, extrait de TechnicianUpdateScreen — 2026-07-07 : ReportsScreen + AnalyticsScreen fusionnés en un seul écran "Analytics" à 2 onglets, compteur d'écrans décrémenté de 1)
+## 3.4 Ecrans (29 fichiers dans `lib/screens/` — audit 2026-06-10, +2 le 2026-06-15 : category_detail, department_detail, +1 le 2026-06-20 : technician_schedule — 2026-06-22 : FeatureManagementScreen n'a plus d'entrée sidebar autonome, intégré dans SettingsScreen onglet 4 — +1 le 2026-06-23 : technician_intervention_update, extrait de TechnicianUpdateScreen — 2026-07-07 : ReportsScreen + AnalyticsScreen fusionnés en un seul écran "Analytics" à 2 onglets, compteur d'écrans décrémenté de 1 — +2 le 2026-07-10 : pm_protocols, pm_protocol_form, gestion des protocoles PM depuis la fiche équipement)
 
 | #  | Ecran                    | Permissions requises    | Description                                                       |
 |----|--------------------------|-------------------------|-------------------------------------------------------------------|
@@ -1174,6 +1181,8 @@ status: StockStatus (normal, low, outOfStock)
 | 12 | HomeHubScreen            | -                       | Hub de selection modules (Equipment, Settings, Inventory)         |
 | 13 | DebugTestScreen          | manageFeatures (admin)  | Module Debug & Test — bouton pour vider la table issues (POST /api/debug/clear-issues) ; section "Tests de Notifications" : 4 boutons (notify-now, auto/minute, auto/heure, stop) + mini-historique des 3 derniers envois |
 | 14 | EquipmentDetailScreen    | viewEquipment           | Détail équipement (historique maintenance, PM, documents) |
+| 14b | PmProtocolsScreen       | manageEquipment/updateRepairs + sous-catégorie assignée | **[NOUVEAU]** Sous-écran liste des protocoles PM d'une sous-catégorie (créer/éditer/supprimer — DELETE admin only), atteint depuis l'onglet Maintenance (icône ⚙️ ou texte cliquable "Aucun protocole défini"). Bandeau d'avertissement : les protocoles s'appliquent à TOUS les équipements du même type. |
+| 14c | PmProtocolFormScreen    | (idem 14b)              | **[NOUVEAU]** Sous-écran formulaire création/édition d'un protocole PM (nom, fréquence, durée estimée, checklist réordonnable `ReorderableListView`). |
 | 15 | IssueStaffDetailScreen   | trackIssues             | Vue lecture seule incidents pour hospitalStaff (timeline) |
 | 16 | UserDetailScreen         | manageUsers             | Fiche utilisateur : profil, demandes dept/rôle, actions admin |
 | 17 | RoleDetailScreen         | manageUsers             | Détail rôle : hiérarchie, permissions, ordre sidebar, utilisateurs |

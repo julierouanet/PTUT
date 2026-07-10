@@ -2,11 +2,28 @@ const express = require('express');
 const { getDb } = require('../database');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAction, extractReqMeta } = require('../utils/logger');
-const { rolesCsv } = require('../utils/roles');
+const { rolesCsv, TECH_ROLES } = require('../utils/roles');
 
 const router = express.Router();
 
 const VALID_CRITICALITIES = ['A', 'B', 'C'];
+
+// Désérialise la checklist JSON stockée en base ; tolère un JSON corrompu.
+function parseChecklist(raw) {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch (_) { return []; }
+}
+
+// Valide et sérialise une checklist entrante (POST/PUT). Retourne { error } ou { json }.
+function validateChecklist(checklist) {
+  if (!Array.isArray(checklist)) {
+    return { error: 'checklist doit être un tableau JSON' };
+  }
+  if (checklist.some(item => typeof item !== 'string')) {
+    return { error: 'Chaque élément de la checklist doit être une chaîne' };
+  }
+  return { json: JSON.stringify(checklist) };
+}
 
 // ── GET /api/pm-protocols ────────────────────────────────────────────────────
 // Liste des protocoles PM. Filtres : ?subcategory_id=, ?macro_category_id=
@@ -39,10 +56,7 @@ router.get('/', verifyToken, (req, res) => {
 
   const rows = db.prepare(query).all(...params);
   // Désérialiser la checklist JSON pour chaque protocole
-  const result = rows.map(r => ({
-    ...r,
-    checklist: r.checklist ? (() => { try { return JSON.parse(r.checklist); } catch (_) { return []; } })() : [],
-  }));
+  const result = rows.map(r => ({ ...r, checklist: parseChecklist(r.checklist) }));
 
   res.json(result);
 });
@@ -66,16 +80,11 @@ router.get('/:id', verifyToken, (req, res) => {
 
   if (!row) return res.status(404).json({ error: 'Protocole introuvable' });
 
-  res.json({
-    ...row,
-    checklist: row.checklist
-      ? (() => { try { return JSON.parse(row.checklist); } catch (_) { return []; } })()
-      : [],
-  });
+  res.json({ ...row, checklist: parseChecklist(row.checklist) });
 });
 
 // ── POST /api/pm-protocols ───────────────────────────────────────────────────
-router.post('/', verifyToken, requireRole('admin'), (req, res) => {
+router.post('/', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const { subcategory_id, name, frequency_months, estimated_duration_hours, checklist } = req.body;
 
@@ -99,13 +108,9 @@ router.post('/', verifyToken, requireRole('admin'), (req, res) => {
   // Valider et sérialiser la checklist
   let checklistJson = null;
   if (checklist != null) {
-    if (!Array.isArray(checklist)) {
-      return res.status(400).json({ error: 'checklist doit être un tableau JSON' });
-    }
-    if (checklist.some(item => typeof item !== 'string')) {
-      return res.status(400).json({ error: 'Chaque élément de la checklist doit être une chaîne' });
-    }
-    checklistJson = JSON.stringify(checklist);
+    const validated = validateChecklist(checklist);
+    if (validated.error) return res.status(400).json({ error: validated.error });
+    checklistJson = validated.json;
   }
 
   // Vérifier que la sous-catégorie existe
@@ -129,7 +134,7 @@ router.post('/', verifyToken, requireRole('admin'), (req, res) => {
 });
 
 // ── PUT /api/pm-protocols/:id ────────────────────────────────────────────────
-router.put('/:id', verifyToken, requireRole('admin'), (req, res) => {
+router.put('/:id', verifyToken, requireRole('admin', 'supervisor', ...TECH_ROLES), (req, res) => {
   const db = getDb();
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return res.status(400).json({ error: 'ID invalide' });
@@ -164,10 +169,9 @@ router.put('/:id', verifyToken, requireRole('admin'), (req, res) => {
     if (checklist === null) {
       checklistJson = null;
     } else {
-      if (!Array.isArray(checklist)) {
-        return res.status(400).json({ error: 'checklist doit être un tableau JSON' });
-      }
-      checklistJson = JSON.stringify(checklist);
+      const validated = validateChecklist(checklist);
+      if (validated.error) return res.status(400).json({ error: validated.error });
+      checklistJson = validated.json;
     }
   }
 

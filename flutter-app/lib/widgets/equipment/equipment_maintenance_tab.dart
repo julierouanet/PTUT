@@ -3,12 +3,14 @@ import 'package:printing/printing.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/equipment.dart';
 import '../../models/issue.dart';
+import '../../models/pm_protocol.dart';
 import '../../models/user_role.dart';
 import '../../services/auth_service.dart';
 import '../../services/data_service.dart';
 import '../../services/db_api_service.dart';
 import '../../services/pdf_label_service.dart';
 import '../../theme/app_theme.dart';
+import '../../screens/pm_protocols_screen.dart';
 import '../../widgets/pm_checklist_widget.dart';
 import 'equipment_detail_helpers.dart';
 
@@ -96,6 +98,22 @@ class _EquipmentMaintenanceTabState
   Map<String, dynamic>? get _firstProtocol =>
       eq.pmProtocols.isNotEmpty ? eq.pmProtocols[0] : null;
 
+  Future<void> _openPmProtocols(BuildContext context) async {
+    final changed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PmProtocolsScreen(
+          subcategoryId: eq.subcategoryId!,
+          subcategoryName: eq.subcategoryName ?? '',
+        ),
+      ),
+    );
+    if (changed == true && mounted) {
+      await DataService().reloadEquipment();
+      widget.onRefresh();
+    }
+  }
+
   // ── Enregistrements PM préventifs ────────────────────────────────────────────
 
   List<MaintenanceRecord> get _pmHistory => eq.maintenanceHistory
@@ -182,12 +200,22 @@ class _EquipmentMaintenanceTabState
               frequencyMonths: _effectiveFrequency,
               estimatedDurationHours:
                   _firstProtocol?['estimated_duration_hours'] as double?,
+              canManage: _canSchedulePm && eq.subcategoryId != null,
+              onManageProtocols: eq.subcategoryId != null
+                  ? () => _openPmProtocols(context)
+                  : null,
+              hasSubcategory: eq.subcategoryId != null,
             ),
             const SizedBox(height: 12),
           ] else ...[
             PmChecklistWidget(
               key: _checklistKey,
               checklist: const [],
+              canManage: _canSchedulePm && eq.subcategoryId != null,
+              onManageProtocols: eq.subcategoryId != null
+                  ? () => _openPmProtocols(context)
+                  : null,
+              hasSubcategory: eq.subcategoryId != null,
             ),
             const SizedBox(height: 12),
           ],
@@ -249,24 +277,64 @@ class _EquipmentMaintenanceTabState
   /// technicien, type, durée). Bouton « Étiquette d'époque » : régénère
   /// l'étiquette PM **de ce record** (technicien + date d'origine).
   void _showMaintenanceRecordDialog(MaintenanceRecord m, AppLocalizations l10n) {
+    final showChecklist =
+        m.maintenanceType == 'preventive' && m.checklistSnapshot.isNotEmpty;
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l10n.equipMaintRecordTitle, style: const TextStyle(fontSize: 16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            DetailInfoRow(l10n.equipMaintInterventionLabel, m.intervention),
-            DetailInfoRow(l10n.equipMaintDateLabel, formatDetailDate(m.date)),
-            DetailInfoRow(l10n.equipMaintTechnicianLabel,
-                m.technician.isNotEmpty ? m.technician : '—'),
-            if (m.maintenanceType != null && m.maintenanceType!.isNotEmpty)
-              DetailInfoRow(l10n.equipMaintTypeLabel, m.maintenanceType!),
-            if (m.durationMinutes != null)
-              DetailInfoRow(l10n.equipMaintDurationLabel,
-                  l10n.equipMaintDurationValue(m.durationMinutes!)),
-          ],
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              DetailInfoRow(l10n.equipMaintInterventionLabel, m.intervention),
+              DetailInfoRow(l10n.equipMaintDateLabel, formatDetailDate(m.date)),
+              DetailInfoRow(l10n.equipMaintTechnicianLabel,
+                  m.technician.isNotEmpty ? m.technician : '—'),
+              if (m.maintenanceType != null && m.maintenanceType!.isNotEmpty)
+                DetailInfoRow(l10n.equipMaintTypeLabel, m.maintenanceType!),
+              if (m.durationMinutes != null)
+                DetailInfoRow(l10n.equipMaintDurationLabel,
+                    l10n.equipMaintDurationValue(m.durationMinutes!)),
+              if (showChecklist) ...[
+                const SizedBox(height: 12),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+                Text(
+                  l10n.pmChecklist,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+                ...m.checklistSnapshot.map((item) {
+                  final step = item['step'];
+                  final label = item['label'];
+                  final comment = item['comment'];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${step ?? '-'}. ${label is String ? label : ''}',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                        ),
+                        if (comment is String && comment.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12, top: 2),
+                            child: Text(
+                              comment,
+                              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
         ),
         actions: [
           // Étiquette d'époque : réservée aux profils habilités (RBAC miroir).
@@ -477,7 +545,7 @@ class _EquipmentMaintenanceTabState
 
   // ── Fréquence PM (Tâche 2) ───────────────────────────────────────────────────
 
-  static const List<int> _frequencyOptions = [1, 3, 6, 12, 24, 36];
+  static const List<int> _frequencyOptions = PmProtocol.frequencyOptions;
 
   Widget _buildFrequencyCard(AppLocalizations l10n) {
     return Card(
@@ -657,6 +725,39 @@ class _EquipmentMaintenanceTabState
       final nextPm =
           result['next_preventive_maintenance'] as String? ?? '';
 
+      // ── Incident consolidé best-effort pour les tâches non conformes ────────
+      // Isolé du try englobant : une panne de createIssue ne doit jamais
+      // masquer le succès de la validation PM déjà enregistrée.
+      final failedItems = items.where((i) => i.isDone && !i.passed).toList();
+      bool issueCreated = false;
+      if (failedItems.isNotEmpty && eq.department.isNotEmpty) {
+        try {
+          final currentUser = AuthService().currentUser;
+          final descriptionLines = failedItems
+              .map((i) =>
+                  '- ${i.label}${i.comment.isNotEmpty ? " (${i.comment})" : ""}')
+              .join('\n');
+          await DbApiService.instance.createIssue({
+            'id': 'issue-${DateTime.now().millisecondsSinceEpoch}',
+            'equipment_id': eq.id,
+            'equipment_name': eq.name,
+            'department': eq.department,
+            'type': 'Anomalie détectée en maintenance préventive',
+            'description':
+                'Tâches non conformes lors de la validation PM du '
+                '${formatDetailDate(DateTime.now().toIso8601String())} :\n$descriptionLines',
+            'reporter': currentUser?.fullName ?? 'Inconnu',
+            'reporter_email': currentUser?.email ?? '',
+            'urgency': IssueUrgency.moyen.displayName,
+          });
+          issueCreated = true;
+        } catch (_) {
+          // Best-effort : la validation PM reste un succès même si l'incident échoue.
+        }
+      }
+
+      if (!mounted) return;
+
       // Dialog de confirmation avec prochaine date
       await showDialog<void>(
         context: context,
@@ -679,6 +780,14 @@ class _EquipmentMaintenanceTabState
                       fontWeight: FontWeight.w600,
                       color: AppColors.primary),
                 ),
+              if (issueCreated) ...[
+                const SizedBox(height: 6),
+                Text(
+                  l10n.pmValidateIssueCreated,
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.warning),
+                ),
+              ],
             ],
           ),
           actions: [

@@ -99,12 +99,21 @@ describe('Catalogue — /api/brands', () => {
     expect(res.body.name).toBe('Philips');
   });
 
-  test('🚫 non-admin ne peut pas créer un fabricant → 403', async () => {
+  test('✅ technicien (TECH_ROLES) peut créer un fabricant → 201', async () => {
     setTestRole('technician_biomedical');
     const res = await request(app)
       .post('/api/brands')
       .set('Authorization', 'Bearer fake')
       .send({ name: 'GE Healthcare' });
+    expect(res.status).toBe(201);
+  });
+
+  test('🚫 hospitalStaff ne peut pas créer un fabricant → 403', async () => {
+    setTestRole('hospitalStaff');
+    const res = await request(app)
+      .post('/api/brands')
+      .set('Authorization', 'Bearer fake')
+      .send({ name: 'Autre fabricant' });
     expect(res.status).toBe(403);
   });
 

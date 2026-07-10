@@ -1417,6 +1417,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get equipmentAddModel => 'Ajouter un modèle';
 
   @override
+  String get equipmentEditBrandModelTitle => 'Fabricant et modèle';
+
+  @override
+  String get equipmentSelectBrandFirst => 'Choisissez d\'abord un fabricant';
+
+  @override
+  String get equipmentSelectModelRequired => 'Veuillez choisir un modèle';
+
+  @override
+  String equipmentCatalogAddOption(String query) {
+    return 'Ajouter « $query »';
+  }
+
+  @override
   String get equipmentTagNumber => 'Numéro de tag (étiquette physique)';
 
   @override
@@ -3459,6 +3473,25 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get pmProtocolNoProtocols =>
       'Aucun protocole PM pour ce type d\'équipement';
+
+  @override
+  String pmProtocolScopeWarning(String subcategoryName) {
+    return 'Ces protocoles s\'appliquent à TOUS les équipements du type \"$subcategoryName\", pas seulement à celui consulté.';
+  }
+
+  @override
+  String get pmProtocolNoSubcategory =>
+      'Cet équipement n\'a pas de type défini — associez-le à une sous-catégorie pour pouvoir définir un protocole.';
+
+  @override
+  String get pmTaskCommentLabel => 'Commentaire (optionnel)';
+
+  @override
+  String get pmTaskCommentHint => 'Ex : pièce remplacée, anomalie constatée';
+
+  @override
+  String get pmValidateIssueCreated =>
+      'Un incident a été créé pour les tâches non conformes.';
 
   @override
   String get equipmentSubcategorySection => 'Classification GMAO';

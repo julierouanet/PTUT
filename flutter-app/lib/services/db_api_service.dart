@@ -9,6 +9,7 @@ import '../models/intervention_technician.dart';
 import '../models/issue.dart';
 import '../models/issue_detail.dart';
 import '../models/issue_photo.dart';
+import '../models/pm_protocol.dart';
 
 /// Résultat paginé générique pour les listes en pagination serveur
 /// (GET /api/equipment et GET /api/issues avec ?page=).
@@ -271,6 +272,56 @@ class DbApiService {
   Future<void> updatePmPlan(String equipmentId, int frequencyMonths) async {
     final url = ApiConfig.equipmentPmPlanUrl(equipmentId);
     final response = await ApiClient.put(url, {'frequency_months': frequencyMonths});
+    await _checkEquipmentMutation(response, url);
+  }
+
+  // ── PROTOCOLES PM (par sous-catégorie) ───────────────────────────────────────
+
+  Future<List<PmProtocol>> getPmProtocols({required int subcategoryId}) async {
+    final url = ApiConfig.pmProtocolsUrl(subcategoryId: subcategoryId);
+    final response = await ApiClient.get(url);
+    _checkStatus(response, url);
+    final list = jsonDecode(response.body) as List;
+    return list.map((j) => PmProtocol.fromApiJson(j as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> createPmProtocol({
+    required int subcategoryId,
+    required String name,
+    required int frequencyMonths,
+    double? estimatedDurationHours,
+    required List<String> checklist,
+  }) async {
+    final response = await ApiClient.post(ApiConfig.pmProtocolsUrl(), {
+      'subcategory_id': subcategoryId,
+      'name': name,
+      'frequency_months': frequencyMonths,
+      if (estimatedDurationHours != null) 'estimated_duration_hours': estimatedDurationHours,
+      'checklist': checklist,
+    });
+    await _checkEquipmentMutation(response, ApiConfig.pmProtocolsUrl());
+  }
+
+  Future<void> updatePmProtocol(
+    int id, {
+    String? name,
+    int? frequencyMonths,
+    double? estimatedDurationHours,
+    List<String>? checklist,
+  }) async {
+    final url = ApiConfig.pmProtocolItemUrl(id);
+    final response = await ApiClient.put(url, {
+      if (name != null) 'name': name,
+      if (frequencyMonths != null) 'frequency_months': frequencyMonths,
+      if (estimatedDurationHours != null) 'estimated_duration_hours': estimatedDurationHours,
+      if (checklist != null) 'checklist': checklist,
+    });
+    await _checkEquipmentMutation(response, url);
+  }
+
+  Future<void> deletePmProtocol(int id) async {
+    final url = ApiConfig.pmProtocolItemUrl(id);
+    final response = await ApiClient.delete(url);
     await _checkEquipmentMutation(response, url);
   }
 

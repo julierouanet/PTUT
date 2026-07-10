@@ -9,11 +9,17 @@ class PmChecklistItem {
   final int step;
   final String label;
   bool isDone;
+  /// Commentaire optionnel saisi par le technicien au moment de la validation.
+  String comment;
+  /// Statut de conformité (significatif uniquement si [isDone] == true).
+  bool passed;
 
   PmChecklistItem({
     required this.step,
     required this.label,
     this.isDone = false,
+    this.comment = '',
+    this.passed = true,
   });
 
   factory PmChecklistItem.fromJson(dynamic j) {
@@ -26,6 +32,8 @@ class PmChecklistItem {
       step: map['step'] as int? ?? 0,
       label: (map['label'] as String?) ?? (map['text'] as String?) ?? '',
       isDone: map['done'] as bool? ?? false,
+      comment: map['comment'] as String? ?? '',
+      passed: map['passed'] as bool? ?? true,
     );
   }
 
@@ -33,6 +41,8 @@ class PmChecklistItem {
         'step': step,
         'label': label,
         'done': isDone,
+        'comment': comment,
+        'passed': passed,
       };
 }
 
@@ -55,12 +65,25 @@ class PmChecklistWidget extends StatefulWidget {
   /// Durée estimée en heures.
   final double? estimatedDurationHours;
 
+  /// Autorise la navigation vers la gestion des protocoles PM de la sous-catégorie.
+  final bool canManage;
+
+  /// Appelé quand l'utilisateur souhaite créer/gérer les protocoles PM.
+  final VoidCallback? onManageProtocols;
+
+  /// `false` si l'équipement n'a pas de sous-catégorie assignée — dans ce cas
+  /// le bloc "aucun protocole" reste non cliquable même si [canManage] est vrai.
+  final bool hasSubcategory;
+
   const PmChecklistWidget({
     super.key,
     required this.checklist,
     this.protocolName,
     this.frequencyMonths,
     this.estimatedDurationHours,
+    this.canManage = false,
+    this.onManageProtocols,
+    this.hasSubcategory = true,
   });
 
   @override
@@ -114,7 +137,10 @@ class PmChecklistWidgetState extends State<PmChecklistWidget> {
 
     // Cas : checklist vide ou protocole absent
     if (_items.isEmpty) {
-      return Card(
+      final clickable = widget.canManage &&
+          widget.onManageProtocols != null &&
+          widget.hasSubcategory;
+      final card = Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
@@ -123,16 +149,42 @@ class PmChecklistWidgetState extends State<PmChecklistWidget> {
                   size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(
-                  l10n.pmNoProtocolAvailable,
-                  style: const TextStyle(
-                      fontSize: 13, color: AppColors.textSecondary),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.pmNoProtocolAvailable,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                    if (clickable) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.pmProtocolAdd,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ] else if (!widget.hasSubcategory) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        l10n.pmProtocolNoSubcategory,
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
           ),
         ),
       );
+      return clickable
+          ? InkWell(onTap: widget.onManageProtocols, child: card)
+          : card;
     }
 
     return Card(
@@ -196,6 +248,13 @@ class PmChecklistWidgetState extends State<PmChecklistWidget> {
                     ),
                   ),
                 ),
+                if (widget.canManage && widget.onManageProtocols != null)
+                  IconButton(
+                    icon: const Icon(Icons.settings_outlined,
+                        size: 18, color: AppColors.textSecondary),
+                    tooltip: l10n.pmProtocolEdit,
+                    onPressed: widget.onManageProtocols,
+                  ),
               ],
             ),
 
@@ -225,18 +284,53 @@ class PmChecklistWidgetState extends State<PmChecklistWidget> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 activeColor: AppColors.success,
-                title: Text(
-                  '${item.step}. ${item.label}',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: item.isDone
-                        ? AppColors.textSecondary
-                        : AppColors.textPrimary,
-                    decoration: item.isDone
-                        ? TextDecoration.lineThrough
-                        : TextDecoration.none,
-                  ),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.step}. ${item.label}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: item.isDone
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
+                          decoration: item.isDone
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                        ),
+                      ),
+                    ),
+                    if (item.isDone && _canEdit)
+                      IconButton(
+                        icon: Icon(
+                          item.passed ? Icons.check_circle : Icons.cancel,
+                          size: 20,
+                          color: item.passed ? AppColors.success : AppColors.error,
+                        ),
+                        onPressed: () =>
+                            setState(() => item.passed = !item.passed),
+                      ),
+                  ],
                 ),
+                subtitle: _canEdit
+                    ? TextFormField(
+                        initialValue: item.comment,
+                        style: const TextStyle(fontSize: 12),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          labelText: l10n.pmTaskCommentLabel,
+                          hintText: l10n.pmTaskCommentHint,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onChanged: (v) => item.comment = v,
+                      )
+                    : (item.comment.isNotEmpty
+                        ? Text(
+                            item.comment,
+                            style: const TextStyle(
+                                fontSize: 12, color: AppColors.textMuted),
+                          )
+                        : null),
                 onChanged: _canEdit ? (_) => _toggle(i) : null,
               );
             }),

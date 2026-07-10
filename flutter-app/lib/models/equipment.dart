@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Statut d'un équipement médical
 enum EquipmentStatus {
   operational,
@@ -107,6 +109,7 @@ class MaintenanceRecord {
   final String? maintenanceType;
   final int? durationMinutes;
   final int? recordId;
+  final List<Map<String, dynamic>> checklistSnapshot;
 
   const MaintenanceRecord({
     required this.date,
@@ -116,6 +119,7 @@ class MaintenanceRecord {
     this.maintenanceType,
     this.durationMinutes,
     this.recordId,
+    this.checklistSnapshot = const [],
   });
 }
 
@@ -267,6 +271,18 @@ class Equipment {
         maintenanceType: map['maintenance_type'] as String?,
         durationMinutes: map['duration_minutes'] as int?,
         recordId: rawId is int ? rawId : (rawId is String ? int.tryParse(rawId) : null),
+        checklistSnapshot: (() {
+          final raw = map['checklist_snapshot'];
+          if (raw is String && raw.isNotEmpty) {
+            try {
+              final decoded = jsonDecode(raw);
+              if (decoded is List) {
+                return decoded.whereType<Map<String, dynamic>>().toList();
+              }
+            } catch (_) {}
+          }
+          return <Map<String, dynamic>>[];
+        })(),
       );
     }
 

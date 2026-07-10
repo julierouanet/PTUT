@@ -2678,6 +2678,30 @@ abstract class AppLocalizations {
   /// **'Ajouter un modèle'**
   String get equipmentAddModel;
 
+  /// No description provided for @equipmentEditBrandModelTitle.
+  ///
+  /// In fr, this message translates to:
+  /// **'Fabricant et modèle'**
+  String get equipmentEditBrandModelTitle;
+
+  /// No description provided for @equipmentSelectBrandFirst.
+  ///
+  /// In fr, this message translates to:
+  /// **'Choisissez d\'abord un fabricant'**
+  String get equipmentSelectBrandFirst;
+
+  /// No description provided for @equipmentSelectModelRequired.
+  ///
+  /// In fr, this message translates to:
+  /// **'Veuillez choisir un modèle'**
+  String get equipmentSelectModelRequired;
+
+  /// No description provided for @equipmentCatalogAddOption.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ajouter « {query} »'**
+  String equipmentCatalogAddOption(String query);
+
   /// No description provided for @equipmentTagNumber.
   ///
   /// In fr, this message translates to:
@@ -6445,6 +6469,36 @@ abstract class AppLocalizations {
   /// In fr, this message translates to:
   /// **'Aucun protocole PM pour ce type d\'équipement'**
   String get pmProtocolNoProtocols;
+
+  /// No description provided for @pmProtocolScopeWarning.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ces protocoles s\'appliquent à TOUS les équipements du type \"{subcategoryName}\", pas seulement à celui consulté.'**
+  String pmProtocolScopeWarning(String subcategoryName);
+
+  /// No description provided for @pmProtocolNoSubcategory.
+  ///
+  /// In fr, this message translates to:
+  /// **'Cet équipement n\'a pas de type défini — associez-le à une sous-catégorie pour pouvoir définir un protocole.'**
+  String get pmProtocolNoSubcategory;
+
+  /// No description provided for @pmTaskCommentLabel.
+  ///
+  /// In fr, this message translates to:
+  /// **'Commentaire (optionnel)'**
+  String get pmTaskCommentLabel;
+
+  /// No description provided for @pmTaskCommentHint.
+  ///
+  /// In fr, this message translates to:
+  /// **'Ex : pièce remplacée, anomalie constatée'**
+  String get pmTaskCommentHint;
+
+  /// No description provided for @pmValidateIssueCreated.
+  ///
+  /// In fr, this message translates to:
+  /// **'Un incident a été créé pour les tâches non conformes.'**
+  String get pmValidateIssueCreated;
 
   /// No description provided for @equipmentSubcategorySection.
   ///

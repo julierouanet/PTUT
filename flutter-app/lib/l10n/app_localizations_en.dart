@@ -1407,6 +1407,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get equipmentAddModel => 'Add model';
 
   @override
+  String get equipmentEditBrandModelTitle => 'Manufacturer and model';
+
+  @override
+  String get equipmentSelectBrandFirst => 'Choose a manufacturer first';
+
+  @override
+  String get equipmentSelectModelRequired => 'Please select a model';
+
+  @override
+  String equipmentCatalogAddOption(String query) {
+    return 'Add \"$query\"';
+  }
+
+  @override
   String get equipmentTagNumber => 'Tag number (physical label)';
 
   @override
@@ -3429,6 +3443,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pmProtocolNoProtocols => 'No PM protocols for this equipment type';
+
+  @override
+  String pmProtocolScopeWarning(String subcategoryName) {
+    return 'These protocols apply to ALL equipment of type \"$subcategoryName\", not only the one you are viewing.';
+  }
+
+  @override
+  String get pmProtocolNoSubcategory =>
+      'This equipment has no defined type — assign it a subcategory to be able to define a protocol.';
+
+  @override
+  String get pmTaskCommentLabel => 'Comment (optional)';
+
+  @override
+  String get pmTaskCommentHint => 'E.g.: part replaced, anomaly found';
+
+  @override
+  String get pmValidateIssueCreated =>
+      'An issue was created for the non-compliant tasks.';
 
   @override
   String get equipmentSubcategorySection => 'CMMS Classification';
