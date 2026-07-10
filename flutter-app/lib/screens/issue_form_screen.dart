@@ -171,6 +171,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Stepper ───────────────────────────────────────────────────────────────
   int _currentStep = 0; // 0 = étape 1, 1 = étape 2
+  final ScrollController _scrollController = ScrollController();
 
   // ── Mode Scan & Block ─────────────────────────────────────────────────────
   bool _scanBlockMode = false;
@@ -320,6 +321,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _descriptionController.dispose();
     _tagController.dispose();
     _itTagFocusNode.dispose();
@@ -450,11 +452,22 @@ class IssueFormScreenState extends State<IssueFormScreen> {
 
   // ── Navigation entre les étapes ───────────────────────────────────────────
 
+  void _scrollToTop() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    });
+  }
+
+  void _setStep(int step) {
+    setState(() => _currentStep = step);
+    _scrollToTop();
+  }
+
   void _goToStep2() {
     final state = _currentTabEquipmentState;
     final extraValid = state.unlisted || state.equipment != null;
     if (!_formKey1.currentState!.validate() || !extraValid) return;
-    setState(() => _currentStep = 1);
+    _setStep(1);
   }
 
   // ── Scanner QR classique ──────────────────────────────────────────────────
@@ -683,6 +696,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
       _scanBlockMode = true;
       _currentStep   = 1; // sauter directement à la description
     });
+    _scrollToTop();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(l10n.issueFormScanBlockUrgencySet),
       backgroundColor: AppColors.critical,
@@ -1153,6 +1167,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1323,9 +1338,6 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
               const SizedBox(height: 8),
               _buildUrgencySelector(),
-              const SizedBox(height: 6),
-              Text(l10n.issueFormUrgencyHelp,
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const SizedBox(height: 16),
 
               // Disponibilité pour intervention
@@ -1438,7 +1450,7 @@ class IssueFormScreenState extends State<IssueFormScreen> {
                 Row(children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => setState(() => _currentStep = 0),
+                      onPressed: () => _setStep(0),
                       icon: const Icon(Icons.arrow_back),
                       label: Text(l10n.commonBack),
                       style: OutlinedButton.styleFrom(

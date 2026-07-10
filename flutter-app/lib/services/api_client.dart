@@ -291,7 +291,24 @@ class ApiClient {
       final refreshed = await _tryRefresh();
       if (refreshed) toProcess = await _sendMultipartFiles(url, files, fileField, fields);
     }
-    return (await _parseMultipartResponse(toProcess)) as List<dynamic>;
+    final decoded = await _parseMultipartResponse(toProcess);
+    return _extractFileList(decoded);
+  }
+
+  /// Le serveur renvoie tantôt un tableau nu (ex. POST /documents), tantôt un
+  /// objet enveloppant la liste sous une clé (ex. POST /photos → {message, photos}).
+  /// Accepter les deux formes évite un TypeError qui masquerait un upload
+  /// pourtant réussi côté serveur (voir POST /api/issues/:id/photos).
+  /// Si l'objet contient zéro ou plusieurs valeurs de type List, on échoue
+  /// explicitement plutôt que de deviner laquelle est la bonne (pas de
+  /// résolution silencieuse d'un cas ambigu).
+  static List<dynamic> _extractFileList(dynamic decoded) {
+    if (decoded is List<dynamic>) return decoded;
+    if (decoded is Map<String, dynamic>) {
+      final listValues = decoded.values.whereType<List<dynamic>>().toList();
+      if (listValues.length == 1) return listValues.single;
+    }
+    throw Exception('Réponse serveur inattendue (liste de fichiers introuvable ou ambiguë)');
   }
 
   static Future<http.StreamedResponse> _sendMultipart(

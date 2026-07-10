@@ -515,10 +515,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Choisissez d\'abord le type de problème ci-dessous, puis cherchez l\'équipement concerné. Si vous ne le trouvez pas dans la liste, cochez la case prévue à cet effet.';
 
   @override
-  String get issueFormUrgencyHelp =>
-      'Critique = intervention sous 2h · Urgent = 12h · Moyen = 48h · Faible = 1 semaine';
-
-  @override
   String get issueFormUnlistedHelp =>
       'Vous ne trouvez pas l\'équipement en cherchant son nom ou son numéro ? Cochez la case ci-dessous.';
 

@@ -179,7 +179,6 @@
   "issueFormDescriptionHint": "Ex : Ce qui s'est passé, depuis quand, et ce que vous avez observé (bruit, fumée, écran noir...)",
   "issueFormDescriptionRequired": "La description est obligatoire",
   "issueFormStep1IntroBanner": "Choisissez d'abord le type de problème ci-dessous, puis cherchez l'équipement concerné. Si vous ne le trouvez pas dans la liste, cochez la case prévue à cet effet.",
-  "issueFormUrgencyHelp": "Critique = intervention sous 2h · Urgent = 12h · Moyen = 48h · Faible = 1 semaine",
   "issueFormUnlistedHelp": "Vous ne trouvez pas l'équipement en cherchant son nom ou son numéro ? Cochez la case ci-dessous.",
   "issueFormDescriptionMinLength": "La description doit contenir au moins 10 caracteres",
   "issueFormPhotos": "Photos (optionnel)",

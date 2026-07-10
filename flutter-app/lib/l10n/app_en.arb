@@ -174,7 +174,6 @@
   "issueFormDescriptionHint": "E.g.: What happened, since when, and what you observed (noise, smoke, black screen...)",
   "issueFormDescriptionRequired": "Description is required",
   "issueFormStep1IntroBanner": "First choose the type of problem below, then search for the equipment. If you can't find it in the list, check the box provided for that.",
-  "issueFormUrgencyHelp": "Critical = response within 2h · Urgent = 12h · Medium = 48h · Low = 1 week",
   "issueFormUnlistedHelp": "Can't find the equipment by name or number? Check the box below.",
   "issueFormDescriptionMinLength": "Description must be at least 10 characters",
   "issueFormPhotos": "Photos (optional)",

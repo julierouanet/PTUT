@@ -1058,12 +1058,6 @@ abstract class AppLocalizations {
   /// **'Choisissez d\'abord le type de problème ci-dessous, puis cherchez l\'équipement concerné. Si vous ne le trouvez pas dans la liste, cochez la case prévue à cet effet.'**
   String get issueFormStep1IntroBanner;
 
-  /// No description provided for @issueFormUrgencyHelp.
-  ///
-  /// In fr, this message translates to:
-  /// **'Critique = intervention sous 2h · Urgent = 12h · Moyen = 48h · Faible = 1 semaine'**
-  String get issueFormUrgencyHelp;
-
   /// No description provided for @issueFormUnlistedHelp.
   ///
   /// In fr, this message translates to:
