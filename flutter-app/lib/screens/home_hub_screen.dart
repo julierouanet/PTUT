@@ -55,6 +55,11 @@ class HomeHubScreen extends StatelessWidget {
 
   bool _isTechnician(AuthService auth) {
     final roles = auth.currentRoles;
+    // Un admin ou superviseur cumulant un rôle technicien reste prioritairement
+    // routé vers la vue manager (cartes modules) — cohérent avec _isHospitalStaff.
+    if (roles.contains(UserRole.admin) || roles.contains(UserRole.supervisor)) {
+      return false;
+    }
     return roles.any((r) =>
         r == UserRole.technician ||
         r == UserRole.technicianBiomedical ||
