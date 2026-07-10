@@ -236,6 +236,12 @@ abstract class AppLocalizations {
   /// **'Admin'**
   String get navSettingsShort;
 
+  /// No description provided for @navMore.
+  ///
+  /// In fr, this message translates to:
+  /// **'Plus'**
+  String get navMore;
+
   /// No description provided for @tooltipBack.
   ///
   /// In fr, this message translates to:

@@ -618,10 +618,13 @@ class _MainScaffoldState extends State<MainScaffold> {
       ),
       bottomNavigationBar: isWide
           ? null
-          : AppBottomNav(
-              navItems: navItems,
-              currentIndex: _currentIndex,
-              onTap: (ctx, item, index) => _navigateTo(index),
+          : Builder(
+              builder: (scaffoldContext) => AppBottomNav(
+                navItems: navItems,
+                currentIndex: _currentIndex,
+                onTap: (ctx, item, index) => _navigateTo(index),
+                onOpenDrawer: () => Scaffold.of(scaffoldContext).openDrawer(),
+              ),
             ),
       drawer: isWide ? null : _buildDrawer(l10n, navItems),
     );

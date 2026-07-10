@@ -78,6 +78,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get navSettingsShort => 'Admin';
 
   @override
+  String get navMore => 'Plus';
+
+  @override
   String get tooltipBack => 'Retour';
 
   @override
